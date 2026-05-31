@@ -190,6 +190,16 @@ h2.display-sm {
     color: var(--ink);
 }
 
+/* Emphasize total entries */
+.sidebar-stats .stat-item-compact:first-child .stat-label-compact {
+    color: var(--primary);
+    font-weight: 600;
+}
+.sidebar-stats .stat-item-compact:first-child .stat-value-compact {
+    font-size: 18px;
+    color: var(--primary-active);
+}
+
 /* Diary Grid */
 #diaryContainer {
     display: grid;

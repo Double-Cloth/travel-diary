@@ -50,7 +50,8 @@ function analyzeData() {
     return {
         countries: visitedCountries.size,
         provinces: visitedProvinces.size,
-        cities: visitedCities.size
+        cities: visitedCities.size,
+        total: travelRecords.length
     };
 }
 
@@ -59,6 +60,10 @@ function renderStats(stats) {
     if (!statsHeader) return;
 
     statsHeader.innerHTML = `
+        <div class="stat-item-compact">
+            <span class="stat-label-compact">Entries</span>
+            <span class="stat-value-compact">${stats.total}</span>
+        </div>
         <div class="stat-item-compact">
             <span class="stat-label-compact">Countries</span>
             <span class="stat-value-compact">${stats.countries}</span>
@@ -273,10 +278,20 @@ function renderPagination(totalPages) {
     
     // 生成分页控件
     paginationContainer.innerHTML = `
+        <button class="page-btn" id="firstPageBtn" ${currentState.currentPage === 1 ? 'disabled' : ''}>« First</button>
         <button class="page-btn" id="prevPageBtn" ${currentState.currentPage === 1 ? 'disabled' : ''}>← Previous</button>
         <span class="page-info">Page ${currentState.currentPage} of ${totalPages}</span>
         <button class="page-btn" id="nextPageBtn" ${currentState.currentPage === totalPages ? 'disabled' : ''}>Next →</button>
+        <button class="page-btn" id="lastPageBtn" ${currentState.currentPage === totalPages ? 'disabled' : ''}>Last »</button>
     `;
+
+    document.getElementById('firstPageBtn').addEventListener('click', () => {
+        if (currentState.currentPage > 1) {
+            currentState.currentPage = 1;
+            renderDiary();
+            window.scrollTo({ top: document.getElementById('diaryContainer').offsetTop - 120, behavior: 'smooth' });
+        }
+    });
 
     document.getElementById('prevPageBtn').addEventListener('click', () => {
         if (currentState.currentPage > 1) {
@@ -291,6 +306,14 @@ function renderPagination(totalPages) {
             currentState.currentPage++;
             renderDiary();
             // 在翻页后平滑滚动回内容顶部
+            window.scrollTo({ top: document.getElementById('diaryContainer').offsetTop - 120, behavior: 'smooth' });
+        }
+    });
+
+    document.getElementById('lastPageBtn').addEventListener('click', () => {
+        if (currentState.currentPage < totalPages) {
+            currentState.currentPage = totalPages;
+            renderDiary();
             window.scrollTo({ top: document.getElementById('diaryContainer').offsetTop - 120, behavior: 'smooth' });
         }
     });

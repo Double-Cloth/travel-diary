@@ -1,10 +1,28 @@
 const travelDataLocal = [
     {
+        "date": "2024-07-08",
+        "country": "中国",
+        "province": "云南省",
+        "city": "玉溪市",
+        "desc": "映月潭温泉",
+        "photo_folder": "photos/yuxi",
+        "photos": []
+    },
+    {
+        "date": "2024-07-28",
+        "country": "中国",
+        "province": "云南省",
+        "city": "楚雄市",
+        "desc": "武定水城河徒步",
+        "photo_folder": "photos/chuxiong",
+        "photos": []
+    },
+    {
         "date": "2024-08-12",
         "country": "中国",
         "province": "上海市",
         "city": "上海市",
-        "desc": "",
+        "desc": "外滩、豫园、同济大学...",
         "photo_folder": "photos/shanghai",
         "photos": []
     },
@@ -13,7 +31,7 @@ const travelDataLocal = [
         "country": "中国",
         "province": "北京市",
         "city": "北京市",
-        "desc": "",
+        "desc": "北京科技大学、清华大学、北京大学...",
         "photo_folder": "photos/beijing",
         "photos": []
     },
@@ -22,7 +40,7 @@ const travelDataLocal = [
         "country": "中国",
         "province": "江苏省",
         "city": "南京市",
-        "desc": "",
+        "desc": "紫金山、南京大学",
         "photo_folder": "photos/nanjing",
         "photos": []
     },
@@ -31,7 +49,7 @@ const travelDataLocal = [
         "country": "中国",
         "province": "江苏省",
         "city": "苏州市",
-        "desc": "",
+        "desc": "拙政园",
         "photo_folder": "photos/suzhou",
         "photos": []
     },
@@ -103,7 +121,7 @@ const travelDataLocal = [
         "country": "中国",
         "province": "云南省",
         "city": "玉溪市",
-        "desc": "",
+        "desc": "映月潭温泉",
         "photo_folder": "photos/yuxi",
         "photos": []
     },
