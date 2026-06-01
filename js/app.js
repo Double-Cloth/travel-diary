@@ -8,6 +8,20 @@ let currentState = {
     itemsPerPage: 6
 };
 
+function formatDateForCard(dateStr) {
+    if (!dateStr) return '';
+    try {
+        const d = new Date(dateStr + 'T00:00:00');
+        const day = d.getDate().toString().padStart(2, '0');
+        // Use English short month to avoid locale-specific (e.g., Chinese) month names
+        const month = d.toLocaleString('en-US', { month: 'short' });
+        const year = d.getFullYear();
+        return `<time datetime="${escapeHtml(dateStr)}"><span class="date-day">${day}</span><span class="date-month">${escapeHtml(month)} ${year}</span></time>`;
+    } catch (e) {
+        return `<time datetime="${escapeHtml(dateStr)}">${escapeHtml(dateStr)}</time>`;
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     void initApp();
 });
@@ -351,6 +365,41 @@ function setupInteractions() {
             }
         });
     });
+
+    // Mobile hamburger -> toggle sidebar drawer
+    const hamburger = document.getElementById('hamburgerBtn');
+    function closeSidebar() {
+        document.body.classList.remove('sidebar-open');
+        const overlay = document.querySelector('.sidebar-overlay');
+        if (overlay) overlay.remove();
+        if (hamburger) hamburger.setAttribute('aria-expanded', 'false');
+    }
+
+    if (hamburger) {
+        hamburger.addEventListener('click', (e) => {
+            const isOpen = document.body.classList.toggle('sidebar-open');
+            hamburger.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+
+            if (isOpen) {
+                // create overlay
+                let overlay = document.querySelector('.sidebar-overlay');
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.className = 'sidebar-overlay';
+                    document.body.appendChild(overlay);
+                    overlay.addEventListener('click', closeSidebar);
+                }
+            } else {
+                const overlay = document.querySelector('.sidebar-overlay');
+                if (overlay) overlay.remove();
+            }
+        });
+
+        // close on escape
+        document.addEventListener('keydown', (ev) => {
+            if (ev.key === 'Escape') closeSidebar();
+        });
+    }
 }
 
 function setupFilters() {
@@ -446,17 +495,23 @@ function renderDiary() {
         entryDiv.className = 'diary-entry diary-entry-clickable';
         entryDiv.setAttribute('data-md-path', record.desc_md || '');
 
+        // build a date block to give a timeline sense (day big, month/year small)
+        const dateHtml = formatDateForCard(record.date);
+
         entryDiv.innerHTML = `
-            <div class="entry-header">
-                <span class="entry-date">${record.date}</span>
-            </div>
-            <div class="entry-location">${escapeHtml(locationText)}</div>
-            <div class="entry-desc entry-title"><h1>${escapeHtml(record.descTitle || buildFallbackTitle(record))}</h1></div>
-            <div class="entry-footer">
-                <a href="#" class="tag link-location" data-country="${escapeHtml(record.country)}" data-province="${escapeHtml(record.province)}" data-city="${escapeHtml(record.city)}">
-                    ${record.country === '中国' ? record.province : record.country}
-                </a>
-                ${record.isRepeated ? '<span class="badge-repeat">Repeat Visit</span>' : ''}
+            <div class="entry-date">${dateHtml}</div>
+            <div class="entry-body">
+                <div class="entry-header">
+                    <!-- header left intentionally empty for layout consistency -->
+                </div>
+                <div class="entry-location">${escapeHtml(locationText)}</div>
+                <div class="entry-desc entry-title"><h1>${escapeHtml(record.descTitle || buildFallbackTitle(record))}</h1></div>
+                <div class="entry-footer">
+                    <a href="#" class="tag link-location" data-country="${escapeHtml(record.country)}" data-province="${escapeHtml(record.province)}" data-city="${escapeHtml(record.city)}">
+                        ${record.country === '中国' ? record.province : record.country}
+                    </a>
+                    ${record.isRepeated ? '<span class="badge-repeat">Repeat Visit</span>' : ''}
+                </div>
             </div>
         `;
 
@@ -505,12 +560,13 @@ function renderPagination(totalPages) {
 
     paginationContainer.style.display = 'flex';
 
+    // 统一按钮文本，移除 JS 硬编码的文本箭头
     paginationContainer.innerHTML = `
-        <button class="page-btn" id="firstPageBtn" ${currentState.currentPage === 1 ? 'disabled' : ''}>« First</button>
-        <button class="page-btn" id="prevPageBtn" ${currentState.currentPage === 1 ? 'disabled' : ''}>← Previous</button>
+        <button class="page-btn ctrl-btn" id="firstPageBtn" ${currentState.currentPage === 1 ? 'disabled' : ''}>First</button>
+        <button class="page-btn prev-btn" id="prevPageBtn" ${currentState.currentPage === 1 ? 'disabled' : ''}>Previous</button>
         <span class="page-info">Page ${currentState.currentPage} of ${totalPages}</span>
-        <button class="page-btn" id="nextPageBtn" ${currentState.currentPage === totalPages ? 'disabled' : ''}>Next →</button>
-        <button class="page-btn" id="lastPageBtn" ${currentState.currentPage === totalPages ? 'disabled' : ''}>Last »</button>
+        <button class="page-btn next-btn" id="nextPageBtn" ${currentState.currentPage === totalPages ? 'disabled' : ''}>Next</button>
+        <button class="page-btn ctrl-btn" id="lastPageBtn" ${currentState.currentPage === totalPages ? 'disabled' : ''}>Last</button>
     `;
 
     document.getElementById('firstPageBtn').addEventListener('click', () => {
@@ -651,11 +707,15 @@ function renderLocationPage(country, province, city) {
     matching.forEach(record => {
         const el = document.createElement('div');
         el.className = 'diary-entry';
+        const dateHtml = formatDateForCard(record.date);
         el.innerHTML = `
-            <div class="entry-header"><span class="entry-date">${escapeHtml(record.date)}</span></div>
-            <div class="entry-location">${escapeHtml(record.city)}</div>
-            <div class="entry-desc entry-title"><h1>${escapeHtml(record.descTitle||buildFallbackTitle(record))}</h1></div>
-            <div class="entry-footer"><a href="#" class="tag link-location" data-country="${escapeHtml(record.country)}" data-province="${escapeHtml(record.province)}" data-city="${escapeHtml(record.city)}">View same place</a></div>
+            <div class="entry-date">${dateHtml}</div>
+            <div class="entry-body">
+                <div class="entry-header"></div>
+                <div class="entry-location">${escapeHtml(record.city)}</div>
+                <div class="entry-desc entry-title"><h1>${escapeHtml(record.descTitle||buildFallbackTitle(record))}</h1></div>
+                <div class="entry-footer"><a href="#" class="tag link-location" data-country="${escapeHtml(record.country)}" data-province="${escapeHtml(record.province)}" data-city="${escapeHtml(record.city)}">View same place</a></div>
+            </div>
         `;
         el.addEventListener('click', (e)=>{
             const ignore = e.target.closest('button, a, .entry-photo');

@@ -1,1 +1,39 @@
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Logs
+logs/
+*.log
+pids/
+*.pid
+
+# Runtime data
+tmp/
+temp/
+dist/
+build/
+coverage/
+.cache/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editor directories
+.vscode/
+.idea/
+
+# Misc
+*.bak
+*.tmp
+
+# other
 DESIGN.md

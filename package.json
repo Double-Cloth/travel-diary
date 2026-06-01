@@ -1,0 +1,11 @@
+{
+  "name": "travel-diary",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Personal travel diary static site.",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node server.js",
+    "serve": "node server.js"
+  }
+}
