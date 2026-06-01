@@ -349,7 +349,7 @@ function initYears() {
 
 function setupInteractions() {
     const navLinks = {
-        '#journal': '.hero-band',
+        '#journal': '#diaryContainer', // 修复：修改为日记列表容器
         '#destinations': '.sidebar',
         '#about': '#about'
     };
@@ -360,6 +360,7 @@ function setupInteractions() {
             const targetSelector = navLinks[link.getAttribute('href')];
             const targetEl = document.querySelector(targetSelector);
             if (targetEl) {
+                // 向上偏移 80px 以防被固定的顶部导航栏挡住
                 const topOffset = targetEl.getBoundingClientRect().top + window.scrollY - 80;
                 window.scrollTo({ top: topOffset, behavior: 'smooth' });
             }
@@ -706,15 +707,23 @@ function renderLocationPage(country, province, city) {
     matching.sort((a,b)=> b.date.localeCompare(a.date));
     matching.forEach(record => {
         const el = document.createElement('div');
-        el.className = 'diary-entry';
+        el.className = 'diary-entry diary-entry-clickable';
         const dateHtml = formatDateForCard(record.date);
+        
+        // 使用正常卡片的地点展示逻辑，避免仅仅显示一个干瘪的市名
+        let locText = record.country === '中国'
+            ? `${record.province} ${record.city}`
+            : `${record.country} ${record.province} ${record.city}`;
+        if (record.province === record.city) {
+            locText = record.country === '中国' ? record.city : `${record.country} ${record.city}`;
+        }
+
         el.innerHTML = `
             <div class="entry-date">${dateHtml}</div>
             <div class="entry-body">
                 <div class="entry-header"></div>
-                <div class="entry-location">${escapeHtml(record.city)}</div>
+                <div class="entry-location">${escapeHtml(locText)}</div>
                 <div class="entry-desc entry-title"><h1>${escapeHtml(record.descTitle||buildFallbackTitle(record))}</h1></div>
-                <div class="entry-footer"><a href="#" class="tag link-location" data-country="${escapeHtml(record.country)}" data-province="${escapeHtml(record.province)}" data-city="${escapeHtml(record.city)}">View same place</a></div>
             </div>
         `;
         el.addEventListener('click', (e)=>{

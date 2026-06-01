@@ -5,7 +5,7 @@
   "description": "Personal travel diary static site.",
   "type": "commonjs",
   "scripts": {
-    "start": "node server.js",
-    "serve": "node server.js"
+    "start": "node js/server.js",
+    "serve": "node js/server.js"
   }
 }
