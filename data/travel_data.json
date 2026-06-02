@@ -27,6 +27,15 @@
     "photos": []
   },
   {
+    "date": "2024-10-04",
+    "country": "中国",
+    "province": "昆明市",
+    "city": "昆明市",
+    "desc_md": "data/travel-diary/2024-10-04-kunming.md",
+    "photo_folder": "data/photos/kunming",
+    "photos": []
+  },
+  {
     "date": "2024-10-18",
     "country": "中国",
     "province": "北京市",
