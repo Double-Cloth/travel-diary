@@ -53,7 +53,3 @@ node server.js --port 9000
 
 ## 许可证
 见项目顶层 LICENSE 文件。
-
----
-
-如果需要，我可以帮你把 README 的中文/英文版合并，或加入部署到 GitHub Pages / Surge / Vercel 的说明。

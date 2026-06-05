@@ -29,7 +29,7 @@
   {
     "date": "2024-10-04",
     "country": "中国",
-    "province": "昆明市",
+    "province": "云南省",
     "city": "昆明市",
     "desc_md": "data/travel-diary/2024-10-04-kunming.md",
     "photo_folder": "data/photos/kunming",
@@ -195,6 +195,15 @@
     "city": "黄山市",
     "desc_md": "data/travel-diary/2025-11-01-huangshan.md",
     "photo_folder": "data/photos/huangshan",
+    "photos": []
+  },
+  {
+    "date": "2025-11-07",
+    "country": "中国",
+    "province": "上海市",
+    "city": "上海市",
+    "desc_md": "data/travel-diary/2025-11-07-shanghai.md",
+    "photo_folder": "data/photos/shanghai",
     "photos": []
   },
   {
