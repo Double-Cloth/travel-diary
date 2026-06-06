@@ -3,9 +3,7 @@ let travelRecords = [];
 let currentState = {
     search: '',
     year: 'All',
-    sortDesc: true,
-    currentPage: 1,
-    itemsPerPage: 6
+    sortDesc: true
 };
 
 function formatDateForCard(dateStr) {
@@ -324,27 +322,75 @@ function initYears() {
     const years = new Set(travelRecords.map(r => r.date.split('-')[0]));
     const sortedYears = Array.from(years).sort((a, b) => b.localeCompare(a));
 
-    let html = `<button class="category-tab ${currentState.year === 'All' ? 'category-tab-active' : ''}" data-year="All">All Time</button>`;
+    let html = '<button class="category-tab category-tab-active" data-year="All">All Time</button>';
     sortedYears.forEach(y => {
-        html += `<button class="category-tab ${currentState.year === y ? 'category-tab-active' : ''}" data-year="${y}">${y}</button>`;
+        html += '<button class="category-tab" data-year="' + y + '">' + y + '</button>';
     });
     yearTabs.innerHTML = html;
 
     if (!yearTabs.dataset.listenerAttached) {
+        // --- Click: scroll to year section ---
         yearTabs.addEventListener('click', (e) => {
-            if (e.target.classList.contains('category-tab')) {
-                document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('category-tab-active'));
-                e.target.classList.add('category-tab-active');
+            const btn = e.target.closest('.category-tab');
+            if (!btn) return;
 
-                currentState.year = e.target.getAttribute('data-year');
-                currentState.currentPage = 1;
+            const selectedYear = btn.getAttribute('data-year');
+
+            // Ensure all entries are visible
+            if (currentState.year !== 'All') {
+                currentState.year = 'All';
                 renderDiary();
+            }
 
-                window.scrollTo({ top: document.getElementById('diaryContainer').offsetTop - 120, behavior: 'smooth' });
+            // Scroll
+            if (selectedYear !== 'All') {
+                const el = document.getElementById('year-section-' + selectedYear);
+                if (el) {
+                    const top = el.getBoundingClientRect().top + window.pageYOffset - 100;
+                    window.scrollTo({ top: top, behavior: 'smooth' });
+                }
+            } else {
+                const dc = document.getElementById('diaryContainer');
+                if (dc) {
+                    const top = dc.getBoundingClientRect().top + window.pageYOffset - 100;
+                    window.scrollTo({ top: top, behavior: 'smooth' });
+                }
             }
         });
-        yearTabs.dataset.listenerAttached = 'true';
+
+        // --- Scroll observer: sync active tab ---
+        let _yearSectionObserver = null;
+        function _setupYearObserver() {
+            if (_yearSectionObserver) _yearSectionObserver.disconnect();
+
+            const headers = document.querySelectorAll('.year-section-header');
+            if (headers.length === 0) return;
+
+            _yearSectionObserver = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const year = entry.target.id.replace('year-section-', '');
+                        document.querySelectorAll('.category-tab').forEach(t => {
+                            const match = t.getAttribute('data-year') === year;
+                            t.classList.toggle('category-tab-active', match);
+                        });
+                    }
+                });
+            }, { rootMargin: '-15% 0px -75% 0px', threshold: 0 });
+
+            headers.forEach(h => _yearSectionObserver.observe(h));
+        }
+
+        // Observe after each render by hooking into renderDiary
+        const _origRenderDiary = renderDiary;
+        renderDiary = function() {
+            _origRenderDiary.apply(this, arguments);
+            setTimeout(_setupYearObserver, 100);
+        };
+        _setupYearObserver();
     }
+
+    yearTabs.dataset.listenerAttached = 'true';
 }
 
 function setupInteractions() {
@@ -410,7 +456,6 @@ function setupFilters() {
     if (searchInput) {
         searchInput.addEventListener('input', (e) => {
             currentState.search = e.target.value.trim().toLowerCase();
-            currentState.currentPage = 1;
             renderDiary();
         });
     }
@@ -421,7 +466,6 @@ function setupFilters() {
             sortBtn.innerHTML = currentState.sortDesc
                 ? '<span>Newest First</span><span class="icon-sort" style="color: var(--muted); font-size: 16px;">↓</span>'
                 : '<span>Oldest First</span><span class="icon-sort" style="color: var(--muted); font-size: 16px;">↑</span>';
-            currentState.currentPage = 1;
             renderDiary();
             window.scrollTo({ top: document.getElementById('diaryContainer').offsetTop - 120, behavior: 'smooth' });
         });
@@ -443,10 +487,10 @@ function renderDiary() {
     const visitTracker = new Set();
 
     const processedRecords = tempRecords.map(record => {
-        const locationKey = `${record.country}-${record.province}-${record.city}`;
+        const locationKey = record.country + '-' + record.province + '-' + record.city;
         const isRepeated = visitTracker.has(locationKey);
         visitTracker.add(locationKey);
-        return { ...record, isRepeated };
+        return Object.assign({}, record, { isRepeated: isRepeated });
     });
 
     let filtered = processedRecords.filter(record => {
@@ -461,149 +505,123 @@ function renderDiary() {
             : a.date.localeCompare(b.date);
     });
 
-    const paginationContainer = document.getElementById('paginationContainer');
-
     if (filtered.length === 0) {
-        container.innerHTML = `<div class="empty-state">No memories found for your search.</div>`;
-        if (paginationContainer) paginationContainer.style.display = 'none';
+        container.innerHTML = '<div class="empty-state">No memories found for your search.</div>';
         return;
     }
 
-    const totalItems = filtered.length;
-    const totalPages = Math.ceil(totalItems / currentState.itemsPerPage);
-
-    if (currentState.currentPage > totalPages) {
-        currentState.currentPage = totalPages;
-    }
-
-    const startIndex = (currentState.currentPage - 1) * currentState.itemsPerPage;
-    const endIndex = startIndex + currentState.itemsPerPage;
-    const paginatedData = filtered.slice(startIndex, endIndex);
-
-    paginatedData.forEach(record => {
-        let locationText = record.country === '中国'
-            ? `${record.province} ${record.city}`
-            : `${record.country} ${record.province} ${record.city}`;
-
-        if (record.province === record.city) {
-            locationText = record.country === '中国'
-                ? record.city
-                : `${record.country} ${record.city}`;
+    // Group by year
+    const yearGroups = new Map();
+    filtered.forEach(record => {
+        const year = record.date.split('-')[0];
+        if (!yearGroups.has(year)) {
+            yearGroups.set(year, []);
         }
-
-        // Card shows only the top-level title (descTitle) externally.
-        const entryDiv = document.createElement('div');
-        entryDiv.className = 'diary-entry diary-entry-clickable';
-        entryDiv.setAttribute('data-md-path', record.desc_md || '');
-
-        // build a date block to give a timeline sense (day big, month/year small)
-        const dateHtml = formatDateForCard(record.date);
-
-        entryDiv.innerHTML = `
-            <div class="entry-date">${dateHtml}</div>
-            <div class="entry-body">
-                <div class="entry-header">
-                    <!-- header left intentionally empty for layout consistency -->
-                </div>
-                <div class="entry-location">${escapeHtml(locationText)}</div>
-                <div class="entry-desc entry-title"><h1>${escapeHtml(record.descTitle || buildFallbackTitle(record))}</h1></div>
-                <div class="entry-footer">
-                    <a href="#" class="tag link-location" data-country="${escapeHtml(record.country)}" data-province="${escapeHtml(record.province)}" data-city="${escapeHtml(record.city)}">
-                        ${record.country === '中国' ? record.province : record.country}
-                    </a>
-                    ${record.isRepeated ? '<span class="badge-repeat">Repeat Visit</span>' : ''}
-                </div>
-            </div>
-        `;
-
-        // Click opens a modal showing the full markdown + images.
-        entryDiv.addEventListener('click', (e) => {
-            // prevent clicks on interactive controls inside entry from opening modal
-            const ignore = e.target.closest('button, a, .entry-photo, .link-location');
-            if (ignore) return;
-            openEntryModal(record);
-        });
-
-        // attach click handler for location link
-        // use event delegation safe binding
-        setTimeout(() => {
-            const link = entryDiv.querySelector('.link-location');
-            if (link) {
-                link.addEventListener('click', (ev) => {
-                    ev.preventDefault();
-                    ev.stopPropagation();
-                    const country = link.getAttribute('data-country');
-                    const province = link.getAttribute('data-province');
-                    const city = link.getAttribute('data-city');
-                    openLocationView(country, province, city);
-                });
-            }
-        }, 0);
-
-        container.appendChild(entryDiv);
+        yearGroups.get(year).push(record);
     });
 
-    renderPagination(totalPages);
+    // Sort year keys according to sort order
+    const sortedYears = Array.from(yearGroups.keys()).sort((a, b) => {
+        return currentState.sortDesc ? b.localeCompare(a) : a.localeCompare(b);
+    });
+
+    // Year dot color palette
+    const yearColors = ['#cc785c', '#5db8a6', '#e8a55a', '#7b8cc4', '#9d7ba8', '#5a9e6f', '#c47d5a'];
+    let colorIdx = 0;
+
+    let firstYearHeader = null;
+
+    sortedYears.forEach(year => {
+        const entries = yearGroups.get(year);
+        const dotColor = yearColors[colorIdx % yearColors.length];
+        colorIdx++;
+
+        // Year section header
+        const yearHeader = document.createElement('div');
+        yearHeader.className = 'year-section-header';
+        yearHeader.id = 'year-section-' + year;
+        yearHeader.style.setProperty('--year-dot-color', dotColor);
+        yearHeader.innerHTML = '<span class="year-label">' + year + '</span>';
+        container.appendChild(yearHeader);
+
+        if (!firstYearHeader) {
+            firstYearHeader = yearHeader;
+        }
+
+        // Render entries for this year with month separators
+        let currentMonth = '';
+        entries.forEach(record => {
+            const monthNum = record.date.substring(5, 7);
+            if (monthNum !== currentMonth) {
+                currentMonth = monthNum;
+                const monthSep = document.createElement('div');
+                monthSep.className = 'month-separator';
+                const d = new Date(record.date + 'T00:00:00');
+                const monthName = d.toLocaleString('en-US', { month: 'long' });
+                monthSep.innerHTML = '<span class="month-label">' + monthName + '</span>';
+                container.appendChild(monthSep);
+            }
+            let locationText = record.country === '中国'
+                ? record.province + ' ' + record.city
+                : record.country + ' ' + record.province + ' ' + record.city;
+
+            if (record.province === record.city) {
+                locationText = record.country === '中国'
+                    ? record.city
+                    : record.country + ' ' + record.city;
+            }
+
+            const entryDiv = document.createElement('div');
+            entryDiv.className = 'diary-entry diary-entry-clickable';
+            entryDiv.setAttribute('data-md-path', record.desc_md || '');
+            entryDiv.style.setProperty('--year-line-color', dotColor);
+
+            const dateHtml = formatDateForCard(record.date);
+
+            entryDiv.innerHTML =
+                '<div class="entry-date">' + dateHtml + '</div>' +
+                '<div class="entry-body">' +
+                    '<div class="entry-header"></div>' +
+                    '<div class="entry-location">' + escapeHtml(locationText) + '</div>' +
+                    '<div class="entry-desc entry-title"><h1>' + escapeHtml(record.descTitle || buildFallbackTitle(record)) + '</h1></div>' +
+                    '<div class="entry-footer">' +
+                        '<a href="#" class="tag link-location" data-country="' + escapeHtml(record.country) + '" data-province="' + escapeHtml(record.province) + '" data-city="' + escapeHtml(record.city) + '">' +
+                            (record.country === '中国' ? record.province : record.country) +
+                        '</a>' +
+                        (record.isRepeated ? '<span class="badge-repeat">Repeat Visit</span>' : '') +
+                    '</div>' +
+                '</div>';
+
+            entryDiv.addEventListener('click', (e) => {
+                const ignore = e.target.closest('button, a, .entry-photo, .link-location');
+                if (ignore) return;
+                openEntryModal(record);
+            });
+
+            setTimeout(() => {
+                const link = entryDiv.querySelector('.link-location');
+                if (link) {
+                    link.addEventListener('click', (ev) => {
+                        ev.preventDefault();
+                        ev.stopPropagation();
+                        const country = link.getAttribute('data-country');
+                        const province = link.getAttribute('data-province');
+                        const city = link.getAttribute('data-city');
+                        openLocationView(country, province, city);
+                    });
+                }
+            }, 0);
+
+            container.appendChild(entryDiv);
+        });
+    });
 
     setTimeout(() => {
         container.style.minHeight = '';
     }, 400);
 }
 
-function renderPagination(totalPages) {
-    const paginationContainer = document.getElementById('paginationContainer');
-    if (!paginationContainer) return;
-
-    if (totalPages <= 1) {
-        paginationContainer.style.display = 'none';
-        return;
-    }
-
-    paginationContainer.style.display = 'flex';
-
-    // 统一按钮文本，移除 JS 硬编码的文本箭头
-    paginationContainer.innerHTML = `
-        <button class="page-btn ctrl-btn" id="firstPageBtn" ${currentState.currentPage === 1 ? 'disabled' : ''}>First</button>
-        <button class="page-btn prev-btn" id="prevPageBtn" ${currentState.currentPage === 1 ? 'disabled' : ''}>Previous</button>
-        <span class="page-info">Page ${currentState.currentPage} of ${totalPages}</span>
-        <button class="page-btn next-btn" id="nextPageBtn" ${currentState.currentPage === totalPages ? 'disabled' : ''}>Next</button>
-        <button class="page-btn ctrl-btn" id="lastPageBtn" ${currentState.currentPage === totalPages ? 'disabled' : ''}>Last</button>
-    `;
-
-    document.getElementById('firstPageBtn').addEventListener('click', () => {
-        if (currentState.currentPage > 1) {
-            currentState.currentPage = 1;
-            renderDiary();
-            window.scrollTo({ top: document.getElementById('diaryContainer').offsetTop - 120, behavior: 'smooth' });
-        }
-    });
-
-    document.getElementById('prevPageBtn').addEventListener('click', () => {
-        if (currentState.currentPage > 1) {
-            currentState.currentPage--;
-            renderDiary();
-            window.scrollTo({ top: document.getElementById('diaryContainer').offsetTop - 120, behavior: 'smooth' });
-        }
-    });
-
-    document.getElementById('nextPageBtn').addEventListener('click', () => {
-        if (currentState.currentPage < totalPages) {
-            currentState.currentPage++;
-            renderDiary();
-            window.scrollTo({ top: document.getElementById('diaryContainer').offsetTop - 120, behavior: 'smooth' });
-        }
-    });
-
-    document.getElementById('lastPageBtn').addEventListener('click', () => {
-        if (currentState.currentPage < totalPages) {
-            currentState.currentPage = totalPages;
-            renderDiary();
-            window.scrollTo({ top: document.getElementById('diaryContainer').offsetTop - 120, behavior: 'smooth' });
-        }
-    });
-}
-
-/* Modal: show full markdown + images */
+/* Modal/* Modal: show full markdown + images */
 function openEntryModal(record) {
     // create overlay if not present
     let overlay = document.getElementById('entryModalOverlay');
