@@ -11,12 +11,16 @@
         <div class="container top-nav-inner">
             <div class="logo">
                 <svg class="logo-mark" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.2L13.9 9.1L20.8 12L13.9 14.9L12 21.8L10.1 14.9L3.2 12L10.1 9.1L12 2.2Z" fill="var(--ink)"/></svg>
-                <span style="font-weight: 500;">Chronicles</span>
+                <span>Chronicles</span>
             </div>
-            <button class="hamburger-btn" id="hamburgerBtn" aria-label="Open sidebar" aria-expanded="false">☰</button>
+            <button class="hamburger-btn" id="hamburgerBtn" aria-label="Open filters" aria-expanded="false">
+                <span></span>
+                <span></span>
+                <span></span>
+            </button>
             <div class="nav-links">
                 <a href="#journal" class="nav-goto">Journal</a>
-                <a href="#destinations" class="nav-goto">Destinations</a>
+                <a href="#destinations" class="nav-goto">Footprint</a>
                 <a href="#about" class="nav-goto">About</a>
             </div>
         </div>
@@ -24,31 +28,39 @@
 
     <div class="hero-band">
         <div class="container hero-grid">
-            <div>
-                <h1 class="display-xl">Chronicles of a lifetime.</h1>
-                <p class="body-md">Your personal travel diary, beautifully presented in an editorial interface. Document every footprint across the globe.</p>
-                <div class="hero-ctas" style="margin-top:20px; display:flex; gap:12px; flex-wrap:wrap;">
+            <div class="hero-copy">
+                <p class="eyebrow">Personal travel archive</p>
+                <h1 class="display-xl">Chronicles of every departure,<span>organized through time.</span></h1>
+                <p class="body-md">A timeline for cities, dates, and fragments of memory, built for browsing now and rediscovering years later.</p>
+                <div class="hero-ctas">
                     <a href="#journal" class="button-primary nav-goto">View Journal</a>
-                    <a href="#destinations" class="button-secondary nav-goto">Explore Destinations</a>
+                    <a href="#destinations" class="button-secondary nav-goto">Explore Footprint</a>
+                </div>
+                <div class="hero-note">
+                    <span>Yearly archive</span>
+                    <span>Location groups</span>
+                    <span>Full-text search</span>
                 </div>
             </div>
             <div class="hero-illustration">
-                <!-- 极简山水社论风线稿 -->
-                <svg viewBox="0 0 200 150" fill="none" xmlns="http://www.w3.org/2000/svg" style="width: 55%; height: auto;" aria-hidden="true">
-                    <!-- 珊瑚色：旭日 -->
-                    <circle cx="135" cy="55" r="18" stroke="var(--primary)" stroke-width="2" />
-                    
-                    <!-- 深墨色：山脉轮廓 -->
-                    <path d="M25 105 L65 45 L105 95 L140 60 L175 105" stroke="var(--ink)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" />
-                    
-                    <!-- 深墨色：地平线基准 -->
-                    <path d="M15 105 L185 105" stroke="var(--ink)" stroke-width="2.5" stroke-linecap="round" />
-                    
-                    <!-- 珊瑚色：极简水面波纹 -->
-                    <path d="M45 118 L155 118" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="24 8 40 8" />
-                    <path d="M65 128 L135 128" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" stroke-dasharray="16 12 24" />
-                    <path d="M85 138 L115 138" stroke="var(--primary)" stroke-width="1.5" stroke-linecap="round" />
-                </svg>
+                <div class="atlas-card">
+                    <div class="atlas-card-head">
+                        <span>Journey atlas</span>
+                        <span>2024-2026</span>
+                    </div>
+                    <svg viewBox="0 0 420 300" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+                        <path class="atlas-route" d="M52 210C92 142 146 166 178 116C211 65 260 78 286 126C314 177 360 152 382 91" />
+                        <circle class="atlas-point atlas-point-primary" cx="52" cy="210" r="8" />
+                        <circle class="atlas-point" cx="178" cy="116" r="7" />
+                        <circle class="atlas-point" cx="286" cy="126" r="7" />
+                        <circle class="atlas-point atlas-point-accent" cx="382" cy="91" r="8" />
+                        <path class="atlas-mountain" d="M38 246L94 166L139 226L188 144L246 246" />
+                        <path class="atlas-mountain atlas-mountain-soft" d="M205 247L260 172L303 226L350 154L402 247" />
+                        <path class="atlas-line" d="M38 247H402" />
+                        <path class="atlas-ripple" d="M84 266H336" />
+                        <path class="atlas-ripple atlas-ripple-short" d="M126 280H294" />
+                    </svg>
+                </div>
             </div>
         </div>
     </div>
@@ -56,7 +68,7 @@
     <div class="container section page-layout">
         <aside class="sidebar">
 
-            <!-- Footprint Summary Card -->
+            <!-- Footprint Summary -->
             <div class="sidebar-group">
                 <div class="sidebar-card">
                     <h3 class="sidebar-title">
@@ -69,14 +81,14 @@
                 </div>
             </div>
 
-            <!-- Exploration Section -->
+            <!-- Exploration Filters -->
             <div class="sidebar-group">
-                <h3 class="group-header">Exploration</h3>
+                <h3 class="group-header">Explore</h3>
                 
                 <div class="sidebar-item">
                     <div class="search-wrapper">
                         <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="text" id="searchInput" class="text-input full-width with-icon" placeholder="Places, memories...">
+                        <input type="text" id="searchInput" class="text-input full-width with-icon" placeholder="Search places or memories...">
                     </div>
                 </div>
 
@@ -104,6 +116,10 @@
         </aside>
 
         <main class="main-content">
+            <div class="feed-heading" id="journal">
+                <p class="eyebrow">Journal timeline</p>
+                <h2 class="display-sm">Recent Chapters</h2>
+            </div>
             <div id="diaryContainer">
                 <!-- Diary entries will be injected here -->
             </div>
@@ -112,10 +128,10 @@
     </div>
 
     <footer class="footer" id="about">
-        <h2 class="display-sm">The journey continues...</h2>
-        <p class="footer-sub-text">Every new destination is a new chapter in the chronicle of a lifetime.</p>
+        <h2 class="display-sm">The journey continues.</h2>
+        <p class="footer-sub-text">Every new destination becomes another chapter, and gives old memories a new coordinate.</p>
     </footer>
 
-    <script src="js/app.js?v=20260531b"></script>
+    <script src="js/app.js?v=20260610-buttons"></script>
 </body>
 </html>

@@ -11,7 +11,6 @@ function formatDateForCard(dateStr) {
     try {
         const d = new Date(dateStr + 'T00:00:00');
         const day = d.getDate().toString().padStart(2, '0');
-        // Use English short month to avoid locale-specific (e.g., Chinese) month names
         const month = d.toLocaleString('en-US', { month: 'short' });
         const year = d.getFullYear();
         return `<time datetime="${escapeHtml(dateStr)}"><span class="date-day">${day}</span><span class="date-month">${escapeHtml(month)} ${year}</span></time>`;
@@ -44,21 +43,17 @@ async function initApp() {
             } else {
                 // default to diary list
                 renderDiary();
+                updateYearTabs();
+            }
+        });
+        window.addEventListener('hashchange', () => {
+            if (!renderLocationFromHash()) {
+                renderDiary();
+                updateYearTabs();
             }
         });
         // If URL contains a location hash on initial load, render it
-        if (window.location.hash && window.location.hash.startsWith('#location')) {
-            try {
-                const q = window.location.hash.split('?')[1] || '';
-                const params = new URLSearchParams(q);
-                const country = params.get('country') || '';
-                const province = params.get('province') || '';
-                const city = params.get('city') || '';
-                renderLocationPage(country, province, city);
-            } catch (e) {
-                // ignore parse errors and stay on diary
-            }
-        }
+        renderLocationFromHash();
     } catch (error) {
         const container = document.getElementById('diaryContainer');
         if (container) {
@@ -328,74 +323,51 @@ function initYears() {
     });
     yearTabs.innerHTML = html;
 
+    updateYearTabs();
+
     if (!yearTabs.dataset.listenerAttached) {
-        // --- Click: scroll to year section ---
         yearTabs.addEventListener('click', (e) => {
             const btn = e.target.closest('.category-tab');
             if (!btn) return;
 
             const selectedYear = btn.getAttribute('data-year');
+            if (!selectedYear || selectedYear === currentState.year) return;
 
-            // Ensure all entries are visible
-            if (currentState.year !== 'All') {
-                currentState.year = 'All';
-                renderDiary();
-            }
+            currentState.year = selectedYear;
+            renderDiary();
+            updateYearTabs();
+            scrollToJournal();
 
-            // Scroll
-            if (selectedYear !== 'All') {
-                const el = document.getElementById('year-section-' + selectedYear);
-                if (el) {
-                    const top = el.getBoundingClientRect().top + window.pageYOffset - 100;
-                    window.scrollTo({ top: top, behavior: 'smooth' });
-                }
-            } else {
-                const dc = document.getElementById('diaryContainer');
-                if (dc) {
-                    const top = dc.getBoundingClientRect().top + window.pageYOffset - 100;
-                    window.scrollTo({ top: top, behavior: 'smooth' });
-                }
-            }
+            document.body.classList.remove('sidebar-open');
+            const overlay = document.querySelector('.sidebar-overlay');
+            if (overlay) overlay.remove();
+            const hamburger = document.getElementById('hamburgerBtn');
+            if (hamburger) hamburger.setAttribute('aria-expanded', 'false');
         });
-
-        // --- Scroll observer: sync active tab ---
-        let _yearSectionObserver = null;
-        function _setupYearObserver() {
-            if (_yearSectionObserver) _yearSectionObserver.disconnect();
-
-            const headers = document.querySelectorAll('.year-section-header');
-            if (headers.length === 0) return;
-
-            _yearSectionObserver = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting) {
-                        const year = entry.target.id.replace('year-section-', '');
-                        document.querySelectorAll('.category-tab').forEach(t => {
-                            const match = t.getAttribute('data-year') === year;
-                            t.classList.toggle('category-tab-active', match);
-                        });
-                    }
-                });
-            }, { rootMargin: '-15% 0px -75% 0px', threshold: 0 });
-
-            headers.forEach(h => _yearSectionObserver.observe(h));
-        }
-
-        // Observe after each render by hooking into renderDiary
-        const _origRenderDiary = renderDiary;
-        renderDiary = function() {
-            _origRenderDiary.apply(this, arguments);
-            setTimeout(_setupYearObserver, 100);
-        };
-        _setupYearObserver();
     }
 
     yearTabs.dataset.listenerAttached = 'true';
 }
 
+function updateYearTabs() {
+    document.querySelectorAll('.category-tab').forEach(tab => {
+        const isActive = tab.getAttribute('data-year') === currentState.year;
+        tab.classList.toggle('category-tab-active', isActive);
+        tab.setAttribute('aria-pressed', isActive ? 'true' : 'false');
+    });
+}
+
+function scrollToJournal() {
+    const targetEl = document.getElementById('journal') || document.getElementById('diaryContainer');
+    if (!targetEl) return;
+
+    const topOffset = targetEl.getBoundingClientRect().top + window.scrollY - 80;
+    window.scrollTo({ top: topOffset, behavior: 'smooth' });
+}
+
 function setupInteractions() {
     const navLinks = {
-        '#journal': '#diaryContainer', // 修复：修改为日记列表容器
+        '#journal': '#journal',
         '#destinations': '.sidebar',
         '#about': '#about'
     };
@@ -406,9 +378,10 @@ function setupInteractions() {
             const targetSelector = navLinks[link.getAttribute('href')];
             const targetEl = document.querySelector(targetSelector);
             if (targetEl) {
-                // 向上偏移 80px 以防被固定的顶部导航栏挡住
+                // Offset fixed top navigation.
                 const topOffset = targetEl.getBoundingClientRect().top + window.scrollY - 80;
                 window.scrollTo({ top: topOffset, behavior: 'smooth' });
+                closeSidebar();
             }
         });
     });
@@ -457,6 +430,7 @@ function setupFilters() {
         searchInput.addEventListener('input', (e) => {
             currentState.search = e.target.value.trim().toLowerCase();
             renderDiary();
+            updateYearTabs();
         });
     }
 
@@ -467,6 +441,7 @@ function setupFilters() {
                 ? '<span>Newest First</span><span class="icon-sort" style="color: var(--muted); font-size: 16px;">↓</span>'
                 : '<span>Oldest First</span><span class="icon-sort" style="color: var(--muted); font-size: 16px;">↑</span>';
             renderDiary();
+            updateYearTabs();
             window.scrollTo({ top: document.getElementById('diaryContainer').offsetTop - 120, behavior: 'smooth' });
         });
     }
@@ -506,7 +481,10 @@ function renderDiary() {
     });
 
     if (filtered.length === 0) {
-        container.innerHTML = '<div class="empty-state">No memories found for your search.</div>';
+        const emptyMessage = currentState.year === 'All'
+            ? 'No memories found for your search.'
+            : `No memories found in ${escapeHtml(currentState.year)}.`;
+        container.innerHTML = '<div class="empty-state">' + emptyMessage + '</div>';
         return;
     }
 
@@ -586,7 +564,7 @@ function renderDiary() {
                     '<div class="entry-desc entry-title"><h1>' + escapeHtml(record.descTitle || buildFallbackTitle(record)) + '</h1></div>' +
                     '<div class="entry-footer">' +
                         '<a href="#" class="tag link-location" data-country="' + escapeHtml(record.country) + '" data-province="' + escapeHtml(record.province) + '" data-city="' + escapeHtml(record.city) + '">' +
-                            (record.country === '中国' ? record.province : record.country) +
+                            escapeHtml(record.country === '中国' ? record.province : record.country) +
                         '</a>' +
                         (record.isRepeated ? '<span class="badge-repeat">Repeat Visit</span>' : '') +
                     '</div>' +
@@ -621,7 +599,7 @@ function renderDiary() {
     }, 400);
 }
 
-/* Modal/* Modal: show full markdown + images */
+/* Modal: show full markdown + images */
 function openEntryModal(record) {
     // create overlay if not present
     let overlay = document.getElementById('entryModalOverlay');
@@ -683,10 +661,28 @@ function closeEntryModal() {
 }
 
 /* Location view: open a dedicated page showing entries for a specific location */
+function renderLocationFromHash() {
+    if (!window.location.hash || !window.location.hash.startsWith('#location')) {
+        return false;
+    }
+
+    try {
+        const q = window.location.hash.split('?')[1] || '';
+        const params = new URLSearchParams(q);
+        const country = params.get('country') || '';
+        const province = params.get('province') || '';
+        const city = params.get('city') || '';
+        renderLocationPage(country, province, city);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
 function openLocationView(country, province, city) {
     // push history state
     const state = { view: 'location', country, province, city };
-    const title = `${city || province || country} — Travel Diary`;
+    const title = `${city || province || country} - Travel Diary`;
     const url = `#location?country=${encodeURIComponent(country||'')}&province=${encodeURIComponent(province||'')}&city=${encodeURIComponent(city||'')}`;
     history.pushState(state, title, url);
     renderLocationPage(country, province, city);
@@ -717,9 +713,8 @@ function renderLocationPage(country, province, city) {
         <div class="location-entries" id="locationEntries"></div>
     `;
 
-    // back button behavior
     const backBtn = container.querySelector('.location-back');
-    if (backBtn) backBtn.addEventListener('click', () => history.back());
+    if (backBtn) backBtn.addEventListener('click', returnToDiary);
 
     const entriesContainer = document.getElementById('locationEntries');
     matching.sort((a,b)=> b.date.localeCompare(a.date));
@@ -728,7 +723,7 @@ function renderLocationPage(country, province, city) {
         el.className = 'diary-entry diary-entry-clickable';
         const dateHtml = formatDateForCard(record.date);
         
-        // 使用正常卡片的地点展示逻辑，避免仅仅显示一个干瘪的市名
+        // Reuse the normal card location format.
         let locText = record.country === '中国'
             ? `${record.province} ${record.city}`
             : `${record.country} ${record.province} ${record.city}`;
@@ -751,4 +746,16 @@ function renderLocationPage(country, province, city) {
         });
         entriesContainer.appendChild(el);
     });
+}
+
+function returnToDiary() {
+    if (history.state && history.state.view === 'location') {
+        history.back();
+        return;
+    }
+
+    history.replaceState({}, document.title, window.location.pathname + window.location.search);
+    renderDiary();
+    updateYearTabs();
+    scrollToJournal();
 }
