@@ -5,16 +5,17 @@ const os = require('os');
 const { spawn } = require('child_process');
 
 const CONFIG = {
-  defaultPort: 8000,
+  defaultPort: 9000,
   maxPortRetries: 100,
-  defaultDir: '.'
+  defaultDir: '.',
+  defaultLocal: true
 };
 
 function parseArgs(argv) {
   const args = {
     dir: CONFIG.defaultDir,
     port: CONFIG.defaultPort,
-    local: false
+    local: CONFIG.defaultLocal
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -32,6 +33,8 @@ function parseArgs(argv) {
       args.port = Number(current.slice('--port='.length));
     } else if (current === '--local') {
       args.local = true;
+    } else if (current === '--network') {
+      args.local = false;
     } else if (current === '--help' || current === '-h') {
       printHelpAndExit();
     }
@@ -49,18 +52,19 @@ function printHelpAndExit() {
 Travel Diary static server
 
 Usage:
-  node server.js [--dir PATH] [--port PORT] [--local]
+  node js/server.js [--dir PATH] [--port PORT] [--local|--network]
 
 Options:
   --dir PATH    Directory to serve (default: ${CONFIG.defaultDir})
   --port PORT   Starting port (default: ${CONFIG.defaultPort})
-  --local       Bind to 127.0.0.1 only
+  --local       Bind to 127.0.0.1 only (default)
+  --network     Bind to 0.0.0.0 for LAN access
   --help, -h    Show this help
 
 Examples:
-  node server.js
-  node server.js --dir . --port 9000
-  node server.js --local
+  node js/server.js
+  node js/server.js --dir . --port 9000
+  node js/server.js --network
 `;
 
   process.stdout.write(message.trimStart() + '\n');

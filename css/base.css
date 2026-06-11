@@ -1,0 +1,176 @@
+/* ==========================================================================
+   DESIGN.md Tokens & Root Variables
+   ========================================================================== */
+:root {
+    /* Brand & Accent */
+    --primary: #cc785c;
+    --primary-active: #a9583e;
+    --primary-disabled: #e6dfd8;
+    --accent-teal: #5db8a6;
+    --accent-amber: #e8a55a;
+    
+    /* Surface */
+    --canvas: #faf9f5;
+    --surface-soft: #f5f0e8;
+    --surface-card: #efe9de;
+    --surface-cream-strong: #e8e0d2;
+    --surface-dark: #181715;
+    --surface-dark-elevated: #252320;
+    --surface-dark-soft: #1f1e1b;
+    --hairline: #e6dfd8;
+    --hairline-soft: #ebe6df;
+
+    /* Semantic */
+    --success: #5db872;
+    --warning: #d4a017;
+    --error: #c64545;
+
+    /* Text */
+    --ink: #141413;
+    --body: #3d3d3a;
+    --body-strong: #252523;
+    --muted: #6c6a64;
+    --muted-soft: #8e8b82;
+    --on-primary: #ffffff;
+    --on-dark: #faf9f5;
+    --on-dark-soft: #a09d96;
+    
+    /* Typography Fallbacks */
+    --font-display: "Copernicus", "Tiempos Headline", "Cormorant Garamond", "EB Garamond", serif;
+    --font-sans: "StyreneB", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    --font-code: "JetBrains Mono", ui-monospace, monospace;
+
+    /* Spacing tokens */
+    --spacing-xxs: 4px;
+    --spacing-xs: 8px;
+    --spacing-sm: 12px;
+    --spacing-md: 16px;
+    --spacing-lg: 24px;
+    --spacing-xl: 32px;
+    --spacing-xxl: 48px;
+    --spacing-section: 96px;
+
+    /* Border radius tokens */
+    --rounded-xs: 4px;
+    --rounded-sm: 6px;
+    --rounded-md: 8px;
+    --rounded-lg: 12px;
+    --rounded-xl: 16px;
+    --rounded-pill: 9999px;
+    --rounded-full: 9999px;
+
+    /* Elevation */
+    --shadow-soft: 0 16px 42px rgba(20, 20, 19, 0.07);
+    --shadow-hover: 0 20px 52px rgba(20, 20, 19, 0.10);
+    --focus-ring: 0 0 0 3px rgba(204, 120, 92, 0.16);
+}
+
+/* ==========================================================================
+   Global Reset & Defaults
+   ========================================================================== */
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: text;
+}
+
+body {
+    font-family: var(--font-sans);
+    background:
+        linear-gradient(180deg, #f6f2eb 0%, var(--canvas) 280px),
+        var(--canvas);
+    color: var(--body);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+}
+
+.container {
+    width: min(100%, 1220px);
+    max-width: 1220px;
+    margin: 0 auto;
+    padding: 0 var(--spacing-lg);
+}
+
+.section {
+    padding: var(--spacing-section) 0;
+}
+
+/* ==========================================================================
+   Typography Base (Strict Editorial Weights)
+   ========================================================================== */
+h1.display-xl {
+    font-family: var(--font-display);
+    font-size: 58px;
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: 0;
+    color: var(--ink);
+}
+
+h1.display-lg, .display-lg {
+    font-family: var(--font-display);
+    font-size: 48px;
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: 0;
+    color: var(--ink);
+}
+
+h2.display-sm, .display-sm {
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: 0;
+    color: var(--ink);
+}
+
+.body-md {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.55;
+    color: var(--body);
+}
+
+a,
+button,
+input {
+    -webkit-tap-highlight-color: transparent;
+}
+
+a:focus-visible,
+button:focus-visible,
+input:focus-visible {
+    outline: none;
+    box-shadow: var(--focus-ring);
+}
+
+::selection {
+    background: rgba(204, 120, 92, 0.22);
+    color: var(--ink);
+}
+
+.eyebrow {
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.4;
+    letter-spacing: 0;
+    text-transform: uppercase;
+    color: var(--primary-active);
+}
+
+/* ==========================================================================
+   Utility Blocks
+   ========================================================================== */
+.full-width { width: 100%; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+
+

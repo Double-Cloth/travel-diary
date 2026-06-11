@@ -1,0 +1,89 @@
+/* ==========================================================================
+   Home Page
+   ========================================================================== */
+.page-section {
+    scroll-margin-top: 80px;
+}
+
+.home-page {
+    position: relative;
+    isolation: isolate;
+    height: calc(100vh - 64px);
+    min-height: 620px;
+    border-bottom: 1px solid rgba(20, 20, 19, 0.06);
+    background: var(--canvas);
+    overflow: hidden;
+}
+
+.home-visual {
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    background:
+        linear-gradient(90deg, rgba(30, 25, 21, 0.92) 0%, rgba(35, 38, 32, 0.68) 42%, rgba(42, 44, 36, 0.20) 74%, rgba(42, 44, 36, 0.06) 100%),
+        linear-gradient(180deg, rgba(38, 31, 25, 0.22) 0%, rgba(20, 20, 19, 0.08) 36%, rgba(20, 20, 19, 0.16) 78%, rgba(250, 249, 245, 0.30) 100%),
+        url("../../assets/images/home-hero-travel-diary.png") center right / cover no-repeat;
+}
+
+.home-page::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 12%;
+    z-index: -1;
+    background: linear-gradient(180deg, rgba(250, 249, 245, 0) 0%, rgba(250, 249, 245, 0.52) 100%);
+    pointer-events: none;
+}
+
+.home-hero {
+    height: 100%;
+    min-height: 0;
+    padding-top: 72px;
+    padding-bottom: 72px;
+    display: flex;
+    align-items: center;
+}
+
+.home-copy {
+    max-width: 760px;
+}
+
+.home-copy h1 {
+    max-width: 720px;
+    margin: var(--spacing-sm) 0 var(--spacing-lg);
+    color: #fff8ed;
+    text-shadow: 0 16px 42px rgba(0, 0, 0, 0.24);
+    text-wrap: balance;
+}
+
+.home-copy .body-md {
+    max-width: 590px;
+    color: rgba(245, 234, 218, 0.86);
+    font-size: 17px;
+}
+
+.home-copy .eyebrow {
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid rgba(240, 181, 138, 0.32);
+    border-radius: var(--rounded-pill);
+    color: #ffd0a6;
+    background: rgba(240, 181, 138, 0.10);
+}
+
+.home-stats {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: var(--spacing-sm);
+    margin-top: 34px;
+    max-width: 680px;
+}
+
+.home-stats .stat-card:last-child {
+    border-right: 1px solid rgba(255, 247, 234, 0.22);
+    padding-right: var(--spacing-md);
+}
