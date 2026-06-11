@@ -29,6 +29,10 @@ export function showPage(page, options = {}) {
     currentState.page = targetPage;
     document.body.dataset.page = targetPage;
 
+    if (targetPage !== 'journey') {
+        closeSidebar();
+    }
+
     if (updateHash && window.location.hash !== `#${targetPage}`) {
         history.pushState({ view: 'page', page: targetPage }, document.title, `#${targetPage}`);
     }
