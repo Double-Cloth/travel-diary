@@ -34,3 +34,4 @@ Thumbs.db
 # Misc
 *.bak
 *.tmp
+.playwright-cli/

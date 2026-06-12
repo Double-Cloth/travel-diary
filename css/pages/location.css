@@ -1,58 +1,38 @@
 /* ==========================================================================
-   Dedicated Location Page Layouts (Strict grid-column breakout)
+   地点详情子视图
    ========================================================================== */
 .location-hero {
-    grid-column: 1 / -1; 
-    background: var(--canvas); 
-    border-radius: var(--rounded-xl);
-    padding: var(--spacing-xxl) var(--spacing-xl);
-    margin-bottom: var(--spacing-md);
-    border: 1px solid var(--hairline);
+    grid-column: 1 / -1;
     display: flex;
     flex-direction: column;
     align-items: flex-start;
     gap: var(--spacing-md);
-}
-
-.location-back {
-    background: var(--canvas);
+    margin-bottom: var(--spacing-lg);
+    padding: var(--spacing-xl);
     border: 1px solid var(--hairline);
-    color: var(--ink);
-    padding: 6px var(--spacing-md);
-    border-radius: var(--rounded-md);
-    cursor: pointer;
-    font-family: var(--font-sans);
-    font-size: 14px;
-    font-weight: 500;
-    transition: border-color 0.2s ease;
-}
-
-.location-back:hover {
-    border-color: var(--muted);
+    border-radius: var(--rounded-lg);
+    background:
+        linear-gradient(120deg, var(--canvas), var(--surface-soft));
 }
 
 .location-head {
     display: flex;
-    flex-direction: column;
     min-width: 0;
+    flex-direction: column;
     margin-top: var(--spacing-xs);
 }
 
 .location-head .display-lg {
-    font-size: 48px; 
-    font-family: var(--font-display);
-    margin: 0;
-    letter-spacing: 0;
+    margin-top: var(--spacing-sm);
     overflow-wrap: anywhere;
     word-break: break-word;
-    white-space: normal;
 }
 
 .location-sub {
+    margin-top: var(--spacing-xs);
     color: var(--muted);
     font-family: var(--font-sans);
     font-size: 16px;
-    margin-top: var(--spacing-xs);
 }
 
 .location-entries {
@@ -64,11 +44,10 @@
 }
 
 .location-entries .diary-entry {
-    min-width: 0;
-    border: none;
-    border-bottom: 1px solid var(--hairline-soft);
-    border-radius: 0;
-    margin: 0;
+    margin-bottom: var(--spacing-sm);
 }
 
-
+.location-entries .diary-entry::before,
+.location-entries .diary-entry::after {
+    display: none;
+}

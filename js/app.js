@@ -61,7 +61,7 @@ async function initApp() {
     } catch (error) {
         const container = document.getElementById('diaryContainer');
         if (container) {
-            container.innerHTML = `<div class="empty-state" style="color: var(--error);">Error loading diary entries: ${escapeHtml(error.message)}</div>`;
+            container.innerHTML = `<div class="empty-state empty-state-error">Error loading diary entries: ${escapeHtml(error.message)}</div>`;
         }
         console.error('Initial Load Error:', error);
     }

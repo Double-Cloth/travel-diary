@@ -1,86 +1,109 @@
 /* ==========================================================================
-   Responsive Grid Adaptations
+   响应式适配
    ========================================================================== */
 @media (max-width: 1024px) {
-    .home-visual {
-        background:
-            linear-gradient(90deg, rgba(30, 25, 21, 0.94) 0%, rgba(35, 38, 32, 0.80) 52%, rgba(42, 44, 36, 0.24) 100%),
-            linear-gradient(180deg, rgba(38, 31, 25, 0.18) 0%, rgba(20, 20, 19, 0.28) 100%),
-            url("../assets/images/home-hero-travel-diary.png") center right / cover no-repeat;
-    }
-
-    .home-hero {
-        grid-template-columns: 1fr;
-        min-height: auto;
-        padding-top: 56px;
-        padding-bottom: 56px;
-    }
-
-    .home-copy {
-        max-width: 760px;
-    }
-
     .page-layout {
-        flex-direction: column;
-        gap: var(--spacing-xl); 
+        grid-template-columns: 1fr;
+        gap: var(--spacing-xl);
     }
-    .main-content {
-        order: 1;
-        width: 100%;
-    }
+
     .sidebar {
-        order: 2;
-        width: 100%;
         position: static;
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: var(--spacing-lg);
-    }
-    h1.display-xl {
-        font-size: 48px;
+        max-height: none;
     }
 
     .visited-list {
         grid-template-columns: 1fr;
     }
+
+    .home-copy {
+        max-width: 680px;
+    }
+
 }
 
 @media (max-width: 768px) {
+    :root {
+        --nav-height: 60px;
+    }
+
     .container {
-        padding: 0 var(--spacing-lg);
+        padding: 0 var(--spacing-md);
     }
 
     .container.section.page-layout,
     .profile-content {
-        padding-left: var(--spacing-lg);
-        padding-right: var(--spacing-lg);
+        padding-left: var(--spacing-md);
+        padding-right: var(--spacing-md);
+    }
+
+    .top-nav {
+        min-height: 60px;
+    }
+
+    .top-nav-inner {
+        min-height: 60px;
+        gap: var(--spacing-sm);
+    }
+
+    .nav-links {
+        gap: 4px;
+        padding: 4px;
+    }
+
+    .nav-links a {
+        min-height: 32px;
+        padding: 0 10px;
+        font-size: 13px;
     }
 
     .page-hero {
-        min-height: 300px;
+        min-height: 132px;
+    }
+
+    .page-hero::before {
+        width: 150px;
+        height: 150px;
+        opacity: 0.72;
+    }
+
+    .page-hero-copy {
+        padding-top: var(--spacing-md);
+        padding-bottom: var(--spacing-md);
     }
 
     .home-hero {
-        height: auto;
-        min-height: calc(100vh - 64px);
-        padding-top: var(--spacing-xxl);
-        padding-bottom: var(--spacing-xxl);
-        gap: var(--spacing-xl);
-    }
-
-    .home-stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        max-width: 100%;
-    }
-
-    .profile-stats {
-        grid-template-columns: 1fr;
+        min-height: 100%;
+        align-items: flex-start;
+        padding-top: clamp(36px, 8vh, 64px);
+        padding-bottom: var(--spacing-xl);
     }
 
     .home-visual {
+        opacity: 0.16;
         background:
-            linear-gradient(180deg, rgba(30, 25, 21, 0.92) 0%, rgba(30, 32, 27, 0.76) 48%, rgba(30, 32, 27, 0.30) 100%),
-            url("../assets/images/home-hero-travel-diary.png") center top / cover no-repeat;
+            linear-gradient(180deg, rgba(250, 249, 245, 0.90) 0%, rgba(250, 249, 245, 0.76) 54%, rgba(239, 233, 222, 0.88) 100%),
+            url("../assets/images/home-hero-travel-diary.png") 58% center / cover no-repeat;
+    }
+
+    .home-copy h1 {
+        margin-top: var(--spacing-sm);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .home-stats {
+        margin-top: var(--spacing-lg);
+    }
+
+    .home-copy .body-md,
+    .page-hero-copy .body-md {
+        font-size: 16px;
+    }
+
+    .home-stats,
+    .stat-grid,
+    .profile-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .profile-card {
@@ -94,51 +117,65 @@
         font-size: 44px;
     }
 
-    .visited-heading {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: var(--spacing-xxs);
+    .sidebar {
+        width: 100%;
     }
 
-    /* 移动端：时间线左间距收窄 */
+    .hamburger-btn {
+        display: inline-flex;
+    }
+
+    .sidebar {
+        position: fixed;
+        left: 0;
+        top: var(--nav-height);
+        z-index: 95;
+        width: 86%;
+        max-width: 360px;
+        height: calc(100% - var(--nav-height));
+        padding: var(--spacing-lg);
+        border-right: 1px solid var(--hairline);
+        background: var(--canvas);
+        box-shadow: 0 12px 40px rgba(20, 20, 19, 0.16);
+        transform: translateX(-110%);
+        transition: transform 0.28s ease;
+        overflow: auto;
+        display: block;
+    }
+
+    body.sidebar-open .sidebar {
+        transform: translateX(0);
+    }
+
+    body.sidebar-open .sidebar-overlay {
+        display: block;
+    }
+
+    .sidebar-overlay {
+        display: none;
+    }
+
     #diaryContainer {
-        --timeline-axis-x: -19px;
+        --timeline-axis-x: -20px;
         padding-left: 34px;
     }
+
     #diaryContainer::before {
         left: 15px;
     }
-    .diary-entry::before {
-        left: var(--timeline-axis-x);
-    }
-    .diary-entry::after {
-        left: var(--timeline-axis-x);
-        top: 24px;
-    }
 
-    /* 移动端：卡片内边距收紧 */
     .diary-entry {
         grid-template-columns: 58px minmax(0, 1fr);
         column-gap: var(--spacing-sm);
         padding: var(--spacing-md);
     }
 
-    .entry-date time {
-        min-width: 54px;
-        padding: 7px var(--spacing-xs);
+    .diary-entry::after {
+        top: 24px;
     }
 
-    .entry-date .date-day {
-        font-size: 24px;
-    }
-
-    .entry-date .date-month {
-        font-size: 10px;
-        letter-spacing: 0;
-    }
-
-    .year-label::before {
-        left: var(--timeline-axis-x);
+    .year-label {
+        font-size: 32px;
     }
 
     .month-label::before {
@@ -146,129 +183,16 @@
         width: 12px;
     }
 
-    .entry-location {
-        font-size: 17px;
-    }
-
-    .entry-desc.entry-title h1 {
-        font-size: 14px;
-    }
-
-    .empty-state {
-        margin-left: -34px;
-    }
-
-    /* 移动端分页收紧 */
-    .pagination {
-        gap: var(--spacing-xxs);
-        margin-top: var(--spacing-lg);
-    }
-    .page-btn {
-        height: 36px;
-        padding: 0 var(--spacing-sm);
-        font-size: 13px;
-    }
-    .ctrl-btn#firstPageBtn,
-    .ctrl-btn#lastPageBtn {
-        display: none;
-    }
-
-    h1.display-xl { font-size: 34px; }
-    .section { padding: var(--spacing-xxl) 0; }
-
-    .feed-heading {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: var(--spacing-xxs);
-    }
-
-    .sidebar-card { padding: var(--spacing-lg); }
-
-    .year-section-header {
-        margin: var(--spacing-md) 0 var(--spacing-xs) 0;
-    }
-    .year-label {
-        font-size: 30px;
-    }
-
-    /* 地点页：移动端去圆角 */
     .location-hero {
-        padding: var(--spacing-lg) var(--spacing-md);
-        border: none;
-        border-bottom: 1px solid var(--hairline);
-        border-radius: 0;
-        margin-bottom: 0;
+        padding: var(--spacing-lg);
     }
-    .location-head .display-lg { font-size: 28px; }
 
     .modal-overlay {
         padding: var(--spacing-sm);
     }
+
     .modal-scroll {
-        padding: var(--spacing-md) var(--spacing-md) var(--spacing-xl) var(--spacing-md);
-    }
-
-    .top-nav {
-        min-height: 60px;
-    }
-
-    .top-nav-inner {
-        min-height: 60px;
-        padding: 8px 0;
-        gap: var(--spacing-sm);
-    }
-
-    .nav-links {
-        gap: 6px;
-        padding: 4px;
-    }
-
-    .nav-links a {
-        min-height: 32px;
-        padding: 0 10px;
-        font-size: 13px;
-    }
-
-    .page-hero-actions {
-        flex-wrap: wrap;
-    }
-
-    .hamburger-btn {
-        display: inline-flex;
-    }
-
-    /* 移动端抽屉栏 */
-    .sidebar {
-        position: fixed;
-        left: 0;
-        top: 60px;
-        height: calc(100% - 60px);
-        width: 86%;
-        max-width: 360px;
-        transform: translateX(-110%);
-        transition: transform 0.28s ease;
-        z-index: 95;
-        box-shadow: 0 12px 40px rgba(20,20,19,0.16);
-        background: var(--canvas);
-        border-right: 1px solid var(--hairline);
-        display: block;
-        padding: var(--spacing-lg);
-        overflow: auto;
-    }
-
-    .sidebar-overlay {
-        display: none;
-        position: fixed;
-        inset: 60px 0 0 0;
-        background: rgba(20,20,19,0.45);
-        z-index: 90;
-    }
-
-    body.sidebar-open .sidebar {
-        transform: translateX(0);
-    }
-    body.sidebar-open .sidebar-overlay {
-        display: block;
+        padding: var(--spacing-md) var(--spacing-md) var(--spacing-xl);
     }
 }
 
@@ -277,15 +201,9 @@
         padding: 0 var(--spacing-md);
     }
 
-    .container.section.page-layout,
-    .profile-content {
-        padding-left: var(--spacing-md);
-        padding-right: var(--spacing-md);
-    }
-
     .top-nav-inner {
         display: grid;
-        grid-template-columns: 32px minmax(0, 1fr) 32px;
+        grid-template-columns: 40px minmax(0, 1fr) 40px;
         align-items: center;
         gap: var(--spacing-xs);
     }
@@ -299,76 +217,109 @@
         display: none;
     }
 
-    .nav-links {
-        grid-column: 2;
-        justify-self: center;
-        justify-content: center;
-        min-width: 0;
-        max-width: 100%;
-        margin-left: 0;
-        gap: 4px;
-        padding: 3px;
-        overflow-x: auto;
-        scrollbar-width: none;
+    .nav-menu-btn {
+        display: grid;
+        grid-column: 3;
+        justify-self: end;
     }
 
-    .nav-links::-webkit-scrollbar {
-        display: none;
+    .nav-links {
+        position: fixed;
+        top: 60px;
+        right: 0;
+        bottom: 0;
+        left: 0;
+        min-height: calc(100dvh - 60px);
+        z-index: 99;
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        justify-content: flex-start;
+        gap: var(--spacing-sm);
+        margin-left: 0;
+        padding: var(--spacing-xl) var(--spacing-md);
+        border: 0;
+        border-top: 1px solid var(--hairline);
+        border-radius: 0;
+        background: var(--canvas);
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(-8px);
+        transition: opacity 0.18s ease, transform 0.18s ease;
+        visibility: hidden;
     }
 
     .nav-links a {
-        flex: 0 1 auto;
-        font-size: 12px;
-        min-height: 30px;
-        padding: 0 8px;
+        min-height: 48px;
+        justify-content: flex-start;
+        padding: 0 var(--spacing-md);
+        font-size: 16px;
+    }
+
+    body.nav-open .nav-links {
+        opacity: 1;
+        pointer-events: auto;
+        transform: translateY(0);
+        visibility: visible;
     }
 
     .page-hero-actions {
         flex-direction: column;
         align-items: flex-start;
-        gap: var(--spacing-xs);
-        margin-top: var(--spacing-md);
     }
 
-    .hamburger-btn {
-        min-height: 36px;
-        padding: 0 12px;
-        font-size: 13px;
+    .home-page {
+        height: auto;
+        min-height: auto;
     }
 
-    .hamburger-label {
-        white-space: nowrap;
+    .home-hero {
+        min-height: calc(100dvh - 60px);
+        padding-top: var(--spacing-xl);
+        padding-bottom: var(--spacing-lg);
     }
 
-    .home-stats {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: var(--spacing-xs);
-        margin-top: var(--spacing-lg);
+    .home-visual {
+        opacity: 0.14;
+        background:
+            linear-gradient(180deg, rgba(250, 249, 245, 0.94) 0%, rgba(250, 249, 245, 0.82) 48%, rgba(239, 233, 222, 0.94) 100%),
+            url("../assets/images/home-hero-travel-diary.png") 60% center / auto 100% no-repeat;
     }
 
-    .home-stats .stat-card {
-        min-height: 70px;
-        padding: var(--spacing-sm);
+    .home-copy h1 {
+        font-size: 38px;
+        line-height: 1.08;
     }
 
-    .home-stats .stat-card span {
-        font-size: 27px;
+    .home-copy .body-md {
+        line-height: 1.6;
     }
 
-    .visited-item {
-        grid-template-columns: 34px minmax(0, 1fr);
-        gap: var(--spacing-sm);
+    .page-hero {
+        min-height: auto;
     }
 
-    .visited-rank {
-        width: 34px;
-        height: 34px;
+    .page-hero-copy {
+        padding-top: var(--spacing-md);
+        padding-bottom: var(--spacing-md);
     }
 
-    .visited-title-row {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: var(--spacing-xxs);
+    .page-hero-copy .display-lg {
+        font-size: 34px;
+    }
+
+    .home-stats,
+    .stat-grid,
+    .profile-stats {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-card {
+        min-height: 78px;
+    }
+
+    .stat-card span {
+        font-size: 28px;
     }
 
     .diary-entry {
@@ -387,8 +338,35 @@
         margin-top: 0;
     }
 
+    .entry-location {
+        font-size: 17px;
+    }
+
+    .entry-desc.entry-title h1 {
+        font-size: 14px;
+    }
+
+    .empty-state {
+        margin-left: -34px;
+    }
+
+    .visited-item {
+        grid-template-columns: 34px minmax(0, 1fr);
+        gap: var(--spacing-sm);
+    }
+
+    .visited-rank {
+        width: 34px;
+        height: 34px;
+    }
+
+    .visited-title-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xxs);
+    }
+
     .modal-card {
         max-height: 92vh;
     }
 }
-

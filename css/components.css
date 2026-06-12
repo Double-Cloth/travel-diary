@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Buttons & Inputs
+   通用组件
    ========================================================================== */
 .stat-grid,
 .home-stats,
@@ -10,95 +10,156 @@
 }
 
 .stat-card {
-    min-height: 78px;
+    min-height: 90px;
     padding: var(--spacing-md);
-    border: 1px solid rgba(255, 247, 234, 0.22);
-    border-radius: var(--rounded-md);
-    background:
-        linear-gradient(180deg, rgba(255, 247, 234, 0.14), rgba(255, 247, 234, 0.06));
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(12px);
+    border: 1px solid var(--hairline);
+    border-radius: var(--rounded-lg);
+    background: var(--surface-card);
 }
 
 .stat-card span {
     display: block;
-    color: #ffe0ba;
+    color: var(--ink);
     font-family: var(--font-display);
     font-size: 32px;
+    font-weight: 400;
     line-height: 1;
 }
 
 .stat-card strong {
     display: block;
     margin-top: var(--spacing-xs);
-    color: rgba(250, 249, 245, 0.76);
+    color: var(--muted);
+    font-family: var(--font-sans);
     font-size: 13px;
-    font-weight: 600;
-}
-
-.button-primary {
-    background-color: var(--primary);
-    color: var(--on-primary);
-    font-family: var(--font-sans);
-    font-size: 14px;
     font-weight: 500;
-    border: none;
-    border-radius: var(--rounded-md);
-    padding: 0 var(--spacing-lg);
-    height: 40px;
-    cursor: pointer;
-    transition: background-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    text-decoration: none;
-    box-shadow: 0 8px 20px rgba(204, 120, 92, 0.20);
 }
 
-.button-primary:hover:not(:disabled) {
-    background-color: var(--primary-active);
-    transform: translateY(-1px);
-    box-shadow: 0 10px 24px rgba(169, 88, 62, 0.24);
+.button-primary,
+.button-secondary,
+.button-secondary-on-dark,
+.button-text-link,
+.button-icon-circular,
+.page-btn,
+.modal-close,
+.location-back {
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background-color 0.18s ease, border-color 0.18s ease, color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
 }
 
-.button-secondary {
-    background-color: rgba(250, 249, 245, 0.86);
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: 14px;
-    font-weight: 500;
-    border: 1px solid var(--hairline);
-    border-radius: var(--rounded-md);
-    padding: 0 var(--spacing-lg);
-    height: 40px;
-    cursor: pointer;
-    transition: border-color 0.2s ease, background-color 0.2s ease, transform 0.2s ease;
+.button-primary,
+.button-secondary,
+.button-secondary-on-dark,
+.button-text-link,
+.location-back {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: var(--spacing-xs);
+    height: 40px;
+    padding: 0 20px;
+    border-radius: var(--rounded-md);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1;
     text-decoration: none;
+    white-space: nowrap;
 }
 
-.button-secondary:hover:not(:disabled) {
-    border-color: var(--muted);
-    background-color: var(--surface-soft);
+.button-primary {
+    border-color: var(--primary);
+    background: var(--primary);
+    color: var(--on-primary);
+    box-shadow: 0 8px 18px rgba(204, 120, 92, 0.18);
+}
+
+.button-primary:hover:not(:disabled) {
+    background: var(--primary-active);
+    border-color: var(--primary-active);
+    transform: translateY(-1px);
+    box-shadow: 0 10px 22px rgba(169, 88, 62, 0.22);
+}
+
+.button-secondary,
+.location-back {
+    border-color: var(--hairline);
+    background: var(--canvas);
+    color: var(--ink);
+}
+
+.button-secondary:hover:not(:disabled),
+.location-back:hover {
+    border-color: var(--muted-soft);
+    background: var(--surface-soft);
     transform: translateY(-1px);
 }
 
+.button-secondary-on-dark {
+    border-color: rgba(250, 249, 245, 0.14);
+    background: var(--surface-dark-elevated);
+    color: var(--on-dark);
+}
+
+.button-secondary-on-dark:hover:not(:disabled) {
+    border-color: rgba(250, 249, 245, 0.22);
+    background: #2d2a26;
+}
+
+.button-text-link {
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: var(--primary-active);
+}
+
+.button-text-link:hover,
+.button-text-link:focus-visible {
+    color: var(--primary);
+}
+
+.button-icon-circular {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-color: var(--hairline);
+    border-radius: var(--rounded-full);
+    background: var(--canvas);
+    color: var(--ink);
+}
+
+.button-icon-circular:hover {
+    background: var(--surface-soft);
+    transform: translateY(-1px);
+}
+
+.button-primary:disabled,
+.button-secondary:disabled,
+.button-secondary-on-dark:disabled,
+.location-back:disabled,
+.page-btn:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+}
+
 .text-input {
-    background-color: rgba(250, 249, 245, 0.92);
+    width: 100%;
+    min-width: 0;
+    height: 40px;
+    padding: 10px 14px;
+    border: 1px solid var(--hairline);
+    border-radius: var(--rounded-md);
+    background: var(--canvas);
     color: var(--ink);
     font-family: var(--font-sans);
     font-size: 16px;
-    border: 1px solid var(--hairline);
-    border-radius: var(--rounded-md);
-    padding: 10px 14px;
-    height: 40px;
+    font-weight: 400;
+    line-height: 1.4;
     outline: none;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-    min-width: 0;
-    width: 100%;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, background-color 0.18s ease;
 }
 
 .text-input:focus {
@@ -107,51 +168,43 @@
 }
 
 /* ==========================================================================
-   Diary Feed & Component Cards
-   ========================================================================== */
-/* ==========================================================================
-   Diary Feed — 朋友圈风格时间线布局 (全宽统一)
+   时间线与日记卡片
    ========================================================================== */
 #diaryContainer {
     --timeline-axis-x: -28px;
     position: relative;
-    padding-left: 48px;
     display: flex;
     flex-direction: column;
     gap: var(--spacing-xs);
+    padding-left: 48px;
 }
 
 #diaryContainer::before {
     content: "";
     position: absolute;
-    left: 20px;
     top: 0;
     bottom: 0;
+    left: 20px;
     width: 1px;
     background: linear-gradient(180deg, transparent, var(--hairline), transparent);
 }
 
-
-
-/* 日记卡片 — 全宽轻量化 feed 项 */
 .diary-entry {
     position: relative;
     width: 100%;
-    margin: 0 0 var(--spacing-sm) 0;
+    margin: 0 0 var(--spacing-sm);
     padding: 18px 20px;
-    background: rgba(255, 255, 255, 0.64);
-    border: 1px solid rgba(20, 20, 19, 0.08);
+    border: 1px solid var(--hairline);
     border-radius: var(--rounded-lg);
+    background: rgba(255, 255, 255, 0.72);
+    box-shadow: var(--shadow-soft);
     display: grid;
     grid-template-columns: 76px minmax(0, 1fr);
     column-gap: var(--spacing-lg);
-    box-shadow: 0 14px 34px rgba(20, 20, 19, 0.04);
-    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    transition: background-color 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
 }
 
-/* 时间线圆点标记 */
 .diary-entry::before {
-    box-sizing: border-box;
     content: "";
     position: absolute;
     left: var(--timeline-axis-x);
@@ -161,17 +214,15 @@
     transform: translateX(-50%);
     background: linear-gradient(
         180deg,
-        transparent 0,
-        color-mix(in srgb, var(--year-line-color, var(--hairline)) 36%, var(--hairline)) 18px,
-        color-mix(in srgb, var(--year-line-color, var(--hairline)) 34%, var(--hairline)) calc(100% - 18px),
-        transparent 100%
+        transparent,
+        rgba(204, 120, 92, 0.40) 18px,
+        rgba(204, 120, 92, 0.34) calc(100% - 18px),
+        transparent
     );
     z-index: 1;
 }
 
-/* 时间线圆点 */
 .diary-entry::after {
-    box-sizing: border-box;
     content: "";
     position: absolute;
     left: var(--timeline-axis-x);
@@ -179,9 +230,9 @@
     width: 14px;
     height: 14px;
     transform: translateX(-50%);
+    border: 3px solid var(--year-line-color, var(--primary));
     border-radius: 50%;
     background: var(--canvas);
-    border: 3px solid var(--year-line-color, var(--primary));
     box-shadow: 0 0 0 5px var(--canvas), 0 4px 12px rgba(20, 20, 19, 0.10);
     z-index: 2;
 }
@@ -189,10 +240,11 @@
 .diary-entry-clickable {
     cursor: pointer;
 }
+
 .diary-entry-clickable:hover {
-    background-color: rgba(245, 240, 232, 0.94);
-    border-color: var(--hairline);
-    box-shadow: 0 14px 34px rgba(20, 20, 19, 0.07);
+    border-color: var(--surface-cream-strong);
+    background: rgba(245, 240, 232, 0.92);
+    box-shadow: var(--shadow-hover);
     transform: translateY(-1px);
 }
 
@@ -202,18 +254,18 @@
 
 .entry-header {
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--spacing-sm);
     margin-bottom: var(--spacing-sm);
 }
 
-/* 日期 — 轻量时间戳 */
 .entry-date {
     align-self: start;
-    font-size: 13px;
-    color: var(--muted);
-    font-weight: 500;
     margin-bottom: 0;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 500;
 }
 
 .entry-date time {
@@ -222,98 +274,115 @@
     align-items: flex-start;
     min-width: 64px;
     padding: var(--spacing-xs) var(--spacing-sm);
-    background: var(--surface-card);
     border: 1px solid var(--hairline);
     border-radius: var(--rounded-md);
+    background: var(--surface-card);
     font-variant-numeric: tabular-nums;
 }
 
 .entry-date .date-day {
+    color: var(--ink);
     font-family: var(--font-display);
     font-size: 30px;
-    font-weight: 500;
-    color: var(--ink);
+    font-weight: 400;
     line-height: 0.95;
-    letter-spacing: 0;
 }
 
 .entry-date .date-month {
+    margin-top: var(--spacing-xxs);
+    color: var(--muted-soft);
     font-size: 11px;
     font-weight: 500;
-    color: var(--muted-soft);
-    margin-top: var(--spacing-xxs);
     line-height: 1.2;
-    text-transform: uppercase;
     letter-spacing: 0;
+    text-transform: uppercase;
 }
 
-/* 地点 — 类似朋友圈作者名 */
 .entry-location {
+    margin-bottom: var(--spacing-xs);
+    color: var(--ink);
     font-family: var(--font-sans);
     font-size: 18px;
     font-weight: 500;
-    color: var(--ink);
     line-height: 1.3;
-    margin-bottom: var(--spacing-xs);
     overflow-wrap: anywhere;
 }
 
 .entry-desc.entry-title h1 {
+    color: var(--body);
     font-family: var(--font-sans);
     font-size: 15px;
     font-weight: 400;
-    line-height: 1.55;
-    color: var(--body);
-    max-width: 62ch;
+    line-height: 1.6;
     overflow-wrap: anywhere;
 }
 
 .entry-footer {
-    margin-top: auto;
-    padding-top: var(--spacing-sm);
     display: flex;
-    gap: var(--spacing-xs);
     flex-wrap: wrap;
     align-items: center;
+    gap: var(--spacing-xs);
+    margin-top: var(--spacing-sm);
+    padding-top: var(--spacing-sm);
 }
 
-/* ==========================================================================
-   Year Section Headers & Anchor Navigation
-   ========================================================================== */
-
-/* 年份段标题 */
 .year-section-header {
     position: relative;
-    margin: var(--spacing-xl) 0 var(--spacing-sm) 0;
-    padding-left: 0;
+    margin: var(--spacing-xl) 0 var(--spacing-sm);
 }
 
 .year-section-header:first-child {
     margin-top: 0;
 }
 
-/* 月份分隔符 */
+.year-label {
+    position: relative;
+    display: inline-flex;
+    align-items: baseline;
+    padding-bottom: var(--spacing-xs);
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 42px;
+    font-weight: 400;
+    line-height: 1;
+}
+
+.year-label::before {
+    content: "";
+    position: absolute;
+    left: var(--timeline-axis-x);
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    transform: translate(-50%, -50%);
+    border: 4px solid var(--year-dot-color, var(--primary-active));
+    border-radius: 50%;
+    background: var(--canvas);
+    box-shadow: 0 0 0 6px var(--canvas), 0 5px 14px rgba(20, 20, 19, 0.10);
+    z-index: 2;
+}
+
 .month-separator {
     position: relative;
-    margin: var(--spacing-sm) 0 0 0;
-    padding-left: 0;
+    margin: var(--spacing-sm) 0 0;
 }
 
 .month-label {
-    font-family: var(--font-sans);
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--muted-soft);
-    text-transform: uppercase;
-    letter-spacing: 0;
     position: relative;
     display: inline-flex;
     align-items: center;
     min-height: 28px;
-    padding: 0 var(--spacing-sm);
-    background: var(--canvas);
+    padding: 0 12px;
     border: 1px solid var(--hairline-soft);
     border-radius: var(--rounded-pill);
+    background: var(--canvas);
+    color: var(--muted-soft);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.4;
+    letter-spacing: 0;
+    text-transform: uppercase;
 }
 
 .month-label::before {
@@ -321,44 +390,20 @@
     position: absolute;
     left: -37px;
     top: 50%;
-    transform: translateY(-50%);
     width: 18px;
     height: 1px;
+    transform: translateY(-50%);
     background: var(--hairline);
-    z-index: 2;
 }
 
-.year-label {
-    font-family: var(--font-display);
-    font-size: 42px;
-    font-weight: 400;
-    color: var(--ink);
-    letter-spacing: 0;
-    position: relative;
-    display: inline-flex;
-    align-items: baseline;
-    padding-bottom: var(--spacing-xs);
-}
-
-.year-label::before {
-    box-sizing: border-box;
-    content: "";
-    position: absolute;
-    left: var(--timeline-axis-x);
-    top: 50%;
-    transform: translate(-50%, -50%);
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--canvas);
-    border: 4px solid var(--year-dot-color, var(--primary-active));
-    box-shadow: 0 0 0 6px var(--canvas), 0 5px 14px rgba(20, 20, 19, 0.10);
-    z-index: 2;
-}
-
-/* Badges */
 .tag {
-    background-color: rgba(204, 120, 92, 0.12);
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 12px;
+    border: 1px solid rgba(204, 120, 92, 0.22);
+    border-radius: var(--rounded-pill);
+    background: rgba(204, 120, 92, 0.10);
     color: var(--primary-active);
     font-family: var(--font-sans);
     font-size: 12px;
@@ -366,116 +411,108 @@
     line-height: 1.4;
     letter-spacing: 0;
     text-transform: uppercase;
-    padding: 4px var(--spacing-sm);
-    border-radius: var(--rounded-pill);
-    display: inline-block;
     text-decoration: none;
-    border: 1px solid rgba(204, 120, 92, 0.22);
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.18s ease, color 0.18s ease, border-color 0.18s ease;
 }
 
-.tag:hover {
-    background-color: var(--primary);
+.tag:hover,
+.tag:focus-visible {
+    border-color: var(--primary);
+    background: var(--primary);
     color: var(--on-primary);
 }
 
 .badge-repeat {
-    background-color: rgba(93, 184, 166, 0.13);
+    display: inline-flex;
+    align-items: center;
+    min-height: 28px;
+    padding: 0 12px;
+    border: 1px solid rgba(93, 184, 166, 0.24);
+    border-radius: var(--rounded-pill);
+    background: rgba(93, 184, 166, 0.13);
     color: var(--ink);
     font-size: 13px;
     font-weight: 500;
     line-height: 1.4;
-    padding: 4px var(--spacing-sm);
-    border-radius: var(--rounded-pill);
-    display: inline-block;
-    border: 1px solid rgba(93, 184, 166, 0.25);
 }
 
 .empty-state {
-    text-align: center;
-    padding: var(--spacing-xxl) var(--spacing-lg);
-    color: var(--muted);
-    font-size: 16px;
     margin-left: -40px;
-    border-radius: 0;
-    border: none;
+    padding: var(--spacing-xxl) var(--spacing-lg);
     border-bottom: 1px solid var(--hairline);
+    color: var(--muted);
+    text-align: center;
+    font-size: 16px;
 }
 
-/* ==========================================================================
-   Pagination Component (Strictly Aligned with {component.button-secondary})
+.empty-state-error {
+    color: var(--error);
+}
+
+/* ========================================================================== 
+   分页与内容
    ========================================================================== */
 .pagination {
     display: flex;
-    justify-content: center;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: center;
     gap: var(--spacing-xs);
     margin-top: var(--spacing-xl);
-    flex-wrap: wrap;
 }
 
 .page-info {
+    padding: 0 var(--spacing-xs);
+    color: var(--muted);
     font-family: var(--font-sans);
     font-size: 14px;
-    color: var(--muted);
     font-weight: 500;
-    padding: 0 var(--spacing-xs);
     line-height: 1;
 }
 
 .page-btn {
-    background-color: var(--canvas);
-    color: var(--ink);
-    font-family: var(--font-sans);
-    font-size: 14px;
-    font-weight: 500;
-    border: 1px solid var(--hairline);
-    border-radius: var(--rounded-md);
-    padding: 0 var(--spacing-md);
-    height: 40px;
-    cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 6px;
+    height: 40px;
+    padding: 0 var(--spacing-md);
+    border-color: var(--hairline);
+    border-radius: var(--rounded-md);
+    background: var(--canvas);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    font-weight: 500;
     line-height: 1;
-    transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.page-btn:focus {
-    outline: none;
-    border-color: var(--primary);
-    box-shadow: 0 0 0 3px rgba(204, 120, 92, 0.15);
-}
-
-.page-btn:disabled {
-    background-color: var(--canvas);
-    color: var(--muted-soft);
-    border-color: var(--hairline-soft);
-    cursor: not-allowed;
-    opacity: 0.6;
 }
 
 .page-btn:hover:not(:disabled) {
     border-color: var(--muted);
+    background: var(--surface-soft);
 }
 
-/* Line-art SVG Embeds for Pagination Context Arrows */
+.page-btn:focus {
+    border-color: var(--primary);
+    box-shadow: var(--focus-ring);
+}
+
 .page-btn::before,
 .page-btn::after {
     content: "";
     display: inline-block;
     width: 14px;
     height: 14px;
-    background-repeat: no-repeat;
-    background-size: contain;
-    background-position: center;
     flex-shrink: 0;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-size: contain;
 }
 
 .prev-btn::before {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%236c6a64' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M15 18l-6-6 6-6'/%3E%3C/svg%3E");
 }
+
 .prev-btn:disabled::before {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%238e8b82' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M15 18l-6-6 6-6'/%3E%3C/svg%3E");
 }
@@ -483,6 +520,7 @@
 .next-btn::after {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%236c6a64' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M9 18l6-6-6-6'/%3E%3C/svg%3E");
 }
+
 .next-btn:disabled::after {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%238e8b82' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M9 18l6-6-6-6'/%3E%3C/svg%3E");
 }
@@ -490,6 +528,7 @@
 .ctrl-btn#firstPageBtn::before {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%236c6a64' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M11 17l-5-5 5-5M18 17l-5-5 5-5'/%3E%3C/svg%3E");
 }
+
 .ctrl-btn#firstPageBtn:disabled::before {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%238e8b82' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M11 17l-5-5 5-5M18 17l-5-5 5-5'/%3E%3C/svg%3E");
 }
@@ -497,13 +536,11 @@
 .ctrl-btn#lastPageBtn::after {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%236c6a64' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M13 17l5-5-5-5M6 17l5-5-5-5'/%3E%3C/svg%3E");
 }
+
 .ctrl-btn#lastPageBtn:disabled::after {
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' stroke='%238e8b82' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='M13 17l5-5-5-5M6 17l5-5-5-5'/%3E%3C/svg%3E");
 }
 
-/* ==========================================================================
-   Editorial Content & Markdown Formats
-   ========================================================================== */
 .markdown-content p + p,
 .markdown-content ul + p,
 .markdown-content p + ul,
@@ -516,18 +553,23 @@
 .markdown-content h2,
 .markdown-content h3,
 .markdown-content h4 {
-    font-family: var(--font-sans);
-    color: var(--ink);
-    line-height: 1.25;
     margin-bottom: 10px;
+    color: var(--ink);
+    font-family: var(--font-sans);
+    line-height: 1.25;
 }
 
-.markdown-content h2 { font-size: 20px; }
-.markdown-content h3 { font-size: 18px; }
+.markdown-content h2 {
+    font-size: 20px;
+}
+
+.markdown-content h3 {
+    font-size: 18px;
+}
 
 .markdown-content ul {
-    padding-left: 20px;
     margin-top: var(--spacing-xs);
+    padding-left: 20px;
 }
 
 .markdown-content li + li {
@@ -535,11 +577,11 @@
 }
 
 .markdown-content code {
+    padding: 1px var(--spacing-xxs);
+    border-radius: var(--rounded-xs);
+    background: rgba(20, 20, 19, 0.06);
     font-family: var(--font-code);
     font-size: 0.95em;
-    background: rgba(20, 20, 19, 0.06);
-    border-radius: var(--rounded-xs);
-    padding: 1px var(--spacing-xxs);
 }
 
 .markdown-load-error {
@@ -547,51 +589,48 @@
 }
 
 /* ==========================================================================
-   Modal Context Overlays
+   弹窗
    ========================================================================== */
 .modal-overlay {
     position: fixed;
     inset: 0;
-    background: rgba(20, 20, 19, 0.52);
+    z-index: 1000;
     display: none;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
     padding: var(--spacing-xl);
+    background: rgba(20, 20, 19, 0.52);
     backdrop-filter: blur(10px);
 }
 
 .modal-card {
-    background: var(--canvas);
-    color: var(--ink);
-    border-radius: var(--rounded-lg);
+    display: flex;
+    flex-direction: column;
     width: 100%;
     max-width: 920px;
     max-height: 90vh;
-    box-shadow: 0 24px 72px rgba(20, 20, 19, 0.22);
-    border: 1px solid var(--hairline);
     overflow: hidden;
-    display: flex;
-    flex-direction: column;
+    border: 1px solid var(--hairline);
+    border-radius: var(--rounded-lg);
+    background: var(--canvas);
+    box-shadow: 0 24px 72px rgba(20, 20, 19, 0.22);
+    color: var(--ink);
 }
 
 .modal-close {
-    background: var(--surface-soft);
-    border: 1px solid var(--hairline);
-    color: var(--ink);
-    font-size: 24px;
-    line-height: 1;
-    width: 40px;
-    height: 40px;
-    margin: var(--spacing-md) var(--spacing-md) 0 auto;
-    border-radius: var(--rounded-full);
-    padding: 0;
-    align-self: flex-end;
-    cursor: pointer;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    transition: background-color 0.2s ease, transform 0.2s ease;
+    width: 40px;
+    height: 40px;
+    margin: var(--spacing-md) var(--spacing-md) 0 auto;
+    padding: 0;
+    border-color: var(--hairline);
+    border-radius: var(--rounded-full);
+    background: var(--surface-soft);
+    color: var(--ink);
+    font-size: 24px;
+    line-height: 1;
 }
 
 .modal-close:hover {
@@ -600,29 +639,26 @@
 }
 
 .modal-scroll {
-    padding: var(--spacing-md) var(--spacing-xl) var(--spacing-xl) var(--spacing-xl);
     overflow: auto;
+    padding: var(--spacing-md) var(--spacing-xl) var(--spacing-xl);
     outline: none;
 }
 
 .modal-title {
+    margin-bottom: var(--spacing-sm);
+    color: var(--ink);
     font-family: var(--font-display);
     font-size: 28px;
     font-weight: 400;
-    margin-bottom: var(--spacing-sm);
     letter-spacing: 0;
     overflow-wrap: anywhere;
 }
 
 .modal-meta {
-    font-family: var(--font-sans);
+    margin-bottom: var(--spacing-sm);
     color: var(--muted);
+    font-family: var(--font-sans);
     font-size: 14px;
-    margin-bottom: var(--spacing-sm);
-}
-
-.modal-markdown p {
-    margin-bottom: var(--spacing-sm);
 }
 
 .modal-photos {
@@ -635,14 +671,23 @@
 .modal-photo {
     width: 100%;
     height: auto;
-    border-radius: var(--rounded-sm);
     border: 1px solid var(--hairline);
-    object-fit: cover;
+    border-radius: var(--rounded-sm);
     background: var(--surface-soft);
+    object-fit: cover;
 }
 
 body.modal-open {
     overflow: hidden;
 }
 
-
+/* ==========================================================================
+   侧栏遮罩
+   ========================================================================== */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: var(--nav-height) 0 0;
+    z-index: 90;
+    background: rgba(20, 20, 19, 0.45);
+}

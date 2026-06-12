@@ -164,11 +164,13 @@ export function setupFilters() {
     }
 
     if (sortBtn) {
+        sortBtn.setAttribute('aria-label', currentState.sortDesc ? '当前排序：最新优先' : '当前排序：最早优先');
         sortBtn.addEventListener('click', () => {
             currentState.sortDesc = !currentState.sortDesc;
             sortBtn.innerHTML = currentState.sortDesc
-                ? '<span>最新优先</span><span class="icon-sort" style="color: var(--muted); font-size: 16px;">↓</span>'
-                : '<span>最早优先</span><span class="icon-sort" style="color: var(--muted); font-size: 16px;">↑</span>';
+                ? '<span>最新优先</span><span class="icon-sort" aria-hidden="true">↓</span>'
+                : '<span>最早优先</span><span class="icon-sort" aria-hidden="true">↑</span>';
+            sortBtn.setAttribute('aria-label', currentState.sortDesc ? '当前排序：最新优先' : '当前排序：最早优先');
             renderDiary();
             updateYearTabs();
             showPage('journey');
@@ -313,6 +315,11 @@ export function renderLocationPage(country, province, city) {
     if (backBtn) backBtn.addEventListener('click', returnToDiary);
 
     const entriesContainer = document.getElementById('locationEntries');
+    if (matching.length === 0) {
+        entriesContainer.innerHTML = '<div class="empty-state">没有找到这个地点的旅行记录。</div>';
+        return;
+    }
+
     matching
         .sort((a, b) => b.date.localeCompare(a.date))
         .forEach(record => {
@@ -395,7 +402,7 @@ function openEntryModal(record) {
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
             <div class="modal-card" role="dialog" aria-modal="true">
-                <button class="modal-close" aria-label="Close">×</button>
+                <button class="modal-close" aria-label="关闭">×</button>
                 <div class="modal-scroll" tabindex="0"></div>
             </div>
         `;
