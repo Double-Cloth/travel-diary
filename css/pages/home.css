@@ -118,9 +118,12 @@
     border: 1px solid rgba(250, 249, 245, 0.18);
     border-radius: var(--rounded-lg);
     background:
+        radial-gradient(circle at 74% 24%, rgba(232, 165, 90, 0.12), transparent 26%),
+        radial-gradient(circle at 26% 76%, rgba(93, 184, 166, 0.10), transparent 28%),
+        linear-gradient(160deg, rgba(250, 249, 245, 0.08) 0 1px, transparent 1px 100%),
         linear-gradient(135deg, rgba(24, 23, 21, 0.96), rgba(37, 35, 32, 0.90)),
         var(--surface-dark);
-    box-shadow: 0 28px 70px rgba(20, 20, 19, 0.20);
+    box-shadow: 0 28px 70px rgba(20, 20, 19, 0.20), inset 0 1px 0 rgba(250, 249, 245, 0.10);
     cursor: pointer;
     overflow: hidden;
     transform: perspective(900px) rotateX(var(--route-tilt-x)) rotateY(var(--route-tilt-y)) rotate(var(--route-panel-rotate)) translateY(var(--route-lift));
@@ -151,9 +154,11 @@
 .home-route-art::before {
     background:
         radial-gradient(circle at var(--route-glow-x) var(--route-glow-y), rgba(204, 120, 92, 0.28), transparent 28%),
+        radial-gradient(circle at 72% 24%, rgba(232, 165, 90, 0.16), transparent 24%),
+        linear-gradient(120deg, rgba(250, 249, 245, 0.10) 0 1px, transparent 1px 100%),
         linear-gradient(90deg, rgba(250, 249, 245, 0.08) 1px, transparent 1px),
         linear-gradient(0deg, rgba(250, 249, 245, 0.06) 1px, transparent 1px);
-    background-size: 100% 100%, 34px 34px, 34px 34px;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 34px 34px, 34px 34px;
     mask-image: linear-gradient(145deg, rgba(0, 0, 0, 0.86), rgba(0, 0, 0, 0.18));
     transition: opacity 0.22s ease;
 }
@@ -177,6 +182,7 @@
     border: 1px solid rgba(250, 249, 245, 0.12);
     border-radius: var(--rounded-pill);
     background: rgba(37, 35, 32, 0.76);
+    box-shadow: inset 0 1px 0 rgba(250, 249, 245, 0.08);
     color: var(--on-dark-soft);
     font-family: var(--font-code);
     font-size: 11px;
@@ -249,25 +255,102 @@
 
 .home-route-svg {
     position: absolute;
-    inset: 8%;
+    inset: 7%;
     z-index: 2;
-    width: 84%;
-    height: 84%;
+    width: 86%;
+    height: 86%;
     overflow: visible;
 }
 
-.home-route-svg path {
+.home-route-svg :is(path, line) {
     fill: none;
     stroke-linecap: round;
     stroke-linejoin: round;
+    vector-effect: non-scaling-stroke;
+}
+
+.home-summit-glow {
+    fill: url("#homeSummitGlow");
+    opacity: 0.78;
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: home-summit-glow 5.6s ease-in-out infinite;
+}
+
+.home-route-svg .home-mountain-back {
+    fill: rgba(250, 249, 245, 0.06);
+    stroke: rgba(250, 249, 245, 0.14);
+    stroke-width: 2;
+}
+
+.home-route-svg .home-mountain-main {
+    fill: url("#homeMountainFace");
+    stroke: rgba(250, 249, 245, 0.16);
+    stroke-width: 2;
+    filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.22));
+}
+
+.home-route-svg .home-mountain-side {
+    fill: url("#homeMountainSide");
+    opacity: 0.92;
+}
+
+.home-route-svg .home-mountain-snow {
+    fill: url("#homeSnowGradient");
+    stroke: rgba(250, 249, 245, 0.22);
+    stroke-width: 1.5;
+}
+
+.home-route-svg .home-mountain-highlight {
+    fill: rgba(250, 249, 245, 0.09);
+    stroke: none;
+    mix-blend-mode: screen;
+}
+
+.home-route-svg .home-mountain-shadow {
+    fill: rgba(0, 0, 0, 0.16);
+    stroke: none;
+}
+
+.home-mountain-texture {
+    opacity: 0.54;
+    mix-blend-mode: screen;
+    animation: home-mountain-grain 6.8s ease-in-out infinite;
+}
+
+.home-snow-glint {
+    stroke: rgba(250, 249, 245, 0.86);
+    stroke-width: 2;
+    stroke-dasharray: 0.15 0.85;
+    stroke-dashoffset: 1;
+    filter: drop-shadow(0 0 9px rgba(250, 249, 245, 0.38));
+    animation: home-snow-glint 4.8s ease-in-out infinite;
+}
+
+.home-mountain-ridge {
+    stroke: rgba(250, 249, 245, 0.24);
+    stroke-width: 2;
+    stroke-dasharray: 0.025 0.035;
+    opacity: 0.78;
+}
+
+.home-mountain-contour {
+    stroke: rgba(250, 249, 245, 0.16);
+    stroke-width: 1.5;
+    stroke-dasharray: 0.02 0.045;
+}
+
+.home-mountain-contour-b {
+    opacity: 0.66;
 }
 
 .home-route-shadow {
-    stroke: rgba(250, 249, 245, 0.15);
-    stroke-width: 16;
+    stroke: rgba(250, 249, 245, 0.13);
+    stroke-width: 14;
 }
 
 .home-route-main,
+.home-route-descent,
 .home-route-secondary,
 .home-route-orbit {
     stroke-dasharray: 1;
@@ -276,34 +359,158 @@
 
 .home-route-main {
     stroke: url("#homeRouteGradient");
-    stroke-width: 5;
+    stroke-width: 4.5;
     filter: url("#homeRouteGlow");
     animation: home-route-reveal 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards, home-route-breathe 3.6s ease-in-out 2.2s infinite;
 }
 
 .home-route-secondary {
-    stroke: var(--accent-teal);
-    stroke-width: 3;
-    opacity: 0.88;
+    stroke: rgba(250, 249, 245, 0.22);
+    stroke-width: 2;
+    opacity: 0.76;
     animation: home-route-reveal 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.45s forwards;
 }
 
 .home-route-pulse {
     stroke: var(--on-dark);
-    stroke-width: 4;
-    stroke-dasharray: 0.08 0.92;
+    stroke-width: 3.5;
+    stroke-dasharray: 0.065 0.935;
     stroke-dashoffset: 1;
     opacity: 0.74;
     filter: drop-shadow(0 0 11px rgba(250, 249, 245, 0.62));
     animation: home-route-flow 2.9s linear infinite;
 }
 
+.home-route-descent {
+    stroke: rgba(93, 184, 166, 0.44);
+    stroke-width: 2.4;
+    stroke-dasharray: 0.045 0.065;
+    opacity: 0.70;
+    filter: drop-shadow(0 0 8px rgba(93, 184, 166, 0.24));
+    animation: home-route-descent-flow 5.6s linear 1.8s infinite;
+}
+
+.home-route-steps circle,
+.home-descent-steps circle {
+    fill: var(--on-dark);
+    opacity: 0.34;
+    transform-box: fill-box;
+    transform-origin: center;
+    filter: drop-shadow(0 0 7px rgba(250, 249, 245, 0.28));
+    animation: home-route-step-glow 4.4s ease-in-out infinite;
+}
+
+.home-route-steps circle:nth-child(2) {
+    animation-delay: 0.28s;
+}
+
+.home-route-steps circle:nth-child(3) {
+    animation-delay: 0.56s;
+}
+
+.home-route-steps circle:nth-child(4) {
+    animation-delay: 0.84s;
+}
+
+.home-route-steps circle:nth-child(5) {
+    animation-delay: 1.12s;
+}
+
+.home-descent-steps circle {
+    fill: var(--accent-teal);
+    opacity: 0.26;
+    animation-name: home-descent-step-glow;
+}
+
+.home-descent-steps circle:nth-child(1) {
+    animation-delay: 2.1s;
+}
+
+.home-descent-steps circle:nth-child(2) {
+    animation-delay: 2.38s;
+}
+
+.home-descent-steps circle:nth-child(3) {
+    animation-delay: 2.66s;
+}
+
+.home-descent-steps circle:nth-child(4) {
+    animation-delay: 2.94s;
+}
+
 .home-route-orbit {
-    stroke: rgba(250, 249, 245, 0.18);
-    stroke-width: 1;
-    stroke-dasharray: 0.02 0.08;
+    stroke: rgba(250, 249, 245, 0.26);
+    stroke-width: 2;
+    stroke-dasharray: 0.04 0.08;
     opacity: 0.72;
-    animation: home-route-orbit 9s linear infinite;
+    animation: home-route-orbit 8s linear infinite;
+}
+
+.home-climber {
+    transform: translate(86px, 340px) rotate(-18deg);
+    transform-origin: 0 0;
+    filter: drop-shadow(0 7px 12px rgba(0, 0, 0, 0.36));
+    animation: home-climber-climb 9.4s ease-in-out infinite;
+}
+
+.home-climber-figure {
+    transform-origin: 0 0;
+    animation: home-climber-direction 9.4s steps(1, end) infinite;
+}
+
+.home-climber-head {
+    fill: var(--on-dark);
+    stroke: var(--surface-dark);
+    stroke-width: 2;
+}
+
+.home-climber-scarf {
+    stroke: var(--primary);
+    stroke-width: 3;
+    transform-origin: -6px -16px;
+    animation: home-scarf-wave 1.8s ease-in-out infinite;
+}
+
+.home-climber .home-climber-pack {
+    fill: var(--primary);
+    stroke: rgba(250, 249, 245, 0.36);
+    stroke-width: 2;
+}
+
+.home-climber-body,
+.home-climber-limb {
+    stroke: var(--on-dark);
+    stroke-width: 5;
+}
+
+.home-climber-arm-a,
+.home-climber-leg-b {
+    transform-origin: 2px 0;
+    animation: home-climber-limb-a 1.45s ease-in-out infinite;
+}
+
+.home-climber-arm-b,
+.home-climber-leg-a {
+    transform-origin: 2px 0;
+    animation: home-climber-limb-b 1.45s ease-in-out infinite;
+}
+
+.home-climber-pole {
+    stroke: var(--accent-teal);
+    stroke-width: 3;
+}
+
+.home-summit-flag path:first-child {
+    stroke: rgba(250, 249, 245, 0.78);
+    stroke-width: 3;
+}
+
+.home-summit-flag path:last-child {
+    fill: var(--primary);
+    stroke: rgba(250, 249, 245, 0.56);
+    stroke-width: 2;
+    transform-origin: 318px 76px;
+    animation: home-flag-wave 2.8s ease-in-out infinite;
 }
 
 .home-route-pin {
@@ -320,27 +527,27 @@
 }
 
 .home-route-pin-a {
-    left: 16%;
-    top: 70%;
+    left: 20%;
+    top: 78%;
 }
 
 .home-route-pin-b {
-    left: 48%;
-    top: 39%;
+    left: 39%;
+    top: 60%;
     background: var(--accent-teal);
     animation-delay: 0.4s;
 }
 
 .home-route-pin-c {
-    left: 86%;
-    top: 30%;
+    left: 57%;
+    top: 43%;
     background: var(--accent-amber);
     animation-delay: 0.8s;
 }
 
 .home-route-pin-d {
-    left: 27%;
-    top: 78%;
+    left: 76%;
+    top: 24%;
     animation-delay: 1.2s;
 }
 
@@ -361,16 +568,7 @@
 }
 
 .home-route-cursor {
-    position: absolute;
-    z-index: 4;
-    left: 15%;
-    top: 69%;
-    width: 18px;
-    height: 18px;
-    background: var(--on-dark);
-    clip-path: polygon(50% 0, 100% 100%, 50% 76%, 0 100%);
-    filter: drop-shadow(0 0 10px rgba(250, 249, 245, 0.46));
-    animation: home-cursor-travel 5.8s ease-in-out infinite;
+    display: none;
 }
 
 .home-route-scan {
@@ -388,43 +586,53 @@
 .home-route-spark {
     position: absolute;
     z-index: 4;
-    left: 17%;
-    top: 69%;
+    left: 20%;
+    top: 78%;
     width: 8px;
     height: 8px;
     border-radius: var(--rounded-full);
     background: var(--on-dark);
     box-shadow: 0 0 16px rgba(250, 249, 245, 0.80), 0 0 32px rgba(204, 120, 92, 0.42);
-    animation: home-spark-travel 4.4s cubic-bezier(0.45, 0, 0.16, 1) infinite;
+    animation: home-spark-travel 9.4s cubic-bezier(0.45, 0, 0.16, 1) infinite;
 }
 
 .home-route-radar {
     position: absolute;
     z-index: 2;
-    right: 18%;
-    top: 22%;
-    width: 72px;
-    height: 72px;
-    border: 1px solid rgba(250, 249, 245, 0.10);
-    border-radius: var(--rounded-full);
-    opacity: 0.76;
+    right: 14%;
+    top: 17%;
+    width: 92px;
+    height: 38px;
+    border: 1px solid rgba(250, 249, 245, 0.12);
+    border-radius: var(--rounded-pill);
+    background: linear-gradient(180deg, rgba(250, 249, 245, 0.12), rgba(250, 249, 245, 0.045));
+    box-shadow: inset 0 1px 0 rgba(250, 249, 245, 0.10), 0 14px 28px rgba(0, 0, 0, 0.18);
+    opacity: 0.70;
     transform: translateZ(18px);
+    animation: home-cloud-drift 6s ease-in-out infinite;
 }
 
 .home-route-radar::before,
 .home-route-radar::after {
     content: "";
     position: absolute;
-    inset: 50%;
-    border: 1px solid rgba(93, 184, 166, 0.18);
+    bottom: 8px;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(250, 249, 245, 0.14);
     border-radius: inherit;
-    opacity: 0;
-    transform: translate(-50%, -50%) scale(0.32);
-    animation: home-radar-ping 3.8s ease-out infinite;
+    background: rgba(250, 249, 245, 0.06);
+}
+
+.home-route-radar::before {
+    left: 14px;
 }
 
 .home-route-radar::after {
-    animation-delay: 1.3s;
+    right: 18px;
+    bottom: 12px;
+    width: 28px;
+    height: 28px;
 }
 
 .home-route-dock {
@@ -441,7 +649,8 @@
     padding: 7px;
     border: 1px solid rgba(250, 249, 245, 0.10);
     border-radius: var(--rounded-md);
-    background: rgba(24, 23, 21, 0.54);
+    background: linear-gradient(180deg, rgba(37, 35, 32, 0.68), rgba(24, 23, 21, 0.52));
+    box-shadow: inset 0 1px 0 rgba(250, 249, 245, 0.08);
 }
 
 .home-route-dock span {
@@ -490,13 +699,28 @@
 }
 
 .home-route-art-active .home-route-secondary,
+.home-route-art-active .home-route-descent,
 .home-route-art-active .home-route-orbit {
     opacity: 1;
 }
 
-.home-route-art-active .home-route-cursor,
+.home-route-art-active .home-summit-glow {
+    opacity: 0.94;
+}
+
+.home-route-art-active .home-route-steps circle,
+.home-route-art-active .home-descent-steps circle {
+    animation-duration: 2.8s;
+}
+
+.home-route-art-active .home-climber,
+.home-route-art-active .home-climber-figure,
 .home-route-art-active .home-route-spark {
-    animation-duration: 3.2s;
+    animation-duration: 6.2s;
+}
+
+.home-route-art-active .home-route-radar {
+    animation-duration: 4.2s;
 }
 
 .home-route-art-active .home-route-dock span::before {
@@ -510,6 +734,47 @@
 
     to {
         transform: scale(1.06) translate3d(-14px, 0, 0);
+    }
+}
+
+@keyframes home-summit-glow {
+    0%,
+    100% {
+        opacity: 0.58;
+        transform: scale(0.98);
+    }
+
+    50% {
+        opacity: 0.82;
+        transform: scale(1.04);
+    }
+}
+
+@keyframes home-mountain-grain {
+    0%,
+    100% {
+        opacity: 0.42;
+    }
+
+    50% {
+        opacity: 0.62;
+    }
+}
+
+@keyframes home-snow-glint {
+    0% {
+        stroke-dashoffset: 1;
+        opacity: 0.20;
+    }
+
+    38%,
+    62% {
+        opacity: 0.88;
+    }
+
+    100% {
+        stroke-dashoffset: 0;
+        opacity: 0.24;
     }
 }
 
@@ -529,12 +794,12 @@
     0%,
     100% {
         opacity: 0.86;
-        stroke-width: 5;
+        stroke-width: 4.5;
     }
 
     50% {
         opacity: 1;
-        stroke-width: 6;
+        stroke-width: 5.6;
     }
 }
 
@@ -548,6 +813,16 @@
     }
 }
 
+@keyframes home-route-descent-flow {
+    from {
+        stroke-dashoffset: 0;
+    }
+
+    to {
+        stroke-dashoffset: -1;
+    }
+}
+
 @keyframes home-route-orbit {
     from {
         stroke-dashoffset: 1;
@@ -555,6 +830,32 @@
 
     to {
         stroke-dashoffset: 0;
+    }
+}
+
+@keyframes home-route-step-glow {
+    0%,
+    100% {
+        opacity: 0.18;
+        transform: scale(0.86);
+    }
+
+    44% {
+        opacity: 0.72;
+        transform: scale(1.24);
+    }
+}
+
+@keyframes home-descent-step-glow {
+    0%,
+    100% {
+        opacity: 0.12;
+        transform: scale(0.82);
+    }
+
+    48% {
+        opacity: 0.62;
+        transform: scale(1.18);
     }
 }
 
@@ -582,42 +883,99 @@
     }
 }
 
-@keyframes home-cursor-travel {
+@keyframes home-scarf-wave {
+    0%,
+    100% {
+        transform: rotate(-4deg);
+    }
+
+    50% {
+        transform: rotate(8deg);
+    }
+}
+
+@keyframes home-climber-limb-a {
+    0%,
+    100% {
+        transform: rotate(-5deg);
+    }
+
+    50% {
+        transform: rotate(7deg);
+    }
+}
+
+@keyframes home-climber-limb-b {
+    0%,
+    100% {
+        transform: rotate(6deg);
+    }
+
+    50% {
+        transform: rotate(-6deg);
+    }
+}
+
+@keyframes home-climber-direction {
+    0%,
+    58%,
+    96%,
+    100% {
+        transform: scaleX(1);
+    }
+
+    60%,
+    94% {
+        transform: scaleX(-1);
+    }
+}
+
+@keyframes home-climber-climb {
     0% {
-        left: 15%;
-        top: 69%;
-        transform: rotate(34deg);
+        transform: translate(86px, 340px) rotate(-18deg);
     }
 
-    34% {
-        left: 48%;
-        top: 38%;
-        transform: rotate(42deg);
+    14% {
+        transform: translate(150px, 267px) rotate(-28deg);
     }
 
-    58% {
-        left: 70%;
-        top: 27%;
-        transform: rotate(76deg);
+    28% {
+        transform: translate(205px, 206px) rotate(-16deg);
     }
 
-    78% {
-        left: 85%;
-        top: 30%;
-        transform: rotate(116deg);
+    42% {
+        transform: translate(256px, 168px) rotate(-30deg);
+    }
+
+    54% {
+        transform: translate(316px, 106px) rotate(-10deg);
+    }
+
+    60% {
+        transform: translate(322px, 102px) rotate(4deg);
+    }
+
+    70% {
+        transform: translate(344px, 154px) rotate(22deg);
+    }
+
+    80% {
+        transform: translate(366px, 238px) rotate(30deg);
+    }
+
+    90% {
+        transform: translate(286px, 344px) rotate(12deg);
     }
 
     100% {
-        left: 15%;
-        top: 69%;
-        transform: rotate(34deg);
+        transform: translate(86px, 340px) rotate(-18deg);
     }
 }
 
 @keyframes home-spark-travel {
     0% {
-        left: 17%;
-        top: 69%;
+        left: 20%;
+        top: 78%;
         opacity: 0;
         transform: scale(0.6);
     }
@@ -626,43 +984,76 @@
         opacity: 1;
     }
 
-    42% {
-        left: 48%;
-        top: 39%;
+    28% {
+        left: 49%;
+        top: 50%;
         transform: scale(1);
     }
 
-    68% {
-        left: 70%;
-        top: 28%;
+    44% {
+        left: 62%;
+        top: 40%;
         transform: scale(0.82);
     }
 
-    88% {
-        left: 86%;
-        top: 30%;
+    58% {
+        left: 76%;
+        top: 24%;
         opacity: 1;
         transform: scale(1.1);
     }
 
+    72% {
+        left: 84%;
+        top: 36%;
+        opacity: 0.78;
+        transform: scale(0.78);
+    }
+
+    84% {
+        left: 87%;
+        top: 58%;
+        opacity: 0.86;
+        transform: scale(0.92);
+    }
+
+    94% {
+        left: 68%;
+        top: 80%;
+        opacity: 0.64;
+        transform: scale(0.70);
+    }
+
     100% {
-        left: 86%;
-        top: 30%;
+        left: 20%;
+        top: 78%;
         opacity: 0;
         transform: scale(0.7);
     }
 }
 
-@keyframes home-radar-ping {
+@keyframes home-cloud-drift {
     0% {
-        opacity: 0.66;
-        transform: translate(-50%, -50%) scale(0.28);
+        transform: translate3d(0, 0, 18px);
     }
 
-    78%,
+    50% {
+        transform: translate3d(-14px, 5px, 18px);
+    }
+
     100% {
-        opacity: 0;
-        transform: translate(-50%, -50%) scale(1.65);
+        transform: translate3d(0, 0, 18px);
+    }
+}
+
+@keyframes home-flag-wave {
+    0%,
+    100% {
+        transform: skewY(0deg);
+    }
+
+    50% {
+        transform: skewY(-5deg);
     }
 }
 
@@ -700,20 +1091,33 @@
 @media (prefers-reduced-motion: reduce) {
     .home-visual,
     .home-route-main,
+    .home-route-descent,
     .home-route-secondary,
     .home-route-pulse,
     .home-route-orbit,
     .home-route-pin,
-    .home-route-cursor,
+    .home-summit-glow,
+    .home-mountain-texture,
+    .home-snow-glint,
+    .home-route-steps circle,
+    .home-descent-steps circle,
+    .home-climber,
+    .home-climber-figure,
+    .home-climber-scarf,
+    .home-climber-arm-a,
+    .home-climber-arm-b,
+    .home-climber-leg-a,
+    .home-climber-leg-b,
+    .home-summit-flag path:last-child,
     .home-route-scan,
     .home-route-spark,
-    .home-route-radar::before,
-    .home-route-radar::after,
+    .home-route-radar,
     .home-route-dock span::before {
         animation: none;
     }
 
     .home-route-main,
+    .home-route-descent,
     .home-route-secondary,
     .home-route-orbit {
         stroke-dashoffset: 0;

@@ -3,6 +3,7 @@ import { buildFallbackTitle, escapeHtml, formatDateForCard } from './utils.js';
 import { closeSidebar, showPage } from './navigation.js';
 
 let yearScrollFrame = null;
+let visitedSearchQuery = '';
 
 export function renderLoadingState() {
     const container = document.getElementById('diaryContainer');
@@ -38,6 +39,7 @@ export function renderStats(stats) {
 export function renderProfile(stats) {
     const profileStats = document.getElementById('profileStats');
     const visitedPlaces = document.getElementById('visitedPlaces');
+    const visitedSearchInput = document.getElementById('visitedSearchInput');
     const records = getTravelRecords();
 
     if (profileStats) {
@@ -51,57 +53,112 @@ export function renderProfile(stats) {
 
     if (!visitedPlaces) return;
 
-    const placeMap = new Map();
+    if (visitedSearchInput) {
+        visitedSearchInput.value = visitedSearchQuery;
+
+        if (!visitedSearchInput.dataset.listenerAttached) {
+            visitedSearchInput.addEventListener('input', (event) => {
+                visitedSearchQuery = event.target.value.trim().toLowerCase();
+                renderVisitedPlaces(records, visitedPlaces);
+            });
+            visitedSearchInput.dataset.listenerAttached = 'true';
+        }
+    }
+
+    renderVisitedPlaces(records, visitedPlaces);
+}
+
+function renderVisitedPlaces(records, visitedPlaces) {
+    const countryMap = new Map();
 
     records.forEach(record => {
-        const isChina = record.country === '中国';
-        const key = isChina ? `${record.country}-${record.province}` : record.country;
-        const label = isChina ? record.province : record.country;
-        const scope = isChina ? '省份' : '国家';
-        const current = placeMap.get(key) || {
+        const countryKey = record.country || '未知国家';
+        const provinceKey = record.province || countryKey;
+        const country = countryMap.get(countryKey) || {
             country: record.country,
-            province: isChina ? record.province : '',
-            label,
-            scope,
             count: 0,
             cities: new Set(),
-            latestDate: ''
+            provinces: new Map(),
+            latestDate: '',
+            searchText: ''
+        };
+        const province = country.provinces.get(provinceKey) || {
+            country: record.country,
+            province: record.province,
+            label: record.province || record.country,
+            count: 0,
+            cities: new Set(),
+            latestDate: '',
+            searchText: ''
         };
 
-        current.count += 1;
-        current.cities.add(record.city);
-        if (!current.latestDate || record.date > current.latestDate) {
-            current.latestDate = record.date;
+        country.count += 1;
+        country.cities.add(record.city);
+        country.searchText = [country.searchText, record.country, record.province, record.city]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+        if (!country.latestDate || record.date > country.latestDate) {
+            country.latestDate = record.date;
         }
 
-        placeMap.set(key, current);
+        province.count += 1;
+        province.cities.add(record.city);
+        province.searchText = [province.searchText, record.country, record.province, record.city]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase();
+        if (!province.latestDate || record.date > province.latestDate) {
+            province.latestDate = record.date;
+        }
+
+        country.provinces.set(provinceKey, province);
+        countryMap.set(countryKey, country);
     });
 
-    const places = Array.from(placeMap.values())
-        .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'zh-CN'));
+    const countries = Array.from(countryMap.values())
+        .map(country => ({
+            ...country,
+            provinces: Array.from(country.provinces.values())
+                .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'zh-CN'))
+        }))
+        .map(country => {
+            if (!visitedSearchQuery) {
+                return country;
+            }
 
-    visitedPlaces.innerHTML = places.map((place, index) => {
-        const cityCount = place.cities.size;
-        const stampCount = Math.min(place.count, 6);
-        const stamps = Array.from({ length: stampCount }, () => '<span class="visited-stamp"></span>').join('');
-        const stampMore = place.count > stampCount ? `<span class="visited-stamp-more">+${place.count - stampCount}</span>` : '';
+            const isCountryMatch = (country.country || '').toLowerCase().includes(visitedSearchQuery);
+            const provinces = isCountryMatch
+                ? country.provinces
+                : country.provinces.filter(province => province.searchText.includes(visitedSearchQuery));
+
+            return { ...country, provinces };
+        })
+        .filter(country => country.provinces.length > 0)
+        .sort((a, b) => b.count - a.count || a.country.localeCompare(b.country, 'zh-CN'));
+
+    if (countries.length === 0) {
+        visitedPlaces.innerHTML = '<div class="empty-state visited-empty">没有找到匹配的国家、省份或城市。</div>';
+        return;
+    }
+
+    visitedPlaces.innerHTML = countries.map(country => {
+        const visibleStats = getVisibleCountryStats(country.provinces);
 
         return `
-            <button type="button" class="visited-item visited-item-button" data-country="${escapeHtml(place.country)}" data-province="${escapeHtml(place.province)}">
-                <div class="visited-rank">${index + 1}</div>
-                <div class="visited-main">
-                    <div class="visited-title-row">
-                        <strong>${escapeHtml(place.label)}</strong>
-                        <span class="visited-scope">${escapeHtml(place.scope)}</span>
-                    </div>
-                    <div class="visited-meta">
-                        <span class="visited-meta-item"><strong>${place.count}</strong> 次到访</span>
-                        <span class="visited-meta-item">${cityCount} 座城市</span>
-                        <time datetime="${escapeHtml(place.latestDate)}">最近 ${escapeHtml(place.latestDate)}</time>
-                        <span class="visited-stamp-track" aria-label="${place.count} 次到访">${stamps}${stampMore}</span>
+            <section class="visited-country" aria-label="${escapeHtml(country.country)}">
+                <div class="visited-country-head">
+                    <h3>${escapeHtml(country.country)}</h3>
+                    <div class="visited-country-meta">
+                        <span><strong>${country.provinces.length}</strong> 个省份</span>
+                        <span><strong>${visibleStats.count}</strong> 次到访</span>
+                        <span>${visibleStats.cities.size} 座城市</span>
                     </div>
                 </div>
-            </button>
+                <div class="visited-province-list">
+                    ${country.provinces.map((province, index) => createVisitedProvinceButton(province, index)).join('')}
+                </div>
+            </section>
         `;
     }).join('');
 
@@ -114,6 +171,38 @@ export function renderProfile(stats) {
             );
         });
     });
+}
+
+function getVisibleCountryStats(provinces) {
+    return provinces.reduce((stats, province) => {
+        stats.count += province.count;
+        province.cities.forEach(city => stats.cities.add(city));
+        return stats;
+    }, { count: 0, cities: new Set() });
+}
+
+function createVisitedProvinceButton(place, index) {
+    const cityCount = place.cities.size;
+    const stampCount = Math.min(place.count, 6);
+    const stamps = Array.from({ length: stampCount }, () => '<span class="visited-stamp"></span>').join('');
+    const stampMore = place.count > stampCount ? `<span class="visited-stamp-more">+${place.count - stampCount}</span>` : '';
+
+    return `
+        <button type="button" class="visited-item visited-item-button" data-country="${escapeHtml(place.country)}" data-province="${escapeHtml(place.province)}">
+            <div class="visited-rank">${index + 1}</div>
+            <div class="visited-main">
+                <div class="visited-title-row">
+                    <strong>${escapeHtml(place.label)}</strong>
+                </div>
+                <div class="visited-meta">
+                    <span class="visited-meta-item"><strong>${place.count}</strong> 次到访</span>
+                    <span class="visited-meta-item">${cityCount} 座城市</span>
+                    <time datetime="${escapeHtml(place.latestDate)}">最近 ${escapeHtml(place.latestDate)}</time>
+                    <span class="visited-stamp-track" aria-label="${place.count} 次到访">${stamps}${stampMore}</span>
+                </div>
+            </div>
+        </button>
+    `;
 }
 
 export function initYears() {

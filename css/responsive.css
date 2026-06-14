@@ -12,7 +12,7 @@
         max-height: none;
     }
 
-    .visited-list {
+    .visited-province-list {
         grid-template-columns: 1fr;
     }
 
@@ -138,6 +138,17 @@
         width: 112px;
         height: 112px;
         font-size: 44px;
+    }
+
+    .visited-heading {
+        align-items: stretch;
+        flex-direction: column;
+        gap: var(--spacing-md);
+    }
+
+    .visited-search {
+        width: 100%;
+        flex-basis: auto;
     }
 
     .sidebar {
@@ -397,6 +408,23 @@
         grid-template-columns: 34px minmax(0, 1fr);
         gap: var(--spacing-sm);
         padding: var(--spacing-sm) 28px var(--spacing-sm) var(--spacing-sm);
+    }
+
+    .visited-country {
+        padding: var(--spacing-md);
+    }
+
+    .visited-country-head {
+        flex-direction: column;
+        gap: var(--spacing-xs);
+    }
+
+    .visited-country-head h3 {
+        font-size: 24px;
+    }
+
+    .visited-country-meta {
+        justify-content: flex-start;
     }
 
     .visited-rank {

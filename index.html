@@ -57,34 +57,106 @@
                     </a>
                 </div>
             </div>
-            <div class="home-route-art" id="homeRouteArt" role="group" aria-label="动态旅行路线图">
+            <div class="home-route-art" id="homeRouteArt" role="group" aria-label="动态登山插画">
                 <div class="home-route-meta" aria-hidden="true">
-                    <span>ROUTE</span>
+                    <span>ASCENT</span>
                     <strong>LIVE</strong>
                 </div>
-                <button class="home-route-toggle" id="homeRouteToggle" type="button" aria-label="切换路线高亮" aria-pressed="false">
+                <button class="home-route-toggle" id="homeRouteToggle" type="button" aria-label="切换登山高亮" aria-pressed="false">
                     <span></span>
                 </button>
                 <svg class="home-route-svg" viewBox="0 0 420 420" focusable="false" aria-hidden="true">
                     <defs>
-                        <linearGradient id="homeRouteGradient" x1="54" y1="294" x2="366" y2="132" gradientUnits="userSpaceOnUse">
+                        <linearGradient id="homeRouteGradient" x1="82" y1="336" x2="322" y2="90" gradientUnits="userSpaceOnUse">
                             <stop offset="0" stop-color="var(--primary)"/>
                             <stop offset="0.52" stop-color="var(--accent-amber)"/>
                             <stop offset="1" stop-color="var(--accent-teal)"/>
                         </linearGradient>
+                        <linearGradient id="homeMountainFace" x1="96" y1="356" x2="316" y2="86" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="var(--surface-dark-elevated)"/>
+                            <stop offset="0.58" stop-color="var(--surface-dark-soft)"/>
+                            <stop offset="1" stop-color="var(--primary-active)"/>
+                        </linearGradient>
+                        <linearGradient id="homeMountainSide" x1="138" y1="350" x2="334" y2="134" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="var(--surface-dark)"/>
+                            <stop offset="1" stop-color="var(--surface-dark-elevated)"/>
+                        </linearGradient>
+                        <linearGradient id="homeSnowGradient" x1="184" y1="108" x2="266" y2="176" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="var(--on-dark)"/>
+                            <stop offset="1" stop-color="var(--surface-cream-strong)"/>
+                        </linearGradient>
+                        <radialGradient id="homeSummitGlow" cx="0" cy="0" r="1" gradientTransform="translate(318 96) rotate(90) scale(132)">
+                            <stop offset="0" stop-color="var(--accent-amber)" stop-opacity="0.42"/>
+                            <stop offset="0.48" stop-color="var(--primary)" stop-opacity="0.12"/>
+                            <stop offset="1" stop-color="var(--primary)" stop-opacity="0"/>
+                        </radialGradient>
+                        <pattern id="homeRockGrain" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(-24)">
+                            <rect width="18" height="18" fill="transparent"/>
+                            <rect x="2" y="4" width="8" height="1" rx="0.5" fill="var(--on-dark)" opacity="0.10"/>
+                            <rect x="10" y="12" width="6" height="1" rx="0.5" fill="var(--primary)" opacity="0.12"/>
+                            <circle cx="5" cy="14" r="1" fill="var(--on-dark)" opacity="0.08"/>
+                        </pattern>
+                        <clipPath id="homeMountainClip">
+                            <path d="M70 356L226 74L366 356Z"/>
+                        </clipPath>
                         <filter id="homeRouteGlow" x="-30%" y="-30%" width="160%" height="160%">
-                            <feGaussianBlur stdDeviation="5" result="blur"/>
+                            <feGaussianBlur stdDeviation="4.6" result="blur"/>
                             <feMerge>
                                 <feMergeNode in="blur"/>
                                 <feMergeNode in="SourceGraphic"/>
                             </feMerge>
                         </filter>
                     </defs>
-                    <path class="home-route-shadow" d="M54 294 C112 204 158 250 204 166 C242 98 302 78 366 132" pathLength="1"/>
-                    <path class="home-route-main" id="homeRouteMainPath" d="M54 294 C112 204 158 250 204 166 C242 98 302 78 366 132" pathLength="1"/>
-                    <path class="home-route-pulse" d="M54 294 C112 204 158 250 204 166 C242 98 302 78 366 132" pathLength="1"/>
-                    <path class="home-route-secondary" d="M104 326 C142 282 188 300 218 254 C250 204 294 216 336 178" pathLength="1"/>
-                    <path class="home-route-orbit" d="M92 128 C146 70 270 46 340 104 C402 156 374 278 296 330 C216 384 92 360 58 280 C32 218 48 174 92 128Z" pathLength="1"/>
+                    <circle class="home-summit-glow" cx="318" cy="96" r="132"/>
+                    <path class="home-mountain-back" d="M32 346L138 178L204 262L278 116L392 346Z"/>
+                    <path class="home-mountain-main" d="M70 356L226 74L366 356Z"/>
+                    <path class="home-mountain-side" d="M226 74L366 356H214L244 254L220 184Z"/>
+                    <path class="home-mountain-snow" d="M226 74L188 144L222 130L244 172L262 138Z"/>
+                    <path class="home-mountain-highlight" d="M226 86L158 220L118 338L184 260L210 172Z"/>
+                    <path class="home-mountain-shadow" d="M244 254L214 356H330L292 284L268 214Z"/>
+                    <g class="home-mountain-texture" clip-path="url(#homeMountainClip)">
+                        <rect x="70" y="74" width="296" height="282" fill="url(#homeRockGrain)"/>
+                    </g>
+                    <path class="home-snow-glint" d="M190 144L222 130L244 172"/>
+                    <path class="home-mountain-ridge" d="M226 76L220 184L244 254L214 356"/>
+                    <path class="home-mountain-contour home-mountain-contour-a" d="M112 310C162 286 214 298 270 274C306 258 330 246 354 224"/>
+                    <path class="home-mountain-contour home-mountain-contour-b" d="M142 242C174 224 210 232 242 210C270 190 292 170 318 154"/>
+                    <path class="home-route-shadow" d="M86 340C126 318 126 276 166 260C208 244 196 200 238 188C278 176 274 126 322 102" pathLength="1"/>
+                    <path class="home-route-main" id="homeRouteMainPath" d="M86 340C126 318 126 276 166 260C208 244 196 200 238 188C278 176 274 126 322 102" pathLength="1"/>
+                    <path class="home-route-pulse" d="M86 340C126 318 126 276 166 260C208 244 196 200 238 188C278 176 274 126 322 102" pathLength="1"/>
+                    <path class="home-route-descent" d="M322 102C356 146 338 194 366 238C396 286 344 330 286 344C214 362 144 348 86 340" pathLength="1"/>
+                    <g class="home-route-steps" aria-hidden="true">
+                        <circle cx="120" cy="314" r="2.4"/>
+                        <circle cx="151" cy="268" r="2.2"/>
+                        <circle cx="198" cy="225" r="2.4"/>
+                        <circle cx="238" cy="188" r="2.2"/>
+                        <circle cx="280" cy="150" r="2.4"/>
+                    </g>
+                    <g class="home-descent-steps" aria-hidden="true">
+                        <circle cx="344" cy="154" r="2.1"/>
+                        <circle cx="364" cy="234" r="2.3"/>
+                        <circle cx="322" cy="322" r="2.1"/>
+                        <circle cx="232" cy="352" r="2.2"/>
+                    </g>
+                    <path class="home-route-secondary" d="M92 362C144 334 202 348 254 322C302 298 334 306 372 276" pathLength="1"/>
+                    <path class="home-route-orbit" d="M104 126C152 86 232 54 302 82C354 104 378 158 366 214" pathLength="1"/>
+                    <g class="home-climber" aria-hidden="true">
+                        <g class="home-climber-figure">
+                            <circle class="home-climber-head" cx="0" cy="-19" r="7"/>
+                            <path class="home-climber-scarf" d="M-5 -17C-18 -17 -20 -10 -26 -5"/>
+                            <path class="home-climber-pack" d="M-15 -18C-20 -8 -17 2 -8 4L-5 -18Z"/>
+                            <path class="home-climber-body" d="M-4 -12L6 6"/>
+                            <path class="home-climber-limb home-climber-arm-a" d="M-2 -8L-18 -1"/>
+                            <path class="home-climber-limb home-climber-arm-b" d="M1 -8L16 -18"/>
+                            <path class="home-climber-limb home-climber-leg-a" d="M6 6L-8 22"/>
+                            <path class="home-climber-limb home-climber-leg-b" d="M6 6L20 18"/>
+                            <path class="home-climber-pole" d="M18 -25L12 28"/>
+                        </g>
+                    </g>
+                    <g class="home-summit-flag" aria-hidden="true">
+                        <path d="M318 106V62"/>
+                        <path d="M318 64C338 58 350 66 366 60V88C348 96 336 84 318 90Z"/>
+                    </g>
                 </svg>
                 <span class="home-route-pin home-route-pin-a" aria-hidden="true"></span>
                 <span class="home-route-pin home-route-pin-b" aria-hidden="true"></span>
@@ -182,7 +254,7 @@
             <div class="container page-hero-copy">
                 <p class="eyebrow">Personal page</p>
                 <h1 class="display-lg">旅行者档案</h1>
-                <p class="body-md">这里汇总旅行日志里的目的地分布，按到访次数展示省份与国家，方便从另一种角度回看路线。</p>
+                <p class="body-md">这里汇总旅行日志里的目的地分布，先按国家归类，再展示各国家下的省份，方便从另一种角度回看路线。</p>
             </div>
         </div>
 
@@ -201,8 +273,14 @@
             </div>
             <div class="visited-panel">
                 <div class="visited-heading">
-                    <p class="eyebrow">Visited places</p>
-                    <h2 class="display-sm">去过的省份 / 国家</h2>
+                    <div>
+                        <p class="eyebrow">Visited places</p>
+                        <h2 class="display-sm">按国家查看省份</h2>
+                    </div>
+                    <div class="visited-search search-wrapper">
+                        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        <input type="search" id="visitedSearchInput" class="text-input with-icon" placeholder="搜索国家、省份或城市" autocomplete="off">
+                    </div>
                 </div>
                 <div class="visited-list" id="visitedPlaces">
                     <!-- Injected by JS -->

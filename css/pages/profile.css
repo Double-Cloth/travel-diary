@@ -90,7 +90,80 @@
     margin-top: var(--spacing-xl);
 }
 
+.visited-heading {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: var(--spacing-lg);
+}
+
+.visited-heading > div:first-child {
+    min-width: 0;
+}
+
+.visited-search {
+    width: min(100%, 320px);
+    flex: 0 1 320px;
+}
+
+.visited-search .text-input {
+    background: var(--canvas);
+}
+
 .visited-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--spacing-lg);
+}
+
+.visited-empty {
+    margin-left: 0;
+    border: 1px solid var(--hairline);
+    border-radius: var(--rounded-lg);
+    background: var(--surface-soft);
+}
+
+.visited-country {
+    padding: var(--spacing-lg);
+    border: 1px solid var(--hairline);
+    border-radius: var(--rounded-lg);
+    background: var(--surface-soft);
+}
+
+.visited-country-head {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--spacing-md);
+    align-items: flex-start;
+    margin-bottom: var(--spacing-md);
+}
+
+.visited-country-head h3 {
+    margin: 0;
+    color: var(--ink);
+    font-family: var(--font-display);
+    font-size: 28px;
+    font-weight: 400;
+    line-height: 1.2;
+    letter-spacing: -0.3px;
+}
+
+.visited-country-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px var(--spacing-sm);
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.45;
+}
+
+.visited-country-meta strong {
+    color: var(--ink);
+    font-weight: 500;
+}
+
+.visited-province-list {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--spacing-sm);
@@ -201,20 +274,6 @@
     font-weight: 400;
     line-height: 1.18;
     overflow-wrap: anywhere;
-}
-
-.visited-scope {
-    flex: none;
-    min-height: 24px;
-    padding: 3px 9px;
-    border: 1px solid rgba(204, 120, 92, 0.20);
-    border-radius: var(--rounded-pill);
-    background: rgba(204, 120, 92, 0.09);
-    color: var(--primary-active);
-    font-size: 12px;
-    font-weight: 500;
-    line-height: 1.35;
-    letter-spacing: 0;
 }
 
 .visited-meta {
