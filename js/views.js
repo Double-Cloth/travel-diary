@@ -2,6 +2,8 @@ import { currentState, getTravelRecords } from './state.js';
 import { buildFallbackTitle, escapeHtml, formatDateForCard } from './utils.js';
 import { closeSidebar, showPage } from './navigation.js';
 
+let yearScrollFrame = null;
+
 export function renderLoadingState() {
     const container = document.getElementById('diaryContainer');
     if (container) {
@@ -33,18 +35,6 @@ export function renderStats(stats) {
     `;
 }
 
-export function renderHomeStats(stats) {
-    const homeStats = document.getElementById('homeStats');
-    if (!homeStats) return;
-
-    homeStats.innerHTML = createStatCards(stats, [
-        ['total', '篇日志'],
-        ['countries', '个国家'],
-        ['provinces', '个省份'],
-        ['cities', '座城市']
-    ]);
-}
-
 export function renderProfile(stats) {
     const profileStats = document.getElementById('profileStats');
     const visitedPlaces = document.getElementById('visitedPlaces');
@@ -69,6 +59,8 @@ export function renderProfile(stats) {
         const label = isChina ? record.province : record.country;
         const scope = isChina ? '省份' : '国家';
         const current = placeMap.get(key) || {
+            country: record.country,
+            province: isChina ? record.province : '',
             label,
             scope,
             count: 0,
@@ -87,26 +79,41 @@ export function renderProfile(stats) {
 
     const places = Array.from(placeMap.values())
         .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'zh-CN'));
-    const maxCount = places[0] ? places[0].count : 1;
 
     visitedPlaces.innerHTML = places.map((place, index) => {
         const cityCount = place.cities.size;
-        const width = Math.max(12, Math.round((place.count / maxCount) * 100));
+        const stampCount = Math.min(place.count, 6);
+        const stamps = Array.from({ length: stampCount }, () => '<span class="visited-stamp"></span>').join('');
+        const stampMore = place.count > stampCount ? `<span class="visited-stamp-more">+${place.count - stampCount}</span>` : '';
 
         return `
-            <div class="visited-item">
+            <button type="button" class="visited-item visited-item-button" data-country="${escapeHtml(place.country)}" data-province="${escapeHtml(place.province)}">
                 <div class="visited-rank">${index + 1}</div>
                 <div class="visited-main">
                     <div class="visited-title-row">
                         <strong>${escapeHtml(place.label)}</strong>
-                        <span>${escapeHtml(place.scope)}</span>
+                        <span class="visited-scope">${escapeHtml(place.scope)}</span>
                     </div>
-                    <div class="visited-meta">${place.count} 次 · ${cityCount} 座城市 · 最近 ${escapeHtml(place.latestDate)}</div>
-                    <div class="visited-bar" aria-hidden="true"><span style="width: ${width}%"></span></div>
+                    <div class="visited-meta">
+                        <span class="visited-meta-item"><strong>${place.count}</strong> 次到访</span>
+                        <span class="visited-meta-item">${cityCount} 座城市</span>
+                        <time datetime="${escapeHtml(place.latestDate)}">最近 ${escapeHtml(place.latestDate)}</time>
+                        <span class="visited-stamp-track" aria-label="${place.count} 次到访">${stamps}${stampMore}</span>
+                    </div>
                 </div>
-            </div>
+            </button>
         `;
     }).join('');
+
+    visitedPlaces.querySelectorAll('.visited-item-button').forEach(button => {
+        button.addEventListener('click', () => {
+            openLocationView(
+                button.getAttribute('data-country'),
+                button.getAttribute('data-province'),
+                ''
+            );
+        });
+    });
 }
 
 export function initYears() {
@@ -130,17 +137,24 @@ export function initYears() {
             if (!btn) return;
 
             const selectedYear = btn.getAttribute('data-year');
-            if (!selectedYear || selectedYear === currentState.year) return;
+            if (!selectedYear) return;
 
             currentState.year = selectedYear;
             renderDiary();
             updateYearTabs();
-            showPage('journey');
             closeSidebar();
+            showPage('journey', { scrollTop: false });
+            scrollToYear(selectedYear);
         });
     }
 
     yearTabs.dataset.listenerAttached = 'true';
+
+    if (!yearTabs.dataset.scrollListenerAttached) {
+        window.addEventListener('scroll', scheduleYearScrollSync, { passive: true });
+        window.addEventListener('resize', scheduleYearScrollSync);
+        yearTabs.dataset.scrollListenerAttached = 'true';
+    }
 }
 
 export function updateYearTabs() {
@@ -167,15 +181,29 @@ export function setupFilters() {
         sortBtn.setAttribute('aria-label', currentState.sortDesc ? '当前排序：最新优先' : '当前排序：最早优先');
         sortBtn.addEventListener('click', () => {
             currentState.sortDesc = !currentState.sortDesc;
-            sortBtn.innerHTML = currentState.sortDesc
-                ? '<span>最新优先</span><span class="icon-sort" aria-hidden="true">↓</span>'
-                : '<span>最早优先</span><span class="icon-sort" aria-hidden="true">↑</span>';
+            sortBtn.innerHTML = createSortButtonContent(currentState.sortDesc);
             sortBtn.setAttribute('aria-label', currentState.sortDesc ? '当前排序：最新优先' : '当前排序：最早优先');
             renderDiary();
             updateYearTabs();
             showPage('journey');
         });
     }
+}
+
+function createSortButtonContent(sortDesc) {
+    return sortDesc
+        ? `<span>最新优先</span>
+            <span class="icon-sort" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" focusable="false">
+                    <path d="M8 2v12m0 0 5-5m-5 5-5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </span>`
+        : `<span>最早优先</span>
+            <span class="icon-sort" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" focusable="false">
+                    <path d="M8 14V2m0 0 5 5M8 2 3 7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+            </span>`;
 }
 
 export function renderDiary() {
@@ -198,11 +226,7 @@ export function renderDiary() {
         return { ...record, isRepeated };
     });
 
-    let filtered = processedRecords.filter(record => {
-        const matchYear = currentState.year === 'All' || record.date.startsWith(currentState.year);
-        const matchSearch = record.searchText.includes(currentState.search);
-        return matchYear && matchSearch;
-    });
+    let filtered = processedRecords.filter(record => record.searchText.includes(currentState.search));
 
     filtered.sort((a, b) => {
         return currentState.sortDesc
@@ -211,10 +235,7 @@ export function renderDiary() {
     });
 
     if (filtered.length === 0) {
-        const emptyMessage = currentState.year === 'All'
-            ? '没有找到匹配的旅行记录。'
-            : `${escapeHtml(currentState.year)} 年没有匹配记录。`;
-        container.innerHTML = `<div class="empty-state">${emptyMessage}</div>`;
+        container.innerHTML = '<div class="empty-state">没有找到匹配的旅行记录。</div>';
         return;
     }
 
@@ -266,6 +287,52 @@ export function renderDiary() {
     setTimeout(() => {
         container.style.minHeight = '';
     }, 400);
+
+    scheduleYearScrollSync();
+}
+
+function scrollToYear(year) {
+    const target = year === 'All'
+        ? document.getElementById('journal')
+        : document.getElementById(`year-section-${year}`);
+
+    if (!target) return;
+
+    requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+}
+
+function scheduleYearScrollSync() {
+    if (yearScrollFrame !== null) return;
+
+    yearScrollFrame = requestAnimationFrame(() => {
+        yearScrollFrame = null;
+        syncYearWithScrollPosition();
+    });
+}
+
+function syncYearWithScrollPosition() {
+    if (document.body.dataset.page !== 'journey') return;
+
+    const journal = document.getElementById('journal');
+    const headers = Array.from(document.querySelectorAll('.year-section-header'));
+    if (!journal || headers.length === 0) return;
+
+    const navHeight = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--nav-height')) || 64;
+    const threshold = navHeight + 48;
+    let activeYear = 'All';
+
+    headers.forEach(header => {
+        if (header.getBoundingClientRect().top <= threshold) {
+            activeYear = header.id.replace('year-section-', '');
+        }
+    });
+
+    if (currentState.year === activeYear) return;
+
+    currentState.year = activeYear;
+    updateYearTabs();
 }
 
 export function renderLocationFromHash() {
@@ -291,7 +358,7 @@ export function renderLocationPage(country, province, city) {
     const container = document.getElementById('diaryContainer');
     if (!container) return;
 
-    const locationLabel = country === '中国' ? `${province} · ${city}` : `${country} ${city}`;
+    const locationLabel = getLocationArchiveLabel(country, province, city);
     const matching = getTravelRecords().filter(record => (
         (country ? record.country === country : true) &&
         (province ? record.province === province : true) &&
@@ -301,7 +368,7 @@ export function renderLocationPage(country, province, city) {
 
     container.innerHTML = `
         <div class="location-hero">
-            <button class="location-back">返回时间线</button>
+            <button class="location-back">返回</button>
             <div class="location-head">
                 <p class="eyebrow">Location archive</p>
                 <h1 class="display-lg">${escapeHtml(locationLabel)}</h1>
@@ -392,6 +459,24 @@ function getLocationText(record) {
     return record.country === '中国'
         ? `${record.province} ${record.city}`
         : `${record.country} ${record.province} ${record.city}`;
+}
+
+function getLocationArchiveLabel(country, province, city) {
+    if (country === '中国') {
+        if (city) {
+            return province && province !== city ? `${province} · ${city}` : city;
+        }
+
+        return province || country || '地点';
+    }
+
+    if (city) {
+        return [country, province && province !== city ? province : '', city]
+            .filter(Boolean)
+            .join(' ');
+    }
+
+    return province ? `${country} ${province}` : (country || '地点');
 }
 
 function openEntryModal(record) {

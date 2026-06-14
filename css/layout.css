@@ -158,12 +158,32 @@ body.nav-open .nav-menu-lines span:nth-child(3) {
 }
 
 .page-hero::after {
-    display: none;
+    content: "";
+    position: absolute;
+    right: 42px;
+    bottom: 28px;
+    width: min(36vw, 420px);
+    height: 96px;
+    border-bottom: 1px solid rgba(204, 120, 92, 0.22);
+    border-left: 1px solid rgba(93, 184, 166, 0.18);
+    border-radius: 0 0 0 var(--rounded-xl);
+    background:
+        radial-gradient(circle at 18% 72%, rgba(204, 120, 92, 0.46) 0 4px, transparent 5px),
+        radial-gradient(circle at 58% 36%, rgba(93, 184, 166, 0.44) 0 4px, transparent 5px),
+        radial-gradient(circle at 88% 18%, rgba(232, 165, 90, 0.44) 0 4px, transparent 5px),
+        linear-gradient(120deg, transparent 24%, rgba(204, 120, 92, 0.22) 25%, transparent 26%, transparent 54%, rgba(93, 184, 166, 0.20) 55%, transparent 56%);
+    opacity: 0.72;
+    pointer-events: none;
 }
 
 .page-hero-copy {
     position: relative;
     z-index: 1;
+    min-height: 226px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
     padding-top: var(--spacing-lg);
     padding-bottom: var(--spacing-lg);
 }
@@ -244,7 +264,10 @@ body.nav-open .nav-menu-lines span:nth-child(3) {
 .sidebar > .sidebar-group {
     border: 1px solid var(--hairline);
     border-radius: var(--rounded-lg);
-    background: var(--canvas);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(250, 249, 245, 0.92)),
+        var(--canvas);
+    box-shadow: 0 12px 30px rgba(20, 20, 19, 0.05);
 }
 
 .sidebar-card {
@@ -270,6 +293,15 @@ body.nav-open .nav-menu-lines span:nth-child(3) {
     line-height: 1.4;
     letter-spacing: 0;
     text-transform: uppercase;
+}
+
+.group-header::before {
+    content: "";
+    width: 8px;
+    height: 8px;
+    border-radius: var(--rounded-full);
+    background: var(--primary);
+    box-shadow: 0 0 0 5px rgba(204, 120, 92, 0.10);
 }
 
 .sidebar-title svg {
@@ -362,6 +394,7 @@ body.nav-open .nav-menu-lines span:nth-child(3) {
 }
 
 .category-tab {
+    position: relative;
     min-height: 40px;
     border: 1px solid transparent;
     border-radius: var(--rounded-md);
@@ -387,6 +420,22 @@ body.nav-open .nav-menu-lines span:nth-child(3) {
     border-color: rgba(204, 120, 92, 0.24);
     background: var(--surface-card);
     color: var(--ink);
+}
+
+.category-tab-active::before {
+    content: "";
+    position: absolute;
+    left: 8px;
+    top: 50%;
+    width: 4px;
+    height: 18px;
+    border-radius: var(--rounded-pill);
+    background: var(--primary);
+    transform: translateY(-50%);
+}
+
+.vertical-tabs .category-tab-active {
+    padding-left: 20px;
 }
 
 /* ==========================================================================

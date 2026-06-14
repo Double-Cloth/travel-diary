@@ -2,7 +2,6 @@
    通用组件
    ========================================================================== */
 .stat-grid,
-.home-stats,
 .profile-stats {
     display: grid;
     grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -107,6 +106,25 @@
     background: #2d2a26;
 }
 
+.icon-sort {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    color: currentColor;
+}
+
+.icon-sort svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
 .button-text-link {
     padding: 0;
     border: none;
@@ -179,6 +197,11 @@
     padding-left: 48px;
 }
 
+#journal,
+.year-section-header {
+    scroll-margin-top: calc(var(--nav-height) + var(--spacing-lg));
+}
+
 #diaryContainer::before {
     content: "";
     position: absolute;
@@ -196,7 +219,9 @@
     padding: 18px 20px;
     border: 1px solid var(--hairline);
     border-radius: var(--rounded-lg);
-    background: rgba(255, 255, 255, 0.72);
+    background:
+        linear-gradient(90deg, rgba(204, 120, 92, 0.08), transparent 42px),
+        rgba(255, 255, 255, 0.72);
     box-shadow: var(--shadow-soft);
     display: grid;
     grid-template-columns: 76px minmax(0, 1fr);
@@ -242,8 +267,10 @@
 }
 
 .diary-entry-clickable:hover {
-    border-color: var(--surface-cream-strong);
-    background: rgba(245, 240, 232, 0.92);
+    border-color: rgba(204, 120, 92, 0.24);
+    background:
+        linear-gradient(90deg, rgba(204, 120, 92, 0.13), transparent 48px),
+        rgba(245, 240, 232, 0.92);
     box-shadow: var(--shadow-hover);
     transform: translateY(-1px);
 }
@@ -278,6 +305,13 @@
     border-radius: var(--rounded-md);
     background: var(--surface-card);
     font-variant-numeric: tabular-nums;
+    transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.18s ease;
+}
+
+.diary-entry-clickable:hover .entry-date time {
+    border-color: rgba(204, 120, 92, 0.24);
+    background: var(--canvas);
+    transform: translateY(-1px);
 }
 
 .entry-date .date-day {
@@ -299,13 +333,27 @@
 }
 
 .entry-location {
+    position: relative;
     margin-bottom: var(--spacing-xs);
+    padding-left: 14px;
     color: var(--ink);
     font-family: var(--font-sans);
     font-size: 18px;
     font-weight: 500;
     line-height: 1.3;
     overflow-wrap: anywhere;
+}
+
+.entry-location::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0.44em;
+    width: 7px;
+    height: 7px;
+    border-radius: var(--rounded-full);
+    background: var(--year-line-color, var(--primary));
+    box-shadow: 0 0 0 4px rgba(204, 120, 92, 0.10);
 }
 
 .entry-desc.entry-title h1 {
@@ -324,6 +372,7 @@
     gap: var(--spacing-xs);
     margin-top: var(--spacing-sm);
     padding-top: var(--spacing-sm);
+    border-top: 1px solid rgba(230, 223, 216, 0.70);
 }
 
 .year-section-header {
@@ -618,9 +667,11 @@
 }
 
 .modal-close {
+    position: relative;
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    flex: 0 0 auto;
     width: 40px;
     height: 40px;
     margin: var(--spacing-md) var(--spacing-md) 0 auto;
@@ -629,8 +680,28 @@
     border-radius: var(--rounded-full);
     background: var(--surface-soft);
     color: var(--ink);
-    font-size: 24px;
-    line-height: 1;
+    font-size: 0;
+    line-height: 0;
+}
+
+.modal-close::before,
+.modal-close::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 15px;
+    height: 2px;
+    border-radius: var(--rounded-pill);
+    background: currentColor;
+}
+
+.modal-close::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.modal-close::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
 }
 
 .modal-close:hover {

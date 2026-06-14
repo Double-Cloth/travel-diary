@@ -8,29 +8,69 @@
     min-height: 620px;
     overflow: hidden;
     background:
+        repeating-linear-gradient(118deg, rgba(204, 120, 92, 0.07) 0 1px, transparent 1px 120px),
+        repeating-linear-gradient(28deg, rgba(93, 184, 166, 0.06) 0 1px, transparent 1px 96px),
         linear-gradient(135deg, var(--canvas) 0%, var(--surface-soft) 58%, var(--surface-card) 100%);
+}
+
+.home-page::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+        linear-gradient(100deg, rgba(250, 249, 245, 0.98) 0%, rgba(250, 249, 245, 0.76) 44%, rgba(250, 249, 245, 0.18) 100%),
+        linear-gradient(180deg, transparent 0%, rgba(204, 120, 92, 0.10) 100%);
+    pointer-events: none;
+}
+
+.home-page::after {
+    content: "";
+    position: absolute;
+    inset: 12% -6% auto auto;
+    z-index: -1;
+    width: min(52vw, 720px);
+    height: min(52vw, 720px);
+    border: 1px solid rgba(204, 120, 92, 0.16);
+    border-radius: var(--rounded-xl);
+    background:
+        linear-gradient(90deg, rgba(20, 20, 19, 0.06) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(20, 20, 19, 0.05) 1px, transparent 1px);
+    background-size: 42px 42px;
+    transform: rotate(-8deg);
+    opacity: 0.44;
+    pointer-events: none;
 }
 
 .home-visual {
     position: absolute;
     inset: 0;
-    z-index: -2;
-    opacity: 0.18;
+    z-index: -3;
+    opacity: 0.22;
     background:
-        linear-gradient(90deg, rgba(250, 249, 245, 0.82) 0%, rgba(250, 249, 245, 0.70) 48%, rgba(239, 233, 222, 0.62) 100%),
+        linear-gradient(90deg, rgba(250, 249, 245, 0.86) 0%, rgba(250, 249, 245, 0.58) 48%, rgba(239, 233, 222, 0.28) 100%),
         url("../../assets/images/home-hero-travel-diary.png") center right / cover no-repeat;
+    filter: saturate(1.04) contrast(1.03);
+    transform: scale(1.02);
+    animation: home-image-drift 18s ease-in-out infinite alternate;
 }
 
 .home-hero {
+    position: relative;
+    z-index: 1;
     min-height: 100%;
     display: flex;
     align-items: center;
+    justify-content: space-between;
+    gap: var(--spacing-xxl);
     padding-top: var(--spacing-xxl);
     padding-bottom: var(--spacing-xxl);
 }
 
 .home-copy {
-    max-width: 760px;
+    position: relative;
+    z-index: 2;
+    max-width: 720px;
 }
 
 .home-copy h1 {
@@ -45,7 +85,637 @@
     font-size: 17px;
 }
 
-.home-stats {
-    max-width: 700px;
+.home-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--spacing-sm);
     margin-top: var(--spacing-xl);
+}
+
+.home-actions .button-primary,
+.home-actions .button-secondary {
+    min-height: 44px;
+    padding: 0 18px;
+}
+
+.home-actions svg {
+    flex: none;
+}
+
+.home-route-art {
+    --route-glow-x: 54%;
+    --route-glow-y: 48%;
+    --route-lift: 0px;
+    --route-panel-rotate: -3deg;
+    --route-tilt-x: 0deg;
+    --route-tilt-y: 0deg;
+    position: relative;
+    flex: 0 0 min(34vw, 420px);
+    width: min(34vw, 420px);
+    aspect-ratio: 1;
+    margin-left: auto;
+    border: 1px solid rgba(250, 249, 245, 0.18);
+    border-radius: var(--rounded-lg);
+    background:
+        linear-gradient(135deg, rgba(24, 23, 21, 0.96), rgba(37, 35, 32, 0.90)),
+        var(--surface-dark);
+    box-shadow: 0 28px 70px rgba(20, 20, 19, 0.20);
+    cursor: pointer;
+    overflow: hidden;
+    transform: perspective(900px) rotateX(var(--route-tilt-x)) rotateY(var(--route-tilt-y)) rotate(var(--route-panel-rotate)) translateY(var(--route-lift));
+    transform-style: preserve-3d;
+    transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+    will-change: transform;
+}
+
+.home-route-art:hover,
+.home-route-art-active {
+    --route-lift: -6px;
+    border-color: rgba(204, 120, 92, 0.34);
+    box-shadow: 0 34px 82px rgba(20, 20, 19, 0.28), 0 0 0 1px rgba(204, 120, 92, 0.08);
+}
+
+.home-route-art:focus-within {
+    box-shadow: 0 34px 82px rgba(20, 20, 19, 0.28), var(--focus-ring);
+}
+
+.home-route-art::before,
+.home-route-art::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+}
+
+.home-route-art::before {
+    background:
+        radial-gradient(circle at var(--route-glow-x) var(--route-glow-y), rgba(204, 120, 92, 0.28), transparent 28%),
+        linear-gradient(90deg, rgba(250, 249, 245, 0.08) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(250, 249, 245, 0.06) 1px, transparent 1px);
+    background-size: 100% 100%, 34px 34px, 34px 34px;
+    mask-image: linear-gradient(145deg, rgba(0, 0, 0, 0.86), rgba(0, 0, 0, 0.18));
+    transition: opacity 0.22s ease;
+}
+
+.home-route-art::after {
+    inset: auto 0 0;
+    height: 42%;
+    background: linear-gradient(180deg, transparent, rgba(204, 120, 92, 0.16));
+}
+
+.home-route-meta {
+    position: absolute;
+    left: 18px;
+    top: 16px;
+    z-index: 5;
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 28px;
+    padding: 0 10px;
+    border: 1px solid rgba(250, 249, 245, 0.12);
+    border-radius: var(--rounded-pill);
+    background: rgba(37, 35, 32, 0.76);
+    color: var(--on-dark-soft);
+    font-family: var(--font-code);
+    font-size: 11px;
+    line-height: 1;
+}
+
+.home-route-meta strong {
+    color: var(--accent-teal);
+    font-weight: 400;
+}
+
+.home-route-toggle {
+    position: absolute;
+    right: 16px;
+    top: 16px;
+    z-index: 6;
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border: 1px solid rgba(250, 249, 245, 0.14);
+    border-radius: var(--rounded-full);
+    background: rgba(37, 35, 32, 0.82);
+    color: var(--on-dark);
+    cursor: pointer;
+    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.home-route-toggle span,
+.home-route-toggle span::before,
+.home-route-toggle span::after {
+    display: block;
+    border-radius: var(--rounded-pill);
+    background: currentColor;
+}
+
+.home-route-toggle span {
+    position: relative;
+    width: 14px;
+    height: 2px;
+}
+
+.home-route-toggle span::before,
+.home-route-toggle span::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 2px;
+    height: 14px;
+    transform: translate(-50%, -50%);
+}
+
+.home-route-toggle span::after {
+    width: 8px;
+    height: 8px;
+    border: 2px solid currentColor;
+    border-radius: var(--rounded-full);
+    background: transparent;
+    transform: translate(-50%, -50%);
+}
+
+.home-route-toggle:hover,
+.home-route-toggle:focus-visible,
+.home-route-art-active .home-route-toggle {
+    border-color: rgba(204, 120, 92, 0.52);
+    background: var(--primary);
+    transform: rotate(8deg);
+}
+
+.home-route-svg {
+    position: absolute;
+    inset: 8%;
+    z-index: 2;
+    width: 84%;
+    height: 84%;
+    overflow: visible;
+}
+
+.home-route-svg path {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.home-route-shadow {
+    stroke: rgba(250, 249, 245, 0.15);
+    stroke-width: 16;
+}
+
+.home-route-main,
+.home-route-secondary,
+.home-route-orbit {
+    stroke-dasharray: 1;
+    stroke-dashoffset: 1;
+}
+
+.home-route-main {
+    stroke: url("#homeRouteGradient");
+    stroke-width: 5;
+    filter: url("#homeRouteGlow");
+    animation: home-route-reveal 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards, home-route-breathe 3.6s ease-in-out 2.2s infinite;
+}
+
+.home-route-secondary {
+    stroke: var(--accent-teal);
+    stroke-width: 3;
+    opacity: 0.88;
+    animation: home-route-reveal 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.45s forwards;
+}
+
+.home-route-pulse {
+    stroke: var(--on-dark);
+    stroke-width: 4;
+    stroke-dasharray: 0.08 0.92;
+    stroke-dashoffset: 1;
+    opacity: 0.74;
+    filter: drop-shadow(0 0 11px rgba(250, 249, 245, 0.62));
+    animation: home-route-flow 2.9s linear infinite;
+}
+
+.home-route-orbit {
+    stroke: rgba(250, 249, 245, 0.18);
+    stroke-width: 1;
+    stroke-dasharray: 0.02 0.08;
+    opacity: 0.72;
+    animation: home-route-orbit 9s linear infinite;
+}
+
+.home-route-pin {
+    position: absolute;
+    z-index: 3;
+    width: 14px;
+    height: 14px;
+    border: 2px solid var(--on-dark);
+    border-radius: var(--rounded-full);
+    background: var(--primary);
+    box-shadow: 0 0 0 6px rgba(204, 120, 92, 0.14), 0 8px 18px rgba(0, 0, 0, 0.28);
+    animation: home-pin-pulse 2.6s ease-in-out infinite;
+    transition: box-shadow 0.22s ease, transform 0.22s ease;
+}
+
+.home-route-pin-a {
+    left: 16%;
+    top: 70%;
+}
+
+.home-route-pin-b {
+    left: 48%;
+    top: 39%;
+    background: var(--accent-teal);
+    animation-delay: 0.4s;
+}
+
+.home-route-pin-c {
+    left: 86%;
+    top: 30%;
+    background: var(--accent-amber);
+    animation-delay: 0.8s;
+}
+
+.home-route-pin-d {
+    left: 27%;
+    top: 78%;
+    animation-delay: 1.2s;
+}
+
+.home-route-pin::before {
+    content: "";
+    position: absolute;
+    inset: -12px;
+    border: 1px solid currentColor;
+    border-radius: var(--rounded-full);
+    opacity: 0;
+    transform: scale(0.6);
+    animation: home-pin-ring 2.6s ease-out infinite;
+}
+
+.home-route-art:hover .home-route-pin,
+.home-route-art-active .home-route-pin {
+    box-shadow: 0 0 0 8px rgba(204, 120, 92, 0.18), 0 0 24px rgba(204, 120, 92, 0.36);
+}
+
+.home-route-cursor {
+    position: absolute;
+    z-index: 4;
+    left: 15%;
+    top: 69%;
+    width: 18px;
+    height: 18px;
+    background: var(--on-dark);
+    clip-path: polygon(50% 0, 100% 100%, 50% 76%, 0 100%);
+    filter: drop-shadow(0 0 10px rgba(250, 249, 245, 0.46));
+    animation: home-cursor-travel 5.8s ease-in-out infinite;
+}
+
+.home-route-scan {
+    position: absolute;
+    left: 12%;
+    right: 12%;
+    top: 18%;
+    z-index: 2;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(250, 249, 245, 0.78), transparent);
+    opacity: 0;
+    animation: home-route-scan 4.2s ease-in-out infinite;
+}
+
+.home-route-spark {
+    position: absolute;
+    z-index: 4;
+    left: 17%;
+    top: 69%;
+    width: 8px;
+    height: 8px;
+    border-radius: var(--rounded-full);
+    background: var(--on-dark);
+    box-shadow: 0 0 16px rgba(250, 249, 245, 0.80), 0 0 32px rgba(204, 120, 92, 0.42);
+    animation: home-spark-travel 4.4s cubic-bezier(0.45, 0, 0.16, 1) infinite;
+}
+
+.home-route-radar {
+    position: absolute;
+    z-index: 2;
+    right: 18%;
+    top: 22%;
+    width: 72px;
+    height: 72px;
+    border: 1px solid rgba(250, 249, 245, 0.10);
+    border-radius: var(--rounded-full);
+    opacity: 0.76;
+    transform: translateZ(18px);
+}
+
+.home-route-radar::before,
+.home-route-radar::after {
+    content: "";
+    position: absolute;
+    inset: 50%;
+    border: 1px solid rgba(93, 184, 166, 0.18);
+    border-radius: inherit;
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.32);
+    animation: home-radar-ping 3.8s ease-out infinite;
+}
+
+.home-route-radar::after {
+    animation-delay: 1.3s;
+}
+
+.home-route-dock {
+    position: absolute;
+    right: 18px;
+    bottom: 18px;
+    left: 18px;
+    z-index: 5;
+    display: grid;
+    grid-template-columns: 1.4fr 0.8fr 1fr 0.55fr;
+    gap: 7px;
+    height: 24px;
+    align-items: end;
+    padding: 7px;
+    border: 1px solid rgba(250, 249, 245, 0.10);
+    border-radius: var(--rounded-md);
+    background: rgba(24, 23, 21, 0.54);
+}
+
+.home-route-dock span {
+    display: block;
+    height: 5px;
+    border-radius: var(--rounded-pill);
+    background: rgba(250, 249, 245, 0.18);
+    overflow: hidden;
+    position: relative;
+}
+
+.home-route-dock span::before {
+    content: "";
+    position: absolute;
+    inset: 0 auto 0 0;
+    width: 44%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, var(--primary), var(--accent-amber));
+    animation: home-dock-meter 2.8s ease-in-out infinite;
+}
+
+.home-route-dock span:nth-child(2)::before {
+    width: 72%;
+    background: linear-gradient(90deg, var(--accent-teal), rgba(250, 249, 245, 0.72));
+    animation-delay: 0.3s;
+}
+
+.home-route-dock span:nth-child(3)::before {
+    width: 56%;
+    animation-delay: 0.6s;
+}
+
+.home-route-dock span:nth-child(4)::before {
+    width: 86%;
+    background: var(--accent-teal);
+    animation-delay: 0.9s;
+}
+
+.home-route-art-active .home-route-main {
+    stroke-width: 6;
+}
+
+.home-route-art-active .home-route-pulse {
+    animation-duration: 1.9s;
+    opacity: 0.96;
+}
+
+.home-route-art-active .home-route-secondary,
+.home-route-art-active .home-route-orbit {
+    opacity: 1;
+}
+
+.home-route-art-active .home-route-cursor,
+.home-route-art-active .home-route-spark {
+    animation-duration: 3.2s;
+}
+
+.home-route-art-active .home-route-dock span::before {
+    animation-duration: 1.8s;
+}
+
+@keyframes home-image-drift {
+    from {
+        transform: scale(1.02) translate3d(0, 0, 0);
+    }
+
+    to {
+        transform: scale(1.06) translate3d(-14px, 0, 0);
+    }
+}
+
+@keyframes home-route-reveal {
+    0% {
+        stroke-dashoffset: 1;
+        opacity: 0;
+    }
+
+    100% {
+        stroke-dashoffset: 0;
+        opacity: 1;
+    }
+}
+
+@keyframes home-route-breathe {
+    0%,
+    100% {
+        opacity: 0.86;
+        stroke-width: 5;
+    }
+
+    50% {
+        opacity: 1;
+        stroke-width: 6;
+    }
+}
+
+@keyframes home-route-flow {
+    from {
+        stroke-dashoffset: 1;
+    }
+
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes home-route-orbit {
+    from {
+        stroke-dashoffset: 1;
+    }
+
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+@keyframes home-pin-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+    }
+
+    50% {
+        transform: scale(1.18);
+    }
+}
+
+@keyframes home-pin-ring {
+    0% {
+        opacity: 0.42;
+        transform: scale(0.58);
+    }
+
+    72%,
+    100% {
+        opacity: 0;
+        transform: scale(1.45);
+    }
+}
+
+@keyframes home-cursor-travel {
+    0% {
+        left: 15%;
+        top: 69%;
+        transform: rotate(34deg);
+    }
+
+    34% {
+        left: 48%;
+        top: 38%;
+        transform: rotate(42deg);
+    }
+
+    58% {
+        left: 70%;
+        top: 27%;
+        transform: rotate(76deg);
+    }
+
+    78% {
+        left: 85%;
+        top: 30%;
+        transform: rotate(116deg);
+    }
+
+    100% {
+        left: 15%;
+        top: 69%;
+        transform: rotate(34deg);
+    }
+}
+
+@keyframes home-spark-travel {
+    0% {
+        left: 17%;
+        top: 69%;
+        opacity: 0;
+        transform: scale(0.6);
+    }
+
+    14% {
+        opacity: 1;
+    }
+
+    42% {
+        left: 48%;
+        top: 39%;
+        transform: scale(1);
+    }
+
+    68% {
+        left: 70%;
+        top: 28%;
+        transform: scale(0.82);
+    }
+
+    88% {
+        left: 86%;
+        top: 30%;
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    100% {
+        left: 86%;
+        top: 30%;
+        opacity: 0;
+        transform: scale(0.7);
+    }
+}
+
+@keyframes home-radar-ping {
+    0% {
+        opacity: 0.66;
+        transform: translate(-50%, -50%) scale(0.28);
+    }
+
+    78%,
+    100% {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(1.65);
+    }
+}
+
+@keyframes home-dock-meter {
+    0%,
+    100% {
+        transform: translateX(-18%);
+        opacity: 0.62;
+    }
+
+    50% {
+        transform: translateX(42%);
+        opacity: 1;
+    }
+}
+
+@keyframes home-route-scan {
+    0%,
+    100% {
+        opacity: 0;
+        transform: translateY(0);
+    }
+
+    18%,
+    62% {
+        opacity: 1;
+    }
+
+    72% {
+        opacity: 0;
+        transform: translateY(220px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .home-visual,
+    .home-route-main,
+    .home-route-secondary,
+    .home-route-pulse,
+    .home-route-orbit,
+    .home-route-pin,
+    .home-route-cursor,
+    .home-route-scan,
+    .home-route-spark,
+    .home-route-radar::before,
+    .home-route-radar::after,
+    .home-route-dock span::before {
+        animation: none;
+    }
+
+    .home-route-main,
+    .home-route-secondary,
+    .home-route-orbit {
+        stroke-dashoffset: 0;
+    }
 }

@@ -20,6 +20,11 @@
         max-width: 680px;
     }
 
+    .home-route-art {
+        flex-basis: min(32vw, 360px);
+        width: min(32vw, 360px);
+    }
+
 }
 
 @media (max-width: 768px) {
@@ -67,7 +72,15 @@
         opacity: 0.72;
     }
 
+    .page-hero::after {
+        right: -48px;
+        bottom: 18px;
+        width: 300px;
+        opacity: 0.34;
+    }
+
     .page-hero-copy {
+        min-height: 240px;
         padding-top: var(--spacing-md);
         padding-bottom: var(--spacing-md);
     }
@@ -91,19 +104,29 @@
         margin-bottom: var(--spacing-md);
     }
 
-    .home-stats {
-        margin-top: var(--spacing-lg);
-    }
-
     .home-copy .body-md,
     .page-hero-copy .body-md {
         font-size: 16px;
     }
 
-    .home-stats,
     .stat-grid,
     .profile-stats {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .home-route-art {
+        --route-panel-rotate: -8deg;
+        position: absolute;
+        right: -58px;
+        bottom: 20px;
+        width: 280px;
+        flex-basis: 280px;
+        opacity: 0.46;
+        pointer-events: none;
+    }
+
+    .home-route-toggle {
+        display: none;
     }
 
     .profile-card {
@@ -300,6 +323,7 @@
     }
 
     .page-hero-copy {
+        min-height: 280px;
         padding-top: var(--spacing-md);
         padding-bottom: var(--spacing-md);
     }
@@ -308,10 +332,29 @@
         font-size: 34px;
     }
 
-    .home-stats,
     .stat-grid,
     .profile-stats {
         grid-template-columns: 1fr;
+    }
+
+    .home-actions {
+        align-items: stretch;
+        flex-direction: column;
+        max-width: 260px;
+        margin-top: var(--spacing-lg);
+    }
+
+    .home-actions .button-primary,
+    .home-actions .button-secondary {
+        width: 100%;
+    }
+
+    .home-route-art {
+        right: -118px;
+        bottom: 18px;
+        width: 250px;
+        flex-basis: 250px;
+        opacity: 0.30;
     }
 
     .stat-card {
@@ -353,17 +396,33 @@
     .visited-item {
         grid-template-columns: 34px minmax(0, 1fr);
         gap: var(--spacing-sm);
+        padding: var(--spacing-sm) 28px var(--spacing-sm) var(--spacing-sm);
     }
 
     .visited-rank {
+        align-self: start;
         width: 34px;
         height: 34px;
+        min-height: 34px;
+        border-radius: var(--rounded-full);
+        font-size: 22px;
     }
 
     .visited-title-row {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: var(--spacing-xxs);
+        gap: var(--spacing-xs);
+    }
+
+    .visited-title-row strong {
+        font-size: 20px;
+    }
+
+    .visited-meta {
+        margin-top: var(--spacing-xxs);
+        font-size: 12px;
+    }
+
+    .visited-stamp-track {
+        margin-left: 0;
     }
 
     .modal-card {

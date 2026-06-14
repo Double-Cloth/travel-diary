@@ -8,10 +8,10 @@
     <link rel="stylesheet" href="css/base.css?v=20260611-structure">
     <link rel="stylesheet" href="css/layout.css?v=20260611-structure">
     <link rel="stylesheet" href="css/components.css?v=20260611-structure">
-    <link rel="stylesheet" href="css/pages/home.css?v=20260611-structure">
+    <link rel="stylesheet" href="css/pages/home.css?v=20260614-home-interactive">
     <link rel="stylesheet" href="css/pages/location.css?v=20260611-structure">
-    <link rel="stylesheet" href="css/pages/profile.css?v=20260611-structure">
-    <link rel="stylesheet" href="css/responsive.css?v=20260611-structure">
+    <link rel="stylesheet" href="css/pages/profile.css?v=20260614-visited-hover-stable">
+    <link rel="stylesheet" href="css/responsive.css?v=20260614-home-effects">
 </head>
 <body data-page="home">
     <nav class="top-nav">
@@ -42,9 +42,64 @@
                 <p class="eyebrow">Travel Diary</p>
                 <h1 class="display-xl">把走过的城市，整理成一条清晰的时间线。</h1>
                 <p class="body-md">从日期、城市、省份和文字片段里重新看见自己的路线。每一次出发都被收进档案，方便检索、回看和继续补全。</p>
-                <div class="home-stats" id="homeStats">
-                    <!-- Injected by JS -->
+                <div class="home-actions">
+                    <a href="#journey" class="button-primary nav-goto">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        查看旅行路径
+                    </a>
+                    <a href="#profile" class="button-secondary nav-goto">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                            <path d="M4 19V7.5A2.5 2.5 0 0 1 6.5 5H20v14H6.5A2.5 2.5 0 0 1 4 16.5m0 0A2.5 2.5 0 0 0 6.5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        打开档案
+                    </a>
                 </div>
+            </div>
+            <div class="home-route-art" id="homeRouteArt" role="group" aria-label="动态旅行路线图">
+                <div class="home-route-meta" aria-hidden="true">
+                    <span>ROUTE</span>
+                    <strong>LIVE</strong>
+                </div>
+                <button class="home-route-toggle" id="homeRouteToggle" type="button" aria-label="切换路线高亮" aria-pressed="false">
+                    <span></span>
+                </button>
+                <svg class="home-route-svg" viewBox="0 0 420 420" focusable="false" aria-hidden="true">
+                    <defs>
+                        <linearGradient id="homeRouteGradient" x1="54" y1="294" x2="366" y2="132" gradientUnits="userSpaceOnUse">
+                            <stop offset="0" stop-color="var(--primary)"/>
+                            <stop offset="0.52" stop-color="var(--accent-amber)"/>
+                            <stop offset="1" stop-color="var(--accent-teal)"/>
+                        </linearGradient>
+                        <filter id="homeRouteGlow" x="-30%" y="-30%" width="160%" height="160%">
+                            <feGaussianBlur stdDeviation="5" result="blur"/>
+                            <feMerge>
+                                <feMergeNode in="blur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <path class="home-route-shadow" d="M54 294 C112 204 158 250 204 166 C242 98 302 78 366 132" pathLength="1"/>
+                    <path class="home-route-main" id="homeRouteMainPath" d="M54 294 C112 204 158 250 204 166 C242 98 302 78 366 132" pathLength="1"/>
+                    <path class="home-route-pulse" d="M54 294 C112 204 158 250 204 166 C242 98 302 78 366 132" pathLength="1"/>
+                    <path class="home-route-secondary" d="M104 326 C142 282 188 300 218 254 C250 204 294 216 336 178" pathLength="1"/>
+                    <path class="home-route-orbit" d="M92 128 C146 70 270 46 340 104 C402 156 374 278 296 330 C216 384 92 360 58 280 C32 218 48 174 92 128Z" pathLength="1"/>
+                </svg>
+                <span class="home-route-pin home-route-pin-a" aria-hidden="true"></span>
+                <span class="home-route-pin home-route-pin-b" aria-hidden="true"></span>
+                <span class="home-route-pin home-route-pin-c" aria-hidden="true"></span>
+                <span class="home-route-pin home-route-pin-d" aria-hidden="true"></span>
+                <span class="home-route-cursor" aria-hidden="true"></span>
+                <span class="home-route-scan" aria-hidden="true"></span>
+                <span class="home-route-spark" aria-hidden="true"></span>
+                <span class="home-route-radar" aria-hidden="true"></span>
+                <span class="home-route-dock" aria-hidden="true">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                </span>
             </div>
         </div>
     </section>
@@ -98,7 +153,11 @@
                     <label class="item-label">排序</label>
                     <button id="sortBtn" class="button-secondary full-width justify-between">
                         <span>最新优先</span>
-                        <span class="icon-sort" aria-hidden="true">↓</span>
+                        <span class="icon-sort" aria-hidden="true">
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" focusable="false">
+                                <path d="M8 2v12m0 0 5-5m-5 5-5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                            </svg>
+                        </span>
                     </button>
                 </div>
             </div>
@@ -129,7 +188,9 @@
 
         <div class="container section profile-content">
             <div class="profile-card">
-                <div class="profile-avatar" aria-hidden="true">旅</div>
+                <div class="profile-avatar">
+                    <img src="assets/images/profile-picture.png" alt="旅行者头像" loading="lazy">
+                </div>
                 <div class="profile-summary">
                     <p class="eyebrow">Archive summary</p>
                     <h2 class="display-sm">路线概览</h2>
@@ -150,6 +211,6 @@
         </div>
     </section>
 
-    <script type="module" src="js/app.js?v=20260611-structure"></script>
+    <script type="module" src="js/app.js?v=20260614-home-interactive"></script>
 </body>
 </html>
