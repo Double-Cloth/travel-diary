@@ -341,7 +341,7 @@ export function renderDiary() {
         return currentState.sortDesc ? b.localeCompare(a) : a.localeCompare(b);
     });
 
-    const yearColors = ['#cc785c', '#5db8a6', '#e8a55a', '#7b8cc4', '#9d7ba8', '#5a9e6f', '#c47d5a'];
+    const yearColors = ['#6750a4', '#006a6a', '#7d5700', '#625b71', '#7d5260', '#386a20', '#ba1a1a'];
     let colorIndex = 0;
 
     sortedYears.forEach(year => {
@@ -479,7 +479,7 @@ export function renderLocationPage(country, province, city) {
     matching
         .sort((a, b) => b.date.localeCompare(a.date))
         .forEach(record => {
-            entriesContainer.appendChild(createDiaryEntry(record, '#cc785c', false));
+            entriesContainer.appendChild(createDiaryEntry(record, '#6750a4', false));
         });
 }
 
@@ -603,7 +603,7 @@ function openEntryModal(record) {
         contentHtml += '<div class="modal-photos">';
         record.photos.forEach(photo => {
             const imgPath = `${record.photo_folder}/${photo}`;
-            const fallbackSvg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150"><rect fill="#f5f0e8" width="200" height="150"/><text fill="#8e8b82" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">No Image</text></svg>');
+            const fallbackSvg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150"><rect fill="#f7f2fa" width="200" height="150"/><text fill="#79747e" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">No Image</text></svg>');
             contentHtml += `<img src="${imgPath}" alt="${escapeHtml(photo)}" class="modal-photo" loading="lazy" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,${fallbackSvg}';">`;
         });
         contentHtml += '</div>';

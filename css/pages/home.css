@@ -1,68 +1,32 @@
 /* ==========================================================================
-   首页
+   首页 - Material 3 dashboard
    ========================================================================== */
 .home-page {
     position: relative;
     isolation: isolate;
-    height: calc(100dvh - var(--nav-height));
-    min-height: 620px;
+    min-height: calc(100dvh - var(--nav-height));
     overflow: hidden;
     background:
-        repeating-linear-gradient(118deg, rgba(204, 120, 92, 0.07) 0 1px, transparent 1px 120px),
-        repeating-linear-gradient(28deg, rgba(93, 184, 166, 0.06) 0 1px, transparent 1px 96px),
-        linear-gradient(135deg, var(--canvas) 0%, var(--surface-soft) 58%, var(--surface-card) 100%);
+        linear-gradient(90deg, rgba(202, 196, 208, 0.28) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(202, 196, 208, 0.20) 1px, transparent 1px),
+        var(--canvas);
+    background-size: 32px 32px;
 }
 
-.home-page::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background:
-        linear-gradient(100deg, rgba(250, 249, 245, 0.98) 0%, rgba(250, 249, 245, 0.76) 44%, rgba(250, 249, 245, 0.18) 100%),
-        linear-gradient(180deg, transparent 0%, rgba(204, 120, 92, 0.10) 100%);
-    pointer-events: none;
-}
-
-.home-page::after {
-    content: "";
-    position: absolute;
-    inset: 12% -6% auto auto;
-    z-index: -1;
-    width: min(52vw, 720px);
-    height: min(52vw, 720px);
-    border: 1px solid rgba(204, 120, 92, 0.16);
-    border-radius: var(--rounded-xl);
-    background:
-        linear-gradient(90deg, rgba(20, 20, 19, 0.06) 1px, transparent 1px),
-        linear-gradient(0deg, rgba(20, 20, 19, 0.05) 1px, transparent 1px);
-    background-size: 42px 42px;
-    transform: rotate(-8deg);
-    opacity: 0.44;
-    pointer-events: none;
-}
-
+.home-page::before,
+.home-page::after,
 .home-visual {
-    position: absolute;
-    inset: 0;
-    z-index: -3;
-    opacity: 0.22;
-    background:
-        linear-gradient(90deg, rgba(250, 249, 245, 0.86) 0%, rgba(250, 249, 245, 0.58) 48%, rgba(239, 233, 222, 0.28) 100%),
-        url("../../assets/images/home-hero-travel-diary.png") center right / cover no-repeat;
-    filter: saturate(1.04) contrast(1.03);
-    transform: scale(1.02);
-    animation: home-image-drift 18s ease-in-out infinite alternate;
+    display: none;
 }
 
 .home-hero {
     position: relative;
     z-index: 1;
-    min-height: 100%;
-    display: flex;
+    min-height: calc(100dvh - var(--nav-height));
+    display: grid;
+    grid-template-columns: minmax(0, 0.98fr) minmax(360px, 0.82fr);
     align-items: center;
-    justify-content: space-between;
-    gap: var(--spacing-xxl);
+    gap: clamp(32px, 6vw, 88px);
     padding-top: var(--spacing-xxl);
     padding-bottom: var(--spacing-xxl);
 }
@@ -70,12 +34,12 @@
 .home-copy {
     position: relative;
     z-index: 2;
-    max-width: 720px;
+    max-width: 680px;
 }
 
 .home-copy h1 {
-    max-width: 760px;
-    margin: var(--spacing-md) 0 var(--spacing-lg);
+    max-width: 720px;
+    margin: var(--spacing-lg) 0 var(--spacing-md);
     text-wrap: balance;
 }
 
@@ -95,120 +59,175 @@
 
 .home-actions .button-primary,
 .home-actions .button-secondary {
-    min-height: 44px;
-    padding: 0 18px;
+    min-height: 48px;
 }
 
 .home-actions svg {
     flex: none;
 }
 
+.home-summary-strip {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: var(--spacing-sm);
+    width: min(100%, 520px);
+    min-height: 96px;
+    align-items: center;
+    margin-top: var(--spacing-xxl);
+    padding: var(--spacing-lg);
+    border-radius: var(--rounded-lg);
+    background: var(--canvas);
+    box-shadow: var(--shadow-soft);
+}
+
+.home-summary-item {
+    min-width: 0;
+    min-height: 64px;
+    padding: var(--spacing-sm);
+    border-radius: var(--rounded-md);
+    background: transparent;
+    color: var(--ink);
+}
+
+.home-summary-item:nth-child(2) {
+    background: transparent;
+    color: var(--ink);
+}
+
+.home-summary-item:nth-child(3) {
+    background: transparent;
+    color: var(--ink);
+}
+
+.home-summary-item strong,
+.home-summary-item span {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
+.home-summary-item strong {
+    color: inherit;
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 1.1;
+    font-variant-numeric: tabular-nums;
+}
+
+.home-summary-item span {
+    margin-top: var(--spacing-xxs);
+    color: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1.3;
+}
+
 .home-route-art {
     --route-glow-x: 54%;
     --route-glow-y: 48%;
     --route-lift: 0px;
-    --route-panel-rotate: -3deg;
+    --route-panel-rotate: 0deg;
     --route-tilt-x: 0deg;
     --route-tilt-y: 0deg;
     position: relative;
-    flex: 0 0 min(34vw, 420px);
-    width: min(34vw, 420px);
-    aspect-ratio: 1;
-    margin-left: auto;
-    border: 1px solid rgba(250, 249, 245, 0.18);
-    border-radius: var(--rounded-lg);
+    justify-self: end;
+    flex: none;
+    width: min(100%, 560px);
+    aspect-ratio: 1.22;
+    margin-left: 0;
+    border: 0;
+    border-radius: var(--rounded-xl);
     background:
-        radial-gradient(circle at 74% 24%, rgba(232, 165, 90, 0.12), transparent 26%),
-        radial-gradient(circle at 26% 76%, rgba(93, 184, 166, 0.10), transparent 28%),
-        linear-gradient(160deg, rgba(250, 249, 245, 0.08) 0 1px, transparent 1px 100%),
-        linear-gradient(135deg, rgba(24, 23, 21, 0.96), rgba(37, 35, 32, 0.90)),
-        var(--surface-dark);
-    box-shadow: 0 28px 70px rgba(20, 20, 19, 0.20), inset 0 1px 0 rgba(250, 249, 245, 0.10);
+        radial-gradient(circle at 76% 18%, rgba(234, 221, 255, 0.92), transparent 28%),
+        linear-gradient(135deg, var(--surface-soft), var(--surface-card));
+    box-shadow: var(--shadow-hover);
     cursor: pointer;
     overflow: hidden;
     transform: perspective(900px) rotateX(var(--route-tilt-x)) rotateY(var(--route-tilt-y)) rotate(var(--route-panel-rotate)) translateY(var(--route-lift));
     transform-style: preserve-3d;
-    transition: border-color 0.22s ease, box-shadow 0.22s ease, transform 0.22s ease;
+    transition: box-shadow 0.22s ease, transform 0.22s ease;
     will-change: transform;
 }
 
 .home-route-art:hover,
 .home-route-art-active {
-    --route-lift: -6px;
-    border-color: rgba(204, 120, 92, 0.34);
-    box-shadow: 0 34px 82px rgba(20, 20, 19, 0.28), 0 0 0 1px rgba(204, 120, 92, 0.08);
+    --route-lift: -4px;
+    box-shadow: 0 8px 18px rgba(29, 27, 32, 0.18), 0 3px 8px rgba(29, 27, 32, 0.12);
 }
 
 .home-route-art:focus-within {
-    box-shadow: 0 34px 82px rgba(20, 20, 19, 0.28), var(--focus-ring);
+    box-shadow: var(--shadow-hover), var(--focus-ring);
 }
 
 .home-route-art::before,
 .home-route-art::after {
     content: "";
     position: absolute;
-    inset: 0;
     pointer-events: none;
 }
 
 .home-route-art::before {
+    inset: 24px;
+    border-radius: var(--rounded-lg);
     background:
-        radial-gradient(circle at var(--route-glow-x) var(--route-glow-y), rgba(204, 120, 92, 0.28), transparent 28%),
-        radial-gradient(circle at 72% 24%, rgba(232, 165, 90, 0.16), transparent 24%),
-        linear-gradient(120deg, rgba(250, 249, 245, 0.10) 0 1px, transparent 1px 100%),
-        linear-gradient(90deg, rgba(250, 249, 245, 0.08) 1px, transparent 1px),
-        linear-gradient(0deg, rgba(250, 249, 245, 0.06) 1px, transparent 1px);
-    background-size: 100% 100%, 100% 100%, 100% 100%, 34px 34px, 34px 34px;
-    mask-image: linear-gradient(145deg, rgba(0, 0, 0, 0.86), rgba(0, 0, 0, 0.18));
-    transition: opacity 0.22s ease;
+        linear-gradient(90deg, rgba(202, 196, 208, 0.35) 1px, transparent 1px),
+        linear-gradient(0deg, rgba(202, 196, 208, 0.28) 1px, transparent 1px),
+        var(--canvas);
+    background-size: 28px 28px;
 }
 
 .home-route-art::after {
-    inset: auto 0 0;
-    height: 42%;
-    background: linear-gradient(180deg, transparent, rgba(204, 120, 92, 0.16));
+    left: 42px;
+    right: 42px;
+    bottom: 42px;
+    height: 18px;
+    border-radius: var(--rounded-pill);
+    background:
+        linear-gradient(90deg, var(--primary) 0 34%, var(--accent-teal) 34% 58%, var(--accent-amber) 58% 100%);
+    opacity: 0.18;
 }
 
 .home-route-meta {
     position: absolute;
-    left: 18px;
-    top: 16px;
+    left: 36px;
+    top: 34px;
     z-index: 5;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
-    min-height: 28px;
-    padding: 0 10px;
-    border: 1px solid rgba(250, 249, 245, 0.12);
+    gap: var(--spacing-xs);
+    min-height: 32px;
+    padding: 0 14px;
+    border: 0;
     border-radius: var(--rounded-pill);
-    background: rgba(37, 35, 32, 0.76);
-    box-shadow: inset 0 1px 0 rgba(250, 249, 245, 0.08);
-    color: var(--on-dark-soft);
-    font-family: var(--font-code);
-    font-size: 11px;
+    background: var(--primary-container);
+    box-shadow: none;
+    color: var(--on-primary-container);
+    font-family: var(--font-sans);
+    font-size: 12px;
+    font-weight: 500;
     line-height: 1;
 }
 
 .home-route-meta strong {
-    color: var(--accent-teal);
-    font-weight: 400;
+    color: var(--primary);
+    font-weight: 500;
 }
 
 .home-route-toggle {
     position: absolute;
-    right: 16px;
-    top: 16px;
+    right: 36px;
+    top: 32px;
     z-index: 6;
     display: grid;
     place-items: center;
-    width: 34px;
-    height: 34px;
-    border: 1px solid rgba(250, 249, 245, 0.14);
+    width: 48px;
+    height: 48px;
+    border: 0;
     border-radius: var(--rounded-full);
-    background: rgba(37, 35, 32, 0.82);
-    color: var(--on-dark);
+    background: var(--primary);
+    color: var(--on-primary);
     cursor: pointer;
-    transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+    transition: background-color 0.18s ease, transform 0.18s ease;
 }
 
 .home-route-toggle span,
@@ -221,7 +240,7 @@
 
 .home-route-toggle span {
     position: relative;
-    width: 14px;
+    width: 16px;
     height: 2px;
 }
 
@@ -232,33 +251,31 @@
     left: 50%;
     top: 50%;
     width: 2px;
-    height: 14px;
+    height: 16px;
     transform: translate(-50%, -50%);
 }
 
 .home-route-toggle span::after {
-    width: 8px;
-    height: 8px;
+    width: 9px;
+    height: 9px;
     border: 2px solid currentColor;
     border-radius: var(--rounded-full);
     background: transparent;
-    transform: translate(-50%, -50%);
 }
 
 .home-route-toggle:hover,
 .home-route-toggle:focus-visible,
 .home-route-art-active .home-route-toggle {
-    border-color: rgba(204, 120, 92, 0.52);
-    background: var(--primary);
+    background: var(--primary-active);
     transform: rotate(8deg);
 }
 
 .home-route-svg {
     position: absolute;
-    inset: 7%;
+    inset: 12%;
     z-index: 2;
-    width: 86%;
-    height: 86%;
+    width: 76%;
+    height: 76%;
     overflow: visible;
 }
 
@@ -270,83 +287,59 @@
 }
 
 .home-summit-glow {
-    fill: url("#homeSummitGlow");
-    opacity: 0.78;
+    fill: var(--primary-container);
+    opacity: 0.72;
     transform-box: fill-box;
     transform-origin: center;
     animation: home-summit-glow 5.6s ease-in-out infinite;
 }
 
 .home-route-svg .home-mountain-back {
-    fill: rgba(250, 249, 245, 0.06);
-    stroke: rgba(250, 249, 245, 0.14);
+    fill: rgba(var(--primary-rgb), 0.08);
+    stroke: rgba(var(--primary-rgb), 0.18);
     stroke-width: 2;
 }
 
 .home-route-svg .home-mountain-main {
-    fill: url("#homeMountainFace");
-    stroke: rgba(250, 249, 245, 0.16);
+    fill: rgba(var(--primary-rgb), 0.12);
+    stroke: rgba(var(--primary-rgb), 0.22);
     stroke-width: 2;
-    filter: drop-shadow(0 16px 28px rgba(0, 0, 0, 0.22));
+    filter: none;
 }
 
 .home-route-svg .home-mountain-side {
-    fill: url("#homeMountainSide");
-    opacity: 0.92;
+    fill: rgba(0, 106, 106, 0.10);
+    opacity: 1;
 }
 
 .home-route-svg .home-mountain-snow {
-    fill: url("#homeSnowGradient");
-    stroke: rgba(250, 249, 245, 0.22);
+    fill: var(--canvas);
+    stroke: rgba(73, 69, 79, 0.16);
     stroke-width: 1.5;
 }
 
-.home-route-svg .home-mountain-highlight {
-    fill: rgba(250, 249, 245, 0.09);
-    stroke: none;
-    mix-blend-mode: screen;
-}
-
+.home-route-svg .home-mountain-highlight,
 .home-route-svg .home-mountain-shadow {
-    fill: rgba(0, 0, 0, 0.16);
+    fill: rgba(234, 221, 255, 0.35);
     stroke: none;
+    mix-blend-mode: normal;
 }
 
 .home-mountain-texture {
-    opacity: 0.54;
-    mix-blend-mode: screen;
-    animation: home-mountain-grain 6.8s ease-in-out infinite;
+    display: none;
 }
 
-.home-snow-glint {
-    stroke: rgba(250, 249, 245, 0.86);
-    stroke-width: 2;
-    stroke-dasharray: 0.15 0.85;
-    stroke-dashoffset: 1;
-    filter: drop-shadow(0 0 9px rgba(250, 249, 245, 0.38));
-    animation: home-snow-glint 4.8s ease-in-out infinite;
-}
-
-.home-mountain-ridge {
-    stroke: rgba(250, 249, 245, 0.24);
-    stroke-width: 2;
-    stroke-dasharray: 0.025 0.035;
-    opacity: 0.78;
-}
-
+.home-snow-glint,
+.home-mountain-ridge,
 .home-mountain-contour {
-    stroke: rgba(250, 249, 245, 0.16);
+    stroke: rgba(73, 69, 79, 0.18);
     stroke-width: 1.5;
-    stroke-dasharray: 0.02 0.045;
-}
-
-.home-mountain-contour-b {
-    opacity: 0.66;
+    opacity: 1;
 }
 
 .home-route-shadow {
-    stroke: rgba(250, 249, 245, 0.13);
-    stroke-width: 14;
+    stroke: rgba(var(--primary-rgb), 0.10);
+    stroke-width: 13;
 }
 
 .home-route-main,
@@ -358,156 +351,73 @@
 }
 
 .home-route-main {
-    stroke: url("#homeRouteGradient");
-    stroke-width: 4.5;
-    filter: url("#homeRouteGlow");
-    animation: home-route-reveal 2.2s cubic-bezier(0.2, 0.8, 0.2, 1) forwards, home-route-breathe 3.6s ease-in-out 2.2s infinite;
+    stroke: var(--primary);
+    stroke-width: 5;
+    filter: none;
+    animation: home-route-reveal 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) forwards, home-route-breathe 3.6s ease-in-out 1.8s infinite;
 }
 
 .home-route-secondary {
-    stroke: rgba(250, 249, 245, 0.22);
+    stroke: rgba(73, 69, 79, 0.25);
     stroke-width: 2;
-    opacity: 0.76;
-    animation: home-route-reveal 2.4s cubic-bezier(0.2, 0.8, 0.2, 1) 0.45s forwards;
+    opacity: 1;
+    animation: home-route-reveal 2s cubic-bezier(0.2, 0.8, 0.2, 1) 0.35s forwards;
 }
 
 .home-route-pulse {
-    stroke: var(--on-dark);
-    stroke-width: 3.5;
+    stroke: var(--canvas);
+    stroke-width: 3;
     stroke-dasharray: 0.065 0.935;
     stroke-dashoffset: 1;
-    opacity: 0.74;
-    filter: drop-shadow(0 0 11px rgba(250, 249, 245, 0.62));
+    opacity: 0.76;
+    filter: none;
     animation: home-route-flow 2.9s linear infinite;
 }
 
 .home-route-descent {
-    stroke: rgba(93, 184, 166, 0.44);
-    stroke-width: 2.4;
+    stroke: var(--accent-teal);
+    stroke-width: 3;
     stroke-dasharray: 0.045 0.065;
-    opacity: 0.70;
-    filter: drop-shadow(0 0 8px rgba(93, 184, 166, 0.24));
+    opacity: 0.72;
+    filter: none;
     animation: home-route-descent-flow 5.6s linear 1.8s infinite;
 }
 
 .home-route-steps circle,
 .home-descent-steps circle {
-    fill: var(--on-dark);
-    opacity: 0.34;
+    fill: var(--primary);
+    opacity: 0.42;
     transform-box: fill-box;
     transform-origin: center;
-    filter: drop-shadow(0 0 7px rgba(250, 249, 245, 0.28));
+    filter: none;
     animation: home-route-step-glow 4.4s ease-in-out infinite;
-}
-
-.home-route-steps circle:nth-child(2) {
-    animation-delay: 0.28s;
-}
-
-.home-route-steps circle:nth-child(3) {
-    animation-delay: 0.56s;
-}
-
-.home-route-steps circle:nth-child(4) {
-    animation-delay: 0.84s;
-}
-
-.home-route-steps circle:nth-child(5) {
-    animation-delay: 1.12s;
 }
 
 .home-descent-steps circle {
     fill: var(--accent-teal);
-    opacity: 0.26;
     animation-name: home-descent-step-glow;
 }
 
-.home-descent-steps circle:nth-child(1) {
-    animation-delay: 2.1s;
-}
-
-.home-descent-steps circle:nth-child(2) {
-    animation-delay: 2.38s;
-}
-
-.home-descent-steps circle:nth-child(3) {
-    animation-delay: 2.66s;
-}
-
-.home-descent-steps circle:nth-child(4) {
-    animation-delay: 2.94s;
-}
-
 .home-route-orbit {
-    stroke: rgba(250, 249, 245, 0.26);
+    stroke: rgba(73, 69, 79, 0.28);
     stroke-width: 2;
     stroke-dasharray: 0.04 0.08;
-    opacity: 0.72;
+    opacity: 1;
     animation: home-route-orbit 8s linear infinite;
 }
 
 .home-climber {
-    transform: translate(86px, 340px) rotate(-18deg);
-    transform-origin: 0 0;
-    filter: drop-shadow(0 7px 12px rgba(0, 0, 0, 0.36));
-    animation: home-climber-climb 9.4s ease-in-out infinite;
-}
-
-.home-climber-figure {
-    transform-origin: 0 0;
-    animation: home-climber-direction 9.4s steps(1, end) infinite;
-}
-
-.home-climber-head {
-    fill: var(--on-dark);
-    stroke: var(--surface-dark);
-    stroke-width: 2;
-}
-
-.home-climber-scarf {
-    stroke: var(--primary);
-    stroke-width: 3;
-    transform-origin: -6px -16px;
-    animation: home-scarf-wave 1.8s ease-in-out infinite;
-}
-
-.home-climber .home-climber-pack {
-    fill: var(--primary);
-    stroke: rgba(250, 249, 245, 0.36);
-    stroke-width: 2;
-}
-
-.home-climber-body,
-.home-climber-limb {
-    stroke: var(--on-dark);
-    stroke-width: 5;
-}
-
-.home-climber-arm-a,
-.home-climber-leg-b {
-    transform-origin: 2px 0;
-    animation: home-climber-limb-a 1.45s ease-in-out infinite;
-}
-
-.home-climber-arm-b,
-.home-climber-leg-a {
-    transform-origin: 2px 0;
-    animation: home-climber-limb-b 1.45s ease-in-out infinite;
-}
-
-.home-climber-pole {
-    stroke: var(--accent-teal);
-    stroke-width: 3;
+    display: none;
 }
 
 .home-summit-flag path:first-child {
-    stroke: rgba(250, 249, 245, 0.78);
+    stroke: var(--body);
     stroke-width: 3;
 }
 
 .home-summit-flag path:last-child {
     fill: var(--primary);
-    stroke: rgba(250, 249, 245, 0.56);
+    stroke: var(--canvas);
     stroke-width: 2;
     transform-origin: 318px 76px;
     animation: home-flag-wave 2.8s ease-in-out infinite;
@@ -518,29 +428,29 @@
     z-index: 3;
     width: 14px;
     height: 14px;
-    border: 2px solid var(--on-dark);
+    border: 3px solid var(--canvas);
     border-radius: var(--rounded-full);
     background: var(--primary);
-    box-shadow: 0 0 0 6px rgba(204, 120, 92, 0.14), 0 8px 18px rgba(0, 0, 0, 0.28);
+    box-shadow: var(--shadow-soft);
     animation: home-pin-pulse 2.6s ease-in-out infinite;
     transition: box-shadow 0.22s ease, transform 0.22s ease;
 }
 
 .home-route-pin-a {
-    left: 20%;
-    top: 78%;
+    left: 22%;
+    top: 76%;
 }
 
 .home-route-pin-b {
-    left: 39%;
-    top: 60%;
+    left: 43%;
+    top: 56%;
     background: var(--accent-teal);
     animation-delay: 0.4s;
 }
 
 .home-route-pin-c {
-    left: 57%;
-    top: 43%;
+    left: 61%;
+    top: 39%;
     background: var(--accent-amber);
     animation-delay: 0.8s;
 }
@@ -548,6 +458,7 @@
 .home-route-pin-d {
     left: 76%;
     top: 24%;
+    background: var(--primary);
     animation-delay: 1.2s;
 }
 
@@ -564,10 +475,11 @@
 
 .home-route-art:hover .home-route-pin,
 .home-route-art-active .home-route-pin {
-    box-shadow: 0 0 0 8px rgba(204, 120, 92, 0.18), 0 0 24px rgba(204, 120, 92, 0.36);
+    box-shadow: 0 0 0 8px rgba(var(--primary-rgb), 0.14);
 }
 
-.home-route-cursor {
+.home-route-cursor,
+.home-route-radar {
     display: none;
 }
 
@@ -578,7 +490,7 @@
     top: 18%;
     z-index: 2;
     height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(250, 249, 245, 0.78), transparent);
+    background: linear-gradient(90deg, transparent, rgba(var(--primary-rgb), 0.42), transparent);
     opacity: 0;
     animation: home-route-scan 4.2s ease-in-out infinite;
 }
@@ -591,73 +503,34 @@
     width: 8px;
     height: 8px;
     border-radius: var(--rounded-full);
-    background: var(--on-dark);
-    box-shadow: 0 0 16px rgba(250, 249, 245, 0.80), 0 0 32px rgba(204, 120, 92, 0.42);
+    background: var(--primary);
+    box-shadow: 0 0 16px rgba(var(--primary-rgb), 0.48);
     animation: home-spark-travel 9.4s cubic-bezier(0.45, 0, 0.16, 1) infinite;
-}
-
-.home-route-radar {
-    position: absolute;
-    z-index: 2;
-    right: 14%;
-    top: 17%;
-    width: 92px;
-    height: 38px;
-    border: 1px solid rgba(250, 249, 245, 0.12);
-    border-radius: var(--rounded-pill);
-    background: linear-gradient(180deg, rgba(250, 249, 245, 0.12), rgba(250, 249, 245, 0.045));
-    box-shadow: inset 0 1px 0 rgba(250, 249, 245, 0.10), 0 14px 28px rgba(0, 0, 0, 0.18);
-    opacity: 0.70;
-    transform: translateZ(18px);
-    animation: home-cloud-drift 6s ease-in-out infinite;
-}
-
-.home-route-radar::before,
-.home-route-radar::after {
-    content: "";
-    position: absolute;
-    bottom: 8px;
-    width: 34px;
-    height: 34px;
-    border: 1px solid rgba(250, 249, 245, 0.14);
-    border-radius: inherit;
-    background: rgba(250, 249, 245, 0.06);
-}
-
-.home-route-radar::before {
-    left: 14px;
-}
-
-.home-route-radar::after {
-    right: 18px;
-    bottom: 12px;
-    width: 28px;
-    height: 28px;
 }
 
 .home-route-dock {
     position: absolute;
-    right: 18px;
-    bottom: 18px;
-    left: 18px;
+    right: 42px;
+    bottom: 42px;
+    left: 42px;
     z-index: 5;
     display: grid;
     grid-template-columns: 1.4fr 0.8fr 1fr 0.55fr;
-    gap: 7px;
+    gap: 8px;
     height: 24px;
     align-items: end;
-    padding: 7px;
-    border: 1px solid rgba(250, 249, 245, 0.10);
-    border-radius: var(--rounded-md);
-    background: linear-gradient(180deg, rgba(37, 35, 32, 0.68), rgba(24, 23, 21, 0.52));
-    box-shadow: inset 0 1px 0 rgba(250, 249, 245, 0.08);
+    padding: 4px;
+    border: 0;
+    border-radius: var(--rounded-pill);
+    background: transparent;
+    box-shadow: none;
 }
 
 .home-route-dock span {
     display: block;
-    height: 5px;
+    height: 8px;
     border-radius: var(--rounded-pill);
-    background: rgba(250, 249, 245, 0.18);
+    background: var(--surface-cream-strong);
     overflow: hidden;
     position: relative;
 }
@@ -668,13 +541,13 @@
     inset: 0 auto 0 0;
     width: 44%;
     border-radius: inherit;
-    background: linear-gradient(90deg, var(--primary), var(--accent-amber));
+    background: var(--primary);
     animation: home-dock-meter 2.8s ease-in-out infinite;
 }
 
 .home-route-dock span:nth-child(2)::before {
     width: 72%;
-    background: linear-gradient(90deg, var(--accent-teal), rgba(250, 249, 245, 0.72));
+    background: var(--accent-teal);
     animation-delay: 0.3s;
 }
 
@@ -685,7 +558,7 @@
 
 .home-route-dock span:nth-child(4)::before {
     width: 86%;
-    background: var(--accent-teal);
+    background: var(--accent-amber);
     animation-delay: 0.9s;
 }
 
@@ -713,68 +586,24 @@
     animation-duration: 2.8s;
 }
 
-.home-route-art-active .home-climber,
-.home-route-art-active .home-climber-figure,
 .home-route-art-active .home-route-spark {
     animation-duration: 6.2s;
-}
-
-.home-route-art-active .home-route-radar {
-    animation-duration: 4.2s;
 }
 
 .home-route-art-active .home-route-dock span::before {
     animation-duration: 1.8s;
 }
 
-@keyframes home-image-drift {
-    from {
-        transform: scale(1.02) translate3d(0, 0, 0);
-    }
-
-    to {
-        transform: scale(1.06) translate3d(-14px, 0, 0);
-    }
-}
-
 @keyframes home-summit-glow {
     0%,
     100% {
-        opacity: 0.58;
+        opacity: 0.54;
         transform: scale(0.98);
     }
 
     50% {
-        opacity: 0.82;
+        opacity: 0.84;
         transform: scale(1.04);
-    }
-}
-
-@keyframes home-mountain-grain {
-    0%,
-    100% {
-        opacity: 0.42;
-    }
-
-    50% {
-        opacity: 0.62;
-    }
-}
-
-@keyframes home-snow-glint {
-    0% {
-        stroke-dashoffset: 1;
-        opacity: 0.20;
-    }
-
-    38%,
-    62% {
-        opacity: 0.88;
-    }
-
-    100% {
-        stroke-dashoffset: 0;
-        opacity: 0.24;
     }
 }
 
@@ -794,12 +623,12 @@
     0%,
     100% {
         opacity: 0.86;
-        stroke-width: 4.5;
+        stroke-width: 5;
     }
 
     50% {
         opacity: 1;
-        stroke-width: 5.6;
+        stroke-width: 6;
     }
 }
 
@@ -836,12 +665,12 @@
 @keyframes home-route-step-glow {
     0%,
     100% {
-        opacity: 0.18;
+        opacity: 0.22;
         transform: scale(0.86);
     }
 
     44% {
-        opacity: 0.72;
+        opacity: 0.76;
         transform: scale(1.24);
     }
 }
@@ -849,12 +678,12 @@
 @keyframes home-descent-step-glow {
     0%,
     100% {
-        opacity: 0.12;
+        opacity: 0.16;
         transform: scale(0.82);
     }
 
     48% {
-        opacity: 0.62;
+        opacity: 0.70;
         transform: scale(1.18);
     }
 }
@@ -866,13 +695,13 @@
     }
 
     50% {
-        transform: scale(1.18);
+        transform: scale(1.14);
     }
 }
 
 @keyframes home-pin-ring {
     0% {
-        opacity: 0.42;
+        opacity: 0.32;
         transform: scale(0.58);
     }
 
@@ -880,169 +709,6 @@
     100% {
         opacity: 0;
         transform: scale(1.45);
-    }
-}
-
-@keyframes home-scarf-wave {
-    0%,
-    100% {
-        transform: rotate(-4deg);
-    }
-
-    50% {
-        transform: rotate(8deg);
-    }
-}
-
-@keyframes home-climber-limb-a {
-    0%,
-    100% {
-        transform: rotate(-5deg);
-    }
-
-    50% {
-        transform: rotate(7deg);
-    }
-}
-
-@keyframes home-climber-limb-b {
-    0%,
-    100% {
-        transform: rotate(6deg);
-    }
-
-    50% {
-        transform: rotate(-6deg);
-    }
-}
-
-@keyframes home-climber-direction {
-    0%,
-    58%,
-    96%,
-    100% {
-        transform: scaleX(1);
-    }
-
-    60%,
-    94% {
-        transform: scaleX(-1);
-    }
-}
-
-@keyframes home-climber-climb {
-    0% {
-        transform: translate(86px, 340px) rotate(-18deg);
-    }
-
-    14% {
-        transform: translate(150px, 267px) rotate(-28deg);
-    }
-
-    28% {
-        transform: translate(205px, 206px) rotate(-16deg);
-    }
-
-    42% {
-        transform: translate(256px, 168px) rotate(-30deg);
-    }
-
-    54% {
-        transform: translate(316px, 106px) rotate(-10deg);
-    }
-
-    60% {
-        transform: translate(322px, 102px) rotate(4deg);
-    }
-
-    70% {
-        transform: translate(344px, 154px) rotate(22deg);
-    }
-
-    80% {
-        transform: translate(366px, 238px) rotate(30deg);
-    }
-
-    90% {
-        transform: translate(286px, 344px) rotate(12deg);
-    }
-
-    100% {
-        transform: translate(86px, 340px) rotate(-18deg);
-    }
-}
-
-@keyframes home-spark-travel {
-    0% {
-        left: 20%;
-        top: 78%;
-        opacity: 0;
-        transform: scale(0.6);
-    }
-
-    14% {
-        opacity: 1;
-    }
-
-    28% {
-        left: 49%;
-        top: 50%;
-        transform: scale(1);
-    }
-
-    44% {
-        left: 62%;
-        top: 40%;
-        transform: scale(0.82);
-    }
-
-    58% {
-        left: 76%;
-        top: 24%;
-        opacity: 1;
-        transform: scale(1.1);
-    }
-
-    72% {
-        left: 84%;
-        top: 36%;
-        opacity: 0.78;
-        transform: scale(0.78);
-    }
-
-    84% {
-        left: 87%;
-        top: 58%;
-        opacity: 0.86;
-        transform: scale(0.92);
-    }
-
-    94% {
-        left: 68%;
-        top: 80%;
-        opacity: 0.64;
-        transform: scale(0.70);
-    }
-
-    100% {
-        left: 20%;
-        top: 78%;
-        opacity: 0;
-        transform: scale(0.7);
-    }
-}
-
-@keyframes home-cloud-drift {
-    0% {
-        transform: translate3d(0, 0, 18px);
-    }
-
-    50% {
-        transform: translate3d(-14px, 5px, 18px);
-    }
-
-    100% {
-        transform: translate3d(0, 0, 18px);
     }
 }
 
@@ -1088,8 +754,47 @@
     }
 }
 
+@keyframes home-spark-travel {
+    0% {
+        left: 22%;
+        top: 76%;
+        opacity: 0;
+        transform: scale(0.6);
+    }
+
+    14% {
+        opacity: 1;
+    }
+
+    28% {
+        left: 49%;
+        top: 50%;
+        transform: scale(1);
+    }
+
+    58% {
+        left: 76%;
+        top: 24%;
+        opacity: 1;
+        transform: scale(1.1);
+    }
+
+    84% {
+        left: 87%;
+        top: 58%;
+        opacity: 0.86;
+        transform: scale(0.92);
+    }
+
+    100% {
+        left: 22%;
+        top: 76%;
+        opacity: 0;
+        transform: scale(0.7);
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
-    .home-visual,
     .home-route-main,
     .home-route-descent,
     .home-route-secondary,
@@ -1097,21 +802,12 @@
     .home-route-orbit,
     .home-route-pin,
     .home-summit-glow,
-    .home-mountain-texture,
     .home-snow-glint,
     .home-route-steps circle,
     .home-descent-steps circle,
-    .home-climber,
-    .home-climber-figure,
-    .home-climber-scarf,
-    .home-climber-arm-a,
-    .home-climber-arm-b,
-    .home-climber-leg-a,
-    .home-climber-leg-b,
     .home-summit-flag path:last-child,
     .home-route-scan,
     .home-route-spark,
-    .home-route-radar,
     .home-route-dock span::before {
         animation: none;
     }

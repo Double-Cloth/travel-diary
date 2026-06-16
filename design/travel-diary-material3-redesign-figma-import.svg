@@ -1,0 +1,385 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="6960" height="2780" viewBox="0 0 6960 2780">
+  <defs>
+    <style>
+      .bg { fill:#e7e0ec; }
+      .surface { fill:#fffbff; }
+      .surface-dim { fill:#ded8e1; }
+      .surface-container-low { fill:#f7f2fa; }
+      .surface-container { fill:#f3edf7; }
+      .surface-container-high { fill:#ece6f0; }
+      .surface-container-highest { fill:#e6e0e9; }
+      .primary { fill:#6750a4; }
+      .on-primary { fill:#ffffff; }
+      .primary-container { fill:#eaddff; }
+      .on-primary-container { fill:#21005d; }
+      .secondary-container { fill:#e8def8; }
+      .on-secondary-container { fill:#1d192b; }
+      .tertiary-container { fill:#ffd8e4; }
+      .on-tertiary-container { fill:#31111d; }
+      .error-container { fill:#f9dedc; }
+      .outline { stroke:#79747e; stroke-width:1; }
+      .outline-variant { stroke:#cac4d0; stroke-width:1; }
+      .on-surface { fill:#1d1b20; }
+      .on-surface-var { fill:#49454f; }
+      .muted { fill:#79747e; }
+      .inv-surface { fill:#322f35; }
+      .inv-on-surface { fill:#f5eff7; }
+      .blue { fill:#006a6a; }
+      .green { fill:#386a20; }
+      .amber { fill:#7d5700; }
+      .h1 { font-family:Roboto, Arial, sans-serif; font-size:57px; font-weight:400; letter-spacing:-.25px; }
+      .h2 { font-family:Roboto, Arial, sans-serif; font-size:45px; font-weight:400; }
+      .h3 { font-family:Roboto, Arial, sans-serif; font-size:36px; font-weight:400; }
+      .headline { font-family:Roboto, Arial, sans-serif; font-size:28px; font-weight:400; }
+      .title-lg { font-family:Roboto, Arial, sans-serif; font-size:22px; font-weight:400; }
+      .title-md { font-family:Roboto, Arial, sans-serif; font-size:16px; font-weight:500; letter-spacing:.15px; }
+      .title-sm { font-family:Roboto, Arial, sans-serif; font-size:14px; font-weight:500; letter-spacing:.1px; }
+      .body-lg { font-family:Roboto, Arial, sans-serif; font-size:16px; font-weight:400; letter-spacing:.5px; }
+      .body-md { font-family:Roboto, Arial, sans-serif; font-size:14px; font-weight:400; letter-spacing:.25px; }
+      .body-sm { font-family:Roboto, Arial, sans-serif; font-size:12px; font-weight:400; letter-spacing:.4px; }
+      .label-lg { font-family:Roboto, Arial, sans-serif; font-size:14px; font-weight:500; letter-spacing:.1px; }
+      .label-md { font-family:Roboto, Arial, sans-serif; font-size:12px; font-weight:500; letter-spacing:.5px; }
+      .mono { font-family:"Roboto Mono", Consolas, monospace; font-size:12px; }
+      .frame-title { font-family:Roboto, Arial, sans-serif; font-size:18px; font-weight:600; fill:#49454f; }
+      .shadow-1 { filter:drop-shadow(0 1px 3px rgba(0,0,0,.18)); }
+      .shadow-2 { filter:drop-shadow(0 3px 8px rgba(0,0,0,.18)); }
+      .route { fill:none; stroke:#6750a4; stroke-width:5; stroke-linecap:round; stroke-linejoin:round; }
+      .route-alt { fill:none; stroke:#006a6a; stroke-width:3; stroke-linecap:round; stroke-dasharray:8 10; }
+      .thin { stroke:#cac4d0; stroke-width:1; fill:none; }
+    </style>
+    <pattern id="m3grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" stroke="#cac4d0" stroke-width="1" opacity=".22" fill="none"/>
+    </pattern>
+  </defs>
+
+  <rect width="6960" height="2780" class="bg"/>
+
+  <!-- reusable notes -->
+  <g id="legend" transform="translate(80 30)">
+    <text class="title-md on-surface" x="0" y="0">Travel Diary Material 3 Redesign</text>
+    <text class="body-sm on-surface-var" x="0" y="24">使用 Material 3 Design Kit 语义：Surface / Primary Container / Navigation Rail / Cards / Chips / Search / Dialog / Bottom Sheet。此稿刻意不使用项目 DESIGN.md。</text>
+  </g>
+
+  <!-- Desktop home -->
+  <g id="desktop-home-m3" transform="translate(80 100)">
+    <text x="0" y="-24" class="frame-title">Desktop 1440 / Home - M3 dashboard shell</text>
+    <rect width="1440" height="920" rx="28" class="surface shadow-2"/>
+    <rect width="1440" height="920" rx="28" fill="url(#m3grid)" opacity=".6"/>
+    <rect width="96" height="920" rx="28" class="surface-container"/>
+    <rect x="24" y="24" width="48" height="48" rx="16" class="primary"/>
+    <path d="M48 33l5 14 14 5-14 5-5 14-5-14-14-5 14-5z" class="on-primary"/>
+    <g transform="translate(20 130)">
+      <rect width="56" height="64" rx="28" class="secondary-container"/>
+      <text x="18" y="28" class="title-md on-secondary-container">⌂</text>
+      <text x="13" y="52" class="label-md on-secondary-container">首页</text>
+      <text x="15" y="128" class="label-md on-surface-var">路径</text>
+      <text x="15" y="204" class="label-md on-surface-var">档案</text>
+    </g>
+    <rect x="96" y="0" width="1344" height="88" rx="28" class="surface"/>
+    <text x="136" y="54" class="title-lg on-surface">Travel Diary</text>
+    <rect x="880" y="22" width="400" height="48" rx="24" class="surface-container-high"/>
+    <text x="928" y="53" class="body-md on-surface-var">搜索城市、日记或年份</text>
+    <circle cx="1346" cy="46" r="20" class="secondary-container"/>
+    <text x="1341" y="53" class="label-lg on-secondary-container">D</text>
+    <text x="136" y="180" class="h2 on-surface">旅行路线总览</text>
+    <text x="136" y="224" class="body-lg on-surface-var">把每一篇日记组织成可筛选、可回看的 Material 3 旅行档案。</text>
+    <rect x="136" y="268" width="184" height="48" rx="24" class="primary"/>
+    <text x="172" y="298" class="label-lg on-primary">查看旅行路径</text>
+    <rect x="336" y="268" width="142" height="48" rx="24" fill="none" class="outline"/>
+    <text x="371" y="298" class="label-lg on-primary-container">打开档案</text>
+    <g transform="translate(136 370)">
+      <rect width="280" height="148" rx="24" class="primary-container shadow-1"/>
+      <text x="24" y="42" class="label-md on-primary-container">JOURNALS</text>
+      <text x="24" y="96" class="h3 on-primary-container">29</text>
+      <text x="24" y="124" class="body-md on-primary-container">已归档旅行记录</text>
+      <rect x="304" width="280" height="148" rx="24" class="secondary-container shadow-1"/>
+      <text x="328" y="42" class="label-md on-secondary-container">PLACES</text>
+      <text x="328" y="96" class="h3 on-secondary-container">24</text>
+      <text x="328" y="124" class="body-md on-secondary-container">城市与地点</text>
+      <rect x="608" width="280" height="148" rx="24" class="tertiary-container shadow-1"/>
+      <text x="632" y="42" class="label-md on-tertiary-container">YEARS</text>
+      <text x="632" y="96" class="h3 on-tertiary-container">2024-26</text>
+      <text x="632" y="124" class="body-md on-tertiary-container">时间跨度</text>
+    </g>
+    <g transform="translate(760 142)">
+      <rect width="566" height="420" rx="28" class="surface-container-low shadow-2"/>
+      <rect x="24" y="24" width="518" height="372" rx="24" class="surface"/>
+      <path d="M76 318 C128 244 160 234 220 190 C288 140 314 104 438 72" class="route"/>
+      <path d="M438 72 C486 160 462 264 386 318 C296 382 154 360 76 318" class="route-alt"/>
+      <circle cx="76" cy="318" r="10" class="primary" stroke="#fff" stroke-width="4"/>
+      <circle cx="220" cy="190" r="10" class="blue" stroke="#fff" stroke-width="4"/>
+      <circle cx="438" cy="72" r="10" fill="#7d5700" stroke="#fff" stroke-width="4"/>
+      <rect x="48" y="332" width="150" height="16" rx="8" class="primary-container"/>
+      <rect x="220" y="332" width="110" height="16" rx="8" class="secondary-container"/>
+      <rect x="352" y="332" width="142" height="16" rx="8" class="tertiary-container"/>
+    </g>
+    <g transform="translate(136 594)">
+      <text x="0" y="0" class="headline on-surface">最近记录</text>
+      <rect y="36" width="378" height="180" rx="24" class="surface-container-low shadow-1"/>
+      <text x="24" y="76" class="title-md on-surface">陕西 西安</text>
+      <text x="24" y="108" class="body-md on-surface-var">古城墙、碑林与夜色里的长安路。</text>
+      <rect x="24" y="132" width="74" height="32" rx="16" class="secondary-container"/>
+      <text x="46" y="153" class="label-md on-secondary-container">2026</text>
+      <rect x="408" y="36" width="378" height="180" rx="24" class="surface-container-low shadow-1"/>
+      <text x="432" y="76" class="title-md on-surface">河南 郑州</text>
+      <text x="432" y="108" class="body-md on-surface-var">一张票据、一段路线，归入年度档案。</text>
+      <rect x="432" y="132" width="74" height="32" rx="16" class="secondary-container"/>
+      <text x="454" y="153" class="label-md on-secondary-container">2026</text>
+    </g>
+    <circle cx="1328" cy="812" r="40" class="primary shadow-2"/>
+    <text x="1318" y="827" class="h3 on-primary">＋</text>
+  </g>
+
+  <!-- Desktop journey -->
+  <g id="desktop-journey-m3" transform="translate(1600 100)">
+    <text x="0" y="-24" class="frame-title">Desktop 1440 / Journey - M3 navigation rail + side sheet</text>
+    <rect width="1440" height="1080" rx="28" class="surface shadow-2"/>
+    <rect width="96" height="1080" rx="28" class="surface-container"/>
+    <rect x="24" y="24" width="48" height="48" rx="16" class="primary"/>
+    <text x="38" y="55" class="title-md on-primary">TD</text>
+    <rect x="20" y="148" width="56" height="64" rx="28" class="secondary-container"/>
+    <text x="33" y="176" class="label-lg on-secondary-container">⌁</text>
+    <text x="15" y="200" class="label-md on-secondary-container">路径</text>
+    <text x="15" y="280" class="label-md on-surface-var">首页</text>
+    <text x="15" y="360" class="label-md on-surface-var">档案</text>
+    <rect x="128" y="32" width="1180" height="64" rx="32" class="surface-container-high"/>
+    <text x="176" y="72" class="body-lg on-surface-var">搜索城市或记录...</text>
+    <text x="128" y="164" class="h3 on-surface">旅行时间线</text>
+    <text x="128" y="206" class="body-lg on-surface-var">年份、排序和地点筛选保持功能不变，视觉改为 Material 3 控制台。</text>
+    <g transform="translate(128 248)">
+      <rect width="316" height="720" rx="28" class="surface-container-low shadow-1"/>
+      <text x="24" y="44" class="title-md on-surface">筛选</text>
+      <rect x="24" y="76" width="268" height="56" rx="16" class="surface"/>
+      <text x="72" y="111" class="body-md on-surface-var">搜索城市或记录</text>
+      <text x="24" y="176" class="label-lg on-surface-var">年份</text>
+      <rect x="24" y="204" width="268" height="44" rx="22" class="secondary-container"/>
+      <text x="52" y="232" class="label-lg on-secondary-container">全部时间</text>
+      <text x="52" y="294" class="label-lg on-surface-var">2026</text>
+      <text x="52" y="350" class="label-lg on-surface-var">2025</text>
+      <text x="52" y="406" class="label-lg on-surface-var">2024</text>
+      <text x="24" y="506" class="label-lg on-surface-var">排序</text>
+      <rect x="24" y="536" width="268" height="44" rx="22" fill="none" class="outline"/>
+      <text x="52" y="564" class="label-lg on-primary-container">最新优先</text>
+    </g>
+    <g transform="translate(492 248)">
+      <rect width="812" height="720" rx="28" class="surface-container-low"/>
+      <text x="32" y="54" class="title-lg on-surface">2026</text>
+      <line x1="52" y1="82" x2="52" y2="610" class="thin"/>
+      <circle cx="52" cy="116" r="8" class="primary"/>
+      <rect x="92" y="92" width="656" height="128" rx="24" class="surface shadow-1"/>
+      <text x="120" y="136" class="title-md on-surface">05月22日 · 陕西 西安</text>
+      <text x="120" y="170" class="body-md on-surface-var">古城墙、碑林与夜色里的长安路。</text>
+      <rect x="120" y="184" width="72" height="28" rx="14" class="primary-container"/>
+      <text x="144" y="202" class="label-md on-primary-container">陕西</text>
+      <circle cx="52" cy="282" r="8" class="blue"/>
+      <rect x="92" y="258" width="656" height="128" rx="24" class="surface shadow-1"/>
+      <text x="120" y="302" class="title-md on-surface">05月01日 · 河南 郑州</text>
+      <text x="120" y="336" class="body-md on-surface-var">一张票据、一段路线，归入年度档案。</text>
+      <rect x="120" y="350" width="72" height="28" rx="14" class="secondary-container"/>
+      <text x="144" y="368" class="label-md on-secondary-container">河南</text>
+      <text x="32" y="456" class="title-lg on-surface">2025</text>
+      <circle cx="52" cy="500" r="8" fill="#7d5700"/>
+      <rect x="92" y="476" width="656" height="128" rx="24" class="surface shadow-1"/>
+      <text x="120" y="520" class="title-md on-surface">11月07日 · 上海 上海</text>
+      <text x="120" y="554" class="body-md on-surface-var">城市再次到访标记以标签方式保留。</text>
+      <rect x="120" y="568" width="96" height="28" rx="14" class="tertiary-container"/>
+      <text x="143" y="586" class="label-md on-tertiary-container">再次到访</text>
+    </g>
+    <circle cx="1328" cy="940" r="40" class="primary shadow-2"/>
+    <text x="1318" y="955" class="h3 on-primary">＋</text>
+  </g>
+
+  <!-- Desktop location -->
+  <g id="desktop-location-m3" transform="translate(3120 100)">
+    <text x="0" y="-24" class="frame-title">Desktop 1440 / Location archive - M3 detail page</text>
+    <rect width="1440" height="920" rx="28" class="surface shadow-2"/>
+    <rect x="56" y="56" width="1328" height="240" rx="28" class="primary-container"/>
+    <text x="96" y="104" class="label-lg on-primary-container">Location archive</text>
+    <text x="96" y="178" class="h2 on-primary-container">浙江 · 杭州</text>
+    <text x="96" y="222" class="body-lg on-primary-container">2 次到访 · 1 座城市 · 最近 2025-07-17</text>
+    <rect x="1188" y="88" width="140" height="48" rx="24" fill="none" stroke="#6750a4"/>
+    <text x="1238" y="119" class="label-lg on-primary-container">返回</text>
+    <g transform="translate(1010 144)">
+      <rect width="260" height="112" rx="24" class="surface shadow-2"/>
+      <path d="M36 78 C82 44 118 66 168 34 C196 18 214 24 230 12" class="route"/>
+      <circle cx="36" cy="78" r="7" class="primary" stroke="#fff" stroke-width="3"/>
+      <circle cx="168" cy="34" r="7" class="blue" stroke="#fff" stroke-width="3"/>
+    </g>
+    <text x="80" y="380" class="headline on-surface">地点记录</text>
+    <rect x="80" y="420" width="920" height="132" rx="24" class="surface-container-low shadow-1"/>
+    <text x="116" y="466" class="title-md on-surface">2025-07-17 · 浙江 杭州</text>
+    <text x="116" y="502" class="body-md on-surface-var">西湖边的雨、巷口的灯和一段缓慢步行。</text>
+    <rect x="116" y="516" width="82" height="28" rx="14" class="secondary-container"/>
+    <text x="140" y="534" class="label-md on-secondary-container">杭州</text>
+    <rect x="80" y="580" width="920" height="132" rx="24" class="surface-container-low shadow-1"/>
+    <text x="116" y="626" class="title-md on-surface">2025-04-03 · 浙江 杭州</text>
+    <text x="116" y="662" class="body-md on-surface-var">同一地点的再次记录在地点档案中自然聚合。</text>
+    <rect x="1040" y="420" width="288" height="292" rx="28" class="surface-container"/>
+    <text x="1072" y="468" class="title-md on-surface">地点摘要</text>
+    <text x="1072" y="528" class="h3 on-surface">2</text>
+    <text x="1128" y="526" class="body-md on-surface-var">次到访</text>
+    <text x="1072" y="592" class="h3 on-surface">1</text>
+    <text x="1128" y="590" class="body-md on-surface-var">座城市</text>
+  </g>
+
+  <!-- Desktop profile -->
+  <g id="desktop-profile-m3" transform="translate(4640 100)">
+    <text x="0" y="-24" class="frame-title">Desktop 1440 / Profile - M3 profile + country cards</text>
+    <rect width="1440" height="1080" rx="28" class="surface shadow-2"/>
+    <rect x="0" y="0" width="1440" height="180" rx="28" class="surface-container"/>
+    <text x="72" y="82" class="h3 on-surface">旅行者档案</text>
+    <text x="72" y="124" class="body-lg on-surface-var">国家、省份、城市分布汇总为 Material 3 统计面板。</text>
+    <rect x="72" y="238" width="1296" height="220" rx="28" class="surface-container-low shadow-1"/>
+    <circle cx="150" cy="348" r="56" class="primary-container"/>
+    <text x="132" y="362" class="headline on-primary-container">D</text>
+    <text x="240" y="310" class="label-lg on-surface-var">Archive summary</text>
+    <text x="240" y="356" class="headline on-surface">路线概览</text>
+    <rect x="240" y="382" width="120" height="48" rx="16" class="primary-container"/>
+    <text x="264" y="412" class="label-lg on-primary-container">29 记录</text>
+    <rect x="376" y="382" width="110" height="48" rx="16" class="secondary-container"/>
+    <text x="404" y="412" class="label-lg on-secondary-container">1 国家</text>
+    <rect x="502" y="382" width="120" height="48" rx="16" class="tertiary-container"/>
+    <text x="530" y="412" class="label-lg on-tertiary-container">24 城市</text>
+    <rect x="1000" y="322" width="288" height="56" rx="28" class="surface"/>
+    <text x="1056" y="357" class="body-md on-surface-var">搜索国家、省份或城市</text>
+    <text x="72" y="540" class="headline on-surface">已访问地点</text>
+    <rect x="72" y="586" width="1296" height="360" rx="28" class="surface-container"/>
+    <text x="112" y="644" class="title-lg on-surface">中国</text>
+    <text x="1196" y="642" class="body-md on-surface-var">18 个省份 · 29 次到访</text>
+    <rect x="112" y="690" width="360" height="112" rx="24" class="surface shadow-1"/>
+    <text x="144" y="735" class="title-md on-surface">云南</text>
+    <text x="144" y="770" class="body-md on-surface-var">7 次到访 · 5 座城市</text>
+    <rect x="500" y="690" width="360" height="112" rx="24" class="surface shadow-1"/>
+    <text x="532" y="735" class="title-md on-surface">北京</text>
+    <text x="532" y="770" class="body-md on-surface-var">2 次到访 · 1 座城市</text>
+    <rect x="888" y="690" width="360" height="112" rx="24" class="surface shadow-1"/>
+    <text x="920" y="735" class="title-md on-surface">上海</text>
+    <text x="920" y="770" class="body-md on-surface-var">2 次到访 · 1 座城市</text>
+  </g>
+
+  <!-- Desktop modal -->
+  <g id="desktop-modal-m3" transform="translate(80 1240)">
+    <text x="0" y="-24" class="frame-title">Desktop 1440 / Diary Modal - M3 dialog</text>
+    <rect width="1440" height="920" rx="28" class="surface shadow-2"/>
+    <rect width="1440" height="920" rx="28" fill="#000000" opacity=".38"/>
+    <rect x="296" y="96" width="848" height="720" rx="28" class="surface shadow-2"/>
+    <text x="352" y="172" class="headline on-surface">古城墙、碑林与夜色里的长安路。</text>
+    <text x="352" y="210" class="body-md on-surface-var">2026-05-22 · 陕西 西安</text>
+    <rect x="1052" y="128" width="48" height="48" rx="24" class="surface-container"/>
+    <text x="1068" y="159" class="title-lg on-surface-var">×</text>
+    <line x1="352" x2="1088" y1="248" y2="248" class="thin"/>
+    <text x="352" y="304" class="body-lg on-surface">正文保持 Markdown 阅读体验，段落、列表和照片区都遵循 M3 Dialog 的层级。</text>
+    <text x="352" y="342" class="body-lg on-surface-var">图片以媒体卡片方式呈现，关闭、遮罩和滚动行为保持不变。</text>
+    <rect x="352" y="412" width="216" height="156" rx="16" class="surface-container-low"/>
+    <path d="M382 528 C428 478 452 466 528 438" class="route-alt"/>
+    <rect x="596" y="412" width="216" height="156" rx="16" class="surface-container-low"/>
+    <path d="M626 528 C672 478 696 466 772 438" class="route-alt"/>
+    <rect x="840" y="412" width="216" height="156" rx="16" class="surface-container-low"/>
+    <path d="M870 528 C916 478 940 466 1016 438" class="route-alt"/>
+    <rect x="908" y="690" width="88" height="40" rx="20" class="primary"/>
+    <text x="932" y="716" class="label-lg on-primary">完成</text>
+  </g>
+
+  <!-- Mobile home -->
+  <g id="mobile-home-m3" transform="translate(1600 1240)">
+    <text x="0" y="-24" class="frame-title">Mobile 390 / Home - M3 compact shell</text>
+    <rect width="390" height="844" rx="28" class="surface shadow-2"/>
+    <rect width="390" height="88" rx="28" class="surface-container"/>
+    <text x="24" y="55" class="title-lg on-surface">Travel Diary</text>
+    <circle cx="346" cy="44" r="20" class="primary-container"/>
+    <text x="340" y="51" class="label-lg on-primary-container">D</text>
+    <text x="24" y="152" class="h3 on-surface">旅行路线总览</text>
+    <text x="24" y="194" class="body-md on-surface-var">以 Material 3 卡片和动态色组织每一次出发。</text>
+    <rect x="24" y="226" width="154" height="48" rx="24" class="primary"/>
+    <text x="50" y="256" class="label-lg on-primary">查看路径</text>
+    <rect x="24" y="306" width="342" height="220" rx="28" class="primary-container"/>
+    <path d="M70 470 C118 406 148 390 204 354 C254 322 286 298 326 342" class="route"/>
+    <path d="M326 342 C350 414 290 492 70 470" class="route-alt"/>
+    <rect x="24" y="558" width="160" height="100" rx="24" class="surface-container-low"/>
+    <text x="48" y="602" class="headline on-surface">29</text>
+    <text x="48" y="634" class="body-sm on-surface-var">旅行记录</text>
+    <rect x="206" y="558" width="160" height="100" rx="24" class="surface-container-low"/>
+    <text x="230" y="602" class="headline on-surface">24</text>
+    <text x="230" y="634" class="body-sm on-surface-var">城市</text>
+    <rect x="0" y="764" width="390" height="80" rx="28" class="surface-container-high"/>
+    <text x="54" y="812" class="label-md on-primary-container">首页</text>
+    <text x="168" y="812" class="label-md on-surface-var">路径</text>
+    <text x="286" y="812" class="label-md on-surface-var">档案</text>
+    <circle cx="326" cy="704" r="34" class="primary shadow-2"/>
+    <text x="317" y="716" class="headline on-primary">＋</text>
+  </g>
+
+  <!-- Mobile journey + bottom sheet -->
+  <g id="mobile-journey-m3" transform="translate(2040 1240)">
+    <text x="0" y="-24" class="frame-title">Mobile 390 / Journey + M3 filter bottom sheet</text>
+    <rect width="390" height="844" rx="28" class="surface shadow-2"/>
+    <rect width="390" height="88" rx="28" class="surface-container"/>
+    <text x="24" y="55" class="title-lg on-surface">旅行时间线</text>
+    <rect x="24" y="116" width="342" height="56" rx="28" class="surface-container-high"/>
+    <text x="72" y="151" class="body-md on-surface-var">搜索城市或记录</text>
+    <text x="24" y="218" class="title-lg on-surface">2026</text>
+    <rect x="24" y="246" width="342" height="128" rx="24" class="surface-container-low shadow-1"/>
+    <text x="52" y="292" class="title-md on-surface">05月22日 · 陕西 西安</text>
+    <text x="52" y="326" class="body-md on-surface-var">古城墙、碑林与夜色里的长安路。</text>
+    <rect x="52" y="338" width="72" height="28" rx="14" class="primary-container"/>
+    <text x="76" y="356" class="label-md on-primary-container">陕西</text>
+    <rect x="24" y="394" width="342" height="128" rx="24" class="surface-container-low shadow-1"/>
+    <text x="52" y="440" class="title-md on-surface">05月01日 · 河南 郑州</text>
+    <text x="52" y="474" class="body-md on-surface-var">一张票据、一段路线，归入年度档案。</text>
+    <rect x="0" y="424" width="390" height="420" rx="28" class="surface shadow-2"/>
+    <rect x="158" y="444" width="74" height="4" rx="2" class="outline-variant"/>
+    <text x="24" y="494" class="title-lg on-surface">筛选路线</text>
+    <rect x="24" y="526" width="342" height="48" rx="24" class="secondary-container"/>
+    <text x="52" y="557" class="label-lg on-secondary-container">全部时间</text>
+    <text x="52" y="620" class="label-lg on-surface-var">2026</text>
+    <text x="52" y="676" class="label-lg on-surface-var">2025</text>
+    <text x="52" y="732" class="label-lg on-surface-var">2024</text>
+  </g>
+
+  <!-- Mobile profile -->
+  <g id="mobile-profile-m3" transform="translate(2480 1240)">
+    <text x="0" y="-24" class="frame-title">Mobile 390 / Profile - M3 cards</text>
+    <rect width="390" height="844" rx="28" class="surface shadow-2"/>
+    <rect width="390" height="168" rx="28" class="surface-container"/>
+    <text x="24" y="78" class="headline on-surface">旅行者档案</text>
+    <text x="24" y="116" class="body-md on-surface-var">路线概览与已访问地点。</text>
+    <rect x="24" y="204" width="342" height="176" rx="28" class="surface-container-low shadow-1"/>
+    <text x="52" y="252" class="title-md on-surface">路线概览</text>
+    <rect x="52" y="284" width="118" height="56" rx="18" class="primary-container"/>
+    <text x="76" y="318" class="label-lg on-primary-container">29 记录</text>
+    <rect x="188" y="284" width="118" height="56" rx="18" class="secondary-container"/>
+    <text x="214" y="318" class="label-lg on-secondary-container">24 城市</text>
+    <rect x="24" y="414" width="342" height="56" rx="28" class="surface-container-high"/>
+    <text x="72" y="449" class="body-md on-surface-var">搜索国家、省份或城市</text>
+    <rect x="24" y="508" width="342" height="216" rx="28" class="surface-container"/>
+    <text x="52" y="562" class="title-lg on-surface">中国</text>
+    <text x="52" y="592" class="body-sm on-surface-var">18 个省份 · 29 次到访</text>
+    <rect x="52" y="620" width="286" height="56" rx="18" class="surface"/>
+    <text x="76" y="654" class="title-md on-surface">云南</text>
+    <text x="226" y="654" class="body-sm on-surface-var">7 次到访</text>
+    <rect x="0" y="764" width="390" height="80" rx="28" class="surface-container-high"/>
+    <text x="54" y="812" class="label-md on-surface-var">首页</text>
+    <text x="168" y="812" class="label-md on-surface-var">路径</text>
+    <text x="286" y="812" class="label-md on-primary-container">档案</text>
+  </g>
+
+  <!-- Mobile modal -->
+  <g id="mobile-modal-m3" transform="translate(2920 1240)">
+    <text x="0" y="-24" class="frame-title">Mobile 390 / Diary Modal - M3 full-screen dialog</text>
+    <rect width="390" height="844" rx="28" class="surface shadow-2"/>
+    <rect width="390" height="844" rx="28" fill="#000000" opacity=".38"/>
+    <rect x="12" y="42" width="366" height="760" rx="28" class="surface shadow-2"/>
+    <rect x="310" y="66" width="48" height="48" rx="24" class="surface-container"/>
+    <text x="326" y="97" class="title-lg on-surface-var">×</text>
+    <text x="36" y="122" class="headline on-surface">古城墙、碑林与夜色</text>
+    <text x="36" y="158" class="body-sm on-surface-var">2026-05-22 · 陕西 西安</text>
+    <line x1="36" x2="342" y1="190" y2="190" class="thin"/>
+    <text x="36" y="238" class="body-md on-surface">正文保持 Markdown 阅读排版，</text>
+    <text x="36" y="266" class="body-md on-surface-var">图片与段落使用 M3 Dialog 层级。</text>
+    <rect x="36" y="318" width="306" height="170" rx="18" class="surface-container-low"/>
+    <path d="M66 446 C112 396 150 376 306 340" class="route-alt"/>
+    <rect x="36" y="510" width="306" height="170" rx="18" class="surface-container-low"/>
+    <rect x="254" y="720" width="88" height="40" rx="20" class="primary"/>
+    <text x="278" y="746" class="label-lg on-primary">完成</text>
+  </g>
+</svg>

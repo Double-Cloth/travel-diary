@@ -1,39 +1,72 @@
 /* ==========================================================================
-   DESIGN.md 变量与全局基础
+   Material 3 变量与全局基础
    ========================================================================== */
 :root {
-    --primary: #cc785c;
-    --primary-active: #a9583e;
-    --primary-disabled: #e6dfd8;
-    --accent-teal: #5db8a6;
-    --accent-amber: #e8a55a;
+    --primary: #6750a4;
+    --primary-active: #4f378b;
+    --primary-rgb: 103, 80, 164;
+    --primary-disabled: #e8def8;
+    --primary-container: #eaddff;
+    --on-primary-container: #21005d;
 
-    --ink: #141413;
-    --body: #3d3d3a;
-    --body-strong: #252523;
-    --muted: #6c6a64;
-    --muted-soft: #8e8b82;
+    --secondary: #625b71;
+    --secondary-active: #4a4458;
+    --secondary-rgb: 98, 91, 113;
+    --on-secondary: #ffffff;
+    --secondary-container: #e8def8;
+    --on-secondary-container: #1d192b;
+
+    --tertiary: #7d5260;
+    --tertiary-active: #633b48;
+    --tertiary-rgb: 125, 82, 96;
+    --on-tertiary: #ffffff;
+    --tertiary-container: #ffd8e4;
+    --on-tertiary-container: #31111d;
+
+    --amber: #7d5260;
+    --amber-rgb: 125, 82, 96;
+    --amber-container: #ffd8e4;
+    --on-amber-container: #31111d;
+
+    --info: #625b71;
+    --info-container: #e8def8;
+    --on-info-container: #1d192b;
+
+    --accent-teal: #006a6a;
+    --accent-amber: #7d5700;
+
+    --ink: #1d1b20;
+    --body: #49454f;
+    --body-strong: #1d1b20;
+    --muted: #79747e;
+    --muted-soft: #938f99;
     --on-primary: #ffffff;
-    --on-dark: #faf9f5;
-    --on-dark-soft: #a09d96;
+    --on-dark: #f5eff7;
+    --on-dark-soft: #cac4d0;
 
-    --canvas: #faf9f5;
-    --surface-soft: #f5f0e8;
-    --surface-card: #efe9de;
-    --surface-cream-strong: #e8e0d2;
-    --surface-dark: #181715;
-    --surface-dark-elevated: #252320;
-    --surface-dark-soft: #1f1e1b;
-    --hairline: #e6dfd8;
-    --hairline-soft: #ebe6df;
+    --canvas: #fffbff;
+    --surface-soft: #f7f2fa;
+    --surface-card: #f3edf7;
+    --surface-cool: #f7f2fa;
+    --surface-warm: #fffbff;
+    --surface-gold: #f3edf7;
+    --surface-cream-strong: #e6e0e9;
+    --surface-dark: #322f35;
+    --surface-dark-elevated: #49454f;
+    --surface-dark-soft: #3b383e;
+    --hairline: #cac4d0;
+    --hairline-soft: #e7e0ec;
 
-    --success: #5db872;
-    --warning: #d4a017;
-    --error: #c64545;
+    --success: #386a20;
+    --success-container: #b7f397;
+    --on-success-container: #062100;
+    --warning: #7d5700;
+    --error: #ba1a1a;
+    --error-container: #ffdad6;
 
-    --font-display: "Copernicus", "Tiempos Headline", "Cormorant Garamond", "EB Garamond", Georgia, serif;
-    --font-sans: "StyreneB", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    --font-code: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --font-display: "Roboto", "Google Sans", "Segoe UI", Arial, sans-serif;
+    --font-sans: "Roboto", "Google Sans", "Segoe UI", Arial, sans-serif;
+    --font-code: "Roboto Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
     --spacing-xxs: 4px;
     --spacing-xs: 8px;
@@ -42,20 +75,21 @@
     --spacing-lg: 24px;
     --spacing-xl: 32px;
     --spacing-xxl: 48px;
-    --spacing-section: 96px;
+    --spacing-section: 72px;
 
-    --rounded-xs: 4px;
-    --rounded-sm: 6px;
-    --rounded-md: 8px;
-    --rounded-lg: 12px;
-    --rounded-xl: 16px;
+    --rounded-xs: 8px;
+    --rounded-sm: 12px;
+    --rounded-md: 16px;
+    --rounded-lg: 24px;
+    --rounded-xl: 28px;
     --rounded-pill: 9999px;
     --rounded-full: 9999px;
 
-    --shadow-soft: 0 14px 38px rgba(20, 20, 19, 0.06);
-    --shadow-hover: 0 18px 46px rgba(20, 20, 19, 0.09);
-    --focus-ring: 0 0 0 3px rgba(204, 120, 92, 0.16);
-    --nav-height: 64px;
+    --shadow-soft: 0 1px 3px rgba(29, 27, 32, 0.14), 0 1px 2px rgba(29, 27, 32, 0.12);
+    --shadow-hover: 0 4px 10px rgba(29, 27, 32, 0.18), 0 1px 3px rgba(29, 27, 32, 0.12);
+    --shadow-dialog: 0 18px 48px rgba(29, 27, 32, 0.24);
+    --focus-ring: 0 0 0 3px rgba(var(--primary-rgb), 0.22);
+    --nav-height: 80px;
 }
 
 * {
@@ -74,13 +108,14 @@ body {
     min-width: 320px;
     overflow-x: hidden;
     background:
-        linear-gradient(180deg, var(--surface-soft) 0, var(--canvas) 360px),
+        radial-gradient(circle at 12% 8%, rgba(var(--primary-rgb), 0.12), transparent 30%),
+        linear-gradient(180deg, #fdf8ff 0, var(--canvas) 340px),
         var(--canvas);
     color: var(--body);
     font-family: var(--font-sans);
     font-size: 16px;
     font-weight: 400;
-    line-height: 1.55;
+    line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
 }
@@ -115,13 +150,13 @@ input:focus-visible,
 }
 
 ::selection {
-    background: rgba(204, 120, 92, 0.22);
+    background: rgba(var(--secondary-rgb), 0.22);
     color: var(--ink);
 }
 
 .container {
-    width: min(100%, 1220px);
-    max-width: 1220px;
+    width: min(100%, 1240px);
+    max-width: 1240px;
     margin: 0 auto;
     padding: 0 var(--spacing-lg);
 }
@@ -143,9 +178,9 @@ h1.display-xl,
 .display-xl {
     color: var(--ink);
     font-family: var(--font-display);
-    font-size: 64px;
+    font-size: 57px;
     font-weight: 400;
-    line-height: 1.05;
+    line-height: 1.12;
     letter-spacing: 0;
 }
 
@@ -153,9 +188,9 @@ h1.display-lg,
 .display-lg {
     color: var(--ink);
     font-family: var(--font-display);
-    font-size: 48px;
+    font-size: 45px;
     font-weight: 400;
-    line-height: 1.1;
+    line-height: 1.16;
     letter-spacing: 0;
 }
 
@@ -165,7 +200,7 @@ h2.display-sm,
     font-family: var(--font-display);
     font-size: 28px;
     font-weight: 400;
-    line-height: 1.2;
+    line-height: 1.25;
     letter-spacing: 0;
 }
 
@@ -175,24 +210,26 @@ h2.display-sm,
     font-size: 16px;
     font-weight: 400;
     line-height: 1.55;
+    letter-spacing: 0;
 }
 
 .eyebrow {
     display: inline-flex;
     align-items: center;
     width: fit-content;
-    min-height: 28px;
-    padding: 0 10px;
-    border: 1px solid rgba(204, 120, 92, 0.22);
+    min-height: 32px;
+    padding: 0 14px;
+    border: 0;
     border-radius: var(--rounded-pill);
-    background: rgba(204, 120, 92, 0.10);
-    color: var(--primary-active);
+    background: var(--primary-container);
+    color: var(--on-primary-container);
     font-family: var(--font-sans);
     font-size: 12px;
     font-weight: 500;
-    line-height: 1.4;
+    line-height: 1;
     letter-spacing: 0;
-    text-transform: uppercase;
+    text-transform: none;
+    white-space: nowrap;
 }
 
 .full-width {

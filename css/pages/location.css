@@ -1,36 +1,52 @@
 /* ==========================================================================
-   地点详情子视图
+   地点详情子视图 - Material 3
    ========================================================================== */
 .location-hero {
     grid-column: 1 / -1;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--spacing-md);
-    margin-bottom: var(--spacing-lg);
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
+    gap: var(--spacing-lg);
+    margin-bottom: var(--spacing-xl);
     padding: var(--spacing-xl);
-    border: 1px solid var(--hairline);
-    border-radius: var(--rounded-lg);
-    background:
-        linear-gradient(120deg, var(--canvas), var(--surface-soft));
+    border: 0;
+    border-radius: var(--rounded-xl);
+    background: var(--primary-container);
+    color: var(--on-primary-container);
+    box-shadow: none;
+}
+
+.location-back {
+    grid-column: 1;
+    grid-row: 1;
+    width: fit-content;
+    border-color: rgba(var(--primary-rgb), 0.34);
+    color: var(--on-primary-container);
 }
 
 .location-head {
+    grid-column: 1;
     display: flex;
     min-width: 0;
     flex-direction: column;
-    margin-top: var(--spacing-xs);
+    margin-top: var(--spacing-sm);
+}
+
+.location-head .eyebrow {
+    background: rgba(255, 251, 255, 0.72);
+    color: var(--on-primary-container);
 }
 
 .location-head .display-lg {
-    margin-top: var(--spacing-sm);
+    margin-top: var(--spacing-md);
+    color: var(--on-primary-container);
     overflow-wrap: anywhere;
     word-break: break-word;
 }
 
 .location-sub {
-    margin-top: var(--spacing-xs);
-    color: var(--muted);
+    margin-top: var(--spacing-sm);
+    color: var(--on-primary-container);
     font-family: var(--font-sans);
     font-size: 16px;
 }
@@ -44,10 +60,9 @@
 }
 
 .location-entries .diary-entry {
-    margin-bottom: var(--spacing-sm);
+    margin-bottom: var(--spacing-md);
 }
 
-.location-entries .diary-entry::before,
 .location-entries .diary-entry::after {
     display: none;
 }
