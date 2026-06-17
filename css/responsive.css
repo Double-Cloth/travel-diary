@@ -80,11 +80,14 @@
         gap: var(--spacing-xs);
         width: auto;
         max-width: none;
+        max-height: calc(100dvh - var(--nav-height) - var(--spacing-lg));
         margin-left: 0;
         padding: var(--spacing-sm);
         border-radius: var(--rounded-xl);
         background: var(--surface-card);
         box-shadow: var(--shadow-hover);
+        overflow: auto;
+        overscroll-behavior: contain;
         opacity: 0;
         pointer-events: none;
         transform: translateY(-8px);
@@ -106,12 +109,21 @@
         visibility: visible;
     }
 
+    .container.section.page-layout,
+    .profile-content {
+        padding-left: var(--spacing-md);
+        padding-right: var(--spacing-md);
+    }
+
     .page-hero {
         min-height: auto;
     }
 
     .page-hero-copy {
-        min-height: 220px;
+        min-height: 216px;
+        flex-direction: column;
+        align-items: flex-start;
+        justify-content: center;
         padding-top: var(--spacing-xl);
         padding-bottom: var(--spacing-xl);
     }
@@ -122,14 +134,8 @@
     }
 
     .page-hero-actions {
-        flex-direction: column;
-        align-items: flex-start;
-    }
-
-    .container.section.page-layout,
-    .profile-content {
-        padding-left: var(--spacing-md);
-        padding-right: var(--spacing-md);
+        justify-content: flex-start;
+        width: 100%;
     }
 
     .home-page {
@@ -141,6 +147,14 @@
         padding-top: var(--spacing-xl);
         padding-bottom: var(--spacing-xl);
         gap: var(--spacing-xl);
+        width: 100%;
+        min-width: 0;
+        overflow: hidden;
+    }
+
+    .home-copy {
+        width: 100%;
+        max-width: calc(100vw - var(--spacing-md) - var(--spacing-md));
     }
 
     .home-copy h1 {
@@ -151,25 +165,37 @@
     }
 
     .home-copy .body-md,
-    .page-hero-copy .body-md {
+    .page-header .body-md {
         font-size: 16px;
     }
 
     .home-summary-strip {
         width: 100%;
+        max-width: calc(100vw - var(--spacing-md) - var(--spacing-md));
         min-height: 84px;
         margin-top: var(--spacing-xl);
-        padding: var(--spacing-md);
+        gap: var(--spacing-xs);
+        padding: var(--spacing-sm);
     }
 
     .home-summary-item strong {
-        font-size: 22px;
+        font-size: 20px;
+    }
+
+    .home-summary-item {
+        min-height: 72px;
+        padding: var(--spacing-sm);
+    }
+
+    .home-summary-item span {
+        font-size: 12px;
     }
 
     .home-actions {
         align-items: stretch;
         flex-direction: column;
-        max-width: 260px;
+        width: min(100%, 360px);
+        max-width: none;
         margin-top: var(--spacing-lg);
     }
 
@@ -180,6 +206,7 @@
 
     .home-route-art {
         width: min(100%, 360px);
+        max-width: calc(100vw - var(--spacing-md) - var(--spacing-md));
         justify-self: center;
         pointer-events: auto;
     }
@@ -227,6 +254,11 @@
         display: inline-flex;
     }
 
+    .main-content {
+        width: 100%;
+        min-width: 0;
+    }
+
     .sidebar {
         position: fixed;
         left: 0;
@@ -240,11 +272,12 @@
         height: auto;
         padding: var(--spacing-lg) var(--spacing-md) calc(var(--spacing-lg) + env(safe-area-inset-bottom));
         border-radius: var(--rounded-xl) var(--rounded-xl) 0 0;
-        background: var(--canvas);
+        background: var(--surface-container-lowest);
         box-shadow: var(--shadow-dialog);
         transform: translateY(110%);
         transition: transform 0.28s ease;
         overflow: auto;
+        overscroll-behavior: contain;
         display: block;
     }
 
@@ -274,6 +307,7 @@
     #diaryContainer {
         --timeline-axis-x: -22px;
         padding-left: 40px;
+        padding-right: var(--spacing-xs);
     }
 
     #diaryContainer::before {
@@ -330,6 +364,13 @@
         line-height: 1.18;
     }
 
+    .page-hero-copy .display-lg {
+        max-width: 11em;
+        font-size: 32px;
+        line-height: 1.16;
+        text-wrap: balance;
+    }
+
     h2.display-sm,
     .display-sm {
         font-size: 24px;
@@ -373,6 +414,7 @@
     #diaryContainer {
         --timeline-axis-x: -18px;
         padding-left: 30px;
+        padding-right: var(--spacing-xs);
     }
 
     #diaryContainer::before {
@@ -383,6 +425,14 @@
         grid-template-columns: 1fr;
         row-gap: var(--spacing-sm);
         padding: var(--spacing-md);
+    }
+
+    .home-summary-strip {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .home-summary-item:last-child {
+        grid-column: 1 / -1;
     }
 
     .entry-date time {

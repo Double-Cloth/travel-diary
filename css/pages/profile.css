@@ -16,8 +16,8 @@
     border: 0;
     border-radius: var(--rounded-xl);
     background:
-        radial-gradient(circle at 82% 26%, rgba(var(--primary-rgb), 0.12), transparent 28%),
-        var(--surface-cool);
+        radial-gradient(circle at 82% 26%, rgba(var(--primary-rgb), 0.08), transparent 28%),
+        linear-gradient(120deg, var(--surface-container-low), var(--canvas));
     box-shadow: var(--shadow-soft);
     overflow: hidden;
 }
@@ -31,10 +31,10 @@
     height: 140px;
     border-radius: var(--rounded-xl);
     background:
-        radial-gradient(circle at 20% 68%, rgba(var(--primary-rgb), 0.18) 0 8px, transparent 9px),
-        radial-gradient(circle at 60% 36%, rgba(0, 106, 106, 0.18) 0 8px, transparent 9px),
-        linear-gradient(120deg, transparent 24%, rgba(var(--primary-rgb), 0.18) 25%, transparent 26%);
-    opacity: 0.72;
+        radial-gradient(circle at 20% 68%, rgba(var(--primary-rgb), 0.12) 0 8px, transparent 9px),
+        radial-gradient(circle at 60% 36%, rgba(var(--tertiary-rgb), 0.10) 0 8px, transparent 9px),
+        linear-gradient(120deg, transparent 24%, rgba(var(--primary-rgb), 0.10) 25%, transparent 26%);
+    opacity: 0.58;
     pointer-events: none;
 }
 
@@ -68,6 +68,7 @@
 .profile-summary {
     position: relative;
     z-index: 1;
+    width: 100%;
     min-width: 0;
 }
 
@@ -111,7 +112,7 @@
 }
 
 .visited-search .text-input {
-    background: var(--surface-cool);
+    background: var(--surface-container-high);
 }
 
 .visited-list {
@@ -129,13 +130,13 @@
 
 .visited-country {
     padding: var(--spacing-xl);
-    border: 0;
+    border: 1px solid var(--outline-variant);
     border-radius: var(--rounded-xl);
-    background: var(--surface-warm);
+    background: var(--surface-container-low);
 }
 
 .visited-country:nth-child(2n) {
-    background: var(--surface-card);
+    background: var(--surface-container-lowest);
 }
 
 .visited-country-head {
@@ -187,9 +188,9 @@
     width: 100%;
     min-height: 108px;
     padding: var(--spacing-md);
-    border: 0;
+    border: 1px solid var(--outline-variant);
     border-radius: var(--rounded-lg);
-    background: var(--canvas);
+    background: var(--surface-container-lowest);
     box-shadow: var(--shadow-soft);
     overflow: hidden;
 }
@@ -217,8 +218,8 @@
 }
 
 .visited-item-button:hover {
-    background: var(--surface-cool);
-    box-shadow: var(--shadow-hover);
+    background: var(--surface-container-low);
+    box-shadow: var(--shadow-soft);
     transform: translateY(-1px);
 }
 
@@ -272,6 +273,7 @@
 .visited-main {
     display: flex;
     flex-direction: column;
+    width: 100%;
     min-width: 0;
 }
 
@@ -329,7 +331,7 @@
 }
 
 .visited-stamp:nth-child(even) {
-    background: var(--accent-teal);
+    background: var(--tertiary);
 }
 
 .visited-stamp:nth-child(3n) {

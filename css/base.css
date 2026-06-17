@@ -2,65 +2,86 @@
    Material 3 变量与全局基础
    ========================================================================== */
 :root {
-    --primary: #6750a4;
-    --primary-active: #4f378b;
-    --primary-rgb: 103, 80, 164;
+    --primary: #735bb0;
+    --primary-active: #5f4a9a;
+    --primary-rgb: 115, 91, 176;
     --primary-disabled: #e8def8;
-    --primary-container: #eaddff;
-    --on-primary-container: #21005d;
+    --primary-container: #eee6ff;
+    --on-primary-container: #2b155f;
+    --primary-rgb-soft: 238, 230, 255;
 
-    --secondary: #625b71;
-    --secondary-active: #4a4458;
-    --secondary-rgb: 98, 91, 113;
+    --secondary: #6b6078;
+    --secondary-active: #53485f;
+    --secondary-rgb: 107, 96, 120;
     --on-secondary: #ffffff;
-    --secondary-container: #e8def8;
-    --on-secondary-container: #1d192b;
+    --secondary-container: #ede4f3;
+    --on-secondary-container: #241b2f;
 
-    --tertiary: #7d5260;
-    --tertiary-active: #633b48;
-    --tertiary-rgb: 125, 82, 96;
+    --tertiary: #8b6472;
+    --tertiary-active: #704d5a;
+    --tertiary-rgb: 139, 100, 114;
     --on-tertiary: #ffffff;
-    --tertiary-container: #ffd8e4;
-    --on-tertiary-container: #31111d;
+    --tertiary-container: #f4e2ea;
+    --on-tertiary-container: #3b2430;
 
-    --amber: #7d5260;
-    --amber-rgb: 125, 82, 96;
-    --amber-container: #ffd8e4;
-    --on-amber-container: #31111d;
+    --amber: #9b7b3f;
+    --amber-rgb: 155, 123, 63;
+    --amber-container: #f6e6bd;
+    --on-amber-container: #342400;
 
-    --info: #625b71;
-    --info-container: #e8def8;
-    --on-info-container: #1d192b;
+    --info: #657989;
+    --info-container: #d8e6f1;
+    --on-info-container: #1d303b;
 
-    --accent-teal: #006a6a;
-    --accent-amber: #7d5700;
+    --accent-teal: #687c98;
+    --accent-teal-rgb: 104, 124, 152;
+    --accent-amber: #a88950;
+    --accent-amber-rgb: 168, 137, 80;
+    --accent-rose: #a27386;
+    --accent-rose-rgb: 162, 115, 134;
+    --accent-sky: #8b8494;
+    --accent-sky-rgb: 139, 132, 148;
 
-    --ink: #1d1b20;
-    --body: #49454f;
-    --body-strong: #1d1b20;
-    --muted: #79747e;
-    --muted-soft: #938f99;
+    --ink: #24212a;
+    --ink-rgb: 36, 33, 42;
+    --body: #514b5a;
+    --body-strong: #24212a;
+    --muted: #7d7487;
+    --muted-soft: #9991a1;
     --on-primary: #ffffff;
     --on-dark: #f5eff7;
     --on-dark-soft: #cac4d0;
 
-    --canvas: #fffbff;
+    --canvas: #fffbfe;
+    --canvas-rgb: 255, 251, 254;
     --surface-soft: #f7f2fa;
-    --surface-card: #f3edf7;
+    --surface-soft-rgb: 247, 242, 250;
+    --surface-card: #f5eff8;
+    --surface-card-rgb: 245, 239, 248;
     --surface-cool: #f7f2fa;
-    --surface-warm: #fffbff;
+    --surface-warm: #fffbfe;
     --surface-gold: #f3edf7;
     --surface-cream-strong: #e6e0e9;
-    --surface-dark: #322f35;
-    --surface-dark-elevated: #49454f;
-    --surface-dark-soft: #3b383e;
-    --hairline: #cac4d0;
-    --hairline-soft: #e7e0ec;
+    --surface-container-lowest: #ffffff;
+    --surface-container-low: #f7f2fa;
+    --surface-container: #f4eef7;
+    --surface-container-high: #eee8f2;
+    --surface-container-highest: #e8e1ec;
+    --surface-dark: #393540;
+    --surface-dark-elevated: #514b5a;
+    --surface-dark-soft: #433e4b;
+    --hairline: #ded7e4;
+    --hairline-soft: #ece6f0;
+    --outline: #8a8193;
+    --outline-variant: #ded7e4;
+    --state-hover: rgba(var(--primary-rgb), 0.07);
+    --state-focus: rgba(var(--primary-rgb), 0.11);
+    --state-pressed: rgba(var(--primary-rgb), 0.11);
 
-    --success: #386a20;
-    --success-container: #b7f397;
-    --on-success-container: #062100;
-    --warning: #7d5700;
+    --success: #587a48;
+    --success-container: #dcedcf;
+    --on-success-container: #172b10;
+    --warning: #8f6f2b;
     --error: #ba1a1a;
     --error-container: #ffdad6;
 
@@ -85,11 +106,11 @@
     --rounded-pill: 9999px;
     --rounded-full: 9999px;
 
-    --shadow-soft: 0 1px 3px rgba(29, 27, 32, 0.14), 0 1px 2px rgba(29, 27, 32, 0.12);
-    --shadow-hover: 0 4px 10px rgba(29, 27, 32, 0.18), 0 1px 3px rgba(29, 27, 32, 0.12);
-    --shadow-dialog: 0 18px 48px rgba(29, 27, 32, 0.24);
-    --focus-ring: 0 0 0 3px rgba(var(--primary-rgb), 0.22);
-    --nav-height: 80px;
+    --shadow-soft: 0 1px 3px rgba(var(--ink-rgb), 0.10), 0 1px 2px rgba(var(--ink-rgb), 0.08);
+    --shadow-hover: 0 6px 14px rgba(var(--ink-rgb), 0.14), 0 2px 5px rgba(var(--ink-rgb), 0.10);
+    --shadow-dialog: 0 24px 56px rgba(var(--ink-rgb), 0.22);
+    --focus-ring: 0 0 0 3px rgba(var(--primary-rgb), 0.18);
+    --nav-height: 72px;
 }
 
 * {
@@ -108,8 +129,9 @@ body {
     min-width: 320px;
     overflow-x: hidden;
     background:
-        radial-gradient(circle at 12% 8%, rgba(var(--primary-rgb), 0.12), transparent 30%),
-        linear-gradient(180deg, #fdf8ff 0, var(--canvas) 340px),
+        radial-gradient(circle at 14% 8%, rgba(var(--primary-rgb), 0.07), transparent 28%),
+        radial-gradient(circle at 86% 0%, rgba(var(--tertiary-rgb), 0.05), transparent 30%),
+        linear-gradient(180deg, #fdf8ff 0, var(--canvas) 360px),
         var(--canvas);
     color: var(--body);
     font-family: var(--font-sans);

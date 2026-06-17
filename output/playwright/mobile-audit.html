@@ -1,0 +1,95 @@
+<!doctype html>
+<meta charset="utf-8">
+<script>
+const params = new URLSearchParams(location.search);
+const pageName = params.get('page') || 'home';
+const action = params.get('action') || '';
+const frame = document.createElement('iframe');
+frame.style.cssText = 'width:390px;height:844px;border:0;display:block';
+frame.src = `/index.html#${pageName}`;
+document.documentElement.style.margin = '0';
+document.body.style.margin = '0';
+document.body.appendChild(frame);
+
+function selectorFor(el) {
+    if (el.id) return `#${el.id}`;
+    if (typeof el.className === 'string' && el.className.trim()) {
+        return `.${el.className.trim().split(/\s+/).slice(0, 3).join('.')}`;
+    }
+    return el.tagName.toLowerCase();
+}
+
+function audit(doc) {
+    const win = doc.defaultView;
+    const root = doc.documentElement;
+    const body = doc.body;
+    const clientWidth = root.clientWidth;
+    const interestingSelectors = [
+        '.container',
+        '.home-hero',
+        '.home-copy',
+        '.home-summary-strip',
+        '.home-route-art',
+        '.page-hero-copy',
+        '.page-layout',
+        '#diaryContainer',
+        '.diary-entry',
+        '.profile-content',
+        '.profile-card',
+        '.profile-stats'
+    ];
+    const interesting = interestingSelectors.map(selector => {
+        const el = doc.querySelector(selector);
+        if (!el) return null;
+        const rect = el.getBoundingClientRect();
+        return {
+            selector,
+            left: Math.round(rect.left),
+            right: Math.round(rect.right),
+            width: Math.round(rect.width),
+            scrollWidth: el.scrollWidth,
+            clientWidth: el.clientWidth,
+            display: win.getComputedStyle(el).display,
+            gridTemplateColumns: win.getComputedStyle(el).gridTemplateColumns
+        };
+    }).filter(Boolean);
+    const offenders = Array.from(doc.querySelectorAll('body *')).map(el => {
+        const rect = el.getBoundingClientRect();
+        return {
+            selector: selectorFor(el),
+            left: Math.round(rect.left),
+            right: Math.round(rect.right),
+            width: Math.round(rect.width),
+            scrollWidth: el.scrollWidth,
+            clientWidth: el.clientWidth
+        };
+    }).filter(item => item.width > 0 && (item.right > clientWidth + 1 || item.left < -1 || item.scrollWidth > item.clientWidth + 1)).slice(0, 40);
+    return {
+        page: body.dataset.page,
+        className: body.className,
+        viewport: {
+            innerWidth: win.innerWidth,
+            innerHeight: win.innerHeight,
+            clientWidth
+        },
+        scrollWidth: Math.max(root.scrollWidth, body.scrollWidth),
+        overflowX: Math.max(root.scrollWidth, body.scrollWidth) - clientWidth,
+        interesting,
+        offenders
+    };
+}
+
+frame.addEventListener('load', () => {
+    setTimeout(() => {
+        const doc = frame.contentDocument;
+        if (action === 'nav') {
+            doc.getElementById('navMenuBtn')?.click();
+        } else if (action === 'filter') {
+            doc.getElementById('hamburgerBtn')?.click();
+        }
+        setTimeout(() => {
+            document.body.textContent = JSON.stringify(audit(doc), null, 2);
+        }, 500);
+    }, 900);
+});
+</script>

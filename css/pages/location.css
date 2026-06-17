@@ -11,8 +11,10 @@
     padding: var(--spacing-xl);
     border: 0;
     border-radius: var(--rounded-xl);
-    background: var(--primary-container);
-    color: var(--on-primary-container);
+    background:
+        radial-gradient(circle at 86% 24%, rgba(var(--primary-rgb), 0.075), transparent 28%),
+        color-mix(in srgb, var(--primary-container) 58%, var(--canvas));
+    color: color-mix(in srgb, var(--on-primary-container) 82%, var(--body));
     box-shadow: none;
 }
 
@@ -20,33 +22,35 @@
     grid-column: 1;
     grid-row: 1;
     width: fit-content;
-    border-color: rgba(var(--primary-rgb), 0.34);
-    color: var(--on-primary-container);
+    border-color: rgba(var(--primary-rgb), 0.22);
+    background: rgba(var(--canvas-rgb), 0.68);
+    color: color-mix(in srgb, var(--on-primary-container) 78%, var(--body));
 }
 
 .location-head {
     grid-column: 1;
     display: flex;
+    width: 100%;
     min-width: 0;
     flex-direction: column;
     margin-top: var(--spacing-sm);
 }
 
 .location-head .eyebrow {
-    background: rgba(255, 251, 255, 0.72);
-    color: var(--on-primary-container);
+    background: rgba(var(--canvas-rgb), 0.86);
+    color: color-mix(in srgb, var(--on-primary-container) 78%, var(--body));
 }
 
 .location-head .display-lg {
     margin-top: var(--spacing-md);
-    color: var(--on-primary-container);
+    color: color-mix(in srgb, var(--on-primary-container) 86%, var(--ink));
     overflow-wrap: anywhere;
     word-break: break-word;
 }
 
 .location-sub {
     margin-top: var(--spacing-sm);
-    color: var(--on-primary-container);
+    color: color-mix(in srgb, var(--on-primary-container) 76%, var(--body));
     font-family: var(--font-sans);
     font-size: 16px;
 }

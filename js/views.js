@@ -4,6 +4,7 @@ import { closeSidebar, showPage } from './navigation.js';
 
 let yearScrollFrame = null;
 let visitedSearchQuery = '';
+let lastModalTrigger = null;
 
 export function renderLoadingState() {
     const container = document.getElementById('diaryContainer');
@@ -13,6 +14,16 @@ export function renderLoadingState() {
 }
 
 export function renderStats(stats) {
+    const records = getTravelRecords();
+    const dateRange = getDateRangeLabel(records);
+    const homeRecordCount = document.getElementById('homeRecordCount');
+    const homeCityCount = document.getElementById('homeCityCount');
+    const homeDateRange = document.getElementById('homeDateRange');
+
+    if (homeRecordCount) homeRecordCount.textContent = stats.total;
+    if (homeCityCount) homeCityCount.textContent = stats.cities;
+    if (homeDateRange) homeDateRange.textContent = dateRange;
+
     const statsHeader = document.getElementById('statsHeader');
     if (!statsHeader) return;
 
@@ -34,6 +45,24 @@ export function renderStats(stats) {
             <span class="stat-value-compact">${stats.cities}</span>
         </div>
     `;
+}
+
+function getDateRangeLabel(records) {
+    const years = records
+        .map(record => (record.date || '').slice(0, 4))
+        .filter(Boolean)
+        .sort();
+
+    if (years.length === 0) return '-';
+
+    const startYear = years[0];
+    const endYear = years[years.length - 1];
+
+    if (startYear === endYear) {
+        return startYear;
+    }
+
+    return `${startYear}-${endYear.slice(2)}`;
 }
 
 export function renderProfile(stats) {
@@ -274,7 +303,7 @@ export function setupFilters() {
             sortBtn.setAttribute('aria-label', currentState.sortDesc ? '当前排序：最新优先' : '当前排序：最早优先');
             renderDiary();
             updateYearTabs();
-            showPage('journey');
+            showPage('journey', { scrollTop: false });
         });
     }
 }
@@ -315,7 +344,11 @@ export function renderDiary() {
         return { ...record, isRepeated };
     });
 
-    let filtered = processedRecords.filter(record => record.searchText.includes(currentState.search));
+    let filtered = processedRecords.filter(record => {
+        const matchesSearch = record.searchText.includes(currentState.search);
+        const matchesYear = currentState.year === 'All' || record.date.startsWith(`${currentState.year}-`);
+        return matchesSearch && matchesYear;
+    });
 
     filtered.sort((a, b) => {
         return currentState.sortDesc
@@ -341,7 +374,7 @@ export function renderDiary() {
         return currentState.sortDesc ? b.localeCompare(a) : a.localeCompare(b);
     });
 
-    const yearColors = ['#6750a4', '#006a6a', '#7d5700', '#625b71', '#7d5260', '#386a20', '#ba1a1a'];
+    const yearColors = ['#735bb0', '#687c98', '#a88950', '#8b6472', '#6b6078', '#7a856c'];
     let colorIndex = 0;
 
     sortedYears.forEach(year => {
@@ -377,6 +410,7 @@ export function renderDiary() {
         container.style.minHeight = '';
     }, 400);
 
+    updateYearTabs();
     scheduleYearScrollSync();
 }
 
@@ -479,7 +513,7 @@ export function renderLocationPage(country, province, city) {
     matching
         .sort((a, b) => b.date.localeCompare(a.date))
         .forEach(record => {
-            entriesContainer.appendChild(createDiaryEntry(record, '#6750a4', false));
+            entriesContainer.appendChild(createDiaryEntry(record, '#735bb0', false));
         });
 }
 
@@ -499,6 +533,7 @@ function createDiaryEntry(record, dotColor, includeFooter) {
     entryDiv.style.setProperty('--year-line-color', dotColor);
 
     const locationText = getLocationText(record);
+    const titleText = record.descTitle || buildFallbackTitle(record);
     const footerHtml = includeFooter
         ? `<div class="entry-footer">
                 <a href="#" class="tag link-location" data-country="${escapeHtml(record.country)}" data-province="${escapeHtml(record.province)}" data-city="${escapeHtml(record.city)}">
@@ -513,15 +548,31 @@ function createDiaryEntry(record, dotColor, includeFooter) {
         <div class="entry-body">
             <div class="entry-header"></div>
             <div class="entry-location">${escapeHtml(locationText)}</div>
-            <div class="entry-desc entry-title"><h1>${escapeHtml(record.descTitle || buildFallbackTitle(record))}</h1></div>
+            <div class="entry-desc entry-title"><h1>${escapeHtml(titleText)}</h1></div>
             ${footerHtml}
         </div>
     `;
 
+    entryDiv.tabIndex = 0;
+    entryDiv.setAttribute('role', 'article');
+    entryDiv.setAttribute('aria-label', `打开 ${titleText} 日记`);
+
+    const openFromEntry = () => openEntryModal(record, entryDiv);
+
     entryDiv.addEventListener('click', (event) => {
         const ignore = event.target.closest('button, a, .entry-photo, .link-location');
         if (ignore) return;
-        openEntryModal(record);
+        openFromEntry();
+    });
+
+    entryDiv.addEventListener('keydown', (event) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+
+        const ignore = event.target.closest('button, a, .entry-photo, .link-location');
+        if (ignore) return;
+
+        event.preventDefault();
+        openFromEntry();
     });
 
     const link = entryDiv.querySelector('.link-location');
@@ -568,14 +619,15 @@ function getLocationArchiveLabel(country, province, city) {
     return province ? `${country} ${province}` : (country || '地点');
 }
 
-function openEntryModal(record) {
+function openEntryModal(record, triggerElement) {
+    lastModalTrigger = triggerElement || document.activeElement;
     let overlay = document.getElementById('entryModalOverlay');
     if (!overlay) {
         overlay = document.createElement('div');
         overlay.id = 'entryModalOverlay';
         overlay.className = 'modal-overlay';
         overlay.innerHTML = `
-            <div class="modal-card" role="dialog" aria-modal="true">
+            <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="entryModalTitle">
                 <button class="modal-close" aria-label="关闭">×</button>
                 <div class="modal-scroll" tabindex="0"></div>
             </div>
@@ -595,7 +647,7 @@ function openEntryModal(record) {
     const scrollContainer = overlay.querySelector('.modal-scroll');
     if (!scrollContainer) return;
 
-    let contentHtml = `<h1 class="modal-title">${escapeHtml(record.descTitle || buildFallbackTitle(record))}</h1>`;
+    let contentHtml = `<h1 class="modal-title" id="entryModalTitle">${escapeHtml(record.descTitle || buildFallbackTitle(record))}</h1>`;
     contentHtml += `<div class="modal-meta"><time datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '')}</time></div>`;
     contentHtml += `<div class="markdown-content modal-markdown">${record.descBodyHtml || ''}</div>`;
 
@@ -621,6 +673,12 @@ function closeEntryModal() {
 
     overlay.style.display = 'none';
     document.body.classList.remove('modal-open');
+
+    if (lastModalTrigger && typeof lastModalTrigger.focus === 'function') {
+        lastModalTrigger.focus({ preventScroll: true });
+    }
+
+    lastModalTrigger = null;
 }
 
 function openLocationView(country, province, city) {

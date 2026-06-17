@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Travel Diary</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23fffbff'/%3E%3Cpath d='M32 7l5.6 18.7L57 32l-19.4 6.3L32 57l-5.6-18.7L7 32l19.4-6.3L32 7z' fill='%236750a4'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="css/base.css?v=20260616-material3">
-    <link rel="stylesheet" href="css/layout.css?v=20260616-material3">
-    <link rel="stylesheet" href="css/components.css?v=20260616-material3">
-    <link rel="stylesheet" href="css/pages/home.css?v=20260616-material3">
-    <link rel="stylesheet" href="css/pages/location.css?v=20260616-material3">
-    <link rel="stylesheet" href="css/pages/profile.css?v=20260616-material3">
-    <link rel="stylesheet" href="css/responsive.css?v=20260616-material3">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23fffbfe'/%3E%3Cpath d='M32 7l5.6 18.7L57 32l-19.4 6.3L32 57l-5.6-18.7L7 32l19.4-6.3L32 7z' fill='%23735bb0'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/base.css?v=20260617-material3-color-soften">
+    <link rel="stylesheet" href="css/layout.css?v=20260617-material3-color-soften">
+    <link rel="stylesheet" href="css/components.css?v=20260617-material3-color-soften">
+    <link rel="stylesheet" href="css/pages/home.css?v=20260617-material3-color-soften">
+    <link rel="stylesheet" href="css/pages/location.css?v=20260617-material3-color-soften">
+    <link rel="stylesheet" href="css/pages/profile.css?v=20260617-material3-color-soften">
+    <link rel="stylesheet" href="css/responsive.css?v=20260617-material3-color-soften">
 </head>
 <body data-page="home">
     <nav class="top-nav">
@@ -58,15 +58,15 @@
                 </div>
                 <div class="home-summary-strip" aria-label="旅行档案摘要">
                     <div class="home-summary-item">
-                        <strong>29</strong>
+                        <strong id="homeRecordCount">29</strong>
                         <span>旅行记录</span>
                     </div>
                     <div class="home-summary-item">
-                        <strong>24</strong>
+                        <strong id="homeCityCount">24</strong>
                         <span>城市</span>
                     </div>
                     <div class="home-summary-item">
-                        <strong>2024-26</strong>
+                        <strong id="homeDateRange">2024-26</strong>
                         <span>时间范围</span>
                     </div>
                 </div>
@@ -193,9 +193,11 @@
     <section class="journey-page page-shell app-page" id="journey" data-page="journey" hidden>
         <div class="page-hero">
             <div class="container page-hero-copy">
-                <p class="eyebrow">Journal timeline</p>
-                <h1 class="display-lg">按时间回看每一次出发。</h1>
-                <p class="body-md">用年份、搜索和地点入口整理每一段路线，时间线保留完整的日期节奏和再次到访标记。</p>
+                <div class="journey-header-copy">
+                    <p class="eyebrow">Journal timeline</p>
+                    <h1 class="display-lg">按时间回看每一次出发。</h1>
+                    <p class="body-md">用年份、搜索和地点入口整理每一段路线，时间线保留完整的日期节奏和再次到访标记。</p>
+                </div>
                 <div class="page-hero-actions">
                     <button class="hamburger-btn" id="hamburgerBtn" aria-label="打开筛选" aria-expanded="false">
                         <span class="hamburger-lines" aria-hidden="true">
@@ -211,6 +213,13 @@
 
         <div class="container section page-layout">
             <aside class="sidebar">
+
+            <div class="sidebar-group sidebar-summary-group">
+                <h3 class="group-header">概览</h3>
+                <div class="sidebar-stats" id="statsHeader">
+                    <!-- Stats will be injected here -->
+                </div>
+            </div>
 
             <!-- Exploration Filters -->
             <div class="sidebar-group">
@@ -264,11 +273,13 @@
     </section>
 
     <section class="profile-page page-shell app-page" id="profile" data-page="profile" hidden>
-        <div class="page-hero">
+        <div class="page-hero profile-hero">
             <div class="container page-hero-copy">
-                <p class="eyebrow">Personal page</p>
-                <h1 class="display-lg">旅行者档案</h1>
-                <p class="body-md">这里汇总旅行日志里的目的地分布，先按国家归类，再展示各国家下的省份，方便从另一种角度回看路线。</p>
+                <div class="journey-header-copy">
+                    <p class="eyebrow">Personal page</p>
+                    <h1 class="display-lg">旅行者档案</h1>
+                    <p class="body-md">这里汇总旅行日志里的目的地分布，先按国家归类，再展示各国家下的省份，方便从另一种角度回看路线。</p>
+                </div>
             </div>
         </div>
 
@@ -303,6 +314,6 @@
         </div>
     </section>
 
-    <script type="module" src="js/app.js?v=20260616-material3"></script>
+    <script type="module" src="js/app.js?v=20260617-material3-color-soften"></script>
 </body>
 </html>
