@@ -57,9 +57,5 @@ node js/server.js --port 9000
 1. 在 `data/travel-diary/` 中添加一个新的 Markdown 文件，文件名格式可采用 `YYYY-MM-DD-slug.md`。
 2. 在 `data/travel_data.json` 中添加或更新对应的元数据条目（如标题、日期、slug、photo 引用等）。
 
-## 提交与部署建议
-- 保留 `data/` 中的 Markdown 与小图（可根据需要把大媒体文件单独托管）。
-- 将 `node_modules/` 排除在版本控制之外（已在 .gitignore 中处理）。
-
 ## 许可证
 见项目顶层 LICENSE 文件。
