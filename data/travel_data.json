@@ -259,5 +259,14 @@
     "desc_md": "data/travel-diary/2026-05-22-xian.md",
     "photo_folder": "data/photos/xian",
     "photos": []
+  },
+  {
+    "date": "2026-06-21",
+    "country": "中国",
+    "province": "江苏省",
+    "city": "苏州市",
+    "desc_md": "data/travel-diary/2026-06-21-suzhou.md",
+    "photo_folder": "data/photos/suzhou",
+    "photos": []
   }
 ]
