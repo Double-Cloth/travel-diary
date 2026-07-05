@@ -268,5 +268,14 @@
     "desc_md": "data/travel-diary/2026-06-21-suzhou.md",
     "photo_folder": "data/photos/suzhou",
     "photos": []
+  },
+  {
+    "date": "2026-07-02",
+    "country": "中国",
+    "province": "山东省",
+    "city": "济南市",
+    "desc_md": "data/travel-diary/2026-07-02-jinan.md",
+    "photo_folder": "data/photos/jinan",
+    "photos": []
   }
 ]
