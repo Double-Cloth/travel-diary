@@ -56,6 +56,3 @@ node js/server.js --port 9000
 ## 添加新日记
 1. 在 `data/travel-diary/` 中添加一个新的 Markdown 文件，文件名格式可采用 `YYYY-MM-DD-slug.md`。
 2. 在 `data/travel_data.json` 中添加或更新对应的元数据条目（如标题、日期、slug、photo 引用等）。
-
-## 许可证
-见项目顶层 LICENSE 文件。
