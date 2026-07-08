@@ -184,21 +184,67 @@ function markdownToHtml(markdown) {
 }
 
 function formatInlineMarkdown(text) {
-    return escapeHtml(text)
-        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.+?)\*/g, '<em>$1</em>')
-        .replace(/`(.+?)`/g, '<code>$1</code>');
+    const inlineTokens = [];
+    const stashToken = (html) => {
+        const token = `\uE000${inlineTokens.length}\uE001`;
+        inlineTokens.push(html);
+        return token;
+    };
+
+    let html = escapeHtml(text)
+        .replace(/`([^`\n]+?)`/g, (_, code) => stashToken(`<code>${code}</code>`))
+        .replace(/\[([^\]\n]+?)\]\(([^)\s]+?)\)/g, (_, label, url) => formatInlineLink(label, url))
+        .replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>')
+        .replace(/~~([^~\n]+?)~~/g, '<del>$1</del>')
+        .replace(/==([^=\n]+?)==/g, '<mark>$1</mark>')
+        .replace(/\^([^^\n]+?)\^/g, '<sup>$1</sup>')
+        .replace(/~([^~\n]+?)~/g, '<sub>$1</sub>')
+        .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
+
+    inlineTokens.forEach((tokenHtml, index) => {
+        html = html.replace(new RegExp(`\\uE000${index}\\uE001`, 'g'), tokenHtml);
+    });
+
+    return html;
+}
+
+function formatInlineLink(label, url) {
+    const safeUrl = getSafeInlineUrl(url);
+    if (!safeUrl) {
+        return label;
+    }
+
+    return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
+}
+
+function getSafeInlineUrl(url) {
+    const trimmed = String(url || '').trim();
+    const normalized = trimmed.replace(/&amp;/g, '&').toLowerCase();
+
+    if (/^(javascript|data|vbscript):/.test(normalized)) {
+        return '';
+    }
+
+    if (/^[a-z][a-z0-9+.-]*:/.test(normalized) && !/^(https?:|mailto:)/.test(normalized)) {
+        return '';
+    }
+
+    return trimmed;
 }
 
 function plainTextFromMarkdown(markdown) {
     return (markdown || '')
         .replace(/^#{1,6}\s+/gm, '')
         .replace(/^[-*+]\s+/gm, '')
+        .replace(/\[([^\]\n]+?)\]\(([^)\s]+?)\)/g, '$1')
         .replace(/\*\*(.+?)\*\*/g, '$1')
+        .replace(/~~(.+?)~~/g, '$1')
+        .replace(/==(.+?)==/g, '$1')
+        .replace(/\^(.+?)\^/g, '$1')
+        .replace(/~(.+?)~/g, '$1')
         .replace(/\*(.+?)\*/g, '$1')
         .replace(/`(.+?)`/g, '$1')
-        .replace(/\[(.+?)\]\((.+?)\)/g, '$1')
-        .replace(/[>_]/g, ' ')
+        .replace(/[>_=^~]/g, ' ')
         .replace(/\s+/g, ' ')
         .trim();
 }

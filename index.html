@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Travel Diary</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232b160f'/%3E%3Cpath d='M32 7l5.6 18.7L57 32l-19.4 6.3L32 57l-5.6-18.7L7 32l19.4-6.3L32 7z' fill='%23d8b467'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="css/journal.css?v=20260708-archive-box-4">
+    <link rel="stylesheet" href="css/journal.css?v=20260708-sticky-spine-1">
 </head>
 <body>
     <a class="skip-link" href="#journalStage">跳到档案内容</a>
@@ -43,7 +43,7 @@
                 <a class="spine-tool spine-profile" href="#archive" aria-label="打开个人主页">
                     <span aria-hidden="true"></span>
                 </a>
-                <button class="spine-filter" id="drawerToggle" type="button" aria-label="打开搜索抽屉" aria-expanded="false" aria-controls="drawerRoot">
+                <button class="spine-filter" id="drawerToggle" type="button" aria-label="打开筛选面板" aria-expanded="false" aria-controls="drawerRoot">
                     <span aria-hidden="true">筛</span>
                 </button>
             </div>
@@ -55,20 +55,13 @@
                     <section class="paper-page paper-page-left" id="leftPage" aria-label="左页"></section>
                     <section class="paper-page paper-page-right" id="rightPage" aria-label="右页"></section>
                 </div>
-                <button class="book-clasp" type="button" data-action="open-drawer" aria-label="打开搜索抽屉"><span aria-hidden="true">⌖</span></button>
-                <nav class="edge-tabs" aria-label="档案快捷标签">
-                    <a class="edge-tab" href="#ledger">路线档案</a>
-                    <button class="edge-tab" type="button" data-action="open-drawer">搜索记录</button>
-                    <button class="edge-tab" type="button" data-action="open-latest">最近记录</button>
-                    <a class="edge-tab" href="#archive">打开档案</a>
-                </nav>
             </section>
         </main>
     </div>
 
-    <aside class="journal-drawer" id="drawerRoot" aria-label="路线搜索抽屉" aria-hidden="true"></aside>
+    <aside class="journal-drawer" id="drawerRoot" aria-label="路线筛选面板" aria-hidden="true"></aside>
     <div class="entry-sheet-root" id="sheetRoot" aria-hidden="true"></div>
 
-    <script type="module" src="js/app.js?v=20260708-archive-box-4"></script>
+    <script type="module" src="js/app.js?v=20260708-sticky-spine-1"></script>
 </body>
 </html>
