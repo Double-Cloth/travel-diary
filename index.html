@@ -5,41 +5,49 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Travel Diary</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232b160f'/%3E%3Cpath d='M32 7l5.6 18.7L57 32l-19.4 6.3L32 57l-5.6-18.7L7 32l19.4-6.3L32 7z' fill='%23d8b467'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="css/journal.css?v=20260707-journal-polish-2">
+    <link rel="stylesheet" href="css/journal.css?v=20260708-archive-box-4">
 </head>
 <body>
-    <a class="skip-link" href="#journalStage">跳到手账内容</a>
+    <a class="skip-link" href="#journalStage">跳到档案内容</a>
 
     <div class="journal-shell" id="appShell" data-route="cover">
-        <aside class="journal-spine" aria-label="旅行手账章节">
-            <a class="brand-lockup" href="#cover" aria-label="Travel Diary 封面">
+        <header class="journal-spine" aria-label="旅行档案章节">
+            <a class="brand-lockup" href="#cover" aria-label="Travel Diary 档案首页">
                 <span class="brand-star" aria-hidden="true">✦</span>
                 <span>
                     <strong>Travel Diary</strong>
-                    <small>leather field notebook</small>
+                    <small>旅行档案 · 记录每一段时光</small>
                 </span>
             </a>
 
             <nav class="chapter-tabs" id="chapterTabs" aria-label="章节导航">
                 <a href="#cover" class="chapter-tab" data-route-link="cover">
                     <span class="chapter-icon" aria-hidden="true">封</span>
-                    <span>封面</span>
+                    <span>首页</span>
                 </a>
                 <a href="#ledger" class="chapter-tab" data-route-link="ledger">
                     <span class="chapter-icon" aria-hidden="true">路</span>
-                    <span>路线</span>
+                    <span>旅行路径</span>
                 </a>
                 <a href="#archive" class="chapter-tab" data-route-link="archive">
                     <span class="chapter-icon" aria-hidden="true">档</span>
-                    <span>档案</span>
+                    <span>个人主页</span>
                 </a>
             </nav>
 
-            <button class="spine-filter" id="drawerToggle" type="button" aria-expanded="false" aria-controls="drawerRoot">
-                <span aria-hidden="true">☰</span>
-                <span>筛选</span>
-            </button>
-        </aside>
+            <div class="spine-tools" aria-label="快捷入口">
+                <a class="spine-tool spine-search" href="#ledger" aria-label="搜索路线档案">
+                    <span aria-hidden="true"></span>
+                </a>
+                <span class="tool-divider" aria-hidden="true"></span>
+                <a class="spine-tool spine-profile" href="#archive" aria-label="打开个人主页">
+                    <span aria-hidden="true"></span>
+                </a>
+                <button class="spine-filter" id="drawerToggle" type="button" aria-label="打开搜索抽屉" aria-expanded="false" aria-controls="drawerRoot">
+                    <span aria-hidden="true">筛</span>
+                </button>
+            </div>
+        </header>
 
         <main class="journal-stage" id="journalStage" tabindex="-1">
             <section class="notebook" aria-live="polite">
@@ -47,13 +55,20 @@
                     <section class="paper-page paper-page-left" id="leftPage" aria-label="左页"></section>
                     <section class="paper-page paper-page-right" id="rightPage" aria-label="右页"></section>
                 </div>
+                <button class="book-clasp" type="button" data-action="open-drawer" aria-label="打开搜索抽屉"><span aria-hidden="true">⌖</span></button>
+                <nav class="edge-tabs" aria-label="档案快捷标签">
+                    <a class="edge-tab" href="#ledger">路线档案</a>
+                    <button class="edge-tab" type="button" data-action="open-drawer">搜索记录</button>
+                    <button class="edge-tab" type="button" data-action="open-latest">最近记录</button>
+                    <a class="edge-tab" href="#archive">打开档案</a>
+                </nav>
             </section>
         </main>
     </div>
 
-    <aside class="journal-drawer" id="drawerRoot" aria-label="路线筛选抽屉" aria-hidden="true"></aside>
+    <aside class="journal-drawer" id="drawerRoot" aria-label="路线搜索抽屉" aria-hidden="true"></aside>
     <div class="entry-sheet-root" id="sheetRoot" aria-hidden="true"></div>
 
-    <script type="module" src="js/app.js?v=20260707-journal-polish-2"></script>
+    <script type="module" src="js/app.js?v=20260708-archive-box-4"></script>
 </body>
 </html>

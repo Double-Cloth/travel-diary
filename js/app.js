@@ -2,13 +2,24 @@ import { loadTravelData, loadTravelRecords } from './data.js';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 
 const DEFAULT_LEDGER_SORT = 'desc';
-const PAGE_TURN_MS = 560;
+const PAGE_TURN_MS = 480;
+const PAGE_TURN_SWAP_MS = 140;
+const ROUTE_MAP_SLOTS = [
+    { dot: 'dot-a', city: 'city-a' },
+    { dot: 'dot-b', city: 'city-b' },
+    { dot: 'dot-c', city: 'city-c' },
+    { dot: 'dot-d', city: 'city-d' },
+    { dot: 'dot-e', city: 'city-e' },
+    { dot: 'dot-f', city: 'city-f' }
+];
 
 const refs = {};
 let travelModel = null;
 let activeRoute = null;
 let pageTurnTimer = null;
 let lastReadingHash = '#ledger';
+let lastEntryFocusId = '';
+let lastDrawerTrigger = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     void initApp();
@@ -218,6 +229,8 @@ function deriveTravelModel(records) {
     const recordsById = new Map(enhanced.map(record => [record.id, record]));
     const recordsDesc = [...enhanced].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const years = Array.from(new Set(recordsDesc.map(record => record.year))).filter(Boolean);
+    const yearRange = years.length > 1 ? `${years[years.length - 1]} - ${years[0]}` : (years[0] || '未知');
+    const yearRangeShort = years.length > 1 ? `${years[years.length - 1]}-${years[0].slice(2)}` : (years[0] || '未知');
     const countries = buildLocationIndex(enhanced);
     const latestRecord = recordsDesc[0] || null;
 
@@ -226,6 +239,8 @@ function deriveTravelModel(records) {
         recordsDesc,
         recordsById,
         years,
+        yearRange,
+        yearRangeShort,
         countries,
         stats: {
             total: enhanced.length,
@@ -293,45 +308,105 @@ function buildLocationIndex(records) {
 function renderCover() {
     const stats = travelModel.stats;
     const latest = travelModel.latestRecord;
+    const routeRecords = getRouteMapRecords();
+    const recentRecords = travelModel.recordsDesc.slice(0, 4);
 
     setPages(`
-        <div class="cover-page">
-            <p class="journal-label">封面</p>
-            <h1>把走过的城市，收进一本旅行手账。</h1>
-            <p class="page-copy">每一次出发都变成纸页、行李牌和路线账。翻开它，可以按日期回看，也可以从地点重新进入记忆。</p>
-            <div class="cover-actions">
-                <a class="brass-button" href="#ledger">翻开路线账</a>
-                <a class="paper-button" href="#archive">查看档案夹</a>
+        <div class="cover-page archive-home">
+            <h1 class="archive-home-title">把走过的城市，整理成一条清晰的时间线。</h1>
+            <div class="archive-search-card">
+                <a class="archive-search-link" href="#ledger" aria-label="搜索路线记录">
+                    <span aria-hidden="true"></span>
+                    搜索记录
+                </a>
+                <button class="filter-chip" type="button" data-action="open-drawer">筛选</button>
+            </div>
+            <p class="journal-label">最近记录</p>
+            <div class="cover-record-list">
+                ${recentRecords.map(renderCoverRecord).join('')}
             </div>
             <dl class="tag-stats" aria-label="旅行统计">
-                ${statTag('日志', stats.total)}
-                ${statTag('国家', stats.countries)}
-                ${statTag('省份', stats.provinces)}
+                ${statTag('旅行记录', stats.total)}
                 ${statTag('城市', stats.cities)}
+                ${statTag('时间范围', travelModel.yearRangeShort)}
             </dl>
         </div>
     `, `
         <div class="pocket-page">
-            <p class="journal-label">最近一次出发</p>
-            ${latest ? renderLatestTicket(latest) : '<p class="empty-note">还没有旅行记录。</p>'}
-            <div class="route-sketch" aria-hidden="true">
-                ${travelModel.recordsDesc.slice(0, 6).map((record, index) => `
-                    <span class="route-dot" style="--x:${12 + index * 15}%; --y:${78 - (index % 3) * 19}%"></span>
-                `).join('')}
-                <span class="route-line"></span>
+            <div class="route-insert">
+                <div class="route-map-label">
+                    <strong>我的旅行路线图</strong>
+                    <span>${escapeHtml(travelModel.yearRange)}</span>
+                </div>
+                <div class="route-sketch" aria-label="最近旅行路线图">
+                    <svg class="route-path" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
+                        <path d="M25 35 C35 38 34 57 45 61 S58 47 68 55 S79 61 84 43 S78 27 88 24" />
+                        <path class="route-path-shadow" d="M18 69 C28 73 32 82 42 75 S48 58 58 62" />
+                    </svg>
+                    ${renderRouteMap(routeRecords)}
+                    <span class="map-compass">N</span>
+                </div>
             </div>
+            ${latest ? renderLatestTicket(latest) : '<div class="empty-note latest-ticket-empty">还没有旅行记录。</div>'}
         </div>
     `);
+}
+
+function renderCoverRecord(record, index) {
+    const entryHref = `#entry?id=${encodeURIComponent(record.id)}`;
+
+    return `
+        <article class="cover-record" id="entry-card-cover-${escapeHtml(record.id)}" data-open-entry="${escapeHtml(record.id)}" tabindex="0" role="button" aria-label="打开 ${escapeHtml(record.title)} 档案">
+            <span class="cover-record-thumb" aria-hidden="true"></span>
+            <div class="cover-record-body">
+                <h2>${escapeHtml(record.title)}</h2>
+                <p>${escapeHtml(record.date || '')} · ${escapeHtml(getLocationText(record))}</p>
+            </div>
+            <a class="record-open" href="${entryHref}">打开档案</a>
+            <span class="cover-record-index">${String(index + 1).padStart(2, '0')}</span>
+        </article>
+    `;
+}
+
+function getRouteMapRecords() {
+    const seenLocations = new Set();
+    const routeRecords = [];
+
+    travelModel.recordsDesc.forEach((record) => {
+        const key = record.locationKey || [record.country, record.province, record.city].filter(Boolean).join('|');
+        if (!key || seenLocations.has(key)) {
+            return;
+        }
+
+        seenLocations.add(key);
+        routeRecords.push(record);
+    });
+
+    return routeRecords.slice(0, ROUTE_MAP_SLOTS.length).reverse();
+}
+
+function renderRouteMap(records) {
+    return records.map((record, index) => {
+        const slot = ROUTE_MAP_SLOTS[index];
+        const entryHref = `#entry?id=${encodeURIComponent(record.id)}`;
+        const label = getLocationText(record);
+
+        return `
+            <a class="route-city ${slot.city}" href="${entryHref}" aria-label="打开 ${escapeHtml(record.title)} 日记">${escapeHtml(record.city || record.province || record.country)}</a>
+            <a class="route-dot ${slot.dot}" href="${entryHref}" data-record-id="${escapeHtml(record.id)}" aria-label="打开 ${escapeHtml(label)} 的旅行记录"></a>
+        `;
+    }).join('');
 }
 
 function renderLedger(params = {}) {
     const ledgerParams = normalizeLedgerParams(params);
     const filtered = getLedgerRecords(ledgerParams);
+    const resultLabel = createLedgerResultLabel(filtered.length, travelModel.records.length, ledgerParams);
 
     setPages(`
         <div class="ledger-page">
             <header class="page-head">
-                <p class="journal-label">路线账</p>
+                <p class="journal-label">路线档案</p>
                 <h1>按时间回看每一次出发。</h1>
             </header>
             ${renderLedgerControls(ledgerParams, 'ledgerSearch')}
@@ -339,28 +414,40 @@ function renderLedger(params = {}) {
                 ${yearLink('全部', 'all', ledgerParams)}
                 ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
             </div>
+            <p class="result-count" aria-live="polite">${escapeHtml(resultLabel)}</p>
             <div class="timeline-list" id="ledgerList">
                 ${filtered.length ? filtered.map(renderLedgerEntry).join('') : '<div class="empty-note">没有找到匹配的旅行记录。</div>'}
             </div>
         </div>
     `, `
         <aside class="map-pocket">
-            <p class="journal-label">夹页</p>
-            <h2>路线地图口袋</h2>
+            <p class="journal-label">索引夹层</p>
+            <h2>路线地图与标签</h2>
             <div class="filter-summary">
                 <span>${ledgerParams.year === 'all' ? '全部年份' : `${ledgerParams.year} 年`}</span>
                 <span>${ledgerParams.sort === 'asc' ? '最早优先' : '最新优先'}</span>
                 <span>${ledgerParams.q ? `搜索：${escapeHtml(ledgerParams.q)}` : '未搜索'}</span>
+                <span>${escapeHtml(resultLabel)}</span>
             </div>
-            <button class="brass-toggle" type="button" data-action="toggle-sort">
+            <button class="brass-toggle" type="button" data-action="toggle-sort" aria-pressed="${ledgerParams.sort === 'asc' ? 'true' : 'false'}" aria-label="当前排序：${ledgerParams.sort === 'asc' ? '最早优先' : '最新优先'}">
                 ${ledgerParams.sort === 'asc' ? '切回最新优先' : '切到最早优先'}
             </button>
-            <button class="paper-button full-width" type="button" data-action="open-drawer">打开皮革筛选抽屉</button>
+            <button class="paper-button full-width" type="button" data-action="open-drawer">打开搜索抽屉</button>
             <div class="province-strip">
                 ${travelModel.countries.flatMap(country => country.provinces).slice(0, 10).map(renderMiniLuggageTag).join('')}
             </div>
         </aside>
     `);
+}
+
+function createLedgerResultLabel(count, total, params) {
+    const hasFilter = params.year !== 'all' || Boolean(params.q);
+
+    if (!hasFilter) {
+        return `共 ${total} 条旅行记录`;
+    }
+
+    return `显示 ${count} / ${total} 条记录`;
 }
 
 function renderArchive(params = {}) {
@@ -379,12 +466,13 @@ function renderArchive(params = {}) {
     setPages(`
         <div class="archive-page">
             <header class="page-head">
-                <p class="journal-label">档案夹</p>
+                <p class="journal-label">地点索引</p>
                 <h1>按地点抽出一张行李牌。</h1>
             </header>
             <label class="field-label" for="archiveSearch">搜索国家、省份或城市</label>
-            <div class="ink-field">
+            <div class="ink-field search-field">
                 <input id="archiveSearch" type="search" value="${escapeHtml(params.q || '')}" autocomplete="off" placeholder="例如：云南、苏州、北京">
+                <button class="search-clear" type="button" data-action="clear-search" data-target="archive" aria-label="清空地点搜索" ${params.q ? '' : 'disabled'}>×</button>
             </div>
             <div class="archive-country-list">
                 ${countries.length ? countries.map(renderCountryFolder).join('') : '<div class="empty-note">没有找到匹配的地点。</div>'}
@@ -411,7 +499,7 @@ function renderPlace(params = {}) {
 
     setPages(`
         <div class="place-page">
-            <a class="ribbon-back" href="#archive">返回档案夹</a>
+            <a class="ribbon-back" href="#archive">返回地点索引</a>
             <p class="journal-label">地点档案</p>
             <h1>${escapeHtml(label)}</h1>
             <p class="place-count">${matching.length} 次到访</p>
@@ -431,16 +519,25 @@ function renderPlace(params = {}) {
 
 function renderEntryRoute(params = {}) {
     const record = travelModel.recordsById.get(params.id);
-    const ledgerParams = record ? { year: record.year, q: '', sort: DEFAULT_LEDGER_SORT } : { year: 'all', q: '', sort: DEFAULT_LEDGER_SORT };
-    renderLedger(ledgerParams);
+    const backgroundRoute = parseRoute(lastReadingHash);
+    if (backgroundRoute.name === 'place') {
+        renderPlace(backgroundRoute.params);
+    } else if (backgroundRoute.name === 'archive') {
+        renderArchive(backgroundRoute.params);
+    } else {
+        const ledgerParams = backgroundRoute.name === 'ledger'
+            ? backgroundRoute.params
+            : (record ? { year: record.year, q: '', sort: DEFAULT_LEDGER_SORT } : { year: 'all', q: '', sort: DEFAULT_LEDGER_SORT });
+        renderLedger(ledgerParams);
+    }
     openEntrySheet(record);
 }
 
 function renderLoading() {
     setPages(`
         <div class="loading-page">
-            <p class="journal-label">正在打开手账</p>
-            <h1>正在整理旅行纸页...</h1>
+            <p class="journal-label">正在打开档案盒</p>
+            <h1>正在整理旅行档案...</h1>
         </div>
     `, '<div class="loading-page muted-page"></div>');
 }
@@ -449,7 +546,7 @@ function renderFatalError(error) {
     setPages(`
         <div class="loading-page">
             <p class="journal-label">加载失败</p>
-            <h1>手账暂时打不开。</h1>
+            <h1>档案盒暂时打不开。</h1>
             <p class="page-copy">${escapeHtml(error.message)}</p>
         </div>
     `, '<div class="loading-page muted-page"></div>');
@@ -460,25 +557,47 @@ function renderDrawer() {
 
     const route = activeRoute || parseRoute();
     const ledgerParams = route.name === 'ledger' ? normalizeLedgerParams(route.params) : { year: 'all', q: '', sort: DEFAULT_LEDGER_SORT };
+    const filtered = getLedgerRecords(ledgerParams);
+    const resultLabel = createLedgerResultLabel(filtered.length, travelModel.records.length, ledgerParams);
 
     refs.drawer.innerHTML = `
         <div class="drawer-grip" aria-hidden="true"></div>
         <div class="drawer-head">
-            <h2>皮革筛选抽屉</h2>
+            <h2>搜索记录</h2>
             <button class="icon-button" type="button" data-action="close-drawer" aria-label="关闭筛选">×</button>
         </div>
         <label class="field-label" for="drawerSearch">路线搜索</label>
-        <div class="ink-field">
+        <div class="ink-field search-field">
             <input id="drawerSearch" type="search" value="${escapeHtml(ledgerParams.q)}" autocomplete="off" placeholder="搜索城市或记录">
+            <button class="search-clear" type="button" data-action="clear-search" data-target="drawer" aria-label="清空抽屉搜索" ${ledgerParams.q ? '' : 'disabled'}>×</button>
         </div>
+        <p class="result-count drawer-result-count" aria-live="polite">${escapeHtml(resultLabel)}</p>
         <div class="drawer-years">
             ${yearLink('全部', 'all', ledgerParams)}
             ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
         </div>
-        <button class="brass-toggle full-width" type="button" data-action="toggle-sort">
+        <button class="brass-toggle full-width" type="button" data-action="toggle-sort" aria-pressed="${ledgerParams.sort === 'asc' ? 'true' : 'false'}" aria-label="当前排序：${ledgerParams.sort === 'asc' ? '最早优先' : '最新优先'}">
             ${ledgerParams.sort === 'asc' ? '最早优先' : '最新优先'}
         </button>
     `;
+}
+
+function handleClearSearch(button) {
+    const target = button.getAttribute('data-target');
+
+    if (target === 'ledger') {
+        updateLedgerRoute({ q: '' }, { replace: true, focusId: 'ledgerSearch' });
+        return;
+    }
+
+    if (target === 'drawer') {
+        updateLedgerRoute({ q: '' }, { replace: true, focusId: 'drawerSearch', keepDrawer: true });
+        return;
+    }
+
+    if (target === 'archive') {
+        navigateTo({ name: 'archive', params: { q: '' } }, { replace: true, focusId: 'archiveSearch' });
+    }
 }
 
 function openEntrySheet(record) {
@@ -498,6 +617,7 @@ function openEntrySheet(record) {
         return;
     }
 
+    const navigation = getEntryNavigation(record);
     refs.sheet.innerHTML = `
         <div class="sheet-backdrop" data-action="close-entry"></div>
         <article class="entry-sheet" role="dialog" aria-modal="true" aria-labelledby="entrySheetTitle" tabindex="-1">
@@ -509,12 +629,53 @@ function openEntrySheet(record) {
             <h1 id="entrySheetTitle">${escapeHtml(record.title)}</h1>
             <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
             ${renderPhotoSleeve(record)}
+            ${renderEntrySheetNav(navigation)}
         </article>
     `;
 
     requestAnimationFrame(() => {
         refs.sheet.querySelector('.entry-sheet')?.focus({ preventScroll: true });
     });
+}
+
+function getEntryNavigation(record) {
+    const contextRoute = parseRoute(lastReadingHash || '#ledger');
+    let records;
+
+    if (contextRoute.name === 'ledger') {
+        records = getLedgerRecords(contextRoute.params);
+    } else if (contextRoute.name === 'place') {
+        records = getPlaceRecords(contextRoute.params);
+    } else {
+        records = travelModel.recordsDesc;
+    }
+
+    const index = records.findIndex(item => item.id === record.id);
+
+    return {
+        index,
+        total: records.length,
+        previous: index > 0 ? records[index - 1] : null,
+        next: index >= 0 && index < records.length - 1 ? records[index + 1] : null
+    };
+}
+
+function renderEntrySheetNav(navigation) {
+    const position = navigation.index >= 0
+        ? `${navigation.index + 1} / ${navigation.total}`
+        : `1 / ${Math.max(navigation.total, 1)}`;
+
+    return `
+        <nav class="sheet-nav" aria-label="日记翻页">
+            <button class="paper-button sheet-nav-button" type="button" data-action="entry-prev" data-entry-id="${navigation.previous ? escapeHtml(navigation.previous.id) : ''}" ${navigation.previous ? '' : 'disabled'} aria-label="上一篇日记">
+                上一篇
+            </button>
+            <span class="sheet-nav-count">${escapeHtml(position)}</span>
+            <button class="paper-button sheet-nav-button" type="button" data-action="entry-next" data-entry-id="${navigation.next ? escapeHtml(navigation.next.id) : ''}" ${navigation.next ? '' : 'disabled'} aria-label="下一篇日记">
+                下一篇
+            </button>
+        </nav>
+    `;
 }
 
 function closeEntrySheet(options = {}) {
@@ -525,7 +686,12 @@ function closeEntrySheet(options = {}) {
     refs.sheet.innerHTML = '';
 
     if (options.restoreHash) {
-        navigateTo(lastReadingHash || '#ledger', { replace: true });
+        navigateTo(lastReadingHash || '#ledger', { replace: true, focusId: lastEntryFocusId, animate: false });
+        return;
+    }
+
+    if (options.restoreFocus && lastEntryFocusId) {
+        restoreFocus(lastEntryFocusId);
     }
 }
 
@@ -545,10 +711,17 @@ function renderWithPageTurn(renderFn, options = {}) {
         refs.spread.classList.remove('turn-forward', 'turn-back');
         refs.spread.classList.add('turn-in');
         pageTurnTimer = setTimeout(() => refs.spread.classList.remove('turn-in'), PAGE_TURN_MS);
-    }, 160);
+    }, PAGE_TURN_SWAP_MS);
 }
 
 function handleDocumentClick(event) {
+    const clearSearch = event.target.closest('[data-action="clear-search"]');
+    if (clearSearch) {
+        event.preventDefault();
+        handleClearSearch(clearSearch);
+        return;
+    }
+
     const closeEntry = event.target.closest('[data-action="close-entry"]');
     if (closeEntry) {
         event.preventDefault();
@@ -556,16 +729,37 @@ function handleDocumentClick(event) {
         return;
     }
 
+    const entryNav = event.target.closest('[data-action="entry-prev"], [data-action="entry-next"]');
+    if (entryNav) {
+        event.preventDefault();
+        const nextId = entryNav.getAttribute('data-entry-id');
+        if (nextId) {
+            navigateTo({ name: 'entry', params: { id: nextId } }, { replace: true });
+        }
+        return;
+    }
+
     const drawerAction = event.target.closest('[data-action="open-drawer"], [data-action="close-drawer"]');
     if (drawerAction) {
         event.preventDefault();
-        drawerAction.dataset.action === 'open-drawer' ? openDrawer() : closeDrawer();
+        drawerAction.dataset.action === 'open-drawer' ? openDrawer(drawerAction) : closeDrawer({ restoreFocus: true });
+        return;
+    }
+
+    const latestAction = event.target.closest('[data-action="open-latest"]');
+    if (latestAction) {
+        event.preventDefault();
+        if (travelModel?.latestRecord) {
+            lastReadingHash = serializeRoute(activeRoute?.name === 'entry' ? parseRoute(lastReadingHash) : activeRoute);
+            lastEntryFocusId = '';
+            navigateTo({ name: 'entry', params: { id: travelModel.latestRecord.id } });
+        }
         return;
     }
 
     if (event.target.closest('#drawerToggle')) {
         event.preventDefault();
-        toggleDrawer();
+        toggleDrawer(event.target.closest('#drawerToggle'));
         return;
     }
 
@@ -579,10 +773,15 @@ function handleDocumentClick(event) {
         return;
     }
 
+    if (refs.drawer?.classList.contains('journal-drawer-open') && !event.target.closest('#drawerRoot')) {
+        closeDrawer({ restoreFocus: false });
+    }
+
     const entryCard = event.target.closest('[data-open-entry]');
     if (entryCard && !event.target.closest('a, button, input')) {
         event.preventDefault();
-        lastReadingHash = serializeRoute(activeRoute?.name === 'entry' ? { name: 'ledger', params: {} } : activeRoute);
+        lastReadingHash = serializeRoute(activeRoute?.name === 'entry' ? parseRoute(lastReadingHash) : activeRoute);
+        lastEntryFocusId = entryCard.id || '';
         navigateTo({ name: 'entry', params: { id: entryCard.dataset.openEntry } });
         return;
     }
@@ -590,7 +789,12 @@ function handleDocumentClick(event) {
     const routeAnchor = event.target.closest('a[href^="#"]');
     if (routeAnchor) {
         event.preventDefault();
-        navigateTo(routeAnchor.getAttribute('href'));
+        const href = routeAnchor.getAttribute('href');
+        if (href.startsWith('#entry')) {
+            lastReadingHash = serializeRoute(activeRoute?.name === 'entry' ? parseRoute(lastReadingHash) : activeRoute);
+            lastEntryFocusId = '';
+        }
+        navigateTo(href);
     }
 }
 
@@ -601,13 +805,14 @@ function handleDocumentKeydown(event) {
             return;
         }
 
-        closeDrawer();
+        closeDrawer({ restoreFocus: true });
         return;
     }
 
     if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('[data-open-entry]')) {
         event.preventDefault();
         lastReadingHash = serializeRoute(activeRoute || { name: 'ledger', params: {} });
+        lastEntryFocusId = event.target.id || '';
         navigateTo({ name: 'entry', params: { id: event.target.dataset.openEntry } });
     }
 }
@@ -674,17 +879,18 @@ function renderLedgerControls(params, inputId) {
     return `
         <div class="ledger-controls">
             <label class="field-label" for="${inputId}">搜索路线</label>
-            <div class="ink-field">
+            <div class="ink-field search-field">
                 <input id="${inputId}" type="search" value="${escapeHtml(params.q)}" autocomplete="off" placeholder="搜索城市、省份或日记内容">
+                <button class="search-clear" type="button" data-action="clear-search" data-target="ledger" aria-label="清空路线搜索" ${params.q ? '' : 'disabled'}>×</button>
             </div>
-            <button class="filter-chip" type="button" data-action="open-drawer">筛选抽屉</button>
+            <button class="filter-chip" type="button" data-action="open-drawer">搜索抽屉</button>
         </div>
     `;
 }
 
 function renderLedgerEntry(record) {
     return `
-        <article class="ledger-entry" data-open-entry="${escapeHtml(record.id)}" tabindex="0" role="button" aria-label="打开 ${escapeHtml(record.title)} 日记">
+        <article class="ledger-entry" id="entry-card-${escapeHtml(record.id)}" data-open-entry="${escapeHtml(record.id)}" tabindex="0" role="button" aria-label="打开 ${escapeHtml(record.title)} 日记">
             <time datetime="${escapeHtml(record.date || '')}" class="entry-date-chip">
                 <strong>${escapeHtml((record.date || '').slice(8, 10) || '--')}</strong>
                 <span>${escapeHtml((record.date || '').slice(0, 7) || '')}</span>
@@ -731,11 +937,12 @@ function renderMiniLuggageTag(province) {
 
 function renderLatestTicket(record) {
     return `
-        <article class="latest-ticket" data-open-entry="${escapeHtml(record.id)}" tabindex="0" role="button" aria-label="打开最近日记">
+        <article class="latest-ticket" id="entry-card-latest-${escapeHtml(record.id)}" data-open-entry="${escapeHtml(record.id)}" tabindex="0" role="button" aria-label="打开最近日记">
+            <span class="latest-ticket-label">最近旅行记录</span>
             <time datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '')}</time>
             <h2>${escapeHtml(record.title)}</h2>
             <p>${escapeHtml(getLocationText(record))}</p>
-            <span>点击展开浮起纸页</span>
+            <span>点击展开档案页</span>
         </article>
     `;
 }
@@ -836,22 +1043,36 @@ function maxDate(current, next) {
     return !current || (next || '') > current ? (next || '') : current;
 }
 
-function openDrawer() {
+function openDrawer(triggerElement) {
+    lastDrawerTrigger = triggerElement || document.activeElement;
     refs.drawer.classList.add('journal-drawer-open');
     refs.drawer.setAttribute('aria-hidden', 'false');
     refs.drawerToggle?.setAttribute('aria-expanded', 'true');
     document.body.classList.add('drawer-open');
+
+    requestAnimationFrame(() => {
+        refs.drawer.querySelector('#drawerSearch')?.focus({ preventScroll: true });
+    });
 }
 
-function closeDrawer() {
+function closeDrawer(options = {}) {
+    const wasOpen = refs.drawer?.classList.contains('journal-drawer-open');
     refs.drawer?.classList.remove('journal-drawer-open');
     refs.drawer?.setAttribute('aria-hidden', 'true');
     refs.drawerToggle?.setAttribute('aria-expanded', 'false');
     document.body.classList.remove('drawer-open');
+
+    if (wasOpen && options.restoreFocus && lastDrawerTrigger && typeof lastDrawerTrigger.focus === 'function') {
+        lastDrawerTrigger.focus({ preventScroll: true });
+    }
+
+    if (wasOpen) {
+        lastDrawerTrigger = null;
+    }
 }
 
-function toggleDrawer() {
-    refs.drawer?.classList.contains('journal-drawer-open') ? closeDrawer() : openDrawer();
+function toggleDrawer(triggerElement) {
+    refs.drawer?.classList.contains('journal-drawer-open') ? closeDrawer({ restoreFocus: true }) : openDrawer(triggerElement);
 }
 
 function restoreFocus(focusId) {
