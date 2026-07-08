@@ -4,316 +4,71 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Travel Diary</title>
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23fffbfe'/%3E%3Cpath d='M32 7l5.6 18.7L57 32l-19.4 6.3L32 57l-5.6-18.7L7 32l19.4-6.3L32 7z' fill='%23735bb0'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="css/base.css?v=20260617-material3-color-soften">
-    <link rel="stylesheet" href="css/layout.css?v=20260617-material3-color-soften">
-    <link rel="stylesheet" href="css/components.css?v=20260617-material3-color-soften">
-    <link rel="stylesheet" href="css/pages/home.css?v=20260617-material3-color-soften">
-    <link rel="stylesheet" href="css/pages/location.css?v=20260617-material3-color-soften">
-    <link rel="stylesheet" href="css/pages/profile.css?v=20260617-material3-color-soften">
-    <link rel="stylesheet" href="css/responsive.css?v=20260617-material3-color-soften">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232b160f'/%3E%3Cpath d='M32 7l5.6 18.7L57 32l-19.4 6.3L32 57l-5.6-18.7L7 32l19.4-6.3L32 7z' fill='%23d8b467'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="css/journal.css?v=20260708-archive-box-4">
 </head>
-<body data-page="home">
-    <nav class="top-nav">
-        <div class="container top-nav-inner">
-            <div class="logo">
-                <svg class="logo-mark" width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 2.2L13.9 9.1L20.8 12L13.9 14.9L12 21.8L10.1 14.9L3.2 12L10.1 9.1L12 2.2Z" fill="var(--ink)"/></svg>
-                <span>Travel Diary</span>
-            </div>
-            <button class="nav-menu-btn" id="navMenuBtn" aria-label="打开导航" aria-expanded="false" aria-controls="primaryNav">
-                <span class="nav-menu-lines" aria-hidden="true">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </span>
-            </button>
-            <div class="nav-links" id="primaryNav">
-                <a href="#home" class="nav-goto">首页</a>
-                <a href="#journey" class="nav-goto">旅行路径</a>
-                <a href="#profile" class="nav-goto">个人主页</a>
-            </div>
-        </div>
-    </nav>
+<body>
+    <a class="skip-link" href="#journalStage">跳到档案内容</a>
 
-    <section class="home-page page-section app-page page-active" id="home" data-page="home">
-        <div class="home-visual" aria-hidden="true"></div>
-        <div class="container home-hero">
-            <div class="home-copy">
-                <p class="eyebrow">Travel Diary</p>
-                <h1 class="display-xl">把走过的城市，整理成一条清晰的时间线。</h1>
-                <p class="body-md">从日期、城市、省份和文字片段里重新看见自己的路线。每一次出发都被收进档案，方便检索、回看和继续补全。</p>
-                <div class="home-actions">
-                    <a href="#journey" class="button-primary nav-goto">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        查看旅行路径
-                    </a>
-                    <a href="#profile" class="button-secondary nav-goto">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                            <path d="M4 19V7.5A2.5 2.5 0 0 1 6.5 5H20v14H6.5A2.5 2.5 0 0 1 4 16.5m0 0A2.5 2.5 0 0 0 6.5 19" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                        </svg>
-                        打开档案
-                    </a>
-                </div>
-                <div class="home-summary-strip" aria-label="旅行档案摘要">
-                    <div class="home-summary-item">
-                        <strong id="homeRecordCount">29</strong>
-                        <span>旅行记录</span>
-                    </div>
-                    <div class="home-summary-item">
-                        <strong id="homeCityCount">24</strong>
-                        <span>城市</span>
-                    </div>
-                    <div class="home-summary-item">
-                        <strong id="homeDateRange">2024-26</strong>
-                        <span>时间范围</span>
-                    </div>
-                </div>
-            </div>
-            <div class="home-route-art" id="homeRouteArt" role="group" aria-label="动态旅行路线图">
-                <div class="home-route-meta" aria-hidden="true">
-                    <span>ROUTE</span>
-                    <strong>LIVE</strong>
-                </div>
-                <button class="home-route-toggle" id="homeRouteToggle" type="button" aria-label="切换路线高亮" aria-pressed="false">
-                    <span></span>
+    <div class="journal-shell" id="appShell" data-route="cover">
+        <header class="journal-spine" aria-label="旅行档案章节">
+            <a class="brand-lockup" href="#cover" aria-label="Travel Diary 档案首页">
+                <span class="brand-star" aria-hidden="true">✦</span>
+                <span>
+                    <strong>Travel Diary</strong>
+                    <small>旅行档案 · 记录每一段时光</small>
+                </span>
+            </a>
+
+            <nav class="chapter-tabs" id="chapterTabs" aria-label="章节导航">
+                <a href="#cover" class="chapter-tab" data-route-link="cover">
+                    <span class="chapter-icon" aria-hidden="true">封</span>
+                    <span>首页</span>
+                </a>
+                <a href="#ledger" class="chapter-tab" data-route-link="ledger">
+                    <span class="chapter-icon" aria-hidden="true">路</span>
+                    <span>旅行路径</span>
+                </a>
+                <a href="#archive" class="chapter-tab" data-route-link="archive">
+                    <span class="chapter-icon" aria-hidden="true">档</span>
+                    <span>个人主页</span>
+                </a>
+            </nav>
+
+            <div class="spine-tools" aria-label="快捷入口">
+                <a class="spine-tool spine-search" href="#ledger" aria-label="搜索路线档案">
+                    <span aria-hidden="true"></span>
+                </a>
+                <span class="tool-divider" aria-hidden="true"></span>
+                <a class="spine-tool spine-profile" href="#archive" aria-label="打开个人主页">
+                    <span aria-hidden="true"></span>
+                </a>
+                <button class="spine-filter" id="drawerToggle" type="button" aria-label="打开搜索抽屉" aria-expanded="false" aria-controls="drawerRoot">
+                    <span aria-hidden="true">筛</span>
                 </button>
-                <svg class="home-route-svg" viewBox="0 0 420 420" focusable="false" aria-hidden="true">
-                    <defs>
-                        <linearGradient id="homeRouteGradient" x1="82" y1="336" x2="322" y2="90" gradientUnits="userSpaceOnUse">
-                            <stop offset="0" stop-color="var(--primary)"/>
-                            <stop offset="0.52" stop-color="var(--accent-amber)"/>
-                            <stop offset="1" stop-color="var(--accent-teal)"/>
-                        </linearGradient>
-                        <linearGradient id="homeMountainFace" x1="96" y1="356" x2="316" y2="86" gradientUnits="userSpaceOnUse">
-                            <stop offset="0" stop-color="var(--surface-dark-elevated)"/>
-                            <stop offset="0.58" stop-color="var(--surface-dark-soft)"/>
-                            <stop offset="1" stop-color="var(--primary-active)"/>
-                        </linearGradient>
-                        <linearGradient id="homeMountainSide" x1="138" y1="350" x2="334" y2="134" gradientUnits="userSpaceOnUse">
-                            <stop offset="0" stop-color="var(--surface-dark)"/>
-                            <stop offset="1" stop-color="var(--surface-dark-elevated)"/>
-                        </linearGradient>
-                        <linearGradient id="homeSnowGradient" x1="184" y1="108" x2="266" y2="176" gradientUnits="userSpaceOnUse">
-                            <stop offset="0" stop-color="var(--on-dark)"/>
-                            <stop offset="1" stop-color="var(--surface-cream-strong)"/>
-                        </linearGradient>
-                        <radialGradient id="homeSummitGlow" cx="0" cy="0" r="1" gradientTransform="translate(318 96) rotate(90) scale(132)">
-                            <stop offset="0" stop-color="var(--accent-amber)" stop-opacity="0.42"/>
-                            <stop offset="0.48" stop-color="var(--primary)" stop-opacity="0.12"/>
-                            <stop offset="1" stop-color="var(--primary)" stop-opacity="0"/>
-                        </radialGradient>
-                        <pattern id="homeRockGrain" width="18" height="18" patternUnits="userSpaceOnUse" patternTransform="rotate(-24)">
-                            <rect width="18" height="18" fill="transparent"/>
-                            <rect x="2" y="4" width="8" height="1" rx="0.5" fill="var(--on-dark)" opacity="0.10"/>
-                            <rect x="10" y="12" width="6" height="1" rx="0.5" fill="var(--primary)" opacity="0.12"/>
-                            <circle cx="5" cy="14" r="1" fill="var(--on-dark)" opacity="0.08"/>
-                        </pattern>
-                        <clipPath id="homeMountainClip">
-                            <path d="M70 356L226 74L366 356Z"/>
-                        </clipPath>
-                        <filter id="homeRouteGlow" x="-30%" y="-30%" width="160%" height="160%">
-                            <feGaussianBlur stdDeviation="4.6" result="blur"/>
-                            <feMerge>
-                                <feMergeNode in="blur"/>
-                                <feMergeNode in="SourceGraphic"/>
-                            </feMerge>
-                        </filter>
-                    </defs>
-                    <circle class="home-summit-glow" cx="318" cy="96" r="132"/>
-                    <path class="home-mountain-back" d="M32 346L138 178L204 262L278 116L392 346Z"/>
-                    <path class="home-mountain-main" d="M70 356L226 74L366 356Z"/>
-                    <path class="home-mountain-side" d="M226 74L366 356H214L244 254L220 184Z"/>
-                    <path class="home-mountain-snow" d="M226 74L188 144L222 130L244 172L262 138Z"/>
-                    <path class="home-mountain-highlight" d="M226 86L158 220L118 338L184 260L210 172Z"/>
-                    <path class="home-mountain-shadow" d="M244 254L214 356H330L292 284L268 214Z"/>
-                    <g class="home-mountain-texture" clip-path="url(#homeMountainClip)">
-                        <rect x="70" y="74" width="296" height="282" fill="url(#homeRockGrain)"/>
-                    </g>
-                    <path class="home-snow-glint" d="M190 144L222 130L244 172"/>
-                    <path class="home-mountain-ridge" d="M226 76L220 184L244 254L214 356"/>
-                    <path class="home-mountain-contour home-mountain-contour-a" d="M112 310C162 286 214 298 270 274C306 258 330 246 354 224"/>
-                    <path class="home-mountain-contour home-mountain-contour-b" d="M142 242C174 224 210 232 242 210C270 190 292 170 318 154"/>
-                    <path class="home-route-shadow" d="M86 340C126 318 126 276 166 260C208 244 196 200 238 188C278 176 274 126 322 102" pathLength="1"/>
-                    <path class="home-route-main" id="homeRouteMainPath" d="M86 340C126 318 126 276 166 260C208 244 196 200 238 188C278 176 274 126 322 102" pathLength="1"/>
-                    <path class="home-route-pulse" d="M86 340C126 318 126 276 166 260C208 244 196 200 238 188C278 176 274 126 322 102" pathLength="1"/>
-                    <path class="home-route-descent" d="M322 102C356 146 338 194 366 238C396 286 344 330 286 344C214 362 144 348 86 340" pathLength="1"/>
-                    <g class="home-route-steps" aria-hidden="true">
-                        <circle cx="120" cy="314" r="2.4"/>
-                        <circle cx="151" cy="268" r="2.2"/>
-                        <circle cx="198" cy="225" r="2.4"/>
-                        <circle cx="238" cy="188" r="2.2"/>
-                        <circle cx="280" cy="150" r="2.4"/>
-                    </g>
-                    <g class="home-descent-steps" aria-hidden="true">
-                        <circle cx="344" cy="154" r="2.1"/>
-                        <circle cx="364" cy="234" r="2.3"/>
-                        <circle cx="322" cy="322" r="2.1"/>
-                        <circle cx="232" cy="352" r="2.2"/>
-                    </g>
-                    <path class="home-route-secondary" d="M92 362C144 334 202 348 254 322C302 298 334 306 372 276" pathLength="1"/>
-                    <path class="home-route-orbit" d="M104 126C152 86 232 54 302 82C354 104 378 158 366 214" pathLength="1"/>
-                    <g class="home-climber" aria-hidden="true">
-                        <g class="home-climber-figure">
-                            <circle class="home-climber-head" cx="0" cy="-19" r="7"/>
-                            <path class="home-climber-scarf" d="M-5 -17C-18 -17 -20 -10 -26 -5"/>
-                            <path class="home-climber-pack" d="M-15 -18C-20 -8 -17 2 -8 4L-5 -18Z"/>
-                            <path class="home-climber-body" d="M-4 -12L6 6"/>
-                            <path class="home-climber-limb home-climber-arm-a" d="M-2 -8L-18 -1"/>
-                            <path class="home-climber-limb home-climber-arm-b" d="M1 -8L16 -18"/>
-                            <path class="home-climber-limb home-climber-leg-a" d="M6 6L-8 22"/>
-                            <path class="home-climber-limb home-climber-leg-b" d="M6 6L20 18"/>
-                            <path class="home-climber-pole" d="M18 -25L12 28"/>
-                        </g>
-                    </g>
-                    <g class="home-summit-flag" aria-hidden="true">
-                        <path d="M318 106V62"/>
-                        <path d="M318 64C338 58 350 66 366 60V88C348 96 336 84 318 90Z"/>
-                    </g>
-                </svg>
-                <span class="home-route-pin home-route-pin-a" aria-hidden="true"></span>
-                <span class="home-route-pin home-route-pin-b" aria-hidden="true"></span>
-                <span class="home-route-pin home-route-pin-c" aria-hidden="true"></span>
-                <span class="home-route-pin home-route-pin-d" aria-hidden="true"></span>
-                <span class="home-route-cursor" aria-hidden="true"></span>
-                <span class="home-route-scan" aria-hidden="true"></span>
-                <span class="home-route-spark" aria-hidden="true"></span>
-                <span class="home-route-radar" aria-hidden="true"></span>
-                <span class="home-route-dock" aria-hidden="true">
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                    <span></span>
-                </span>
             </div>
-        </div>
-    </section>
+        </header>
 
-    <section class="journey-page page-shell app-page" id="journey" data-page="journey" hidden>
-        <div class="page-hero">
-            <div class="container page-hero-copy">
-                <div class="journey-header-copy">
-                    <p class="eyebrow">Journal timeline</p>
-                    <h1 class="display-lg">按时间回看每一次出发。</h1>
-                    <p class="body-md">用年份、搜索和地点入口整理每一段路线，时间线保留完整的日期节奏和再次到访标记。</p>
+        <main class="journal-stage" id="journalStage" tabindex="-1">
+            <section class="notebook" aria-live="polite">
+                <div class="page-spread" id="pageSpread">
+                    <section class="paper-page paper-page-left" id="leftPage" aria-label="左页"></section>
+                    <section class="paper-page paper-page-right" id="rightPage" aria-label="右页"></section>
                 </div>
-                <div class="page-hero-actions">
-                    <button class="hamburger-btn" id="hamburgerBtn" aria-label="打开筛选" aria-expanded="false">
-                        <span class="hamburger-lines" aria-hidden="true">
-                            <span></span>
-                            <span></span>
-                            <span></span>
-                        </span>
-                        <span class="hamburger-label">筛选路线</span>
-                    </button>
-                </div>
-            </div>
-        </div>
+                <button class="book-clasp" type="button" data-action="open-drawer" aria-label="打开搜索抽屉"><span aria-hidden="true">⌖</span></button>
+                <nav class="edge-tabs" aria-label="档案快捷标签">
+                    <a class="edge-tab" href="#ledger">路线档案</a>
+                    <button class="edge-tab" type="button" data-action="open-drawer">搜索记录</button>
+                    <button class="edge-tab" type="button" data-action="open-latest">最近记录</button>
+                    <a class="edge-tab" href="#archive">打开档案</a>
+                </nav>
+            </section>
+        </main>
+    </div>
 
-        <div class="container section page-layout">
-            <aside class="sidebar">
+    <aside class="journal-drawer" id="drawerRoot" aria-label="路线搜索抽屉" aria-hidden="true"></aside>
+    <div class="entry-sheet-root" id="sheetRoot" aria-hidden="true"></div>
 
-            <div class="sidebar-group sidebar-summary-group">
-                <h3 class="group-header">概览</h3>
-                <div class="sidebar-stats" id="statsHeader">
-                    <!-- Stats will be injected here -->
-                </div>
-            </div>
-
-            <!-- Exploration Filters -->
-            <div class="sidebar-group">
-                <h3 class="group-header">筛选</h3>
-                
-                <div class="sidebar-item">
-                    <div class="search-wrapper">
-                        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="text" id="searchInput" class="text-input full-width with-icon" placeholder="搜索城市或记录...">
-                    </div>
-                </div>
-
-                <div class="sidebar-item">
-                    <label class="item-label">年份</label>
-                    <div class="tabs vertical-tabs" id="yearTabs">
-                        <!-- Tabs will be injected here -->
-                    </div>
-                </div>
-            </div>
-
-            <!-- View Preferences -->
-            <div class="sidebar-group">
-                <h3 class="group-header">视图</h3>
-                
-                <div class="sidebar-item">
-                    <label class="item-label">排序</label>
-                    <button id="sortBtn" class="button-secondary full-width justify-between">
-                        <span>最新优先</span>
-                        <span class="icon-sort" aria-hidden="true">
-                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" focusable="false">
-                                <path d="M8 2v12m0 0 5-5m-5 5-5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-                            </svg>
-                        </span>
-                    </button>
-                </div>
-            </div>
-
-            </aside>
-
-            <main class="main-content">
-            <div class="feed-heading" id="journal">
-                <p class="eyebrow">Recent chapters</p>
-                <h2 class="display-sm">旅行时间线</h2>
-            </div>
-            <div id="diaryContainer">
-                <!-- Diary entries will be injected here -->
-            </div>
-
-            </main>
-        </div>
-    </section>
-
-    <section class="profile-page page-shell app-page" id="profile" data-page="profile" hidden>
-        <div class="page-hero profile-hero">
-            <div class="container page-hero-copy">
-                <div class="journey-header-copy">
-                    <p class="eyebrow">Personal page</p>
-                    <h1 class="display-lg">旅行者档案</h1>
-                    <p class="body-md">这里汇总旅行日志里的目的地分布，先按国家归类，再展示各国家下的省份，方便从另一种角度回看路线。</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="container section profile-content">
-            <div class="profile-card">
-                <div class="profile-avatar">
-                    <img src="assets/images/profile-picture.png" alt="旅行者头像" loading="lazy">
-                </div>
-                <div class="profile-summary">
-                    <p class="eyebrow">Archive summary</p>
-                    <h2 class="display-sm">路线概览</h2>
-                    <div class="profile-stats stat-grid" id="profileStats">
-                        <!-- Injected by JS -->
-                    </div>
-                </div>
-            </div>
-            <div class="visited-panel">
-                <div class="visited-heading">
-                    <div>
-                        <p class="eyebrow">Visited places</p>
-                        <h2 class="display-sm">按国家查看省份</h2>
-                    </div>
-                    <div class="visited-search search-wrapper">
-                        <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        <input type="search" id="visitedSearchInput" class="text-input with-icon" placeholder="搜索国家、省份或城市" autocomplete="off">
-                    </div>
-                </div>
-                <div class="visited-list" id="visitedPlaces">
-                    <!-- Injected by JS -->
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <script type="module" src="js/app.js?v=20260617-material3-color-soften"></script>
+    <script type="module" src="js/app.js?v=20260708-archive-box-4"></script>
 </body>
 </html>
