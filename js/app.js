@@ -4,13 +4,14 @@ import { buildFallbackTitle, escapeHtml } from './utils.js';
 const DEFAULT_LEDGER_SORT = 'desc';
 const PAGE_TURN_MS = 480;
 const PAGE_TURN_SWAP_MS = 140;
+const SEARCH_UPDATE_DELAY_MS = 180;
 const ROUTE_MAP_SLOTS = [
-    { dot: 'dot-a', city: 'city-a' },
-    { dot: 'dot-b', city: 'city-b' },
-    { dot: 'dot-c', city: 'city-c' },
-    { dot: 'dot-d', city: 'city-d' },
-    { dot: 'dot-e', city: 'city-e' },
-    { dot: 'dot-f', city: 'city-f' }
+    { ticket: 'ticket-a', stamp: 'stamp-a', label: '登程' },
+    { ticket: 'ticket-b', stamp: 'stamp-b', label: '转乘' },
+    { ticket: 'ticket-c', stamp: 'stamp-c', label: '留宿' },
+    { ticket: 'ticket-d', stamp: 'stamp-d', label: '到访' },
+    { ticket: 'ticket-e', stamp: 'stamp-e', label: '远行' },
+    { ticket: 'ticket-f', stamp: 'stamp-f', label: '返程' }
 ];
 
 const refs = {};
@@ -20,6 +21,8 @@ let pageTurnTimer = null;
 let lastReadingHash = '#ledger';
 let lastEntryFocusId = '';
 let lastDrawerTrigger = null;
+let searchRouteTimer = null;
+let isSearchComposing = false;
 
 document.addEventListener('DOMContentLoaded', () => {
     void initApp();
@@ -55,6 +58,8 @@ function bindGlobalEvents() {
     document.addEventListener('click', handleDocumentClick);
     document.addEventListener('keydown', handleDocumentKeydown);
     document.addEventListener('input', handleDocumentInput);
+    document.addEventListener('compositionstart', handleSearchCompositionStart);
+    document.addEventListener('compositionend', handleSearchCompositionEnd);
     window.addEventListener('hashchange', () => syncRouteFromHash());
 }
 
@@ -152,6 +157,7 @@ function syncRouteFromHash(options = {}) {
 }
 
 function navigateTo(route, options = {}) {
+    clearSearchRouteTimer();
     const nextHash = typeof route === 'string' ? route : serializeRoute(route);
 
     if (options.replace) {
@@ -201,7 +207,7 @@ function renderRoute(route, options = {}) {
 
         renderDrawer();
         restoreFocus(options.focusId);
-    }, { direction, animate: !options.initial });
+    }, { direction, animate: options.animate !== false && !options.initial });
 }
 
 function deriveTravelModel(records) {
@@ -231,6 +237,10 @@ function deriveTravelModel(records) {
     const years = Array.from(new Set(recordsDesc.map(record => record.year))).filter(Boolean);
     const yearRange = years.length > 1 ? `${years[years.length - 1]} - ${years[0]}` : (years[0] || '未知');
     const yearRangeShort = years.length > 1 ? `${years[years.length - 1]}-${years[0].slice(2)}` : (years[0] || '未知');
+    const firstDate = sortedAsc.find(record => record.date)?.date || '';
+    const lastDate = recordsDesc.find(record => record.date)?.date || '';
+    const dateRangeCompact = formatDateRange(firstDate, lastDate, 'month');
+    const dateRangeLabel = formatDateRange(firstDate, lastDate, 'day');
     const countries = buildLocationIndex(enhanced);
     const latestRecord = recordsDesc[0] || null;
 
@@ -241,6 +251,8 @@ function deriveTravelModel(records) {
         years,
         yearRange,
         yearRangeShort,
+        dateRangeCompact,
+        dateRangeLabel,
         countries,
         stats: {
             total: enhanced.length,
@@ -328,7 +340,7 @@ function renderCover() {
             <dl class="tag-stats" aria-label="旅行统计">
                 ${statTag('旅行记录', stats.total)}
                 ${statTag('城市', stats.cities)}
-                ${statTag('时间范围', travelModel.yearRangeShort)}
+                ${statTag('时间范围', travelModel.dateRangeCompact)}
             </dl>
         </div>
     `, `
@@ -336,13 +348,18 @@ function renderCover() {
             <div class="route-insert">
                 <div class="route-map-label">
                     <strong>我的旅行路线图</strong>
-                    <span>${escapeHtml(travelModel.yearRange)}</span>
+                    <span>${escapeHtml(travelModel.dateRangeLabel)}</span>
                 </div>
-                <div class="route-sketch" aria-label="最近旅行路线图">
-                    <svg class="route-path" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false">
-                        <path d="M25 35 C35 38 34 57 45 61 S58 47 68 55 S79 61 84 43 S78 27 88 24" />
-                        <path class="route-path-shadow" d="M18 69 C28 73 32 82 42 75 S48 58 58 62" />
+                <div class="route-sketch route-collage" aria-label="最近旅行路线拼贴">
+                    <svg class="route-doodle" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false" aria-hidden="true">
+                        <path class="doodle-route" d="M12 72 C26 52 34 73 48 50 S69 37 86 22" />
+                        <path class="doodle-river" d="M5 34 C17 25 25 38 36 31 S55 18 70 31 S84 45 95 36" />
+                        <path class="doodle-hill" d="M8 84 L18 69 L27 84 M24 84 L36 62 L50 84 M70 78 L79 65 L90 78" />
+                        <circle class="doodle-sun" cx="83" cy="18" r="5" />
                     </svg>
+                    <span class="route-washi route-washi-a" aria-hidden="true"></span>
+                    <span class="route-washi route-washi-b" aria-hidden="true"></span>
+                    <span class="route-postmark" aria-hidden="true">TRAVEL<br>DIARY</span>
                     ${renderRouteMap(routeRecords)}
                     <span class="map-compass">N</span>
                 </div>
@@ -390,10 +407,16 @@ function renderRouteMap(records) {
         const slot = ROUTE_MAP_SLOTS[index];
         const entryHref = `#entry?id=${encodeURIComponent(record.id)}`;
         const label = getLocationText(record);
+        const place = record.city || record.province || record.country;
+        const date = record.date ? record.date.replace(/-/g, '.') : '未注明日期';
 
         return `
-            <a class="route-city ${slot.city}" href="${entryHref}" aria-label="打开 ${escapeHtml(record.title)} 日记">${escapeHtml(record.city || record.province || record.country)}</a>
-            <a class="route-dot ${slot.dot}" href="${entryHref}" data-record-id="${escapeHtml(record.id)}" aria-label="打开 ${escapeHtml(label)} 的旅行记录"></a>
+            <a class="route-ticket ${slot.ticket}" href="${entryHref}" data-record-id="${escapeHtml(record.id)}" aria-label="打开 ${escapeHtml(label)} 的旅行记录">
+                <span class="route-ticket-label">${escapeHtml(slot.label)}</span>
+                <strong class="route-ticket-place">${escapeHtml(place)}</strong>
+                <small>${escapeHtml(date)}</small>
+                <span class="ticket-stamp ${slot.stamp}" aria-hidden="true">${escapeHtml((record.province || record.country || '出发').slice(0, 3))}</span>
+            </a>
         `;
     }).join('');
 }
@@ -432,7 +455,7 @@ function renderLedger(params = {}) {
             <button class="brass-toggle" type="button" data-action="toggle-sort" aria-pressed="${ledgerParams.sort === 'asc' ? 'true' : 'false'}" aria-label="当前排序：${ledgerParams.sort === 'asc' ? '最早优先' : '最新优先'}">
                 ${ledgerParams.sort === 'asc' ? '切回最新优先' : '切到最早优先'}
             </button>
-            <button class="paper-button full-width" type="button" data-action="open-drawer">打开搜索抽屉</button>
+            <button class="paper-button full-width" type="button" data-action="open-drawer">打开筛选面板</button>
             <div class="province-strip">
                 ${travelModel.countries.flatMap(country => country.provinces).slice(0, 10).map(renderMiniLuggageTag).join('')}
             </div>
@@ -563,13 +586,13 @@ function renderDrawer() {
     refs.drawer.innerHTML = `
         <div class="drawer-grip" aria-hidden="true"></div>
         <div class="drawer-head">
-            <h2>搜索记录</h2>
-            <button class="icon-button" type="button" data-action="close-drawer" aria-label="关闭筛选">×</button>
+            <h2>筛选与排序</h2>
+            <button class="icon-button" type="button" data-action="close-drawer" aria-label="关闭筛选面板">×</button>
         </div>
         <label class="field-label" for="drawerSearch">路线搜索</label>
         <div class="ink-field search-field">
             <input id="drawerSearch" type="search" value="${escapeHtml(ledgerParams.q)}" autocomplete="off" placeholder="搜索城市或记录">
-            <button class="search-clear" type="button" data-action="clear-search" data-target="drawer" aria-label="清空抽屉搜索" ${ledgerParams.q ? '' : 'disabled'}>×</button>
+            <button class="search-clear" type="button" data-action="clear-search" data-target="drawer" aria-label="清空筛选搜索" ${ledgerParams.q ? '' : 'disabled'}>×</button>
         </div>
         <p class="result-count drawer-result-count" aria-live="polite">${escapeHtml(resultLabel)}</p>
         <div class="drawer-years">
@@ -584,19 +607,20 @@ function renderDrawer() {
 
 function handleClearSearch(button) {
     const target = button.getAttribute('data-target');
+    clearSearchRouteTimer();
 
     if (target === 'ledger') {
-        updateLedgerRoute({ q: '' }, { replace: true, focusId: 'ledgerSearch' });
+        updateLedgerRoute({ q: '' }, { replace: true, focusId: 'ledgerSearch', animate: false });
         return;
     }
 
     if (target === 'drawer') {
-        updateLedgerRoute({ q: '' }, { replace: true, focusId: 'drawerSearch', keepDrawer: true });
+        updateLedgerRoute({ q: '' }, { replace: true, focusId: 'drawerSearch', keepDrawer: true, animate: false });
         return;
     }
 
     if (target === 'archive') {
-        navigateTo({ name: 'archive', params: { q: '' } }, { replace: true, focusId: 'archiveSearch' });
+        navigateTo({ name: 'archive', params: { q: '' } }, { replace: true, focusId: 'archiveSearch', animate: false });
     }
 }
 
@@ -818,16 +842,83 @@ function handleDocumentKeydown(event) {
 }
 
 function handleDocumentInput(event) {
-    if (event.target.id === 'ledgerSearch') {
-        updateLedgerRoute({ q: event.target.value }, { replace: true, focusId: 'ledgerSearch' });
+    if (!isSearchInput(event.target)) {
+        return;
     }
 
-    if (event.target.id === 'drawerSearch') {
-        updateLedgerRoute({ q: event.target.value }, { replace: true, focusId: 'drawerSearch', keepDrawer: true });
+    if (event.isComposing || isSearchComposing) {
+        return;
     }
 
-    if (event.target.id === 'archiveSearch') {
-        navigateTo({ name: 'archive', params: { q: event.target.value } }, { replace: true, focusId: 'archiveSearch' });
+    scheduleSearchRouteUpdate(event.target);
+}
+
+function handleSearchCompositionStart(event) {
+    if (!isSearchInput(event.target)) {
+        return;
+    }
+
+    isSearchComposing = true;
+    clearSearchRouteTimer();
+}
+
+function handleSearchCompositionEnd(event) {
+    if (!isSearchInput(event.target)) {
+        return;
+    }
+
+    isSearchComposing = false;
+    scheduleSearchRouteUpdate(event.target, { immediate: true });
+}
+
+function isSearchInput(target) {
+    return Boolean(target?.matches?.('#ledgerSearch, #drawerSearch, #archiveSearch'));
+}
+
+function scheduleSearchRouteUpdate(input, options = {}) {
+    const pending = {
+        id: input.id,
+        value: input.value
+    };
+
+    clearSearchRouteTimer();
+
+    if (options.immediate) {
+        applySearchRouteUpdate(pending);
+        return;
+    }
+
+    searchRouteTimer = window.setTimeout(() => {
+        searchRouteTimer = null;
+        applySearchRouteUpdate(pending);
+    }, SEARCH_UPDATE_DELAY_MS);
+}
+
+function clearSearchRouteTimer() {
+    if (!searchRouteTimer) {
+        return;
+    }
+
+    window.clearTimeout(searchRouteTimer);
+    searchRouteTimer = null;
+}
+
+function applySearchRouteUpdate({ id, value }) {
+    if (id === 'ledgerSearch') {
+        if (activeRoute?.name === 'ledger' && normalizeLedgerParams(activeRoute.params).q === value) return;
+        updateLedgerRoute({ q: value }, { replace: true, focusId: 'ledgerSearch', animate: false });
+        return;
+    }
+
+    if (id === 'drawerSearch') {
+        if (activeRoute?.name === 'ledger' && normalizeLedgerParams(activeRoute.params).q === value) return;
+        updateLedgerRoute({ q: value }, { replace: true, focusId: 'drawerSearch', keepDrawer: true, animate: false });
+        return;
+    }
+
+    if (id === 'archiveSearch') {
+        if (activeRoute?.name === 'archive' && (activeRoute.params.q || '') === value) return;
+        navigateTo({ name: 'archive', params: { q: value } }, { replace: true, focusId: 'archiveSearch', animate: false });
     }
 }
 
@@ -883,7 +974,7 @@ function renderLedgerControls(params, inputId) {
                 <input id="${inputId}" type="search" value="${escapeHtml(params.q)}" autocomplete="off" placeholder="搜索城市、省份或日记内容">
                 <button class="search-clear" type="button" data-action="clear-search" data-target="ledger" aria-label="清空路线搜索" ${params.q ? '' : 'disabled'}>×</button>
             </div>
-            <button class="filter-chip" type="button" data-action="open-drawer">搜索抽屉</button>
+            <button class="filter-chip" type="button" data-action="open-drawer">筛选与排序</button>
         </div>
     `;
 }
@@ -1041,6 +1132,39 @@ function createRecordId(record) {
 
 function maxDate(current, next) {
     return !current || (next || '') > current ? (next || '') : current;
+}
+
+function formatDateRange(startDate, endDate, precision = 'month') {
+    const start = formatDateForRange(startDate, precision);
+    const end = formatDateForRange(endDate, precision);
+
+    if (!start && !end) {
+        return '未知';
+    }
+
+    if (!start || start === end) {
+        return end || start;
+    }
+
+    if (!end) {
+        return start;
+    }
+
+    return `${start} - ${end}`;
+}
+
+function formatDateForRange(dateStr, precision) {
+    const match = String(dateStr || '').match(/^(\d{4})-(\d{2})(?:-(\d{2}))?/);
+    if (!match) {
+        return dateStr || '';
+    }
+
+    const [, year, month, day] = match;
+    if (precision === 'day' && day) {
+        return `${year}.${month}.${day}`;
+    }
+
+    return `${year}.${month}`;
 }
 
 function openDrawer(triggerElement) {
