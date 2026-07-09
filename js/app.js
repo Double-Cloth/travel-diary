@@ -559,7 +559,7 @@ function renderLedger(params = {}) {
         <div class="ledger-page">
             <header class="page-head">
                 <p class="journal-label">路线档案</p>
-                <h1>按时间回看每一次出发。</h1>
+                <h1>出发，到新的爱与喧闹中去！</h1>
             </header>
             ${renderLedgerControls(ledgerParams, 'ledgerSearch')}
             <div class="year-bookmarks" aria-label="年份书签">
@@ -694,8 +694,7 @@ function renderArchive(params = {}) {
         <div class="archive-page">
             <header class="page-head">
                 <p class="journal-label">个人主页</p>
-                <h1>旅行记录、时间线与地点索引。</h1>
-                <p class="page-copy">这里集中展示旅行记录数量、记录时间和去过的地点。点击任一行李牌，会翻到对应地点档案。</p>
+                <p class="page-copy">"I was surprised, as always, how easy the act of leaving was, and how good it felt. The world was suddenly rich with possibility."</p>
             </header>
             <label class="field-label" for="archiveSearch">搜索国家、省份或城市</label>
             <div class="ink-field search-field">
