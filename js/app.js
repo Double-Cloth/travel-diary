@@ -5,13 +5,17 @@ const DEFAULT_LEDGER_SORT = 'desc';
 const PAGE_TURN_MS = 480;
 const PAGE_TURN_SWAP_MS = 140;
 const SEARCH_UPDATE_DELAY_MS = 180;
+const COVER_RECENT_RECORD_LIMIT = 7;
+const COVER_RECENT_RECORD_MIN = 2;
+const COVER_RECENT_RECORD_RESERVED_HEIGHT = 132;
+const COVER_RECENT_RECORD_ROW_HEIGHT = 108;
 const ROUTE_MAP_SLOTS = [
-    { ticket: 'ticket-a', stamp: 'stamp-a', label: '登程' },
-    { ticket: 'ticket-b', stamp: 'stamp-b', label: '转乘' },
-    { ticket: 'ticket-c', stamp: 'stamp-c', label: '留宿' },
-    { ticket: 'ticket-d', stamp: 'stamp-d', label: '到访' },
-    { ticket: 'ticket-e', stamp: 'stamp-e', label: '远行' },
-    { ticket: 'ticket-f', stamp: 'stamp-f', label: '返程' }
+    { ticket: 'ticket-a', stamp: 'stamp-a', label: '01' },
+    { ticket: 'ticket-b', stamp: 'stamp-b', label: '02' },
+    { ticket: 'ticket-c', stamp: 'stamp-c', label: '03' },
+    { ticket: 'ticket-d', stamp: 'stamp-d', label: '04' },
+    { ticket: 'ticket-e', stamp: 'stamp-e', label: '05' },
+    { ticket: 'ticket-f', stamp: 'stamp-f', label: '06' }
 ];
 
 const refs = {};
@@ -23,6 +27,7 @@ let lastEntryFocusId = '';
 let lastDrawerTrigger = null;
 let searchRouteTimer = null;
 let isSearchComposing = false;
+let viewportResizeTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     void initApp();
@@ -61,6 +66,7 @@ function bindGlobalEvents() {
     document.addEventListener('compositionstart', handleSearchCompositionStart);
     document.addEventListener('compositionend', handleSearchCompositionEnd);
     window.addEventListener('hashchange', () => syncRouteFromHash());
+    window.addEventListener('resize', handleViewportResize);
 }
 
 function parseRoute(hash = window.location.hash) {
@@ -243,6 +249,11 @@ function deriveTravelModel(records) {
     const dateRangeLabel = formatDateRange(firstDate, lastDate, 'day');
     const countries = buildLocationIndex(enhanced);
     const latestRecord = recordsDesc[0] || null;
+    const firstRecord = sortedAsc[0] || null;
+    const yearStats = buildYearStats(enhanced);
+    const monthStats = buildMonthStats(enhanced);
+    const topProvinces = buildTopProvinces(countries);
+    const repeatLocations = buildRepeatLocations(enhanced);
 
     return {
         records: enhanced,
@@ -254,6 +265,11 @@ function deriveTravelModel(records) {
         dateRangeCompact,
         dateRangeLabel,
         countries,
+        firstRecord,
+        yearStats,
+        monthStats,
+        topProvinces,
+        repeatLocations,
         stats: {
             total: enhanced.length,
             countries: countries.length,
@@ -262,6 +278,102 @@ function deriveTravelModel(records) {
         },
         latestRecord
     };
+}
+
+function buildYearStats(records) {
+    const yearMap = new Map();
+
+    records.forEach((record) => {
+        const year = record.year || '未知';
+        const item = yearMap.get(year) || {
+            year,
+            count: 0,
+            cities: new Set(),
+            firstDate: '',
+            latestDate: ''
+        };
+
+        item.count += 1;
+        item.cities.add(record.locationKey || getLocationText(record));
+        item.firstDate = !item.firstDate || (record.date || '') < item.firstDate ? (record.date || '') : item.firstDate;
+        item.latestDate = maxDate(item.latestDate, record.date);
+        yearMap.set(year, item);
+    });
+
+    return Array.from(yearMap.values())
+        .map(item => ({
+            ...item,
+            cityCount: item.cities.size,
+            cities: undefined
+        }))
+        .sort((a, b) => b.year.localeCompare(a.year));
+}
+
+function buildTopProvinces(countries) {
+    return countries
+        .flatMap(country => country.provinces)
+        .sort((a, b) => b.count - a.count || b.cityCount - a.cityCount || a.label.localeCompare(b.label, 'zh-CN'));
+}
+
+function buildMonthStats(records) {
+    const monthMap = new Map();
+
+    records.forEach(record => {
+        const month = record.month;
+        if (!month) {
+            return;
+        }
+
+        const item = monthMap.get(month) || {
+            month,
+            label: `${Number(month)}月`,
+            count: 0,
+            cities: new Set(),
+            latestDate: ''
+        };
+
+        item.count += 1;
+        item.cities.add(record.locationKey || getLocationText(record));
+        item.latestDate = maxDate(item.latestDate, record.date);
+        monthMap.set(month, item);
+    });
+
+    return Array.from(monthMap.values())
+        .map(item => ({
+            ...item,
+            cityCount: item.cities.size,
+            cities: undefined
+        }))
+        .sort((a, b) => a.month.localeCompare(b.month));
+}
+
+function buildRepeatLocations(records) {
+    const locationMap = new Map();
+
+    records.forEach((record) => {
+        const key = record.locationKey || getLocationText(record);
+        if (!key) return;
+
+        const item = locationMap.get(key) || {
+            key,
+            record,
+            count: 0,
+            firstDate: '',
+            latestDate: ''
+        };
+
+        item.count += 1;
+        item.firstDate = !item.firstDate || (record.date || '') < item.firstDate ? (record.date || '') : item.firstDate;
+        item.latestDate = maxDate(item.latestDate, record.date);
+        if ((record.date || '') >= (item.record.date || '')) {
+            item.record = record;
+        }
+        locationMap.set(key, item);
+    });
+
+    return Array.from(locationMap.values())
+        .filter(item => item.count > 1)
+        .sort((a, b) => b.count - a.count || b.latestDate.localeCompare(a.latestDate));
 }
 
 function buildLocationIndex(records) {
@@ -318,39 +430,26 @@ function buildLocationIndex(records) {
 }
 
 function renderCover() {
-    const stats = travelModel.stats;
-    const latest = travelModel.latestRecord;
     const routeRecords = getRouteMapRecords();
-    const recentRecords = travelModel.recordsDesc.slice(0, 4);
+    const recentRecordCount = getCoverRecentRecordCount();
+    const recentRecords = travelModel.recordsDesc.slice(0, recentRecordCount);
 
     setPages(`
-        <div class="cover-page archive-home">
-            <h1 class="archive-home-title">把走过的城市，整理成一条清晰的时间线。</h1>
-            <div class="archive-search-card">
-                <a class="archive-search-link" href="#ledger" aria-label="搜索路线记录">
-                    <span aria-hidden="true"></span>
-                    搜索记录
-                </a>
-                <button class="filter-chip" type="button" data-action="open-drawer">筛选</button>
-            </div>
+        <div class="cover-page cover-recent-page">
+            <h1 class="archive-home-title">最近旅行记录</h1>
             <p class="journal-label">最近记录</p>
             <div class="cover-record-list">
-                ${recentRecords.map(renderCoverRecord).join('')}
+                ${recentRecords.length ? recentRecords.map(renderCoverRecord).join('') : '<div class="empty-note">还没有旅行记录。</div>'}
             </div>
-            <dl class="tag-stats" aria-label="旅行统计">
-                ${statTag('旅行记录', stats.total)}
-                ${statTag('城市', stats.cities)}
-                ${statTag('时间范围', travelModel.dateRangeCompact)}
-            </dl>
         </div>
     `, `
         <div class="pocket-page">
             <div class="route-insert">
                 <div class="route-map-label">
-                    <strong>我的旅行路线图</strong>
-                    <span>${escapeHtml(travelModel.dateRangeLabel)}</span>
+                    <strong>随机路线图</strong>
+                    <span>本次抽取 ${routeRecords.length} 座城市</span>
                 </div>
-                <div class="route-sketch route-collage" aria-label="最近旅行路线拼贴">
+                <div class="route-sketch route-collage" aria-label="随机旅行路线拼贴">
                     <svg class="route-doodle" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false" aria-hidden="true">
                         <path class="doodle-route" d="M12 72 C26 52 34 73 48 50 S69 37 86 22" />
                         <path class="doodle-river" d="M5 34 C17 25 25 38 36 31 S55 18 70 31 S84 45 95 36" />
@@ -360,13 +459,21 @@ function renderCover() {
                     <span class="route-washi route-washi-a" aria-hidden="true"></span>
                     <span class="route-washi route-washi-b" aria-hidden="true"></span>
                     <span class="route-postmark" aria-hidden="true">TRAVEL<br>DIARY</span>
-                    ${renderRouteMap(routeRecords)}
+                    ${routeRecords.length ? renderRouteMap(routeRecords) : '<span class="route-map-empty">还没有城市可抽取</span>'}
                     <span class="map-compass">N</span>
                 </div>
             </div>
-            ${latest ? renderLatestTicket(latest) : '<div class="empty-note latest-ticket-empty">还没有旅行记录。</div>'}
         </div>
     `);
+}
+
+function getCoverRecentRecordCount() {
+    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 720;
+    const pageHeight = refs.leftPage?.clientHeight || refs.stage?.clientHeight || viewportHeight;
+    const usableHeight = Math.max(0, pageHeight - COVER_RECENT_RECORD_RESERVED_HEIGHT);
+    const availableSlots = Math.max(COVER_RECENT_RECORD_MIN, Math.floor(usableHeight / COVER_RECENT_RECORD_ROW_HEIGHT));
+
+    return Math.min(COVER_RECENT_RECORD_LIMIT, availableSlots);
 }
 
 function renderCoverRecord(record, index) {
@@ -387,7 +494,7 @@ function renderCoverRecord(record, index) {
 
 function getRouteMapRecords() {
     const seenLocations = new Set();
-    const routeRecords = [];
+    const uniqueRecords = [];
 
     travelModel.recordsDesc.forEach((record) => {
         const key = record.locationKey || [record.country, record.province, record.city].filter(Boolean).join('|');
@@ -396,10 +503,31 @@ function getRouteMapRecords() {
         }
 
         seenLocations.add(key);
-        routeRecords.push(record);
+        uniqueRecords.push(record);
     });
 
-    return routeRecords.slice(0, ROUTE_MAP_SLOTS.length).reverse();
+    const slotLimit = Math.min(ROUTE_MAP_SLOTS.length, uniqueRecords.length);
+    if (slotLimit === 0) {
+        return [];
+    }
+
+    const minimumCount = Math.min(3, slotLimit);
+    const randomCount = minimumCount + Math.floor(Math.random() * (slotLimit - minimumCount + 1));
+
+    return shuffleRecords(uniqueRecords)
+        .slice(0, randomCount)
+        .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+}
+
+function shuffleRecords(records) {
+    const shuffled = [...records];
+
+    for (let index = shuffled.length - 1; index > 0; index -= 1) {
+        const swapIndex = Math.floor(Math.random() * (index + 1));
+        [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+    }
+
+    return shuffled;
 }
 
 function renderRouteMap(records) {
@@ -425,6 +553,7 @@ function renderLedger(params = {}) {
     const ledgerParams = normalizeLedgerParams(params);
     const filtered = getLedgerRecords(ledgerParams);
     const resultLabel = createLedgerResultLabel(filtered.length, travelModel.records.length, ledgerParams);
+    const snapshot = getLedgerSnapshot(filtered);
 
     setPages(`
         <div class="ledger-page">
@@ -439,28 +568,38 @@ function renderLedger(params = {}) {
             </div>
             <p class="result-count" aria-live="polite">${escapeHtml(resultLabel)}</p>
             <div class="timeline-list" id="ledgerList">
-                ${filtered.length ? filtered.map(renderLedgerEntry).join('') : '<div class="empty-note">没有找到匹配的旅行记录。</div>'}
+                ${filtered.length ? renderLedgerYearGroups(filtered) : '<div class="empty-note">没有找到匹配的旅行记录。</div>'}
             </div>
         </div>
     `, `
-        <aside class="map-pocket">
             <p class="journal-label">索引夹层</p>
-            <h2>路线地图与标签</h2>
-            <div class="filter-summary">
-                <span>${ledgerParams.year === 'all' ? '全部年份' : `${ledgerParams.year} 年`}</span>
-                <span>${ledgerParams.sort === 'asc' ? '最早优先' : '最新优先'}</span>
-                <span>${ledgerParams.q ? `搜索：${escapeHtml(ledgerParams.q)}` : '未搜索'}</span>
-                <span>${escapeHtml(resultLabel)}</span>
+            <h2>快速索引</h2>
+            ${renderLedgerSnapshot(snapshot, resultLabel)}
+            <div class="index-actions">
+                <button class="brass-toggle" type="button" data-action="toggle-sort" aria-pressed="${ledgerParams.sort === 'asc' ? 'true' : 'false'}" aria-label="当前排序：${ledgerParams.sort === 'asc' ? '最早优先' : '最新优先'}">
+                    ${ledgerParams.sort === 'asc' ? '切回最新优先' : '切到最早优先'}
+                </button>
+                <button class="paper-button full-width" type="button" data-action="open-drawer">打开筛选面板</button>
             </div>
-            <button class="brass-toggle" type="button" data-action="toggle-sort" aria-pressed="${ledgerParams.sort === 'asc' ? 'true' : 'false'}" aria-label="当前排序：${ledgerParams.sort === 'asc' ? '最早优先' : '最新优先'}">
-                ${ledgerParams.sort === 'asc' ? '切回最新优先' : '切到最早优先'}
-            </button>
-            <button class="paper-button full-width" type="button" data-action="open-drawer">打开筛选面板</button>
-            <div class="province-strip">
-                ${travelModel.countries.flatMap(country => country.provinces).slice(0, 10).map(renderMiniLuggageTag).join('')}
-            </div>
-        </aside>
-    `);
+            <section class="index-section">
+                <h3>年份索引</h3>
+                <div class="year-count-links">
+                    ${travelModel.yearStats.map(stat => renderYearCountLink(stat, ledgerParams)).join('')}
+                </div>
+            </section>
+            <section class="index-section">
+                <h3>热门省份</h3>
+                <div class="top-province-links">
+                    ${travelModel.topProvinces.slice(0, 6).map(renderTopProvinceLink).join('')}
+                </div>
+            </section>
+            <section class="index-section">
+                <h3>复访路线</h3>
+                <div class="repeat-route-links">
+                    ${travelModel.repeatLocations.length ? travelModel.repeatLocations.slice(0, 6).map(renderRepeatRouteLink).join('') : '<div class="empty-note compact-note">还没有复访地点。</div>'}
+                </div>
+            </section>
+    `, 'map-pocket');
 }
 
 function createLedgerResultLabel(count, total, params) {
@@ -473,8 +612,73 @@ function createLedgerResultLabel(count, total, params) {
     return `显示 ${count} / ${total} 条记录`;
 }
 
+function getLedgerSnapshot(records) {
+    const sorted = [...records].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const cities = new Set(records.map(record => record.locationKey || getLocationText(record)).filter(Boolean));
+    const provinces = new Set(records.map(record => [record.country, record.province].filter(Boolean).join('|')).filter(Boolean));
+    const firstDate = sorted[0]?.date || '';
+    const latestDate = sorted[sorted.length - 1]?.date || '';
+
+    return {
+        count: records.length,
+        cityCount: cities.size,
+        provinceCount: provinces.size,
+        dateRange: formatDateRange(firstDate, latestDate, 'day')
+    };
+}
+
+function renderLedgerSnapshot(snapshot, resultLabel) {
+    return `
+        <div class="index-dashboard" aria-label="当前路线索引快照">
+            <div class="index-dashboard-main">
+                <span>${escapeHtml(resultLabel)}</span>
+                <strong>${snapshot.count}</strong>
+            </div>
+            <div class="index-dashboard-grid">
+                <span><strong>${snapshot.cityCount}</strong> 座城市</span>
+                <span><strong>${snapshot.provinceCount}</strong> 个省份</span>
+                <span>${escapeHtml(snapshot.dateRange)}</span>
+            </div>
+        </div>
+    `;
+}
+
+function renderYearCountLink(stat, params) {
+    const nextParams = normalizeLedgerParams({ ...params, year: stat.year });
+    const active = nextParams.year === normalizeLedgerParams(params).year;
+
+    return `
+        <a class="year-count-link${active ? ' year-count-link-active' : ''}" href="${serializeRoute({ name: 'ledger', params: nextParams })}">
+            <strong>${escapeHtml(stat.year)}</strong>
+            <span>${stat.count} 条 · ${stat.cityCount} 城</span>
+        </a>
+    `;
+}
+
+function renderTopProvinceLink(province) {
+    return `
+        <a class="index-province-link" href="${placeHash(province.country, province.province, '')}">
+            <strong>${escapeHtml(province.label)}</strong>
+            <span>${province.count} 条记录</span>
+        </a>
+    `;
+}
+
+function renderRepeatRouteLink(item) {
+    const record = item.record;
+
+    return `
+        <a class="repeat-route-link" href="${placeHash(record.country, record.province, record.city)}">
+            <strong>${escapeHtml(getLocationText(record))}</strong>
+            <span>${item.count} 次到访 · 最近 ${escapeHtml(item.latestDate)}</span>
+        </a>
+    `;
+}
+
 function renderArchive(params = {}) {
     const query = (params.q || '').trim().toLowerCase();
+    const latest = travelModel.latestRecord;
+    const first = travelModel.firstRecord;
     const countries = travelModel.countries
         .map(country => {
             if (!query) return country;
@@ -489,8 +693,9 @@ function renderArchive(params = {}) {
     setPages(`
         <div class="archive-page">
             <header class="page-head">
-                <p class="journal-label">地点索引</p>
-                <h1>按地点抽出一张行李牌。</h1>
+                <p class="journal-label">个人主页</p>
+                <h1>旅行记录、时间线与地点索引。</h1>
+                <p class="page-copy">这里集中展示旅行记录数量、记录时间和去过的地点。点击任一行李牌，会翻到对应地点档案。</p>
             </header>
             <label class="field-label" for="archiveSearch">搜索国家、省份或城市</label>
             <div class="ink-field search-field">
@@ -502,17 +707,106 @@ function renderArchive(params = {}) {
             </div>
         </div>
     `, `
-        <aside class="dossier-page">
-            <p class="journal-label">索引</p>
-            <h2>目的地统计</h2>
-            <dl class="dossier-stats">
+            <p class="journal-label">旅行概览</p>
+            <h2>个人主页</h2>
+            <dl class="dossier-stats dossier-stats-profile">
+                ${statTag('旅行记录', travelModel.stats.total)}
                 ${statTag('国家', travelModel.stats.countries)}
                 ${statTag('省份', travelModel.stats.provinces)}
                 ${statTag('城市', travelModel.stats.cities)}
+                ${statTag('时间范围', travelModel.dateRangeCompact)}
             </dl>
-            <p class="page-copy">点击任一行李牌，会翻到对应地点档案。地点档案只展示真实记录，不补造照片。</p>
-        </aside>
-    `);
+            <div class="archive-time-card">
+                <span>完整记录时间</span>
+                <strong>${escapeHtml(travelModel.dateRangeLabel)}</strong>
+                ${latest ? `<small>最近更新：${escapeHtml(latest.date || '')} · ${escapeHtml(getLocationText(latest))}</small>` : '<small>还没有旅行记录。</small>'}
+            </div>
+            <div class="archive-overview-timeline">
+                ${renderOverviewMoment('第一条记录', first)}
+                ${renderOverviewMoment('最近记录', latest)}
+            </div>
+            <section class="archive-overview-block">
+                <h3>年度分布</h3>
+                <div class="archive-year-bars">
+                    ${renderArchiveYearBars(travelModel.yearStats)}
+                </div>
+            </section>
+            <section class="archive-overview-block">
+                <h3>旅行月份</h3>
+                <div class="archive-month-bars">
+                    ${renderArchiveMonthBars(travelModel.monthStats)}
+                </div>
+            </section>
+            <section class="archive-overview-block">
+                <h3>复访地点</h3>
+                <div class="archive-repeat-list">
+                    ${travelModel.repeatLocations.length ? travelModel.repeatLocations.slice(0, 4).map(renderRepeatLocationItem).join('') : '<div class="empty-note compact-note">还没有复访地点。</div>'}
+                </div>
+            </section>
+    `, 'dossier-page');
+}
+
+function renderOverviewMoment(label, record) {
+    if (!record) {
+        return `
+            <div class="overview-moment">
+                <span>${escapeHtml(label)}</span>
+                <strong>暂无记录</strong>
+            </div>
+        `;
+    }
+
+    return `
+        <a class="overview-moment" href="#entry?id=${encodeURIComponent(record.id)}">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(record.date || '')}</strong>
+            <small>${escapeHtml(getLocationText(record))}</small>
+        </a>
+    `;
+}
+
+function renderArchiveYearBars(yearStats) {
+    const maxCount = Math.max(...yearStats.map(stat => stat.count), 1);
+
+    return yearStats.map(stat => {
+        const width = Math.max(12, Math.round((stat.count / maxCount) * 100));
+
+        return `
+            <a class="archive-year-bar" href="${serializeRoute({ name: 'ledger', params: { year: stat.year, q: '', sort: DEFAULT_LEDGER_SORT } })}" style="--bar-width: ${width}%">
+                <span>${escapeHtml(stat.year)}</span>
+                <strong>${stat.count}</strong>
+                <i aria-hidden="true"></i>
+            </a>
+        `;
+    }).join('');
+}
+
+function renderArchiveMonthBars(monthStats) {
+    const maxCount = Math.max(...monthStats.map(stat => stat.count), 1);
+
+    return monthStats.map(stat => {
+        const width = Math.max(12, Math.round((stat.count / maxCount) * 100));
+
+        return `
+            <div class="archive-month-bar" style="--bar-width: ${width}%">
+                <span>${escapeHtml(stat.label)}</span>
+                <strong>${stat.count}</strong>
+                <i aria-hidden="true"></i>
+                <small>${stat.cityCount} 城 · 最近 ${escapeHtml(stat.latestDate)}</small>
+            </div>
+        `;
+    }).join('');
+}
+
+function renderRepeatLocationItem(item) {
+    const record = item.record;
+
+    return `
+        <a class="archive-repeat-item" href="${placeHash(record.country, record.province, record.city)}">
+            <strong>${escapeHtml(getLocationText(record))}</strong>
+            <span>${item.count} 次 · ${escapeHtml(item.firstDate)} 至 ${escapeHtml(item.latestDate)}</span>
+        </a>
+    `;
 }
 
 function renderPlace(params = {}) {
@@ -903,6 +1197,23 @@ function clearSearchRouteTimer() {
     searchRouteTimer = null;
 }
 
+function handleViewportResize() {
+    if (activeRoute?.name !== 'cover') {
+        return;
+    }
+
+    if (viewportResizeTimer) {
+        window.clearTimeout(viewportResizeTimer);
+    }
+
+    viewportResizeTimer = window.setTimeout(() => {
+        viewportResizeTimer = null;
+        if (activeRoute?.name === 'cover') {
+            renderCover();
+        }
+    }, 120);
+}
+
 function applySearchRouteUpdate({ id, value }) {
     if (id === 'ledgerSearch') {
         if (activeRoute?.name === 'ledger' && normalizeLedgerParams(activeRoute.params).q === value) return;
@@ -939,8 +1250,9 @@ function updateChapterTabs(routeName) {
     });
 }
 
-function setPages(leftHtml, rightHtml) {
+function setPages(leftHtml, rightHtml, rightPageMode = '') {
     refs.leftPage.innerHTML = leftHtml;
+    refs.rightPage.className = ['paper-page', 'paper-page-right', rightPageMode].filter(Boolean).join(' ');
     refs.rightPage.innerHTML = rightHtml;
 }
 
@@ -977,6 +1289,40 @@ function renderLedgerControls(params, inputId) {
             <button class="filter-chip" type="button" data-action="open-drawer">筛选与排序</button>
         </div>
     `;
+}
+
+function renderLedgerYearGroups(records) {
+    const groups = [];
+    let currentYear = '';
+    let currentRecords = [];
+
+    records.forEach((record) => {
+        const year = record.year || (record.date || '').slice(0, 4) || '未知';
+
+        if (currentYear && year !== currentYear) {
+            groups.push({ year: currentYear, records: currentRecords });
+            currentRecords = [];
+        }
+
+        currentYear = year;
+        currentRecords.push(record);
+    });
+
+    if (currentRecords.length) {
+        groups.push({ year: currentYear, records: currentRecords });
+    }
+
+    return groups.map(group => `
+        <section class="ledger-year-group" aria-label="${escapeHtml(group.year)} 年路线">
+            <div class="ledger-year-divider">
+                <span>${escapeHtml(group.year)}</span>
+                <small>${group.records.length} 条记录</small>
+            </div>
+            <div class="ledger-year-entries">
+                ${group.records.map(renderLedgerEntry).join('')}
+            </div>
+        </section>
+    `).join('');
 }
 
 function renderLedgerEntry(record) {
