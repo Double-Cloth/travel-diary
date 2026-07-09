@@ -2,6 +2,17 @@ import { loadTravelData, loadTravelRecords } from './data.js';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 
 const DEFAULT_LEDGER_SORT = 'desc';
+const LEDGER_SORT_OPTIONS = new Set(['desc', 'asc', 'location', 'province', 'title']);
+const LEDGER_FILTER_DEFAULTS = {
+    year: 'all',
+    month: 'all',
+    province: 'all',
+    city: 'all',
+    visit: 'all',
+    media: 'all',
+    q: '',
+    sort: DEFAULT_LEDGER_SORT
+};
 const PAGE_TURN_MS = 480;
 const PAGE_TURN_SWAP_MS = 140;
 const SEARCH_UPDATE_DELAY_MS = 180;
@@ -63,6 +74,7 @@ function bindGlobalEvents() {
     document.addEventListener('click', handleDocumentClick);
     document.addEventListener('keydown', handleDocumentKeydown);
     document.addEventListener('input', handleDocumentInput);
+    document.addEventListener('change', handleDocumentChange);
     document.addEventListener('compositionstart', handleSearchCompositionStart);
     document.addEventListener('compositionend', handleSearchCompositionEnd);
     window.addEventListener('hashchange', () => syncRouteFromHash());
@@ -82,8 +94,13 @@ function parseRoute(hash = window.location.hash) {
                 name: 'ledger',
                 params: {
                     year: normalizeYear(params.get('year')),
+                    month: normalizeMonth(params.get('month')),
+                    province: normalizeFilterValue(params.get('province')),
+                    city: normalizeFilterValue(params.get('city')),
+                    visit: normalizeVisit(params.get('visit')),
+                    media: normalizeMedia(params.get('media')),
                     q: (params.get('q') || '').trim(),
-                    sort: params.get('sort') === 'asc' ? 'asc' : DEFAULT_LEDGER_SORT
+                    sort: normalizeLedgerSort(params.get('sort'))
                 },
                 valid: true
             };
@@ -129,9 +146,17 @@ function serializeRoute(route) {
         case 'cover':
             return '#cover';
         case 'ledger':
-            if (route.params.year && route.params.year !== 'all') params.set('year', route.params.year);
-            if (route.params.q) params.set('q', route.params.q);
-            if (route.params.sort === 'asc') params.set('sort', 'asc');
+            {
+                const ledgerParams = normalizeLedgerParams(route.params);
+                if (ledgerParams.year !== 'all') params.set('year', ledgerParams.year);
+                if (ledgerParams.month !== 'all') params.set('month', ledgerParams.month);
+                if (ledgerParams.province !== 'all') params.set('province', ledgerParams.province);
+                if (ledgerParams.city !== 'all') params.set('city', ledgerParams.city);
+                if (ledgerParams.visit !== 'all') params.set('visit', ledgerParams.visit);
+                if (ledgerParams.media !== 'all') params.set('media', ledgerParams.media);
+                if (ledgerParams.q) params.set('q', ledgerParams.q);
+                if (ledgerParams.sort !== DEFAULT_LEDGER_SORT) params.set('sort', ledgerParams.sort);
+            }
             return `#ledger${params.toString() ? `?${params}` : ''}`;
         case 'archive':
             if (route.params.q) params.set('q', route.params.q);
@@ -254,6 +279,7 @@ function deriveTravelModel(records) {
     const monthStats = buildMonthStats(enhanced);
     const topProvinces = buildTopProvinces(countries);
     const repeatLocations = buildRepeatLocations(enhanced);
+    const filterOptions = buildLedgerFilterOptions(enhanced);
 
     return {
         records: enhanced,
@@ -270,6 +296,7 @@ function deriveTravelModel(records) {
         monthStats,
         topProvinces,
         repeatLocations,
+        filterOptions,
         stats: {
             total: enhanced.length,
             countries: countries.length,
@@ -374,6 +401,52 @@ function buildRepeatLocations(records) {
     return Array.from(locationMap.values())
         .filter(item => item.count > 1)
         .sort((a, b) => b.count - a.count || b.latestDate.localeCompare(a.latestDate));
+}
+
+function buildLedgerFilterOptions(records) {
+    const provinceMap = new Map();
+    const cityMap = new Map();
+    const months = new Set();
+
+    records.forEach((record) => {
+        if (record.month) {
+            months.add(record.month);
+        }
+
+        const provinceKey = record.province || record.country || '未知地点';
+        const province = provinceMap.get(provinceKey) || {
+            value: provinceKey,
+            label: provinceKey,
+            count: 0,
+            latestDate: ''
+        };
+        province.count += 1;
+        province.latestDate = maxDate(province.latestDate, record.date);
+        provinceMap.set(provinceKey, province);
+
+        const cityKey = [provinceKey, record.city || provinceKey].join('|');
+        const city = cityMap.get(cityKey) || {
+            value: record.city || provinceKey,
+            label: record.city || provinceKey,
+            province: provinceKey,
+            count: 0,
+            latestDate: ''
+        };
+        city.count += 1;
+        city.latestDate = maxDate(city.latestDate, record.date);
+        cityMap.set(cityKey, city);
+    });
+
+    return {
+        months: Array.from(months).sort((a, b) => a.localeCompare(b)).map(month => ({
+            value: month,
+            label: `${Number(month)}月`
+        })),
+        provinces: Array.from(provinceMap.values())
+            .sort((a, b) => b.count - a.count || b.latestDate.localeCompare(a.latestDate) || a.label.localeCompare(b.label, 'zh-CN')),
+        cities: Array.from(cityMap.values())
+            .sort((a, b) => a.province.localeCompare(b.province, 'zh-CN') || a.label.localeCompare(b.label, 'zh-CN'))
+    };
 }
 
 function buildLocationIndex(records) {
@@ -568,7 +641,7 @@ function renderLedger(params = {}) {
             </div>
             <p class="result-count" aria-live="polite">${escapeHtml(resultLabel)}</p>
             <div class="timeline-list" id="ledgerList">
-                ${filtered.length ? renderLedgerYearGroups(filtered) : '<div class="empty-note">没有找到匹配的旅行记录。</div>'}
+                ${filtered.length ? renderLedgerGroups(filtered, ledgerParams) : '<div class="empty-note">没有找到匹配的旅行记录。</div>'}
             </div>
         </div>
     `, `
@@ -603,7 +676,7 @@ function renderLedger(params = {}) {
 }
 
 function createLedgerResultLabel(count, total, params) {
-    const hasFilter = params.year !== 'all' || Boolean(params.q);
+    const hasFilter = hasActiveLedgerFilter(params);
 
     if (!hasFilter) {
         return `共 ${total} 条旅行记录`;
@@ -830,7 +903,7 @@ function renderPlace(params = {}) {
             <p class="journal-label">相关纸条</p>
             ${matching.length ? matching.map(renderLedgerEntry).join('') : '<div class="empty-note">这个地点还没有旅行记录。</div>'}
         </div>
-    `);
+    `, 'dossier-page');
 }
 
 function renderEntryRoute(params = {}) {
@@ -872,9 +945,11 @@ function renderDrawer() {
     if (!refs.drawer || !travelModel) return;
 
     const route = activeRoute || parseRoute();
-    const ledgerParams = route.name === 'ledger' ? normalizeLedgerParams(route.params) : { year: 'all', q: '', sort: DEFAULT_LEDGER_SORT };
+    const ledgerParams = route.name === 'ledger' ? normalizeLedgerParams(route.params) : normalizeLedgerParams();
     const filtered = getLedgerRecords(ledgerParams);
     const resultLabel = createLedgerResultLabel(filtered.length, travelModel.records.length, ledgerParams);
+    const cityOptions = getCityFilterOptions(ledgerParams.province);
+    const activeFilters = getActiveLedgerFilterLabels(ledgerParams);
 
     refs.drawer.innerHTML = `
         <div class="drawer-grip" aria-hidden="true"></div>
@@ -888,13 +963,55 @@ function renderDrawer() {
             <button class="search-clear" type="button" data-action="clear-search" data-target="drawer" aria-label="清空筛选搜索" ${ledgerParams.q ? '' : 'disabled'}>×</button>
         </div>
         <p class="result-count drawer-result-count" aria-live="polite">${escapeHtml(resultLabel)}</p>
+        <div class="drawer-filter-summary" aria-label="当前筛选条件">
+            ${activeFilters.length ? activeFilters.map(label => `<span>${escapeHtml(label)}</span>`).join('') : '<span>未启用高级筛选</span>'}
+        </div>
         <div class="drawer-years">
             ${yearLink('全部', 'all', ledgerParams)}
             ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
         </div>
-        <button class="brass-toggle full-width" type="button" data-action="toggle-sort" aria-pressed="${ledgerParams.sort === 'asc' ? 'true' : 'false'}" aria-label="当前排序：${ledgerParams.sort === 'asc' ? '最早优先' : '最新优先'}">
-            ${ledgerParams.sort === 'asc' ? '最早优先' : '最新优先'}
-        </button>
+        <div class="drawer-field-grid">
+            <label class="drawer-field">
+                <span class="field-label">月份</span>
+                <select data-ledger-filter="month">
+                    <option value="all"${ledgerParams.month === 'all' ? ' selected' : ''}>全部月份</option>
+                    ${travelModel.filterOptions.months.map(month => `<option value="${escapeHtml(month.value)}"${ledgerParams.month === month.value ? ' selected' : ''}>${escapeHtml(month.label)}</option>`).join('')}
+                </select>
+            </label>
+            <label class="drawer-field">
+                <span class="field-label">省份</span>
+                <select data-ledger-filter="province">
+                    <option value="all"${ledgerParams.province === 'all' ? ' selected' : ''}>全部省份</option>
+                    ${travelModel.filterOptions.provinces.map(province => `<option value="${escapeHtml(province.value)}"${ledgerParams.province === province.value ? ' selected' : ''}>${escapeHtml(province.label)} · ${province.count}</option>`).join('')}
+                </select>
+            </label>
+            <label class="drawer-field drawer-field-wide">
+                <span class="field-label">城市</span>
+                <select data-ledger-filter="city">
+                    <option value="all"${ledgerParams.city === 'all' ? ' selected' : ''}>全部城市</option>
+                    ${cityOptions.map(city => `<option value="${escapeHtml(city.value)}"${ledgerParams.city === city.value ? ' selected' : ''}>${escapeHtml(city.label)}${ledgerParams.province === 'all' ? ` · ${escapeHtml(city.province)}` : ''}</option>`).join('')}
+                </select>
+            </label>
+        </div>
+        <div class="drawer-segment-group" aria-label="复访筛选">
+            ${filterToggleButton('全部', 'visit', 'all', ledgerParams.visit)}
+            ${filterToggleButton('首次到访', 'visit', 'first', ledgerParams.visit)}
+            ${filterToggleButton('再次到访', 'visit', 'repeat', ledgerParams.visit)}
+        </div>
+        <div class="drawer-segment-group" aria-label="照片筛选">
+            ${filterToggleButton('全部记录', 'media', 'all', ledgerParams.media)}
+            ${filterToggleButton('有照片', 'media', 'photos', ledgerParams.media)}
+            ${filterToggleButton('无照片', 'media', 'none', ledgerParams.media)}
+        </div>
+        <label class="drawer-field drawer-field-wide">
+            <span class="field-label">排序方式</span>
+            <select data-ledger-filter="sort">
+                ${renderLedgerSortOptions(ledgerParams.sort)}
+            </select>
+        </label>
+        <div class="drawer-actions">
+            <button class="paper-button full-width" type="button" data-action="reset-ledger-filters" ${hasActiveLedgerFilter(ledgerParams) || ledgerParams.sort !== DEFAULT_LEDGER_SORT ? '' : 'disabled'}>清空筛选</button>
+        </div>
     `;
 }
 
@@ -1063,6 +1180,24 @@ function handleDocumentClick(event) {
         return;
     }
 
+    const resetLedgerFilters = event.target.closest('[data-action="reset-ledger-filters"]');
+    if (resetLedgerFilters) {
+        event.preventDefault();
+        updateLedgerRoute({ ...LEDGER_FILTER_DEFAULTS }, { replace: true, focusId: 'drawerSearch', keepDrawer: true, animate: false });
+        return;
+    }
+
+    const ledgerToggle = event.target.closest('[data-ledger-toggle]');
+    if (ledgerToggle) {
+        event.preventDefault();
+        const key = ledgerToggle.getAttribute('data-ledger-toggle');
+        const value = ledgerToggle.getAttribute('data-value') || 'all';
+        if (key) {
+            updateLedgerRoute({ [key]: value }, { replace: true, keepDrawer: true, animate: false });
+        }
+        return;
+    }
+
     const latestAction = event.target.closest('[data-action="open-latest"]');
     if (latestAction) {
         event.preventDefault();
@@ -1144,6 +1279,23 @@ function handleDocumentInput(event) {
     }
 
     scheduleSearchRouteUpdate(event.target);
+}
+
+function handleDocumentChange(event) {
+    const filter = event.target.closest('[data-ledger-filter]');
+    if (!filter) {
+        return;
+    }
+
+    const key = filter.getAttribute('data-ledger-filter');
+    const value = filter.value || 'all';
+    const nextParams = { [key]: value };
+
+    if (key === 'province') {
+        nextParams.city = 'all';
+    }
+
+    updateLedgerRoute(nextParams, { replace: true, keepDrawer: true, focusId: filter.id || '', animate: false });
 }
 
 function handleSearchCompositionStart(event) {
@@ -1260,13 +1412,33 @@ function getLedgerRecords(params) {
     const query = normalized.q.toLowerCase();
     const records = travelModel.records.filter((record) => {
         const yearMatch = normalized.year === 'all' || record.year === normalized.year;
+        const monthMatch = normalized.month === 'all' || record.month === normalized.month;
+        const provinceMatch = normalized.province === 'all' || (record.province || record.country || '未知地点') === normalized.province;
+        const cityMatch = normalized.city === 'all' || (record.city || record.province || record.country || '未知地点') === normalized.city;
+        const visitMatch = normalized.visit === 'all' || (normalized.visit === 'repeat' ? record.isRepeated : !record.isRepeated);
+        const hasPhotos = Array.isArray(record.photos) && record.photos.length > 0;
+        const mediaMatch = normalized.media === 'all' || (normalized.media === 'photos' ? hasPhotos : !hasPhotos);
         const searchMatch = !query || record.searchText.includes(query);
-        return yearMatch && searchMatch;
+        return yearMatch && monthMatch && provinceMatch && cityMatch && visitMatch && mediaMatch && searchMatch;
     });
 
-    return records.sort((a, b) => normalized.sort === 'asc'
-        ? (a.date || '').localeCompare(b.date || '')
-        : (b.date || '').localeCompare(a.date || ''));
+    return records.sort((a, b) => compareLedgerRecords(a, b, normalized.sort));
+}
+
+function compareLedgerRecords(a, b, sort) {
+    switch (sort) {
+        case 'asc':
+            return (a.date || '').localeCompare(b.date || '') || getLocationText(a).localeCompare(getLocationText(b), 'zh-CN');
+        case 'location':
+            return getLocationText(a).localeCompare(getLocationText(b), 'zh-CN') || (b.date || '').localeCompare(a.date || '');
+        case 'province':
+            return (a.province || a.country || '').localeCompare(b.province || b.country || '', 'zh-CN') || (b.date || '').localeCompare(a.date || '');
+        case 'title':
+            return (a.title || '').localeCompare(b.title || '', 'zh-CN') || (b.date || '').localeCompare(a.date || '');
+        case 'desc':
+        default:
+            return (b.date || '').localeCompare(a.date || '') || getLocationText(a).localeCompare(getLocationText(b), 'zh-CN');
+    }
 }
 
 function getPlaceRecords(params) {
@@ -1290,31 +1462,33 @@ function renderLedgerControls(params, inputId) {
     `;
 }
 
-function renderLedgerYearGroups(records) {
+function renderLedgerGroups(records, params = {}) {
+    const sort = normalizeLedgerParams(params).sort;
     const groups = [];
-    let currentYear = '';
+    let currentKey = '';
     let currentRecords = [];
 
     records.forEach((record) => {
-        const year = record.year || (record.date || '').slice(0, 4) || '未知';
+        const label = getLedgerGroupLabel(record, sort);
+        const key = `${sort}:${label}`;
 
-        if (currentYear && year !== currentYear) {
-            groups.push({ year: currentYear, records: currentRecords });
+        if (currentKey && key !== currentKey) {
+            groups.push({ label: currentKey.split(':').slice(1).join(':'), records: currentRecords });
             currentRecords = [];
         }
 
-        currentYear = year;
+        currentKey = key;
         currentRecords.push(record);
     });
 
     if (currentRecords.length) {
-        groups.push({ year: currentYear, records: currentRecords });
+        groups.push({ label: currentKey.split(':').slice(1).join(':'), records: currentRecords });
     }
 
     return groups.map(group => `
-        <section class="ledger-year-group" aria-label="${escapeHtml(group.year)} 年路线">
+        <section class="ledger-year-group" aria-label="${escapeHtml(getLedgerGroupAriaLabel(group.label, sort))}">
             <div class="ledger-year-divider">
-                <span>${escapeHtml(group.year)}</span>
+                <span>${escapeHtml(group.label)}</span>
                 <small>${group.records.length} 条记录</small>
             </div>
             <div class="ledger-year-entries">
@@ -1322,6 +1496,30 @@ function renderLedgerYearGroups(records) {
             </div>
         </section>
     `).join('');
+}
+
+function getLedgerGroupLabel(record, sort) {
+    if (sort === 'province' || sort === 'location') {
+        return record.province || record.country || '未知地点';
+    }
+
+    if (sort === 'title') {
+        return '按标题排序';
+    }
+
+    return record.year || (record.date || '').slice(0, 4) || '未知';
+}
+
+function getLedgerGroupAriaLabel(label, sort) {
+    if (sort === 'province' || sort === 'location') {
+        return `${label} 路线`;
+    }
+
+    if (sort === 'title') {
+        return '按标题排序的路线';
+    }
+
+    return `${label} 年路线`;
 }
 
 function renderLedgerEntry(record) {
@@ -1406,6 +1604,63 @@ function statTag(label, value) {
     `;
 }
 
+function filterToggleButton(label, key, value, activeValue) {
+    const active = value === activeValue;
+
+    return `
+        <button class="drawer-segment${active ? ' drawer-segment-active' : ''}" type="button" data-ledger-toggle="${escapeHtml(key)}" data-value="${escapeHtml(value)}" aria-pressed="${active ? 'true' : 'false'}">
+            ${escapeHtml(label)}
+        </button>
+    `;
+}
+
+function renderLedgerSortOptions(activeSort) {
+    const options = [
+        ['desc', '最新优先'],
+        ['asc', '最早优先'],
+        ['location', '按地点名称'],
+        ['province', '按省份归类'],
+        ['title', '按标题名称']
+    ];
+
+    return options.map(([value, label]) => `<option value="${value}"${activeSort === value ? ' selected' : ''}>${escapeHtml(label)}</option>`).join('');
+}
+
+function getCityFilterOptions(province) {
+    const normalizedProvince = normalizeFilterValue(province);
+
+    return travelModel.filterOptions.cities.filter(city => normalizedProvince === 'all' || city.province === normalizedProvince);
+}
+
+function getActiveLedgerFilterLabels(params) {
+    const normalized = normalizeLedgerParams(params);
+    const labels = [];
+
+    if (normalized.year !== 'all') labels.push(`${normalized.year}年`);
+    if (normalized.month !== 'all') labels.push(`${Number(normalized.month)}月`);
+    if (normalized.province !== 'all') labels.push(normalized.province);
+    if (normalized.city !== 'all') labels.push(normalized.city);
+    if (normalized.visit === 'first') labels.push('首次到访');
+    if (normalized.visit === 'repeat') labels.push('再次到访');
+    if (normalized.media === 'photos') labels.push('有照片');
+    if (normalized.media === 'none') labels.push('无照片');
+    if (normalized.q) labels.push(`搜索：${normalized.q}`);
+
+    return labels;
+}
+
+function hasActiveLedgerFilter(params) {
+    const normalized = normalizeLedgerParams(params);
+
+    return normalized.year !== 'all'
+        || normalized.month !== 'all'
+        || normalized.province !== 'all'
+        || normalized.city !== 'all'
+        || normalized.visit !== 'all'
+        || normalized.media !== 'all'
+        || Boolean(normalized.q);
+}
+
 function yearLink(label, year, params) {
     const nextParams = normalizeLedgerParams({ ...params, year });
     const active = nextParams.year === normalizeLedgerParams(params).year;
@@ -1413,15 +1668,44 @@ function yearLink(label, year, params) {
 }
 
 function normalizeLedgerParams(params = {}) {
+    const normalizedProvince = normalizeFilterValue(params.province);
+
     return {
         year: normalizeYear(params.year),
+        month: normalizeMonth(params.month),
+        province: normalizedProvince,
+        city: normalizeFilterValue(params.city),
+        visit: normalizeVisit(params.visit),
+        media: normalizeMedia(params.media),
         q: (params.q || '').trim(),
-        sort: params.sort === 'asc' ? 'asc' : DEFAULT_LEDGER_SORT
+        sort: normalizeLedgerSort(params.sort)
     };
 }
 
 function normalizeYear(year) {
     return year && year !== 'All' ? String(year) : 'all';
+}
+
+function normalizeMonth(month) {
+    const value = String(month || '').padStart(2, '0');
+    return /^(0[1-9]|1[0-2])$/.test(value) ? value : 'all';
+}
+
+function normalizeFilterValue(value) {
+    const normalized = String(value || '').trim();
+    return normalized && normalized !== 'All' ? normalized : 'all';
+}
+
+function normalizeVisit(visit) {
+    return visit === 'first' || visit === 'repeat' ? visit : 'all';
+}
+
+function normalizeMedia(media) {
+    return media === 'photos' || media === 'none' ? media : 'all';
+}
+
+function normalizeLedgerSort(sort) {
+    return LEDGER_SORT_OPTIONS.has(sort) ? sort : DEFAULT_LEDGER_SORT;
 }
 
 function getCurrentLedgerSort() {
