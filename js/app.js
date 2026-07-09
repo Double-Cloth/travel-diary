@@ -694,7 +694,7 @@ function renderArchive(params = {}) {
         <div class="archive-page">
             <header class="page-head">
                 <p class="journal-label">个人主页</p>
-                <p class="page-copy">"I was surprised, as always, how easy the act of leaving was, and how good it felt. The world was suddenly rich with possibility."</p>
+                <p class="page-copy">"I was surprised, as always, by how easy the act of leaving was, and how good it felt. The world was suddenly rich with possibility."</p>
             </header>
             <label class="field-label" for="archiveSearch">搜索国家、省份或城市</label>
             <div class="ink-field search-field">
