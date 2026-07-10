@@ -6,6 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "start": "node js/server.js",
-    "serve": "node js/server.js"
+    "serve": "node js/server.js",
+    "test": "node --test tests/*.test.mjs"
   }
 }
