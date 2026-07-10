@@ -13,3 +13,14 @@ test('应用外壳不再包含路线筛选抽屉', () => {
 test('路线页不存在重复筛选入口', () => {
     assert.doesNotMatch(appJs, /data-action="open-drawer"|筛选与排序|打开筛选面板/);
 });
+
+test('索引夹层包含完整且唯一的高级筛选工作台', () => {
+    assert.match(appJs, /function renderLedgerFilterWorkbench/);
+    for (const key of ['year', 'month', 'province', 'city', 'sort']) {
+        assert.match(appJs, new RegExp(`renderLedgerSelect\\([^;]+['"]${key}['"]`));
+    }
+    assert.match(appJs, /filterToggleButton\('首次到访', 'visit'/);
+    assert.match(appJs, /filterToggleButton\('有照片', 'media'/);
+    assert.match(appJs, /重置全部/);
+    assert.doesNotMatch(appJs, /当前筛选|当前排序|切到最早优先|切回最新优先/);
+});

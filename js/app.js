@@ -1,4 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 
 const DEFAULT_LEDGER_SORT = 'desc';
@@ -618,7 +619,7 @@ function renderLedger(params = {}) {
     const ledgerParams = normalizeLedgerParams(params);
     const filtered = getLedgerRecords(ledgerParams);
     const resultLabel = createLedgerResultLabel(filtered.length, travelModel.records.length, ledgerParams);
-    const snapshot = getLedgerSnapshot(filtered);
+    const snapshot = buildRecordSetSnapshot(filtered);
 
     setPages(`
         <div class="ledger-page">
@@ -638,31 +639,9 @@ function renderLedger(params = {}) {
         </div>
     `, `
             <p class="journal-label">索引夹层</p>
-            <h2>当前列表工具</h2>
+            <h2>高级筛选</h2>
             ${renderLedgerSnapshot(snapshot, resultLabel)}
-            <div class="index-actions">
-                <button class="brass-toggle" type="button" data-action="toggle-sort" aria-pressed="${ledgerParams.sort === 'asc' ? 'true' : 'false'}" aria-label="当前排序：${ledgerParams.sort === 'asc' ? '最早优先' : '最新优先'}">
-                    ${ledgerParams.sort === 'asc' ? '切回最新优先' : '切到最早优先'}
-                </button>
-            </div>
-            <section class="index-section">
-                <h3>当前筛选</h3>
-                ${renderLedgerActiveFilters(ledgerParams)}
-                <button class="paper-button full-width" type="button" data-action="reset-ledger-filters" ${hasActiveLedgerFilter(ledgerParams) || ledgerParams.sort !== DEFAULT_LEDGER_SORT ? '' : 'disabled'}>清空筛选</button>
-            </section>
-            <section class="index-section">
-                <h3>排序方式</h3>
-                <div class="index-sort-note">
-                    <span>当前</span>
-                    <strong>${escapeHtml(getLedgerSortLabel(ledgerParams.sort))}</strong>
-                </div>
-            </section>
-            <section class="index-section">
-                <h3>年份跳转</h3>
-                <div class="year-count-links">
-                    ${travelModel.yearStats.map(stat => renderYearCountLink(stat, ledgerParams)).join('')}
-                </div>
-            </section>
+            ${renderLedgerFilterWorkbench(ledgerParams)}
     `, 'map-pocket');
 }
 
@@ -676,24 +655,13 @@ function createLedgerResultLabel(count, total, params) {
     return `显示 ${count} / ${total} 条记录`;
 }
 
-function getLedgerSnapshot(records) {
-    const sorted = [...records].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    const cities = new Set(records.map(record => record.locationKey || getLocationText(record)).filter(Boolean));
-    const provinces = new Set(records.map(record => [record.country, record.province].filter(Boolean).join('|')).filter(Boolean));
-    const firstDate = sorted[0]?.date || '';
-    const latestDate = sorted[sorted.length - 1]?.date || '';
-
-    return {
-        count: records.length,
-        cityCount: cities.size,
-        provinceCount: provinces.size,
-        dateRange: formatDateRange(firstDate, latestDate, 'day')
-    };
-}
-
 function renderLedgerSnapshot(snapshot, resultLabel) {
+    const dateRange = snapshot.count
+        ? formatDateRange(snapshot.firstDate, snapshot.latestDate, 'day')
+        : '暂无匹配记录';
+
     return `
-        <div class="index-dashboard" aria-label="当前路线索引快照">
+        <div class="index-dashboard" aria-label="筛选结果快照">
             <div class="index-dashboard-main">
                 <span>${escapeHtml(resultLabel)}</span>
                 <strong>${snapshot.count}</strong>
@@ -701,51 +669,84 @@ function renderLedgerSnapshot(snapshot, resultLabel) {
             <div class="index-dashboard-grid">
                 <span><strong>${snapshot.cityCount}</strong> 座城市</span>
                 <span><strong>${snapshot.provinceCount}</strong> 个省份</span>
-                <span>${escapeHtml(snapshot.dateRange)}</span>
+                <span>${escapeHtml(dateRange)}</span>
             </div>
         </div>
     `;
 }
 
-function renderLedgerActiveFilters(params) {
-    const labels = getActiveLedgerFilterLabels(params);
-
-    if (!labels.length) {
-        labels.push('全部记录');
-    }
+function renderLedgerFilterWorkbench(params) {
+    const cityOptions = getCityFilterOptions(params.province);
+    const canReset = hasActiveLedgerFilter(params) || params.sort !== DEFAULT_LEDGER_SORT;
+    const yearOptions = [
+        { value: 'all', label: '全部年份' },
+        ...travelModel.years.map(year => ({ value: year, label: `${year}年` }))
+    ];
+    const monthOptions = [
+        { value: 'all', label: '全部月份' },
+        ...travelModel.filterOptions.months
+    ];
+    const provinceOptions = [
+        { value: 'all', label: '全部省份' },
+        ...travelModel.filterOptions.provinces.map(item => ({ value: item.value, label: `${item.label} · ${item.count}` }))
+    ];
+    const scopedCityOptions = [
+        { value: 'all', label: '全部城市' },
+        ...cityOptions.map(item => ({
+            value: item.value,
+            label: params.province === 'all' ? `${item.label} · ${item.province}` : item.label
+        }))
+    ];
+    const sortOptions = [
+        { value: 'desc', label: '最新优先' },
+        { value: 'asc', label: '最早优先' },
+        { value: 'location', label: '按地点名称' },
+        { value: 'province', label: '按省份归类' },
+        { value: 'title', label: '按标题名称' }
+    ];
 
     return `
-        <div class="index-filter-summary" aria-label="当前筛选条件">
-            ${labels.map(label => `<span>${escapeHtml(label)}</span>`).join('')}
-        </div>
+        <section class="index-filter-section" aria-labelledby="indexLocationFilters">
+            <h3 id="indexLocationFilters">时间与地点</h3>
+            <div class="index-filter-grid">
+                ${renderLedgerSelect('年份', 'year', yearOptions, params.year)}
+                ${renderLedgerSelect('月份', 'month', monthOptions, params.month)}
+                ${renderLedgerSelect('省份', 'province', provinceOptions, params.province)}
+                ${renderLedgerSelect('城市', 'city', scopedCityOptions, params.city)}
+            </div>
+        </section>
+        <section class="index-filter-section" aria-labelledby="indexRecordFilters">
+            <h3 id="indexRecordFilters">记录特征</h3>
+            <span class="field-label">到访类型</span>
+            <div class="index-segment-group" aria-label="到访类型">
+                ${filterToggleButton('全部', 'visit', 'all', params.visit)}
+                ${filterToggleButton('首次到访', 'visit', 'first', params.visit)}
+                ${filterToggleButton('再次到访', 'visit', 'repeat', params.visit)}
+            </div>
+            <span class="field-label">照片状态</span>
+            <div class="index-segment-group" aria-label="照片状态">
+                ${filterToggleButton('全部', 'media', 'all', params.media)}
+                ${filterToggleButton('有照片', 'media', 'photos', params.media)}
+                ${filterToggleButton('无照片', 'media', 'none', params.media)}
+            </div>
+        </section>
+        <section class="index-filter-section" aria-labelledby="indexSortFilter">
+            <h3 id="indexSortFilter">排序方式</h3>
+            ${renderLedgerSelect('排序方式', 'sort', sortOptions, params.sort, true)}
+        </section>
+        <button class="paper-button full-width index-reset" type="button" data-action="reset-ledger-filters" ${canReset ? '' : 'disabled'}>重置全部</button>
     `;
 }
 
-function getLedgerSortLabel(sort) {
-    switch (normalizeLedgerSort(sort)) {
-        case 'asc':
-            return '最早优先';
-        case 'location':
-            return '按地点名称';
-        case 'province':
-            return '按省份归类';
-        case 'title':
-            return '按标题名称';
-        case 'desc':
-        default:
-            return '最新优先';
-    }
-}
-
-function renderYearCountLink(stat, params) {
-    const nextParams = normalizeLedgerParams({ ...params, year: stat.year });
-    const active = nextParams.year === normalizeLedgerParams(params).year;
-
+function renderLedgerSelect(label, key, options, activeValue, visuallyHiddenLabel = false) {
+    const id = `ledgerFilter${key[0].toUpperCase()}${key.slice(1)}`;
     return `
-        <a class="year-count-link${active ? ' year-count-link-active' : ''}" href="${serializeRoute({ name: 'ledger', params: nextParams })}">
-            <strong>${escapeHtml(stat.year)}</strong>
-            <span>${stat.count} 条 · ${stat.cityCount} 城</span>
-        </a>
+        <label class="index-filter-field" for="${id}">
+            <span class="field-label${visuallyHiddenLabel ? ' sr-only' : ''}">${escapeHtml(label)}</span>
+            <select id="${id}" data-ledger-filter="${escapeHtml(key)}">
+                ${options.map(option => `<option value="${escapeHtml(option.value)}"${activeValue === option.value ? ' selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}
+            </select>
+        </label>
     `;
 }
 
@@ -1144,13 +1145,6 @@ function handleDocumentClick(event) {
         return;
     }
 
-    const sortToggle = event.target.closest('[data-action="toggle-sort"]');
-    if (sortToggle) {
-        event.preventDefault();
-        updateLedgerRoute({ sort: getCurrentLedgerSort() === 'asc' ? 'desc' : 'asc' });
-        return;
-    }
-
     const entryCard = event.target.closest('[data-open-entry]');
     if (entryCard && !event.target.closest('a, button, input')) {
         event.preventDefault();
@@ -1513,45 +1507,16 @@ function filterToggleButton(label, key, value, activeValue) {
     const active = value === activeValue;
 
     return `
-        <button class="drawer-segment${active ? ' drawer-segment-active' : ''}" type="button" data-ledger-toggle="${escapeHtml(key)}" data-value="${escapeHtml(value)}" aria-pressed="${active ? 'true' : 'false'}">
+        <button class="index-segment${active ? ' index-segment-active' : ''}" type="button" data-ledger-toggle="${escapeHtml(key)}" data-value="${escapeHtml(value)}" aria-pressed="${active ? 'true' : 'false'}">
             ${escapeHtml(label)}
         </button>
     `;
-}
-
-function renderLedgerSortOptions(activeSort) {
-    const options = [
-        ['desc', '最新优先'],
-        ['asc', '最早优先'],
-        ['location', '按地点名称'],
-        ['province', '按省份归类'],
-        ['title', '按标题名称']
-    ];
-
-    return options.map(([value, label]) => `<option value="${value}"${activeSort === value ? ' selected' : ''}>${escapeHtml(label)}</option>`).join('');
 }
 
 function getCityFilterOptions(province) {
     const normalizedProvince = normalizeFilterValue(province);
 
     return travelModel.filterOptions.cities.filter(city => normalizedProvince === 'all' || city.province === normalizedProvince);
-}
-
-function getActiveLedgerFilterLabels(params) {
-    const normalized = normalizeLedgerParams(params);
-    const labels = [];
-
-    if (normalized.year !== 'all') labels.push(`${normalized.year}年`);
-    if (normalized.month !== 'all') labels.push(`${Number(normalized.month)}月`);
-    if (normalized.province !== 'all') labels.push(normalized.province);
-    if (normalized.city !== 'all') labels.push(normalized.city);
-    if (normalized.visit === 'first') labels.push('首次到访');
-    if (normalized.visit === 'repeat') labels.push('再次到访');
-    if (normalized.media === 'photos') labels.push('有照片');
-    if (normalized.media === 'none') labels.push('无照片');
-    if (normalized.q) labels.push(`搜索：${normalized.q}`);
-
-    return labels;
 }
 
 function hasActiveLedgerFilter(params) {
@@ -1611,10 +1576,6 @@ function normalizeMedia(media) {
 
 function normalizeLedgerSort(sort) {
     return LEDGER_SORT_OPTIONS.has(sort) ? sort : DEFAULT_LEDGER_SORT;
-}
-
-function getCurrentLedgerSort() {
-    return activeRoute?.name === 'ledger' ? normalizeLedgerParams(activeRoute.params).sort : DEFAULT_LEDGER_SORT;
 }
 
 function getTurnDirection(previousRoute, nextRoute) {
