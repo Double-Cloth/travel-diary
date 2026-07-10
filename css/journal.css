@@ -2726,6 +2726,10 @@ body[data-route="archive"] .paper-page-left {
         order: -1;
     }
 
+    .journal-shell[data-route="archive"] .paper-page-right.dossier-page {
+        order: -1;
+    }
+
     .cover-page h1,
     .page-head h1,
     .place-page h1,

@@ -1333,6 +1333,8 @@ function setPages(leftHtml, rightHtml, rightPageMode = '') {
     refs.leftPage.innerHTML = leftHtml;
     refs.rightPage.className = ['paper-page', 'paper-page-right', rightPageMode].filter(Boolean).join(' ');
     refs.rightPage.innerHTML = rightHtml;
+    refs.leftPage.scrollTop = 0;
+    refs.rightPage.scrollTop = 0;
 }
 
 function getLedgerRecords(params) {

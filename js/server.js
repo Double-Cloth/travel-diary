@@ -113,6 +113,7 @@ function guessContentType(filePath) {
       return 'text/html; charset=utf-8';
     case '.css':
       return 'text/css; charset=utf-8';
+    case '.mjs':
     case '.js':
       return 'text/javascript; charset=utf-8';
     case '.json':
