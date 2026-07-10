@@ -1,6 +1,38 @@
 /* ==========================================================================
    Material 3 变量与全局基础
    ========================================================================== */
+@font-face {
+    font-family: "Diary Kai";
+    src: url("../assets/fonts/LXGWWenKaiMono-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Diary Kai";
+    src: url("../assets/fonts/LXGWWenKaiMono-Medium.ttf") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Archive Code";
+    src: url("../assets/fonts/SourceCodePro-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Archive Code";
+    src: url("../assets/fonts/SourceCodePro-Bold.ttf") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
 :root {
     --primary: #735bb0;
     --primary-active: #5f4a9a;
@@ -85,9 +117,9 @@
     --error: #ba1a1a;
     --error-container: #ffdad6;
 
-    --font-display: "Roboto", "Google Sans", "Segoe UI", Arial, sans-serif;
-    --font-sans: "Roboto", "Google Sans", "Segoe UI", Arial, sans-serif;
-    --font-code: "Roboto Mono", "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --font-display: "Diary Kai";
+    --font-sans: "Diary Kai";
+    --font-code: "Archive Code";
 
     --spacing-xxs: 4px;
     --spacing-xs: 8px;

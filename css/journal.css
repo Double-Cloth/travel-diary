@@ -31,8 +31,8 @@
 }
 
 :root {
-    --font-serif: "Diary Kai", "STKaiti", "KaiTi", serif;
-    --font-code: "Archive Code", "Courier New", monospace;
+    --font-serif: "Diary Kai";
+    --font-code: "Archive Code";
 
     --desk-950: #150b06;
     --desk-900: #22110a;
@@ -201,7 +201,7 @@ button {
     gap: 28px;
     min-height: 0;
     height: 108px;
-    padding: 16px 28px;
+    padding: 15px 28px;
     border: 1px solid rgba(213, 178, 111, 0.26);
     border-radius: 12px;
     color: var(--paper-50);
@@ -234,14 +234,18 @@ button {
 }
 
 .brand-lockup {
+    --brand-rivet-y: 12px;
+
     position: relative;
+    align-self: center;
     display: grid;
     grid-template-columns: minmax(0, 1fr);
     align-items: center;
     justify-items: center;
     width: fit-content;
     min-width: 250px;
-    padding: 12px 28px;
+    height: 76px;
+    padding: 0 28px;
     border: 1px solid rgba(104, 66, 31, 0.7);
     border-radius: 8px;
     color: #2b1d12;
@@ -256,6 +260,14 @@ button {
         0 8px 18px rgba(0, 0, 0, 0.28);
 }
 
+.brand-lockup > span {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    height: 100%;
+    min-height: 100%;
+}
+
 .brand-lockup::before,
 .brand-lockup::after {
     content: "";
@@ -264,12 +276,12 @@ button {
     bottom: 0;
     width: 9px;
     background:
-        radial-gradient(circle at calc(50% - 1px) 7px, rgba(255, 255, 232, 0.92) 0 0.8px, transparent 1.3px),
-        radial-gradient(circle at calc(50% - 1px) calc(100% - 9px), rgba(255, 255, 232, 0.92) 0 0.8px, transparent 1.3px),
-        radial-gradient(circle at calc(50% + 1px) 9px, rgba(54, 31, 12, 0.34) 0 1.1px, transparent 1.7px),
-        radial-gradient(circle at calc(50% + 1px) calc(100% - 7px), rgba(54, 31, 12, 0.34) 0 1.1px, transparent 1.7px),
-        radial-gradient(circle at 50% 8px, rgba(255, 246, 199, 0.96) 0 1px, rgba(225, 176, 83, 0.96) 1.2px 2.8px, rgba(139, 83, 35, 0.96) 3.1px 4.2px, rgba(49, 30, 12, 0.4) 4.5px 5px, transparent 5.3px),
-        radial-gradient(circle at 50% calc(100% - 8px), rgba(255, 246, 199, 0.96) 0 1px, rgba(225, 176, 83, 0.96) 1.2px 2.8px, rgba(139, 83, 35, 0.96) 3.1px 4.2px, rgba(49, 30, 12, 0.4) 4.5px 5px, transparent 5.3px);
+        radial-gradient(circle at calc(50% - 1px) var(--brand-rivet-y), rgba(255, 255, 232, 0.92) 0 0.8px, transparent 1.3px),
+        radial-gradient(circle at calc(50% - 1px) calc(100% - var(--brand-rivet-y)), rgba(255, 255, 232, 0.92) 0 0.8px, transparent 1.3px),
+        radial-gradient(circle at calc(50% + 1px) var(--brand-rivet-y), rgba(54, 31, 12, 0.34) 0 1.1px, transparent 1.7px),
+        radial-gradient(circle at calc(50% + 1px) calc(100% - var(--brand-rivet-y)), rgba(54, 31, 12, 0.34) 0 1.1px, transparent 1.7px),
+        radial-gradient(circle at 50% var(--brand-rivet-y), rgba(255, 246, 199, 0.96) 0 1px, rgba(225, 176, 83, 0.96) 1.2px 2.8px, rgba(139, 83, 35, 0.96) 3.1px 4.2px, rgba(49, 30, 12, 0.4) 4.5px 5px, transparent 5.3px),
+        radial-gradient(circle at 50% calc(100% - var(--brand-rivet-y)), rgba(255, 246, 199, 0.96) 0 1px, rgba(225, 176, 83, 0.96) 1.2px 2.8px, rgba(139, 83, 35, 0.96) 3.1px 4.2px, rgba(49, 30, 12, 0.4) 4.5px 5px, transparent 5.3px);
     background-repeat: no-repeat;
     filter: drop-shadow(0 1px 0 rgba(255, 238, 173, 0.32)) drop-shadow(0 1px 1.5px rgba(36, 21, 9, 0.38));
     opacity: 0.94;
@@ -304,6 +316,7 @@ button {
 
 .chapter-tabs {
     position: relative;
+    align-self: center;
     display: grid;
     grid-template-columns: repeat(3, minmax(128px, 1fr));
     align-items: center;
@@ -368,7 +381,6 @@ button {
         inset 0 1px 0 rgba(255, 255, 255, 0.55),
         inset 0 -3px 8px rgba(108, 75, 32, 0.2),
         0 8px 15px rgba(0, 0, 0, 0.34);
-    transform: translateY(1px);
 }
 
 .chapter-tab-active:hover,
@@ -418,6 +430,7 @@ button {
 
 .spine-tools {
     justify-self: end;
+    align-self: center;
     display: flex;
     align-items: center;
     gap: 12px;
@@ -2351,6 +2364,76 @@ body[data-route="archive"] .paper-page-left {
     transform: translateY(0);
 }
 
+.location-close {
+    position: relative;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    margin: 0 0 14px auto;
+    border: 1px solid rgba(143, 53, 39, 0.3);
+    border-radius: 8px;
+    color: var(--stamp);
+    background:
+        linear-gradient(180deg, rgba(255, 250, 229, 0.78), rgba(221, 192, 132, 0.56)),
+        url("../assets/textures/paper-grain.png"),
+        rgba(255, 246, 222, 0.82);
+    box-shadow: 0 8px 15px rgba(52, 31, 14, 0.17), inset 0 1px 0 rgba(255, 255, 255, 0.52);
+    font-size: 0;
+    line-height: 0;
+    transition: transform 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.location-close::before,
+.location-close::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 17px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+}
+
+.location-close::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.location-close::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.location-close:hover,
+.location-close:focus-visible {
+    border-color: rgba(143, 53, 39, 0.5);
+    color: #6f271e;
+    box-shadow: 0 11px 18px rgba(52, 31, 14, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.58);
+    transform: translateY(-1px);
+}
+
+.location-close:active {
+    box-shadow: 0 5px 10px rgba(52, 31, 14, 0.15), inset 0 1px 4px rgba(76, 53, 32, 0.18);
+    transform: translateY(0);
+}
+
+.place-detail-actions {
+    position: sticky;
+    top: 0;
+    z-index: 35;
+    display: flex;
+    justify-content: flex-end;
+    height: 0;
+    pointer-events: none;
+}
+
+.place-detail-actions .location-close {
+    position: relative;
+    margin: 0;
+    pointer-events: auto;
+}
+
 .place-records .ledger-entry {
     grid-template-columns: 72px minmax(0, 1fr);
     gap: 14px;
@@ -2571,6 +2654,7 @@ body[data-route="archive"] .paper-page-left {
     }
 
     .brand-lockup {
+        height: 66px;
         min-width: 0;
     }
 
@@ -2622,6 +2706,7 @@ body[data-route="archive"] .paper-page-left {
     }
 
     .brand-lockup {
+        height: 54px;
         min-width: 44px;
         padding: 8px 10px;
     }

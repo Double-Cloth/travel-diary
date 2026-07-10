@@ -6,6 +6,7 @@ const indexHtml = await readFile(new URL('../index.html', import.meta.url), 'utf
 const appJs = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 const serverJs = await readFile(new URL('../js/server.js', import.meta.url), 'utf8');
 const journalCss = await readFile(new URL('../css/journal.css', import.meta.url), 'utf8');
+const baseCss = await readFile(new URL('../css/base.css', import.meta.url), 'utf8');
 
 test('应用外壳不再包含路线筛选抽屉', () => {
     assert.doesNotMatch(indexHtml, /drawerToggle|drawerRoot|journal-drawer|打开筛选面板/);
@@ -45,4 +46,39 @@ test('切换纸页内容时重置左右页滚动位置', () => {
 test('窄屏优先显示筛选工作台和旅行概览', () => {
     assert.match(journalCss, /data-route="ledger"[^}]+map-pocket[^}]+order: -1/);
     assert.match(journalCss, /data-route="archive"[^}]+dossier-page[^}]+order: -1/);
+});
+
+test('旅行档案仅使用项目本地字体族', () => {
+    assert.match(journalCss, /--font-serif:\s*"Diary Kai";/);
+    assert.match(journalCss, /--font-code:\s*"Archive Code";/);
+    assert.match(baseCss, /--font-display:\s*"Diary Kai";/);
+    assert.match(baseCss, /--font-sans:\s*"Diary Kai";/);
+    assert.match(baseCss, /--font-code:\s*"Archive Code";/);
+    const cssFonts = `${journalCss}\n${baseCss}`;
+    assert.doesNotMatch(cssFonts, /STKaiti|KaiTi|Courier New|Roboto|Google Sans|Segoe UI|Arial|JetBrains Mono|ui-monospace|SFMono-Regular|Menlo|Consolas/);
+});
+
+test('头部方块控件在书脊栏中显式垂直居中', () => {
+    for (const selector of ['brand-lockup', 'chapter-tabs', 'spine-tools']) {
+        assert.match(journalCss, new RegExp(`\\.${selector}\\s*{[\\s\\S]*?align-self: center;`));
+    }
+    assert.match(journalCss, /\.brand-lockup\s*{[^}]*height: 76px;/);
+    assert.match(journalCss, /\.brand-lockup > span\s*{[^}]*display: grid;[^}]*place-items: center;/);
+    assert.match(journalCss, /\.brand-lockup > span\s*{[^}]*height: 100%;/);
+    assert.match(journalCss, /--brand-rivet-y:\s*12px;/);
+    assert.doesNotMatch(journalCss, /circle at calc\(50% [-+] 1px\) 7px|circle at calc\(50% [-+] 1px\) 9px/);
+    assert.doesNotMatch(journalCss, /\\.chapter-tab-active\\s*{[\\s\\S]*?transform: translateY\\(1px\\);/);
+});
+
+test('地点详情页关闭按钮固定在右页滚动容器右上角', () => {
+    assert.doesNotMatch(appJs, /<div class="place-page">\s*<a class="location-back location-close"/);
+    assert.match(appJs, /class="location-back location-close route-location-close"/);
+    assert.match(appJs, /aria-label="关闭地点详情"/);
+    assert.doesNotMatch(appJs, /routeActionRoot|renderRouteActions|refs\.routeAction/);
+    assert.match(appJs, /<div class="place-detail-actions"/);
+    assert.match(appJs, /'dossier-page place-detail-page'/);
+    assert.match(journalCss, /\.place-detail-actions\s*{[^}]*position: sticky;[^}]*top: 0;[^}]*justify-content: flex-end;/);
+    assert.match(journalCss, /\.place-detail-actions \.location-close\s*{[^}]*position: relative;[^}]*margin: 0;/);
+    assert.match(journalCss, /\.location-close::before[\s\S]*?rotate\(45deg\)/);
+    assert.match(journalCss, /\.location-close::after[\s\S]*?rotate\(-45deg\)/);
 });

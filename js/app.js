@@ -926,7 +926,6 @@ function renderPlace(params = {}) {
 
     setPages(`
         <div class="place-page">
-            <a class="ribbon-back" href="#archive">返回地点索引</a>
             <p class="journal-label">地点档案</p>
             <h1>${escapeHtml(label)}</h1>
             <p class="place-count">${matching.length} 次到访</p>
@@ -937,11 +936,16 @@ function renderPlace(params = {}) {
             </div>
         </div>
     `, `
+        <div class="place-detail-actions" aria-label="地点详情操作">
+            <a class="location-back location-close route-location-close" href="#archive" aria-label="关闭地点详情">
+                <span class="sr-only">关闭地点详情</span>
+            </a>
+        </div>
         <div class="place-records">
             <p class="journal-label">相关纸条</p>
             ${matching.length ? matching.map(renderLedgerEntry).join('') : '<div class="empty-note">这个地点还没有旅行记录。</div>'}
         </div>
-    `, 'dossier-page');
+    `, 'dossier-page place-detail-page');
 }
 
 function renderEntryRoute(params = {}) {

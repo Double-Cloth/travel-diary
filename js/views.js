@@ -655,7 +655,7 @@ function openEntryModal(record, triggerElement) {
         contentHtml += '<div class="modal-photos">';
         record.photos.forEach(photo => {
             const imgPath = `${record.photo_folder}/${photo}`;
-            const fallbackSvg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150"><rect fill="#f7f2fa" width="200" height="150"/><text fill="#79747e" font-family="sans-serif" font-size="14" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">No Image</text></svg>');
+            const fallbackSvg = encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="200" height="150"><rect fill="#f7f2fa" width="200" height="150"/><text fill="#79747e" font-family="Diary Kai" font-size="14" x="50%" y="50%" text-anchor="middle" dominant-baseline="middle">No Image</text></svg>');
             contentHtml += `<img src="${imgPath}" alt="${escapeHtml(photo)}" class="modal-photo" loading="lazy" onerror="this.onerror=null; this.src='data:image/svg+xml;utf8,${fallbackSvg}';">`;
         });
         contentHtml += '</div>';
