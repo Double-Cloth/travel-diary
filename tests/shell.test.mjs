@@ -5,8 +5,37 @@ import { readFile } from 'node:fs/promises';
 const indexHtml = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const appJs = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 const serverJs = await readFile(new URL('../js/server.js', import.meta.url), 'utf8');
-const journalCss = await readFile(new URL('../css/journal.css', import.meta.url), 'utf8');
-const baseCss = await readFile(new URL('../css/base.css', import.meta.url), 'utf8');
+const journalEntryCss = await readFile(new URL('../css/journal.css', import.meta.url), 'utf8');
+const cssPartFiles = [
+    '01-foundation.css',
+    '02-shell.css',
+    '03-cover-route.css',
+    '04-ledger.css',
+    '05-archive-place.css',
+    '06-entry-sheet.css',
+    '07-responsive.css'
+];
+const cssPartContents = [];
+
+for (const file of cssPartFiles) {
+    try {
+        cssPartContents.push(await readFile(new URL(`../css/${file}`, import.meta.url), 'utf8'));
+    } catch (error) {
+        if (error.code !== 'ENOENT') {
+            throw error;
+        }
+    }
+}
+
+const journalCss = cssPartContents.length > 0 ? `${journalEntryCss}\n${cssPartContents.join('\n')}` : journalEntryCss;
+
+test('主样式入口拆分为按职责导入的 CSS 文件', () => {
+    for (const file of cssPartFiles) {
+        assert.match(journalEntryCss, new RegExp(`@import url\\('\\./${file}'\\);`));
+    }
+
+    assert.doesNotMatch(journalEntryCss, /@font-face|:root|\\.journal-shell|\\.cover-page|\\.index-dashboard|@media/);
+});
 
 test('应用外壳不再包含路线筛选抽屉', () => {
     assert.doesNotMatch(indexHtml, /drawerToggle|drawerRoot|journal-drawer|打开筛选面板/);
@@ -87,11 +116,7 @@ test('窄屏优先显示筛选工作台和旅行概览', () => {
 test('旅行档案仅使用项目本地字体族', () => {
     assert.match(journalCss, /--font-serif:\s*"Diary Kai";/);
     assert.match(journalCss, /--font-code:\s*"Archive Code";/);
-    assert.match(baseCss, /--font-display:\s*"Diary Kai";/);
-    assert.match(baseCss, /--font-sans:\s*"Diary Kai";/);
-    assert.match(baseCss, /--font-code:\s*"Archive Code";/);
-    const cssFonts = `${journalCss}\n${baseCss}`;
-    assert.doesNotMatch(cssFonts, /STKaiti|KaiTi|Courier New|Roboto|Google Sans|Segoe UI|Arial|JetBrains Mono|ui-monospace|SFMono-Regular|Menlo|Consolas/);
+    assert.doesNotMatch(journalCss, /STKaiti|KaiTi|Courier New|Roboto|Google Sans|Segoe UI|Arial|JetBrains Mono|ui-monospace|SFMono-Regular|Menlo|Consolas/);
 });
 
 test('头部方块控件在书脊栏中显式垂直居中', () => {
