@@ -2169,6 +2169,10 @@ body[data-route="archive"] .paper-page-left {
     grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
+.overview-insight-wide {
+    grid-column: 1 / -1;
+}
+
 .overview-insight span {
     color: var(--stamp);
     letter-spacing: 0.08em;
@@ -2711,6 +2715,11 @@ body[data-route="archive"] .paper-page-left {
         scrollbar-gutter: auto;
         scrollbar-width: auto;
         scrollbar-color: auto;
+    }
+
+    .overview-metric-grid,
+    .overview-insight-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
     .journal-shell[data-route="ledger"] .paper-page-right.map-pocket {

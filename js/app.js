@@ -290,6 +290,7 @@ function deriveTravelModel(records) {
         topProvinces,
         repeatLocations,
         filterOptions,
+        overviewAnalytics: deriveOverviewAnalytics(enhanced),
         stats: {
             total: enhanced.length,
             countries: countries.length,
@@ -797,6 +798,9 @@ function renderArchive(params = {}) {
                     ${renderOverviewMetric('国家', travelModel.stats.countries)}
                     ${renderOverviewMetric('省份', travelModel.stats.provinces)}
                     ${renderOverviewMetric('城市', travelModel.stats.cities)}
+                    ${renderOverviewMetric('活跃年份', travelModel.overviewAnalytics.activeYearCount)}
+                    ${renderOverviewMetric('活跃月份', `${travelModel.overviewAnalytics.activeMonthCount} / 12`)}
+                    ${renderOverviewMetric('复访率', `${travelModel.overviewAnalytics.repeatRate}%`)}
                 </div>
             </section>
             <section class="archive-overview-block">
@@ -804,6 +808,7 @@ function renderArchive(params = {}) {
                 <div class="overview-insight-list">
                     ${renderTopYearInsight(topYear)}
                     ${renderTopMonthInsight(topMonth)}
+                    ${renderLongestGapInsight(travelModel.overviewAnalytics.longestGap)}
                 </div>
             </section>
             <section class="archive-overview-block">
@@ -853,6 +858,20 @@ function renderTopMonthInsight(stat) {
     `;
 }
 
+function renderLongestGapInsight(longestGap) {
+    if (!longestGap) {
+        return renderEmptyOverviewInsight('最长记录间隔', '暂无足够记录', true);
+    }
+
+    return `
+        <div class="overview-insight overview-insight-wide">
+            <span>最长记录间隔</span>
+            <strong>${longestGap.days} 天</strong>
+            <small>${escapeHtml(formatDateRange(longestGap.from, longestGap.to, 'day'))}</small>
+        </div>
+    `;
+}
+
 function renderTopProvinceInsight(province) {
     if (!province) {
         return renderEmptyOverviewInsight('高频省份', '暂无地点');
@@ -883,9 +902,9 @@ function renderRepeatLocationInsight(item) {
     `;
 }
 
-function renderEmptyOverviewInsight(label, value) {
+function renderEmptyOverviewInsight(label, value, wide = false) {
     return `
-        <div class="overview-insight">
+        <div class="overview-insight${wide ? ' overview-insight-wide' : ''}">
             <span>${escapeHtml(label)}</span>
             <strong>${escapeHtml(value)}</strong>
         </div>

@@ -24,3 +24,10 @@ test('索引夹层包含完整且唯一的高级筛选工作台', () => {
     assert.match(appJs, /重置全部/);
     assert.doesNotMatch(appJs, /当前筛选|当前排序|切到最早优先|切回最新优先/);
 });
+
+test('旅行概览渲染新增的可靠统计', () => {
+    for (const label of ['复访率', '活跃年份', '活跃月份', '最长记录间隔']) {
+        assert.match(appJs, new RegExp(label));
+    }
+    assert.match(appJs, /overviewAnalytics: deriveOverviewAnalytics\(enhanced\)/);
+});
