@@ -28,6 +28,25 @@ test('索引夹层包含完整且唯一的高级筛选工作台', () => {
     assert.doesNotMatch(appJs, /当前筛选|当前排序|切到最早优先|切回最新优先/);
 });
 
+test('索引夹层总数只保留一个视觉锚点', () => {
+    assert.match(appJs, /return '全部旅行记录';/);
+    assert.match(appJs, /筛选结果 · 全部 \$\{total\} 条/);
+    assert.match(appJs, /class="index-dashboard-value"/);
+    assert.match(appJs, /class="index-dashboard-unit"/);
+    assert.match(journalCss, /\.index-dashboard-main > span,/);
+    assert.doesNotMatch(journalCss, /\.index-dashboard-main span,/);
+    assert.doesNotMatch(appJs, /共 \$\{total\} 条旅行记录/);
+});
+
+test('索引夹层分段按钮具备拟物化层次', () => {
+    assert.match(journalCss, /\.index-segment::before/);
+    assert.match(journalCss, /\.index-segment::after/);
+    assert.match(journalCss, /\.index-segment-active::before/);
+    assert.match(journalCss, /\.index-segment:active/);
+    assert.match(journalCss, /inset 0 1px 0 rgba\(255, 255, 255/);
+    assert.match(journalCss, /0 7px 0 rgba\(121, 84, 43/);
+});
+
 test('旅行概览渲染新增的可靠统计', () => {
     for (const label of ['复访率', '活跃年份', '活跃月份', '最长记录间隔']) {
         assert.match(appJs, new RegExp(label));

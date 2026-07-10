@@ -650,10 +650,10 @@ function createLedgerResultLabel(count, total, params) {
     const hasFilter = hasActiveLedgerFilter(params);
 
     if (!hasFilter) {
-        return `共 ${total} 条旅行记录`;
+        return '全部旅行记录';
     }
 
-    return `显示 ${count} / ${total} 条记录`;
+    return `筛选结果 · 全部 ${total} 条`;
 }
 
 function renderLedgerSnapshot(snapshot, resultLabel) {
@@ -665,7 +665,10 @@ function renderLedgerSnapshot(snapshot, resultLabel) {
         <div class="index-dashboard" aria-label="筛选结果快照">
             <div class="index-dashboard-main">
                 <span>${escapeHtml(resultLabel)}</span>
-                <strong>${snapshot.count}</strong>
+                <strong class="index-dashboard-value">
+                    <span>${snapshot.count}</span>
+                    <small class="index-dashboard-unit">条</small>
+                </strong>
             </div>
             <div class="index-dashboard-grid">
                 <span><strong>${snapshot.cityCount}</strong> 座城市</span>
@@ -1006,10 +1009,12 @@ function openEntrySheet(record) {
     if (!record) {
         refs.sheet.innerHTML = `
             <div class="sheet-backdrop" data-action="close-entry"></div>
-            <article class="entry-sheet" role="dialog" aria-modal="true" aria-labelledby="entrySheetTitle">
+            <div class="entry-sheet-frame">
                 <button class="sheet-close" type="button" data-action="close-entry" aria-label="合上纸页">×</button>
-                <h1 id="entrySheetTitle">没有找到这篇日记</h1>
-            </article>
+                <article class="entry-sheet" role="dialog" aria-modal="true" aria-labelledby="entrySheetTitle">
+                    <h1 id="entrySheetTitle">没有找到这篇日记</h1>
+                </article>
+            </div>
         `;
         return;
     }
@@ -1017,17 +1022,19 @@ function openEntrySheet(record) {
     const navigation = getEntryNavigation(record);
     refs.sheet.innerHTML = `
         <div class="sheet-backdrop" data-action="close-entry"></div>
-        <article class="entry-sheet" role="dialog" aria-modal="true" aria-labelledby="entrySheetTitle" tabindex="-1">
+        <div class="entry-sheet-frame">
             <button class="sheet-close" type="button" data-action="close-entry" aria-label="合上纸页">×</button>
-            <div class="sheet-meta">
-                <time datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '')}</time>
-                <a class="location-chip" href="${placeHash(record.country, record.province, record.city)}">${escapeHtml(getLocationText(record))}</a>
-            </div>
-            <h1 id="entrySheetTitle">${escapeHtml(record.title)}</h1>
-            <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
-            ${renderPhotoSleeve(record)}
-            ${renderEntrySheetNav(navigation)}
-        </article>
+            <article class="entry-sheet" role="dialog" aria-modal="true" aria-labelledby="entrySheetTitle" tabindex="-1">
+                <div class="sheet-meta">
+                    <time datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '')}</time>
+                    <a class="location-chip" href="${placeHash(record.country, record.province, record.city)}">${escapeHtml(getLocationText(record))}</a>
+                </div>
+                <h1 id="entrySheetTitle">${escapeHtml(record.title)}</h1>
+                <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
+                ${renderPhotoSleeve(record)}
+                ${renderEntrySheetNav(navigation)}
+            </article>
+        </div>
     `;
 
     requestAnimationFrame(() => {
