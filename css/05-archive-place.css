@@ -44,6 +44,76 @@
     letter-spacing: 0.08em;
 }
 
+.overview-location-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+}
+
+.overview-location-feature {
+    grid-column: span 2;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+        "label meta"
+        "title meta";
+    align-items: center;
+    min-height: 88px;
+    padding: 15px 18px;
+    background:
+        linear-gradient(180deg, rgba(255, 250, 229, 0.56), rgba(226, 197, 135, 0.18)),
+        rgba(255, 246, 222, 0.54);
+}
+
+.overview-location-feature span {
+    grid-area: label;
+}
+
+.overview-location-feature strong {
+    grid-area: title;
+    font-size: 24px;
+}
+
+.overview-location-feature small {
+    grid-area: meta;
+    align-self: center;
+    padding: 8px 10px;
+    border: 1px solid rgba(143, 53, 39, 0.18);
+    border-radius: 8px;
+    background: rgba(255, 246, 222, 0.48);
+    white-space: nowrap;
+}
+
+.overview-location-secondary {
+    align-content: center;
+    min-height: 88px;
+    padding: 15px 16px;
+    background:
+        linear-gradient(180deg, rgba(255, 250, 229, 0.48), rgba(226, 197, 135, 0.14)),
+        rgba(255, 246, 222, 0.5);
+}
+
+.overview-location-secondary strong {
+    font-size: 22px;
+}
+
+.overview-location-secondary small {
+    line-height: 1.45;
+}
+
+.overview-repeat-location {
+    align-content: start;
+    min-height: 104px;
+    padding: 12px 14px;
+}
+
+.overview-repeat-location strong {
+    font-size: 19px;
+    line-height: 1.25;
+}
+
+.overview-repeat-location small {
+    line-height: 1.45;
+}
+
 .index-reset-anchor {
     position: sticky;
     top: 0;
@@ -223,76 +293,6 @@
 .ribbon-back:active {
     box-shadow: 0 5px 10px rgba(52, 31, 14, 0.15), inset 0 1px 4px rgba(76, 53, 32, 0.18);
     transform: translateY(0);
-}
-
-.location-close {
-    position: relative;
-    z-index: 20;
-    display: grid;
-    place-items: center;
-    width: 42px;
-    height: 42px;
-    margin: 0 0 14px auto;
-    border: 1px solid rgba(143, 53, 39, 0.3);
-    border-radius: 8px;
-    color: var(--stamp);
-    background:
-        linear-gradient(180deg, rgba(255, 250, 229, 0.78), rgba(221, 192, 132, 0.56)),
-        url("../assets/textures/paper-grain.png"),
-        rgba(255, 246, 222, 0.82);
-    box-shadow: 0 8px 15px rgba(52, 31, 14, 0.17), inset 0 1px 0 rgba(255, 255, 255, 0.52);
-    font-size: 0;
-    line-height: 0;
-    transition: transform 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
-}
-
-.location-close::before,
-.location-close::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 17px;
-    height: 2px;
-    border-radius: 999px;
-    background: currentColor;
-}
-
-.location-close::before {
-    transform: translate(-50%, -50%) rotate(45deg);
-}
-
-.location-close::after {
-    transform: translate(-50%, -50%) rotate(-45deg);
-}
-
-.location-close:hover,
-.location-close:focus-visible {
-    border-color: rgba(143, 53, 39, 0.5);
-    color: #6f271e;
-    box-shadow: 0 11px 18px rgba(52, 31, 14, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.58);
-    transform: translateY(-1px);
-}
-
-.location-close:active {
-    box-shadow: 0 5px 10px rgba(52, 31, 14, 0.15), inset 0 1px 4px rgba(76, 53, 32, 0.18);
-    transform: translateY(0);
-}
-
-.place-detail-actions {
-    position: sticky;
-    top: 0;
-    z-index: 35;
-    display: flex;
-    justify-content: flex-end;
-    height: 0;
-    pointer-events: none;
-}
-
-.place-detail-actions .location-close {
-    position: relative;
-    margin: 0;
-    pointer-events: auto;
 }
 
 .place-records .ledger-entry {

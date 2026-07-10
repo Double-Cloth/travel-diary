@@ -294,7 +294,7 @@ function deriveTravelModel(records) {
         topProvinces,
         repeatLocations,
         filterOptions,
-        overviewAnalytics: deriveOverviewAnalytics(enhanced),
+        overviewAnalytics: deriveOverviewAnalytics(enhanced, todayDate),
         stats: {
             total: enhanced.length,
             countries: countries.length,
@@ -779,7 +779,7 @@ function renderArchive(params = {}) {
     const topYear = getTopYearStat(travelModel.yearStats);
     const topMonth = getTopMonthStat(travelModel.monthStats);
     const leadingProvince = travelModel.topProvinces[0] || null;
-    const leadingRepeat = travelModel.repeatLocations[0] || null;
+    const broadestProvince = getBroadestProvince(travelModel.topProvinces);
     const countries = travelModel.countries
         .map(country => {
             if (!query) return country;
@@ -821,8 +821,8 @@ function renderArchive(params = {}) {
                     ${renderOverviewMetric('省份', travelModel.stats.provinces)}
                     ${renderOverviewMetric('城市', travelModel.stats.cities)}
                     ${renderOverviewMetric('活跃年份', travelModel.overviewAnalytics.activeYearCount)}
-                    ${renderOverviewMetric('活跃月份', `${travelModel.overviewAnalytics.activeMonthCount} / 12`)}
-                    ${renderOverviewMetric('复访率', `${travelModel.overviewAnalytics.repeatRate}%`)}
+                    ${renderOverviewMetric('活跃月份', `${travelModel.overviewAnalytics.activeMonthCount} / ${travelModel.overviewAnalytics.activeMonthCapacity}`)}
+                    ${renderOverviewMetric('复访地点', `${travelModel.overviewAnalytics.repeatLocationCount} 处`)}
                 </div>
             </section>
             <section class="archive-overview-block">
@@ -835,9 +835,10 @@ function renderArchive(params = {}) {
             </section>
             <section class="archive-overview-block">
                 <h3>地点倾向</h3>
-                <div class="overview-insight-list">
+                <div class="overview-insight-list overview-location-list">
                     ${renderTopProvinceInsight(leadingProvince)}
-                    ${renderRepeatLocationInsight(leadingRepeat)}
+                    ${renderBroadProvinceInsight(broadestProvince)}
+                    ${renderRepeatLocationInsights(travelModel.repeatLocations)}
                 </div>
             </section>
     `, 'dossier-page');
@@ -900,7 +901,7 @@ function renderTopProvinceInsight(province) {
     }
 
     return `
-        <a class="overview-insight" href="${placeHash(province.country, province.province, '')}">
+        <a class="overview-insight overview-location-feature" href="${placeHash(province.country, province.province, '')}">
             <span>高频省份</span>
             <strong>${escapeHtml(province.label)}</strong>
             <small>${province.count} 篇日记 · ${province.cityCount} 城</small>
@@ -908,15 +909,33 @@ function renderTopProvinceInsight(province) {
     `;
 }
 
-function renderRepeatLocationInsight(item) {
-    if (!item) {
+function renderBroadProvinceInsight(province) {
+    if (!province) {
+        return renderEmptyOverviewInsight('覆盖最广', '暂无地点');
+    }
+
+    return `
+        <a class="overview-insight overview-location-secondary" href="${placeHash(province.country, province.province, '')}">
+            <span>覆盖最广</span>
+            <strong>${escapeHtml(province.label)}</strong>
+            <small>${province.cityCount} 座城市 · 最近 ${escapeHtml(province.latestDate)}</small>
+        </a>
+    `;
+}
+
+function renderRepeatLocationInsights(items = []) {
+    if (!items.length) {
         return renderEmptyOverviewInsight('复访地点', '暂无复访');
     }
 
+    return items.map(renderRepeatLocationInsight).join('');
+}
+
+function renderRepeatLocationInsight(item) {
     const record = item.record;
 
     return `
-        <a class="overview-insight" href="${placeHash(record.country, record.province, record.city)}">
+        <a class="overview-insight overview-repeat-location" href="${placeHash(record.country, record.province, record.city)}">
             <span>复访地点</span>
             <strong>${escapeHtml(getLocationText(record))}</strong>
             <small>${item.count} 次 · ${escapeHtml(item.firstDate)} 至 ${escapeHtml(item.latestDate)}</small>
@@ -941,6 +960,10 @@ function getTopMonthStat(monthStats) {
     return [...monthStats].sort((a, b) => b.count - a.count || b.cityCount - a.cityCount || a.month.localeCompare(b.month))[0] || null;
 }
 
+function getBroadestProvince(provinces = []) {
+    return [...provinces].sort((a, b) => b.cityCount - a.cityCount || b.count - a.count || b.latestDate.localeCompare(a.latestDate))[0] || null;
+}
+
 function renderPlace(params = {}) {
     const matching = getPlaceRecords(params);
     const label = getPlaceLabel(params);
@@ -948,6 +971,7 @@ function renderPlace(params = {}) {
 
     setPages(`
         <div class="place-page">
+            <a class="ribbon-back" href="#archive">返回档案夹</a>
             <p class="journal-label">地点档案</p>
             <h1>${escapeHtml(label)}</h1>
             <p class="place-count">${matching.length} 次到访</p>
@@ -958,11 +982,6 @@ function renderPlace(params = {}) {
             </div>
         </div>
     `, `
-        <div class="place-detail-actions" aria-label="地点详情操作">
-            <a class="location-back location-close route-location-close" href="#archive" aria-label="关闭地点详情">
-                <span class="sr-only">关闭地点详情</span>
-            </a>
-        </div>
         <div class="place-records">
             <p class="journal-label">相关纸条</p>
             ${matching.length ? matching.map(renderLedgerEntry).join('') : '<div class="empty-note">这个地点还没有旅行记录。</div>'}

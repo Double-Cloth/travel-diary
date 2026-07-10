@@ -162,6 +162,27 @@
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 
+    .overview-location-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .overview-location-feature {
+        grid-column: 1 / -1;
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "label"
+            "title"
+            "meta";
+    }
+
+    .overview-location-feature small {
+        width: fit-content;
+    }
+
+    .overview-location-secondary {
+        grid-column: 1 / -1;
+    }
+
     .journal-shell[data-route="ledger"] .paper-page-right.map-pocket {
         order: -1;
     }

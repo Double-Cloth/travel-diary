@@ -93,10 +93,24 @@ test('索引夹层分段按钮具备拟物化层次', () => {
 });
 
 test('旅行概览渲染新增的可靠统计', () => {
-    for (const label of ['复访率', '活跃年份', '活跃月份', '最长记录间隔']) {
+    for (const label of ['复访地点', '覆盖最广', '活跃年份', '活跃月份', '最长记录间隔']) {
         assert.match(appJs, new RegExp(label));
     }
-    assert.match(appJs, /overviewAnalytics: deriveOverviewAnalytics\(enhanced\)/);
+    assert.doesNotMatch(appJs, /复访率|repeatRate/);
+    assert.match(appJs, /activeMonthCount\}\s*\/\s*\$\{travelModel\.overviewAnalytics\.activeMonthCapacity\}/);
+    assert.match(appJs, /renderRepeatLocationInsights\(travelModel\.repeatLocations\)/);
+    assert.match(appJs, /renderBroadProvinceInsight\(broadestProvince\)/);
+    assert.match(appJs, /function getBroadestProvince/);
+    assert.doesNotMatch(appJs, /items\.slice\(0,\s*3\)/);
+    assert.match(appJs, /overview-insight-list overview-location-list/);
+    assert.match(appJs, /overview-insight overview-location-feature/);
+    assert.match(appJs, /overview-insight overview-location-secondary/);
+    assert.match(appJs, /overview-insight overview-repeat-location/);
+    assert.match(journalCss, /\.overview-location-list\s*{/);
+    assert.match(journalCss, /\.overview-location-feature\s*{/);
+    assert.match(journalCss, /\.overview-location-secondary\s*{/);
+    assert.match(journalCss, /\.overview-repeat-location\s*{/);
+    assert.match(appJs, /overviewAnalytics: deriveOverviewAnalytics\(enhanced,\s*todayDate\)/);
     assert.match(appJs, /const todayDate = getTodayDate\(\);[\s\S]+const dateRangeLabel = formatDateRange\(firstDate, todayDate, 'day'\);/);
 });
 
@@ -131,15 +145,14 @@ test('头部方块控件在书脊栏中显式垂直居中', () => {
     assert.doesNotMatch(journalCss, /\\.chapter-tab-active\\s*{[\\s\\S]*?transform: translateY\\(1px\\);/);
 });
 
-test('地点详情页关闭按钮固定在右页滚动容器右上角', () => {
+test('地点详情页仅保留左页返回按钮', () => {
     assert.doesNotMatch(appJs, /<div class="place-page">\s*<a class="location-back location-close"/);
-    assert.match(appJs, /class="location-back location-close route-location-close"/);
-    assert.match(appJs, /aria-label="关闭地点详情"/);
+    assert.match(appJs, /<a class="ribbon-back" href="#archive">返回档案夹<\/a>/);
+    assert.doesNotMatch(appJs, /class="location-back location-close route-location-close"/);
+    assert.doesNotMatch(appJs, /aria-label="关闭地点详情"/);
     assert.doesNotMatch(appJs, /routeActionRoot|renderRouteActions|refs\.routeAction/);
-    assert.match(appJs, /<div class="place-detail-actions"/);
+    assert.doesNotMatch(appJs, /<div class="place-detail-actions"/);
     assert.match(appJs, /'dossier-page place-detail-page'/);
-    assert.match(journalCss, /\.place-detail-actions\s*{[^}]*position: sticky;[^}]*top: 0;[^}]*justify-content: flex-end;/);
-    assert.match(journalCss, /\.place-detail-actions \.location-close\s*{[^}]*position: relative;[^}]*margin: 0;/);
-    assert.match(journalCss, /\.location-close::before[\s\S]*?rotate\(45deg\)/);
-    assert.match(journalCss, /\.location-close::after[\s\S]*?rotate\(-45deg\)/);
+    assert.doesNotMatch(journalCss, /\.place-detail-actions/);
+    assert.doesNotMatch(journalCss, /\.location-close/);
 });
