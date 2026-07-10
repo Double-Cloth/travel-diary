@@ -49,25 +49,6 @@ export async function loadTravelRecords(records) {
     return hydratedRecords;
 }
 
-export function analyzeData(records) {
-    const visitedCountries = new Set();
-    const visitedProvinces = new Set();
-    const visitedCities = new Set();
-
-    records.forEach(record => {
-        visitedCountries.add(record.country);
-        visitedProvinces.add(`${record.country}-${record.province}`);
-        visitedCities.add(`${record.country}-${record.province}-${record.city}`);
-    });
-
-    return {
-        countries: visitedCountries.size,
-        provinces: visitedProvinces.size,
-        cities: visitedCities.size,
-        total: records.length
-    };
-}
-
 async function fetchMarkdown(markdownPath) {
     if (!markdownPath) {
         return '';

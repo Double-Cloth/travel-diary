@@ -1,0 +1,334 @@
+.archive-overview-hero {
+    display: grid;
+    gap: 8px;
+    padding: 16px;
+    border: 1px dashed rgba(88, 58, 28, 0.3);
+    color: var(--ink-soft);
+    background:
+        linear-gradient(180deg, rgba(255, 250, 229, 0.42), transparent),
+        rgba(255, 246, 222, 0.42);
+}
+
+.archive-overview-hero span,
+.archive-overview-hero small {
+    font-family: var(--font-code);
+    font-size: 12px;
+}
+
+.archive-overview-hero strong {
+    color: var(--ink);
+    font-size: 24px;
+    line-height: 1.2;
+}
+
+.overview-metric-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.overview-metric strong {
+    color: var(--ink);
+    font-size: 24px;
+    line-height: 1;
+}
+
+.overview-insight-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.overview-insight-wide {
+    grid-column: 1 / -1;
+}
+
+.overview-insight span {
+    color: var(--stamp);
+    letter-spacing: 0.08em;
+}
+
+.index-reset-anchor {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    padding: 8px 0 10px;
+    background: transparent;
+}
+
+.index-reset {
+    margin-top: 2px;
+}
+
+.compact-note {
+    padding: 12px;
+    font-size: 13px;
+}
+
+.province-strip {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 9px;
+}
+
+.mini-luggage-tag,
+.luggage-tag {
+    position: relative;
+    display: grid;
+    gap: 5px;
+    border: 1px solid rgba(72, 47, 25, 0.26);
+    color: var(--ink);
+    background:
+        linear-gradient(180deg, rgba(255, 250, 229, 0.38), transparent),
+        url("../assets/textures/paper-grain.png"),
+        linear-gradient(180deg, #e1c389, #bc9259);
+    box-shadow: 0 8px 14px rgba(48, 28, 12, 0.15);
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.mini-luggage-tag {
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 7px 10px;
+    border-radius: 7px;
+    font-size: 13px;
+}
+
+.mini-luggage-tag:hover,
+.mini-luggage-tag:focus-visible,
+.luggage-tag:hover,
+.luggage-tag:focus-visible {
+    border-color: rgba(96, 62, 30, 0.4);
+    background:
+        linear-gradient(180deg, rgba(255, 252, 233, 0.48), transparent),
+        url("../assets/textures/paper-grain.png"),
+        linear-gradient(180deg, #e8cb91, #c49a61);
+    box-shadow: 0 11px 18px rgba(48, 28, 12, 0.19);
+    transform: translateY(-1px);
+}
+
+.mini-luggage-tag:active,
+.luggage-tag:active {
+    transform: translateY(0);
+    box-shadow: 0 5px 11px rgba(48, 28, 12, 0.14);
+}
+
+.country-folder {
+    padding: 16px;
+    border: 1px solid rgba(76, 49, 26, 0.2);
+    border-radius: 8px;
+    background:
+        linear-gradient(180deg, rgba(255, 246, 222, 0.5), rgba(208, 177, 116, 0.22)),
+        rgba(255, 246, 222, 0.42);
+}
+
+.country-head {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    align-items: baseline;
+    margin-bottom: 12px;
+}
+
+.country-head h2 {
+    margin: 0;
+    font-size: 22px;
+}
+
+.country-head span {
+    color: var(--ink-muted);
+    font-family: var(--font-code);
+    font-size: 12px;
+}
+
+.luggage-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+}
+
+.luggage-tag {
+    min-height: 104px;
+    padding: 18px 15px 14px 30px;
+    border-radius: 14px 7px 7px 14px;
+}
+
+.luggage-tag::before {
+    content: "";
+    position: absolute;
+    left: 11px;
+    top: 18px;
+    width: 9px;
+    height: 9px;
+    border: 2px solid rgba(77, 51, 28, 0.42);
+    border-radius: 50%;
+    background: rgba(255, 246, 222, 0.6);
+}
+
+.luggage-tag strong {
+    font-size: 19px;
+}
+
+.luggage-tag span,
+.luggage-tag small {
+    color: var(--ink-soft);
+    font-size: 13px;
+}
+
+.place-count {
+    width: fit-content;
+    margin: 14px 0 18px;
+    padding: 8px 13px;
+    border: 1px solid rgba(143, 53, 39, 0.28);
+    color: var(--stamp);
+    background: rgba(255, 246, 222, 0.45);
+    font-family: var(--font-code);
+}
+
+.ribbon-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    width: fit-content;
+    min-height: 40px;
+    margin-bottom: 22px;
+    padding: 9px 14px 9px 12px;
+    border: 1px solid rgba(143, 53, 39, 0.3);
+    border-radius: 8px;
+    color: var(--stamp);
+    background:
+        linear-gradient(180deg, rgba(255, 250, 229, 0.72), rgba(221, 192, 132, 0.48)),
+        url("../assets/textures/paper-grain.png"),
+        rgba(255, 246, 222, 0.72);
+    font-family: var(--font-code);
+    font-size: 14px;
+    font-weight: 700;
+    box-shadow: 0 7px 14px rgba(52, 31, 14, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+    transition: transform 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.ribbon-back::before {
+    content: "";
+    width: 20px;
+    height: 20px;
+    background: currentColor;
+    clip-path: polygon(46% 18%, 54% 26%, 34% 46%, 82% 46%, 82% 58%, 34% 58%, 54% 78%, 46% 86%, 12% 52%);
+}
+
+.ribbon-back:hover,
+.ribbon-back:focus-visible {
+    border-color: rgba(143, 53, 39, 0.48);
+    color: #6f271e;
+    box-shadow: 0 10px 18px rgba(52, 31, 14, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.58);
+    transform: translateY(-1px);
+}
+
+.ribbon-back:active {
+    box-shadow: 0 5px 10px rgba(52, 31, 14, 0.15), inset 0 1px 4px rgba(76, 53, 32, 0.18);
+    transform: translateY(0);
+}
+
+.location-close {
+    position: relative;
+    z-index: 20;
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    margin: 0 0 14px auto;
+    border: 1px solid rgba(143, 53, 39, 0.3);
+    border-radius: 8px;
+    color: var(--stamp);
+    background:
+        linear-gradient(180deg, rgba(255, 250, 229, 0.78), rgba(221, 192, 132, 0.56)),
+        url("../assets/textures/paper-grain.png"),
+        rgba(255, 246, 222, 0.82);
+    box-shadow: 0 8px 15px rgba(52, 31, 14, 0.17), inset 0 1px 0 rgba(255, 255, 255, 0.52);
+    font-size: 0;
+    line-height: 0;
+    transition: transform 0.16s ease, border-color 0.16s ease, color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.location-close::before,
+.location-close::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 17px;
+    height: 2px;
+    border-radius: 999px;
+    background: currentColor;
+}
+
+.location-close::before {
+    transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.location-close::after {
+    transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.location-close:hover,
+.location-close:focus-visible {
+    border-color: rgba(143, 53, 39, 0.5);
+    color: #6f271e;
+    box-shadow: 0 11px 18px rgba(52, 31, 14, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.58);
+    transform: translateY(-1px);
+}
+
+.location-close:active {
+    box-shadow: 0 5px 10px rgba(52, 31, 14, 0.15), inset 0 1px 4px rgba(76, 53, 32, 0.18);
+    transform: translateY(0);
+}
+
+.place-detail-actions {
+    position: sticky;
+    top: 0;
+    z-index: 35;
+    display: flex;
+    justify-content: flex-end;
+    height: 0;
+    pointer-events: none;
+}
+
+.place-detail-actions .location-close {
+    position: relative;
+    margin: 0;
+    pointer-events: auto;
+}
+
+.place-records .ledger-entry {
+    grid-template-columns: 72px minmax(0, 1fr);
+    gap: 14px;
+    min-height: 112px;
+    padding: 10px 14px 10px 16px;
+}
+
+.place-records .ledger-entry::before {
+    top: 14px;
+}
+
+.place-records .entry-date-chip {
+    align-self: center;
+    min-height: 86px;
+    height: 86px;
+}
+
+.place-records .entry-note {
+    display: grid;
+    align-content: center;
+    gap: 5px;
+}
+
+.place-records .entry-note h3 {
+    margin: 0 0 3px;
+    font-size: 19px;
+}
+
+.empty-note,
+.photo-note {
+    padding: 18px;
+    border: 1px dashed rgba(89, 59, 31, 0.28);
+    color: var(--ink-muted);
+    background: rgba(255, 246, 222, 0.45);
+    text-align: center;
+}
+

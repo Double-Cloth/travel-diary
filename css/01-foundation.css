@@ -1,0 +1,180 @@
+@font-face {
+    font-family: "Diary Kai";
+    src: url("../assets/fonts/LXGWWenKaiMono-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Diary Kai";
+    src: url("../assets/fonts/LXGWWenKaiMono-Medium.ttf") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Archive Code";
+    src: url("../assets/fonts/SourceCodePro-Regular.ttf") format("truetype");
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: "Archive Code";
+    src: url("../assets/fonts/SourceCodePro-Bold.ttf") format("truetype");
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    --font-serif: "Diary Kai";
+    --font-code: "Archive Code";
+
+    --desk-950: #150b06;
+    --desk-900: #22110a;
+    --desk-800: #3a2114;
+    --desk-700: #5a3824;
+    --tray-950: #140d08;
+    --tray-900: #1e1510;
+    --tray-800: #2d2018;
+    --ink: #241a12;
+    --ink-soft: #5d4a37;
+    --ink-muted: #846d52;
+    --paper-50: #fbf0d6;
+    --paper-100: #f2dfb7;
+    --paper-200: #dec28a;
+    --paper-300: #c8a86d;
+    --kraft-100: #d6bd88;
+    --kraft-200: #b99158;
+    --kraft-300: #8c623c;
+    --brass-50: #fff1bd;
+    --brass-100: #e5c57b;
+    --brass-200: #b78a45;
+    --brass-300: #7b5228;
+    --stamp: #8f3527;
+    --pin: #9b4937;
+    --green: #38452b;
+    --line: rgba(85, 57, 32, 0.18);
+    --hairline: rgba(75, 48, 25, 0.24);
+    --paper-shadow: 0 14px 22px rgba(22, 12, 6, 0.16);
+    --deep-shadow: 0 28px 52px rgba(9, 4, 2, 0.48);
+    --soft-shadow: 0 10px 22px rgba(30, 18, 10, 0.2);
+    --ring: 0 0 0 3px rgba(229, 197, 123, 0.34);
+    --page-turn-ms: 480ms;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+html,
+body {
+    width: 100%;
+    min-height: 100%;
+}
+
+html {
+    color-scheme: light;
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    color: var(--ink);
+    background:
+        radial-gradient(ellipse at 18% -8%, rgba(229, 181, 104, 0.2), transparent 34%),
+        radial-gradient(ellipse at 86% 105%, rgba(0, 0, 0, 0.28), transparent 44%),
+        linear-gradient(180deg, rgba(18, 10, 5, 0.34), rgba(20, 12, 7, 0.52)),
+        linear-gradient(90deg, rgba(0, 0, 0, 0.24), transparent 20%, transparent 80%, rgba(0, 0, 0, 0.28)),
+        url("../assets/images/backgrounds/body-background-travel-diary.png"),
+        repeating-linear-gradient(90deg, rgba(255, 232, 180, 0.035) 0 1px, transparent 1px 38px),
+        repeating-linear-gradient(0deg, #2b160c 0 3px, #331d11 3px 36px, #241107 36px 39px, #3d2315 39px 74px);
+    background-attachment: fixed, fixed, fixed, fixed, fixed, fixed, fixed;
+    background-blend-mode: screen, multiply, normal, normal, normal, overlay, normal;
+    background-position: center, center, center, center, center, center, center;
+    background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, cover, auto, auto;
+    font-family: var(--font-serif);
+}
+
+body::before,
+body::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+}
+
+body::before {
+    background:
+        radial-gradient(circle at 20% 18%, rgba(255, 238, 190, 0.13), transparent 20%),
+        radial-gradient(circle at 78% 82%, rgba(0, 0, 0, 0.18), transparent 32%),
+        linear-gradient(115deg, transparent, rgba(255, 243, 205, 0.045) 42%, transparent 58%);
+    mix-blend-mode: screen;
+}
+
+body::after {
+    background: radial-gradient(ellipse at center, transparent 48%, rgba(8, 3, 1, 0.34) 100%);
+}
+
+button,
+input,
+select,
+textarea {
+    font: inherit;
+}
+
+button,
+a {
+    -webkit-tap-highlight-color: transparent;
+}
+
+a {
+    color: inherit;
+    text-decoration: none;
+}
+
+button {
+    border: 0;
+}
+
+:focus-visible {
+    outline: none;
+    box-shadow: var(--ring);
+}
+
+.skip-link {
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 1000;
+    padding: 10px 14px;
+    border-radius: 8px;
+    color: var(--paper-50);
+    background: var(--tray-900);
+    transform: translateY(-140%);
+    transition: transform 0.18s ease;
+}
+
+.skip-link:focus {
+    transform: translateY(0);
+}
+

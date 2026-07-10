@@ -18,6 +18,27 @@ build/
 coverage/
 .cache/
 
+# Codex / agent local artifacts
+.codex/
+.codex-cache/
+.codex-state/
+.codex-sessions/
+.worktrees/
+worktrees/
+codex-*.log
+codex-*.tmp
+codex-*.jsonl
+agent-*.log
+agent-*.tmp
+agent-*.jsonl
+browser-*.log
+playwright-*.log
+trace.zip
+trace-*.zip
+screenshots/
+test-results/
+playwright-report/
+
 # Environment
 .env
 .env.local

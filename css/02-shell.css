@@ -1,0 +1,559 @@
+.journal-shell {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-rows: auto auto;
+    gap: 14px;
+    width: min(100%, 1520px);
+    min-height: 100dvh;
+    height: auto;
+    margin: 0 auto;
+    padding: 18px 44px 28px;
+}
+
+.journal-spine {
+    position: sticky;
+    top: clamp(8px, 1.2vw, 18px);
+    z-index: 80;
+    display: grid;
+    grid-template-columns: minmax(270px, 0.9fr) minmax(430px, 1.3fr) minmax(150px, 0.45fr);
+    align-items: center;
+    gap: 28px;
+    min-height: 0;
+    height: 108px;
+    padding: 15px 28px;
+    border: 1px solid rgba(213, 178, 111, 0.26);
+    border-radius: 12px;
+    color: var(--paper-50);
+    background:
+        linear-gradient(180deg, rgba(255, 226, 167, 0.1), rgba(0, 0, 0, 0.18)),
+        repeating-linear-gradient(105deg, rgba(255, 255, 255, 0.028) 0 1px, transparent 1px 9px),
+        linear-gradient(90deg, #2a1c13, #1a120d 42%, #332116);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 235, 184, 0.13),
+        inset 0 -10px 20px rgba(0, 0, 0, 0.34),
+        var(--deep-shadow);
+}
+
+.journal-spine::before,
+.journal-spine::after {
+    content: "";
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(225, 185, 112, 0.28), transparent);
+}
+
+.journal-spine::before {
+    top: 9px;
+}
+
+.journal-spine::after {
+    bottom: 9px;
+}
+
+.brand-lockup {
+    --brand-rivet-y: 12px;
+
+    position: relative;
+    align-self: center;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: center;
+    justify-items: center;
+    width: fit-content;
+    min-width: 250px;
+    height: 76px;
+    padding: 0 28px;
+    border: 1px solid rgba(104, 66, 31, 0.7);
+    border-radius: 8px;
+    color: #2b1d12;
+    text-align: center;
+    background:
+        linear-gradient(135deg, rgba(255, 248, 217, 0.5), transparent 42%),
+        repeating-linear-gradient(90deg, rgba(87, 53, 24, 0.05) 0 1px, transparent 1px 7px),
+        linear-gradient(180deg, #dbc07b, #a6783d);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.38),
+        inset 0 -3px 7px rgba(86, 51, 20, 0.26),
+        0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.brand-lockup > span {
+    display: grid;
+    place-items: center;
+    align-content: center;
+    height: 100%;
+    min-height: 100%;
+}
+
+.brand-lockup::before,
+.brand-lockup::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 9px;
+    background:
+        radial-gradient(circle at calc(50% - 1px) var(--brand-rivet-y), rgba(255, 255, 232, 0.92) 0 0.8px, transparent 1.3px),
+        radial-gradient(circle at calc(50% - 1px) calc(100% - var(--brand-rivet-y)), rgba(255, 255, 232, 0.92) 0 0.8px, transparent 1.3px),
+        radial-gradient(circle at calc(50% + 1px) var(--brand-rivet-y), rgba(54, 31, 12, 0.34) 0 1.1px, transparent 1.7px),
+        radial-gradient(circle at calc(50% + 1px) calc(100% - var(--brand-rivet-y)), rgba(54, 31, 12, 0.34) 0 1.1px, transparent 1.7px),
+        radial-gradient(circle at 50% var(--brand-rivet-y), rgba(255, 246, 199, 0.96) 0 1px, rgba(225, 176, 83, 0.96) 1.2px 2.8px, rgba(139, 83, 35, 0.96) 3.1px 4.2px, rgba(49, 30, 12, 0.4) 4.5px 5px, transparent 5.3px),
+        radial-gradient(circle at 50% calc(100% - var(--brand-rivet-y)), rgba(255, 246, 199, 0.96) 0 1px, rgba(225, 176, 83, 0.96) 1.2px 2.8px, rgba(139, 83, 35, 0.96) 3.1px 4.2px, rgba(49, 30, 12, 0.4) 4.5px 5px, transparent 5.3px);
+    background-repeat: no-repeat;
+    filter: drop-shadow(0 1px 0 rgba(255, 238, 173, 0.32)) drop-shadow(0 1px 1.5px rgba(36, 21, 9, 0.38));
+    opacity: 0.94;
+    pointer-events: none;
+}
+
+.brand-lockup::before {
+    left: 13px;
+}
+
+.brand-lockup::after {
+    right: 13px;
+}
+
+.brand-lockup strong {
+    display: block;
+    color: #24170d;
+    font-size: clamp(28px, 2.4vw, 38px);
+    line-height: 0.94;
+    letter-spacing: 0;
+    text-shadow: 0 1px 0 rgba(255, 237, 181, 0.35);
+}
+
+.brand-lockup small {
+    display: block;
+    margin-top: 4px;
+    color: rgba(49, 31, 15, 0.76);
+    font-family: var(--font-code);
+    font-size: 12px;
+    letter-spacing: 0.04em;
+}
+
+.chapter-tabs {
+    position: relative;
+    align-self: center;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(128px, 1fr));
+    align-items: center;
+    min-height: 66px;
+    padding: 9px;
+    border: 1px solid rgba(224, 188, 117, 0.18);
+    border-radius: 7px;
+    background:
+        linear-gradient(180deg, rgba(255, 241, 191, 0.07), transparent 36%),
+        linear-gradient(180deg, #1b1713, #0f0c0a);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 237, 189, 0.12),
+        inset 0 -1px 0 rgba(0, 0, 0, 0.55),
+        0 10px 20px rgba(0, 0, 0, 0.24);
+}
+
+.chapter-tab {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: auto;
+    place-items: center;
+    min-height: 48px;
+    padding: 9px 18px;
+    border-radius: 2px;
+    color: rgba(244, 226, 184, 0.86);
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.1;
+    text-align: center;
+    white-space: nowrap;
+    transition: color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.chapter-tab + .chapter-tab::before {
+    content: "";
+    position: absolute;
+    left: -1px;
+    top: 50%;
+    width: 1px;
+    height: 30px;
+    background: linear-gradient(180deg, transparent, rgba(231, 194, 122, 0.42), transparent);
+    transform: translateY(-50%);
+}
+
+.chapter-tab:hover {
+    color: #fff1c4;
+    background: rgba(255, 231, 175, 0.05);
+}
+
+.chapter-tab:active {
+    transform: translateY(1px);
+}
+
+.chapter-tab-active {
+    color: #2a1c11;
+    background:
+        linear-gradient(180deg, rgba(255, 248, 221, 0.9), rgba(205, 176, 112, 0.86)),
+        url("../assets/textures/paper-grain.png"),
+        #ead49c;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.55),
+        inset 0 -3px 8px rgba(108, 75, 32, 0.2),
+        0 8px 15px rgba(0, 0, 0, 0.34);
+}
+
+.chapter-tab-active:hover,
+.chapter-tab-active:focus-visible {
+    color: #2a1c11;
+    background:
+        linear-gradient(180deg, rgba(255, 250, 228, 0.94), rgba(211, 182, 116, 0.9)),
+        url("../assets/textures/paper-grain.png"),
+        #ead49c;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.62),
+        inset 0 -3px 8px rgba(108, 75, 32, 0.18),
+        0 10px 16px rgba(0, 0, 0, 0.36);
+}
+
+.chapter-tab-active:active {
+    color: #2a1c11;
+    background:
+        linear-gradient(180deg, rgba(215, 188, 126, 0.9), rgba(242, 222, 168, 0.84)),
+        url("../assets/textures/paper-grain.png"),
+        #ead49c;
+    box-shadow:
+        inset 0 2px 6px rgba(84, 57, 24, 0.24),
+        0 5px 10px rgba(0, 0, 0, 0.28);
+}
+
+.chapter-tab-active span:last-child {
+    color: #24180e;
+    text-shadow: 0 1px 0 rgba(255, 247, 214, 0.38);
+}
+
+.chapter-tab-active::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    bottom: -9px;
+    width: 44px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(244, 225, 172, 0.62);
+    transform: translateX(-50%);
+}
+
+.chapter-icon {
+    display: none;
+}
+
+.spine-tools {
+    justify-self: end;
+    align-self: center;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.spine-tool {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: 46px;
+    height: 46px;
+    border: 1px solid rgba(221, 184, 115, 0.3);
+    border-radius: 6px;
+    color: var(--brass-50);
+    background:
+        linear-gradient(180deg, rgba(255, 235, 179, 0.08), rgba(0, 0, 0, 0.18)),
+        #19120e;
+    box-shadow: inset 0 1px 0 rgba(255, 236, 185, 0.12), 0 9px 16px rgba(0, 0, 0, 0.28);
+    cursor: pointer;
+    transition: border-color 0.16s ease, color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+}
+
+.spine-tool:hover {
+    border-color: rgba(229, 197, 123, 0.62);
+    color: #fff0bd;
+    background:
+        linear-gradient(180deg, rgba(255, 235, 179, 0.13), rgba(0, 0, 0, 0.14)),
+        #211713;
+    box-shadow: inset 0 1px 0 rgba(255, 236, 185, 0.16), 0 10px 18px rgba(0, 0, 0, 0.3);
+}
+
+.spine-tool:active {
+    transform: translateY(1px) scale(0.98);
+    box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.26), 0 5px 10px rgba(0, 0, 0, 0.22);
+}
+
+.spine-search-icon {
+    display: block;
+    width: 24px;
+    height: 24px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2.4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.spine-profile {
+    display: block;
+    isolation: isolate;
+    overflow: hidden;
+    width: 48px;
+    height: 48px;
+    padding: 2px;
+    border: 1px solid rgba(255, 226, 151, 0.44);
+    border-radius: 12px;
+    background: linear-gradient(180deg, rgba(255, 244, 199, 0.2), rgba(43, 28, 16, 0.2)), rgba(255, 236, 174, 0.12);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 246, 213, 0.22),
+        0 8px 14px rgba(0, 0, 0, 0.27);
+    color: #352313;
+}
+
+.spine-profile::after {
+    content: "";
+    position: absolute;
+    inset: 2px;
+    z-index: 2;
+    border-radius: 10px;
+    background:
+        radial-gradient(circle at 24% 18%, rgba(255, 255, 255, 0.46), transparent 28%),
+        linear-gradient(145deg, rgba(255, 236, 181, 0.24), transparent 58%);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.18s ease;
+}
+
+.spine-profile img {
+    position: relative;
+    z-index: 1;
+    display: block;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    border-radius: 10px;
+    object-fit: cover;
+    object-position: center;
+    box-shadow: 0 3px 8px rgba(27, 15, 7, 0.22);
+    transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
+}
+
+.spine-profile:hover,
+.spine-profile:focus-visible {
+    border-color: rgba(255, 226, 151, 0.72);
+    background: linear-gradient(180deg, rgba(255, 244, 199, 0.26), rgba(43, 28, 16, 0.16)), rgba(255, 236, 174, 0.16);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 246, 213, 0.26),
+        0 0 0 2px rgba(229, 197, 123, 0.18),
+        0 11px 17px rgba(0, 0, 0, 0.32);
+    transform: translateY(-1px);
+}
+
+.spine-profile:hover img {
+    filter: saturate(1.14) contrast(1.06) brightness(1.06);
+    transform: scale(1.06);
+}
+
+.spine-profile:focus-visible img {
+    filter: saturate(1.14) contrast(1.06) brightness(1.06);
+    transform: scale(1.06);
+}
+
+.spine-profile:hover::after,
+.spine-profile:focus-visible::after {
+    opacity: 1;
+}
+
+.tool-divider {
+    width: 1px;
+    height: 34px;
+    background: linear-gradient(180deg, transparent, rgba(224, 188, 117, 0.28), transparent);
+}
+
+.journal-stage {
+    min-width: 0;
+    min-height: 0;
+}
+
+.notebook {
+    --notebook-top-offset: 168px;
+    position: relative;
+    min-height: 0;
+    height: calc(100dvh - var(--notebook-top-offset));
+    overflow: hidden;
+    padding: 16px 18px 18px;
+    border: 1px solid rgba(220, 183, 113, 0.28);
+    border-radius: 10px;
+    background:
+        linear-gradient(180deg, rgba(255, 231, 179, 0.08), transparent 16%),
+        linear-gradient(90deg, #17110c, #281b12 50%, #17110c);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 236, 188, 0.11),
+        inset 0 0 0 10px rgba(10, 6, 3, 0.36),
+        var(--deep-shadow);
+}
+
+.notebook::before {
+    content: "";
+    position: absolute;
+    inset: 12px;
+    border: 1px solid rgba(217, 180, 111, 0.12);
+    border-radius: 7px;
+    pointer-events: none;
+}
+
+.page-spread {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.12fr);
+    align-items: stretch;
+    gap: 14px;
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    perspective: 1300px;
+    transform-origin: center;
+}
+
+.paper-page {
+    position: relative;
+    min-width: 0;
+    min-height: 0;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-gutter: stable;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(117, 73, 40, 0.52) transparent;
+    padding: clamp(22px, 2.4vw, 34px);
+    border: 1px solid rgba(74, 47, 23, 0.26);
+    color: var(--ink);
+    background:
+        linear-gradient(180deg, rgba(255, 253, 237, 0.54), rgba(246, 232, 197, 0.26)),
+        url("../assets/textures/paper-grain.png"),
+        repeating-linear-gradient(0deg, transparent 0 30px, rgba(101, 72, 40, 0.08) 30px 31px),
+        linear-gradient(135deg, #f9edcf, #dfc895);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.64),
+        inset 0 0 0 10px rgba(122, 82, 38, 0.06),
+        var(--paper-shadow);
+}
+
+.paper-page::-webkit-scrollbar {
+    width: 7px;
+}
+
+.paper-page::-webkit-scrollbar-track {
+    margin: 12px 0;
+    background: transparent;
+}
+
+.paper-page::-webkit-scrollbar-thumb {
+    border-radius: 999px;
+    background: rgba(117, 73, 40, 0.42);
+}
+
+.paper-page::-webkit-scrollbar-thumb:hover {
+    background: rgba(143, 53, 39, 0.62);
+}
+
+.paper-page::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+.paper-page::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+.paper-page-left {
+    --left-page-bg-image: url("../assets/images/pages/left-page-cover-travel-diary.png");
+
+    border-radius: 12px 5px 5px 12px;
+    background:
+        linear-gradient(180deg, rgba(255, 252, 238, 0.78), rgba(240, 219, 174, 0.56)),
+        radial-gradient(ellipse at 50% 24%, rgba(255, 249, 225, 0.38), transparent 44%),
+        var(--left-page-bg-image),
+        url("../assets/textures/paper-grain.png"),
+        linear-gradient(135deg, #f9edcf, #dfc895);
+    background-blend-mode: normal, screen, normal, multiply, normal;
+    background-position: center, center, center, center, center;
+    background-size: 100% 100%, 100% 100%, cover, auto, auto;
+}
+
+body[data-route="cover"] .paper-page-left {
+    --left-page-bg-image: url("../assets/images/pages/left-page-cover-travel-diary.png");
+}
+
+body[data-route="ledger"] .paper-page-left,
+body[data-route="place"] .paper-page-left,
+body[data-route="entry"] .paper-page-left {
+    --left-page-bg-image: url("../assets/images/pages/left-page-ledger-travel-diary.png");
+}
+
+body[data-route="archive"] .paper-page-left {
+    --left-page-bg-image: url("../assets/images/pages/left-page-profile-travel-diary.png");
+}
+
+.paper-page-right {
+    border-radius: 5px 12px 12px 5px;
+    background:
+        linear-gradient(180deg, rgba(255, 253, 237, 0.42), rgba(215, 187, 133, 0.22)),
+        url("../assets/textures/paper-grain.png"),
+        linear-gradient(135deg, #d9bb7f, #aa7c45);
+}
+
+.entry-sheet::-webkit-scrollbar {
+    width: 9px;
+}
+
+.entry-sheet::-webkit-scrollbar-thumb {
+    border: 2px solid rgba(245, 224, 184, 0.56);
+    border-radius: 999px;
+    background: rgba(117, 81, 44, 0.46);
+}
+
+.journal-label {
+    width: fit-content;
+    margin: 0 0 14px;
+    padding: 6px 12px;
+    border: 1px solid rgba(92, 59, 29, 0.28);
+    border-radius: 999px;
+    color: var(--stamp);
+    background: rgba(255, 246, 222, 0.58);
+    font-family: var(--font-code);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.page-head {
+    position: relative;
+    margin-bottom: 18px;
+}
+
+.page-head h1,
+.cover-page h1,
+.place-page h1,
+.loading-page h1 {
+    margin: 0;
+    color: var(--ink);
+    font-size: clamp(30px, 3vw, 44px);
+    line-height: 1.22;
+    letter-spacing: 0;
+}
+
+.page-copy {
+    max-width: 44em;
+    margin: 18px 0 0;
+    color: var(--ink-soft);
+    font-size: clamp(16px, 1.35vw, 19px);
+    line-height: 1.75;
+}
+

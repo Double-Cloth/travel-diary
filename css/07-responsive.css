@@ -1,0 +1,329 @@
+@media (max-width: 1180px) {
+    .journal-shell {
+        padding-inline: 24px;
+    }
+
+    .journal-spine {
+        grid-template-columns: auto minmax(360px, 1fr) auto;
+        gap: 16px;
+    }
+
+    .brand-lockup {
+        height: 66px;
+        min-width: 0;
+    }
+
+    .brand-lockup strong {
+        font-size: 26px;
+    }
+
+    .brand-lockup small {
+        display: none;
+    }
+
+    .chapter-tabs {
+        grid-template-columns: repeat(3, minmax(100px, 1fr));
+    }
+
+    .chapter-tab {
+        font-size: 17px;
+        padding-inline: 10px;
+    }
+
+    .paper-page {
+        padding: 22px;
+    }
+}
+
+@media (max-width: 760px) {
+    body {
+        overflow: auto;
+    }
+
+    .journal-shell {
+        display: grid;
+        grid-template-rows: auto auto;
+        width: 100%;
+        height: auto;
+        min-height: 100dvh;
+        padding: 10px;
+    }
+
+    .journal-spine {
+        position: sticky;
+        top: 10px;
+        z-index: 50;
+        grid-template-columns: auto minmax(0, 1fr);
+        gap: 10px;
+        min-height: 0;
+        height: 76px;
+        padding: 10px;
+    }
+
+    .brand-lockup {
+        height: 54px;
+        min-width: 44px;
+        padding: 8px 10px;
+    }
+
+    .brand-lockup small {
+        display: none;
+    }
+
+    .brand-lockup strong {
+        display: block;
+        font-size: 0;
+        line-height: 1;
+    }
+
+    .brand-lockup strong::after {
+        content: "TD";
+        color: #24170d;
+        font-size: 18px;
+        letter-spacing: 0.04em;
+    }
+
+    .brand-lockup::before,
+    .brand-lockup::after {
+        display: none;
+    }
+
+    .chapter-tabs {
+        grid-template-columns: repeat(3, minmax(76px, 1fr));
+        min-height: 50px;
+        padding: 5px;
+        overflow-x: auto;
+    }
+
+    .chapter-tab {
+        min-height: 40px;
+        padding: 7px 8px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .chapter-tab + .chapter-tab::before,
+    .chapter-tab-active::after {
+        display: none;
+    }
+
+    .spine-tools {
+        display: none;
+    }
+
+    .notebook {
+        min-height: calc(100dvh - 104px);
+        height: auto;
+        overflow: visible;
+        padding: 10px;
+    }
+
+    .page-spread {
+        grid-template-columns: 1fr;
+        align-items: start;
+        gap: 12px;
+        height: auto;
+        overflow: visible;
+    }
+
+    .paper-page {
+        min-height: auto;
+        overflow: visible;
+        overscroll-behavior: auto;
+        scrollbar-gutter: auto;
+        scrollbar-width: auto;
+        scrollbar-color: auto;
+        padding: 20px;
+        border-radius: 10px;
+    }
+
+    .paper-page-right {
+        background:
+            linear-gradient(180deg, rgba(255, 253, 237, 0.42), rgba(215, 187, 133, 0.22)),
+            url("../assets/textures/paper-grain.png"),
+            linear-gradient(135deg, #f4e2bd, #d7ba7e);
+    }
+
+    .paper-page-right.map-pocket,
+    .paper-page-right.dossier-page {
+        position: relative;
+        top: auto;
+        height: auto;
+        max-height: none;
+        overflow: visible;
+        overscroll-behavior: auto;
+        scrollbar-gutter: auto;
+        scrollbar-width: auto;
+        scrollbar-color: auto;
+    }
+
+    .overview-metric-grid,
+    .overview-insight-list {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .journal-shell[data-route="ledger"] .paper-page-right.map-pocket {
+        order: -1;
+    }
+
+    .journal-shell[data-route="archive"] .paper-page-right.dossier-page {
+        order: -1;
+    }
+
+    .cover-page h1,
+    .page-head h1,
+    .place-page h1,
+    .loading-page h1 {
+        font-size: 29px;
+    }
+
+    .cover-actions,
+    .ledger-controls,
+    .tag-stats,
+    .dossier-stats,
+    .sheet-nav {
+        grid-template-columns: 1fr;
+    }
+
+    .cover-actions {
+        display: grid;
+    }
+
+    .archive-search-card,
+    .cover-record {
+        grid-template-columns: 1fr;
+    }
+
+    .cover-record {
+        padding: 12px 44px 12px 12px;
+    }
+
+    .cover-record-thumb {
+        display: none;
+    }
+
+    .record-open {
+        width: fit-content;
+    }
+
+    .brass-button,
+    .paper-button,
+    .filter-chip,
+    .brass-toggle {
+        width: 100%;
+    }
+
+    .pocket-page {
+        grid-template-rows: auto auto;
+    }
+
+    .route-sketch {
+        min-height: 260px;
+    }
+
+    .route-map-label {
+        left: 18px;
+        top: 18px;
+        padding: 10px 12px;
+    }
+
+    .route-ticket {
+        width: 104px;
+        min-height: 72px;
+        padding: 8px 9px 8px 11px;
+    }
+
+    .route-ticket-place {
+        font-size: 17px;
+    }
+
+    .route-postmark {
+        right: 6%;
+        top: 21%;
+        width: 66px;
+        height: 66px;
+        font-size: 10px;
+    }
+
+    .route-washi {
+        width: 72px;
+        height: 19px;
+    }
+
+    .ticket-a { left: 5%; top: 34%; }
+    .ticket-b { left: 36%; top: 24%; }
+    .ticket-c { left: 61%; top: 37%; }
+    .ticket-d { left: 8%; top: 65%; }
+    .ticket-e { left: 38%; top: 62%; }
+    .ticket-f { left: 67%; top: 60%; }
+
+    .map-compass {
+        left: 47%;
+        bottom: 38%;
+        width: 46px;
+        height: 46px;
+        font-size: 14px;
+    }
+
+    .latest-ticket {
+        grid-template-columns: 1fr;
+    }
+
+    .timeline-list,
+    .archive-country-list,
+    .place-records {
+        gap: 10px;
+    }
+
+    .ledger-entry {
+        grid-template-columns: 62px minmax(0, 1fr);
+        gap: 10px;
+        padding: 10px;
+    }
+
+    .entry-note h3 {
+        white-space: normal;
+    }
+
+    .country-head {
+        display: grid;
+    }
+
+    .luggage-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .index-filter-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .entry-sheet-root {
+        padding: 12px;
+    }
+
+    .entry-sheet-frame,
+    .entry-sheet {
+        max-height: 90vh;
+    }
+
+    .entry-sheet {
+        padding: 28px 20px;
+    }
+
+    .sheet-nav-button,
+    .sheet-nav-button:first-child,
+    .sheet-nav-button:last-child {
+        justify-self: stretch;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.001ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.001ms !important;
+    }
+}
