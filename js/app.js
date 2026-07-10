@@ -35,7 +35,6 @@ let activeRoute = null;
 let pageTurnTimer = null;
 let lastReadingHash = '#ledger';
 let lastEntryFocusId = '';
-let lastDrawerTrigger = null;
 let searchRouteTimer = null;
 let isSearchComposing = false;
 let viewportResizeTimer = null;
@@ -65,9 +64,7 @@ function cacheRefs() {
     refs.spread = document.getElementById('pageSpread');
     refs.leftPage = document.getElementById('leftPage');
     refs.rightPage = document.getElementById('rightPage');
-    refs.drawer = document.getElementById('drawerRoot');
     refs.sheet = document.getElementById('sheetRoot');
-    refs.drawerToggle = document.getElementById('drawerToggle');
 }
 
 function bindGlobalEvents() {
@@ -205,9 +202,6 @@ function renderRoute(route, options = {}) {
     activeRoute = route;
     refs.shell.dataset.route = route.name;
     document.body.dataset.route = route.name;
-    if (!options.keepDrawer) {
-        closeDrawer();
-    }
     updateChapterTabs(route.name);
 
     if (route.name !== 'entry') {
@@ -235,8 +229,6 @@ function renderRoute(route, options = {}) {
             default:
                 renderCover();
         }
-
-        renderDrawer();
         restoreFocus(options.focusId);
     }, { direction, animate: options.animate !== false && !options.initial });
 }
@@ -646,30 +638,29 @@ function renderLedger(params = {}) {
         </div>
     `, `
             <p class="journal-label">索引夹层</p>
-            <h2>快速索引</h2>
+            <h2>当前列表工具</h2>
             ${renderLedgerSnapshot(snapshot, resultLabel)}
             <div class="index-actions">
                 <button class="brass-toggle" type="button" data-action="toggle-sort" aria-pressed="${ledgerParams.sort === 'asc' ? 'true' : 'false'}" aria-label="当前排序：${ledgerParams.sort === 'asc' ? '最早优先' : '最新优先'}">
                     ${ledgerParams.sort === 'asc' ? '切回最新优先' : '切到最早优先'}
                 </button>
-                <button class="paper-button full-width" type="button" data-action="open-drawer">打开筛选面板</button>
             </div>
             <section class="index-section">
-                <h3>年份索引</h3>
+                <h3>当前筛选</h3>
+                ${renderLedgerActiveFilters(ledgerParams)}
+                <button class="paper-button full-width" type="button" data-action="reset-ledger-filters" ${hasActiveLedgerFilter(ledgerParams) || ledgerParams.sort !== DEFAULT_LEDGER_SORT ? '' : 'disabled'}>清空筛选</button>
+            </section>
+            <section class="index-section">
+                <h3>排序方式</h3>
+                <div class="index-sort-note">
+                    <span>当前</span>
+                    <strong>${escapeHtml(getLedgerSortLabel(ledgerParams.sort))}</strong>
+                </div>
+            </section>
+            <section class="index-section">
+                <h3>年份跳转</h3>
                 <div class="year-count-links">
                     ${travelModel.yearStats.map(stat => renderYearCountLink(stat, ledgerParams)).join('')}
-                </div>
-            </section>
-            <section class="index-section">
-                <h3>热门省份</h3>
-                <div class="top-province-links">
-                    ${travelModel.topProvinces.slice(0, 6).map(renderTopProvinceLink).join('')}
-                </div>
-            </section>
-            <section class="index-section">
-                <h3>复访路线</h3>
-                <div class="repeat-route-links">
-                    ${travelModel.repeatLocations.length ? travelModel.repeatLocations.slice(0, 6).map(renderRepeatRouteLink).join('') : '<div class="empty-note compact-note">还没有复访地点。</div>'}
                 </div>
             </section>
     `, 'map-pocket');
@@ -716,6 +707,36 @@ function renderLedgerSnapshot(snapshot, resultLabel) {
     `;
 }
 
+function renderLedgerActiveFilters(params) {
+    const labels = getActiveLedgerFilterLabels(params);
+
+    if (!labels.length) {
+        labels.push('全部记录');
+    }
+
+    return `
+        <div class="index-filter-summary" aria-label="当前筛选条件">
+            ${labels.map(label => `<span>${escapeHtml(label)}</span>`).join('')}
+        </div>
+    `;
+}
+
+function getLedgerSortLabel(sort) {
+    switch (normalizeLedgerSort(sort)) {
+        case 'asc':
+            return '最早优先';
+        case 'location':
+            return '按地点名称';
+        case 'province':
+            return '按省份归类';
+        case 'title':
+            return '按标题名称';
+        case 'desc':
+        default:
+            return '最新优先';
+    }
+}
+
 function renderYearCountLink(stat, params) {
     const nextParams = normalizeLedgerParams({ ...params, year: stat.year });
     const active = nextParams.year === normalizeLedgerParams(params).year;
@@ -728,30 +749,13 @@ function renderYearCountLink(stat, params) {
     `;
 }
 
-function renderTopProvinceLink(province) {
-    return `
-        <a class="index-province-link" href="${placeHash(province.country, province.province, '')}">
-            <strong>${escapeHtml(province.label)}</strong>
-            <span>${province.count} 条记录</span>
-        </a>
-    `;
-}
-
-function renderRepeatRouteLink(item) {
-    const record = item.record;
-
-    return `
-        <a class="repeat-route-link" href="${placeHash(record.country, record.province, record.city)}">
-            <strong>${escapeHtml(getLocationText(record))}</strong>
-            <span>${item.count} 次到访 · 最近 ${escapeHtml(item.latestDate)}</span>
-        </a>
-    `;
-}
-
 function renderArchive(params = {}) {
     const query = (params.q || '').trim().toLowerCase();
     const latest = travelModel.latestRecord;
-    const first = travelModel.firstRecord;
+    const topYear = getTopYearStat(travelModel.yearStats);
+    const topMonth = getTopMonthStat(travelModel.monthStats);
+    const leadingProvince = travelModel.topProvinces[0] || null;
+    const leadingRepeat = travelModel.repeatLocations[0] || null;
     const countries = travelModel.countries
         .map(country => {
             if (!query) return country;
@@ -780,105 +784,119 @@ function renderArchive(params = {}) {
         </div>
     `, `
             <p class="journal-label">旅行概览</p>
-            <h2>个人主页</h2>
-            <dl class="dossier-stats dossier-stats-profile">
-                ${statTag('旅行记录', travelModel.stats.total)}
-                ${statTag('国家', travelModel.stats.countries)}
-                ${statTag('省份', travelModel.stats.provinces)}
-                ${statTag('城市', travelModel.stats.cities)}
-                ${statTag('时间范围', travelModel.dateRangeCompact)}
-            </dl>
-            <div class="archive-time-card">
-                <span>完整记录时间</span>
+            <h2>足迹摘要</h2>
+            <section class="archive-overview-hero" aria-label="旅行记录摘要">
+                <span>记录跨度</span>
                 <strong>${escapeHtml(travelModel.dateRangeLabel)}</strong>
-                ${latest ? `<small>最近更新：${escapeHtml(latest.date || '')} · ${escapeHtml(getLocationText(latest))}</small>` : '<small>还没有旅行记录。</small>'}
-            </div>
-            <div class="archive-overview-timeline">
-                ${renderOverviewMoment('第一条记录', first)}
-                ${renderOverviewMoment('最近记录', latest)}
-            </div>
+                <small>${travelModel.stats.total} 篇日记${latest ? ` · 最近 ${escapeHtml(latest.date || '')} 写到 ${escapeHtml(getLocationText(latest))}` : ''}</small>
+            </section>
             <section class="archive-overview-block">
-                <h3>年度分布</h3>
-                <div class="archive-year-bars">
-                    ${renderArchiveYearBars(travelModel.yearStats)}
+                <h3>覆盖范围</h3>
+                <div class="overview-metric-grid">
+                    ${renderOverviewMetric('国家', travelModel.stats.countries)}
+                    ${renderOverviewMetric('省份', travelModel.stats.provinces)}
+                    ${renderOverviewMetric('城市', travelModel.stats.cities)}
                 </div>
             </section>
             <section class="archive-overview-block">
-                <h3>旅行月份</h3>
-                <div class="archive-month-bars">
-                    ${renderArchiveMonthBars(travelModel.monthStats)}
+                <h3>记录节奏</h3>
+                <div class="overview-insight-list">
+                    ${renderTopYearInsight(topYear)}
+                    ${renderTopMonthInsight(topMonth)}
                 </div>
             </section>
             <section class="archive-overview-block">
-                <h3>复访地点</h3>
-                <div class="archive-repeat-list">
-                    ${travelModel.repeatLocations.length ? travelModel.repeatLocations.slice(0, 4).map(renderRepeatLocationItem).join('') : '<div class="empty-note compact-note">还没有复访地点。</div>'}
+                <h3>地点倾向</h3>
+                <div class="overview-insight-list">
+                    ${renderTopProvinceInsight(leadingProvince)}
+                    ${renderRepeatLocationInsight(leadingRepeat)}
                 </div>
             </section>
     `, 'dossier-page');
 }
 
-function renderOverviewMoment(label, record) {
-    if (!record) {
-        return `
-            <div class="overview-moment">
-                <span>${escapeHtml(label)}</span>
-                <strong>暂无记录</strong>
-            </div>
-        `;
+function renderOverviewMetric(label, value) {
+    return `
+        <div class="overview-metric">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(value)}</strong>
+        </div>
+    `;
+}
+
+function renderTopYearInsight(stat) {
+    if (!stat) {
+        return renderEmptyOverviewInsight('年度高峰', '暂无记录');
     }
 
     return `
-        <a class="overview-moment" href="#entry?id=${encodeURIComponent(record.id)}">
-            <span>${escapeHtml(label)}</span>
-            <strong>${escapeHtml(record.date || '')}</strong>
-            <small>${escapeHtml(getLocationText(record))}</small>
+        <a class="overview-insight" href="${serializeRoute({ name: 'ledger', params: { year: stat.year, q: '', sort: DEFAULT_LEDGER_SORT } })}">
+            <span>年度高峰</span>
+            <strong>${escapeHtml(stat.year)}</strong>
+            <small>${stat.count} 篇日记 · ${stat.cityCount} 城</small>
         </a>
     `;
 }
 
-function renderArchiveYearBars(yearStats) {
-    const maxCount = Math.max(...yearStats.map(stat => stat.count), 1);
+function renderTopMonthInsight(stat) {
+    if (!stat) {
+        return renderEmptyOverviewInsight('常出发月份', '暂无记录');
+    }
 
-    return yearStats.map(stat => {
-        const width = Math.max(12, Math.round((stat.count / maxCount) * 100));
-
-        return `
-            <a class="archive-year-bar" href="${serializeRoute({ name: 'ledger', params: { year: stat.year, q: '', sort: DEFAULT_LEDGER_SORT } })}" style="--bar-width: ${width}%">
-                <span>${escapeHtml(stat.year)}</span>
-                <strong>${stat.count}</strong>
-                <i aria-hidden="true"></i>
-            </a>
-        `;
-    }).join('');
+    return `
+        <a class="overview-insight" href="${serializeRoute({ name: 'ledger', params: { month: stat.month, q: '', sort: DEFAULT_LEDGER_SORT } })}">
+            <span>常出发月份</span>
+            <strong>${escapeHtml(stat.label)}</strong>
+            <small>${stat.count} 篇日记 · ${stat.cityCount} 城</small>
+        </a>
+    `;
 }
 
-function renderArchiveMonthBars(monthStats) {
-    const maxCount = Math.max(...monthStats.map(stat => stat.count), 1);
+function renderTopProvinceInsight(province) {
+    if (!province) {
+        return renderEmptyOverviewInsight('高频省份', '暂无地点');
+    }
 
-    return monthStats.map(stat => {
-        const width = Math.max(12, Math.round((stat.count / maxCount) * 100));
-
-        return `
-            <div class="archive-month-bar" style="--bar-width: ${width}%">
-                <span>${escapeHtml(stat.label)}</span>
-                <strong>${stat.count}</strong>
-                <i aria-hidden="true"></i>
-                <small>${stat.cityCount} 城 · 最近 ${escapeHtml(stat.latestDate)}</small>
-            </div>
-        `;
-    }).join('');
+    return `
+        <a class="overview-insight" href="${placeHash(province.country, province.province, '')}">
+            <span>高频省份</span>
+            <strong>${escapeHtml(province.label)}</strong>
+            <small>${province.count} 篇日记 · ${province.cityCount} 城</small>
+        </a>
+    `;
 }
 
-function renderRepeatLocationItem(item) {
+function renderRepeatLocationInsight(item) {
+    if (!item) {
+        return renderEmptyOverviewInsight('复访地点', '暂无复访');
+    }
+
     const record = item.record;
 
     return `
-        <a class="archive-repeat-item" href="${placeHash(record.country, record.province, record.city)}">
+        <a class="overview-insight" href="${placeHash(record.country, record.province, record.city)}">
+            <span>复访地点</span>
             <strong>${escapeHtml(getLocationText(record))}</strong>
-            <span>${item.count} 次 · ${escapeHtml(item.firstDate)} 至 ${escapeHtml(item.latestDate)}</span>
+            <small>${item.count} 次 · ${escapeHtml(item.firstDate)} 至 ${escapeHtml(item.latestDate)}</small>
         </a>
     `;
+}
+
+function renderEmptyOverviewInsight(label, value) {
+    return `
+        <div class="overview-insight">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(value)}</strong>
+        </div>
+    `;
+}
+
+function getTopYearStat(yearStats) {
+    return [...yearStats].sort((a, b) => b.count - a.count || b.year.localeCompare(a.year))[0] || null;
+}
+
+function getTopMonthStat(monthStats) {
+    return [...monthStats].sort((a, b) => b.count - a.count || b.cityCount - a.cityCount || a.month.localeCompare(b.month))[0] || null;
 }
 
 function renderPlace(params = {}) {
@@ -941,91 +959,12 @@ function renderFatalError(error) {
     `, '<div class="loading-page muted-page"></div>');
 }
 
-function renderDrawer() {
-    if (!refs.drawer || !travelModel) return;
-
-    const route = activeRoute || parseRoute();
-    const ledgerParams = route.name === 'ledger' ? normalizeLedgerParams(route.params) : normalizeLedgerParams();
-    const filtered = getLedgerRecords(ledgerParams);
-    const resultLabel = createLedgerResultLabel(filtered.length, travelModel.records.length, ledgerParams);
-    const cityOptions = getCityFilterOptions(ledgerParams.province);
-    const activeFilters = getActiveLedgerFilterLabels(ledgerParams);
-
-    refs.drawer.innerHTML = `
-        <div class="drawer-grip" aria-hidden="true"></div>
-        <div class="drawer-head">
-            <h2>筛选与排序</h2>
-            <button class="icon-button" type="button" data-action="close-drawer" aria-label="关闭筛选面板">×</button>
-        </div>
-        <label class="field-label" for="drawerSearch">路线搜索</label>
-        <div class="ink-field search-field">
-            <input id="drawerSearch" type="search" value="${escapeHtml(ledgerParams.q)}" autocomplete="off" placeholder="搜索城市或记录">
-            <button class="search-clear" type="button" data-action="clear-search" data-target="drawer" aria-label="清空筛选搜索" ${ledgerParams.q ? '' : 'disabled'}>×</button>
-        </div>
-        <p class="result-count drawer-result-count" aria-live="polite">${escapeHtml(resultLabel)}</p>
-        <div class="drawer-filter-summary" aria-label="当前筛选条件">
-            ${activeFilters.length ? activeFilters.map(label => `<span>${escapeHtml(label)}</span>`).join('') : '<span>未启用高级筛选</span>'}
-        </div>
-        <div class="drawer-years">
-            ${yearLink('全部', 'all', ledgerParams)}
-            ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
-        </div>
-        <div class="drawer-field-grid">
-            <label class="drawer-field">
-                <span class="field-label">月份</span>
-                <select data-ledger-filter="month">
-                    <option value="all"${ledgerParams.month === 'all' ? ' selected' : ''}>全部月份</option>
-                    ${travelModel.filterOptions.months.map(month => `<option value="${escapeHtml(month.value)}"${ledgerParams.month === month.value ? ' selected' : ''}>${escapeHtml(month.label)}</option>`).join('')}
-                </select>
-            </label>
-            <label class="drawer-field">
-                <span class="field-label">省份</span>
-                <select data-ledger-filter="province">
-                    <option value="all"${ledgerParams.province === 'all' ? ' selected' : ''}>全部省份</option>
-                    ${travelModel.filterOptions.provinces.map(province => `<option value="${escapeHtml(province.value)}"${ledgerParams.province === province.value ? ' selected' : ''}>${escapeHtml(province.label)} · ${province.count}</option>`).join('')}
-                </select>
-            </label>
-            <label class="drawer-field drawer-field-wide">
-                <span class="field-label">城市</span>
-                <select data-ledger-filter="city">
-                    <option value="all"${ledgerParams.city === 'all' ? ' selected' : ''}>全部城市</option>
-                    ${cityOptions.map(city => `<option value="${escapeHtml(city.value)}"${ledgerParams.city === city.value ? ' selected' : ''}>${escapeHtml(city.label)}${ledgerParams.province === 'all' ? ` · ${escapeHtml(city.province)}` : ''}</option>`).join('')}
-                </select>
-            </label>
-        </div>
-        <div class="drawer-segment-group" aria-label="复访筛选">
-            ${filterToggleButton('全部', 'visit', 'all', ledgerParams.visit)}
-            ${filterToggleButton('首次到访', 'visit', 'first', ledgerParams.visit)}
-            ${filterToggleButton('再次到访', 'visit', 'repeat', ledgerParams.visit)}
-        </div>
-        <div class="drawer-segment-group" aria-label="照片筛选">
-            ${filterToggleButton('全部记录', 'media', 'all', ledgerParams.media)}
-            ${filterToggleButton('有照片', 'media', 'photos', ledgerParams.media)}
-            ${filterToggleButton('无照片', 'media', 'none', ledgerParams.media)}
-        </div>
-        <label class="drawer-field drawer-field-wide">
-            <span class="field-label">排序方式</span>
-            <select data-ledger-filter="sort">
-                ${renderLedgerSortOptions(ledgerParams.sort)}
-            </select>
-        </label>
-        <div class="drawer-actions">
-            <button class="paper-button full-width" type="button" data-action="reset-ledger-filters" ${hasActiveLedgerFilter(ledgerParams) || ledgerParams.sort !== DEFAULT_LEDGER_SORT ? '' : 'disabled'}>清空筛选</button>
-        </div>
-    `;
-}
-
 function handleClearSearch(button) {
     const target = button.getAttribute('data-target');
     clearSearchRouteTimer();
 
     if (target === 'ledger') {
         updateLedgerRoute({ q: '' }, { replace: true, focusId: 'ledgerSearch', animate: false });
-        return;
-    }
-
-    if (target === 'drawer') {
-        updateLedgerRoute({ q: '' }, { replace: true, focusId: 'drawerSearch', keepDrawer: true, animate: false });
         return;
     }
 
@@ -1173,17 +1112,13 @@ function handleDocumentClick(event) {
         return;
     }
 
-    const drawerAction = event.target.closest('[data-action="open-drawer"], [data-action="close-drawer"]');
-    if (drawerAction) {
-        event.preventDefault();
-        drawerAction.dataset.action === 'open-drawer' ? openDrawer(drawerAction) : closeDrawer({ restoreFocus: true });
-        return;
-    }
-
     const resetLedgerFilters = event.target.closest('[data-action="reset-ledger-filters"]');
     if (resetLedgerFilters) {
         event.preventDefault();
-        updateLedgerRoute({ ...LEDGER_FILTER_DEFAULTS }, { replace: true, focusId: 'drawerSearch', keepDrawer: true, animate: false });
+        updateLedgerRoute(
+            { ...LEDGER_FILTER_DEFAULTS },
+            { replace: true, focusId: 'ledgerSearch', animate: false }
+        );
         return;
     }
 
@@ -1193,7 +1128,7 @@ function handleDocumentClick(event) {
         const key = ledgerToggle.getAttribute('data-ledger-toggle');
         const value = ledgerToggle.getAttribute('data-value') || 'all';
         if (key) {
-            updateLedgerRoute({ [key]: value }, { replace: true, keepDrawer: true, animate: false });
+            updateLedgerRoute({ [key]: value }, { replace: true, animate: false });
         }
         return;
     }
@@ -1209,24 +1144,11 @@ function handleDocumentClick(event) {
         return;
     }
 
-    if (event.target.closest('#drawerToggle')) {
-        event.preventDefault();
-        toggleDrawer(event.target.closest('#drawerToggle'));
-        return;
-    }
-
     const sortToggle = event.target.closest('[data-action="toggle-sort"]');
     if (sortToggle) {
         event.preventDefault();
-        updateLedgerRoute(
-            { sort: getCurrentLedgerSort() === 'asc' ? 'desc' : 'asc' },
-            { keepDrawer: Boolean(sortToggle.closest('#drawerRoot')) }
-        );
+        updateLedgerRoute({ sort: getCurrentLedgerSort() === 'asc' ? 'desc' : 'asc' });
         return;
-    }
-
-    if (refs.drawer?.classList.contains('journal-drawer-open') && !event.target.closest('#drawerRoot')) {
-        closeDrawer({ restoreFocus: false });
     }
 
     const entryCard = event.target.closest('[data-open-entry]');
@@ -1257,7 +1179,6 @@ function handleDocumentKeydown(event) {
             return;
         }
 
-        closeDrawer({ restoreFocus: true });
         return;
     }
 
@@ -1295,7 +1216,7 @@ function handleDocumentChange(event) {
         nextParams.city = 'all';
     }
 
-    updateLedgerRoute(nextParams, { replace: true, keepDrawer: true, focusId: filter.id || '', animate: false });
+    updateLedgerRoute(nextParams, { replace: true, focusId: filter.id || '', animate: false });
 }
 
 function handleSearchCompositionStart(event) {
@@ -1317,7 +1238,7 @@ function handleSearchCompositionEnd(event) {
 }
 
 function isSearchInput(target) {
-    return Boolean(target?.matches?.('#ledgerSearch, #drawerSearch, #archiveSearch'));
+    return Boolean(target?.matches?.('#ledgerSearch, #archiveSearch'));
 }
 
 function scheduleSearchRouteUpdate(input, options = {}) {
@@ -1369,12 +1290,6 @@ function applySearchRouteUpdate({ id, value }) {
     if (id === 'ledgerSearch') {
         if (activeRoute?.name === 'ledger' && normalizeLedgerParams(activeRoute.params).q === value) return;
         updateLedgerRoute({ q: value }, { replace: true, focusId: 'ledgerSearch', animate: false });
-        return;
-    }
-
-    if (id === 'drawerSearch') {
-        if (activeRoute?.name === 'ledger' && normalizeLedgerParams(activeRoute.params).q === value) return;
-        updateLedgerRoute({ q: value }, { replace: true, focusId: 'drawerSearch', keepDrawer: true, animate: false });
         return;
     }
 
@@ -1457,7 +1372,6 @@ function renderLedgerControls(params, inputId) {
                 <input id="${inputId}" type="search" value="${escapeHtml(params.q)}" autocomplete="off" placeholder="搜索城市、省份或日记内容">
                 <button class="search-clear" type="button" data-action="clear-search" data-target="ledger" aria-label="清空路线搜索" ${params.q ? '' : 'disabled'}>×</button>
             </div>
-            <button class="filter-chip" type="button" data-action="open-drawer">筛选与排序</button>
         </div>
     `;
 }
@@ -1591,15 +1505,6 @@ function renderPhotoSleeve(record) {
             ${record.photos.map(photo => `
                 <img src="${escapeHtml(`${record.photo_folder}/${photo}`)}" alt="${escapeHtml(photo)}" loading="lazy">
             `).join('')}
-        </div>
-    `;
-}
-
-function statTag(label, value) {
-    return `
-        <div class="stat-tag">
-            <dt>${escapeHtml(label)}</dt>
-            <dd>${escapeHtml(value)}</dd>
         </div>
     `;
 }
@@ -1794,38 +1699,6 @@ function formatDateForRange(dateStr, precision) {
     }
 
     return `${year}.${month}`;
-}
-
-function openDrawer(triggerElement) {
-    lastDrawerTrigger = triggerElement || document.activeElement;
-    refs.drawer.classList.add('journal-drawer-open');
-    refs.drawer.setAttribute('aria-hidden', 'false');
-    refs.drawerToggle?.setAttribute('aria-expanded', 'true');
-    document.body.classList.add('drawer-open');
-
-    requestAnimationFrame(() => {
-        refs.drawer.querySelector('#drawerSearch')?.focus({ preventScroll: true });
-    });
-}
-
-function closeDrawer(options = {}) {
-    const wasOpen = refs.drawer?.classList.contains('journal-drawer-open');
-    refs.drawer?.classList.remove('journal-drawer-open');
-    refs.drawer?.setAttribute('aria-hidden', 'true');
-    refs.drawerToggle?.setAttribute('aria-expanded', 'false');
-    document.body.classList.remove('drawer-open');
-
-    if (wasOpen && options.restoreFocus && lastDrawerTrigger && typeof lastDrawerTrigger.focus === 'function') {
-        lastDrawerTrigger.focus({ preventScroll: true });
-    }
-
-    if (wasOpen) {
-        lastDrawerTrigger = null;
-    }
-}
-
-function toggleDrawer(triggerElement) {
-    refs.drawer?.classList.contains('journal-drawer-open') ? closeDrawer({ restoreFocus: true }) : openDrawer(triggerElement);
 }
 
 function restoreFocus(focusId) {
