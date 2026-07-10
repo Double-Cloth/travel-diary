@@ -2273,6 +2273,14 @@ body[data-route="archive"] .paper-page-left {
     letter-spacing: 0.08em;
 }
 
+.index-reset-anchor {
+    position: sticky;
+    top: 0;
+    z-index: 8;
+    padding: 8px 0 10px;
+    background: transparent;
+}
+
 .index-reset {
     margin-top: 2px;
 }

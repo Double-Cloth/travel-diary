@@ -11,6 +11,7 @@ const LEDGER_FILTER_DEFAULTS = {
     city: 'all',
     visit: 'all',
     media: 'all',
+    note: 'all',
     q: '',
     sort: DEFAULT_LEDGER_SORT
 };
@@ -97,6 +98,7 @@ function parseRoute(hash = window.location.hash) {
                     city: normalizeFilterValue(params.get('city')),
                     visit: normalizeVisit(params.get('visit')),
                     media: normalizeMedia(params.get('media')),
+                    note: normalizeNote(params.get('note')),
                     q: (params.get('q') || '').trim(),
                     sort: normalizeLedgerSort(params.get('sort'))
                 },
@@ -152,6 +154,7 @@ function serializeRoute(route) {
                 if (ledgerParams.city !== 'all') params.set('city', ledgerParams.city);
                 if (ledgerParams.visit !== 'all') params.set('visit', ledgerParams.visit);
                 if (ledgerParams.media !== 'all') params.set('media', ledgerParams.media);
+                if (ledgerParams.note !== 'all') params.set('note', ledgerParams.note);
                 if (ledgerParams.q) params.set('q', ledgerParams.q);
                 if (ledgerParams.sort !== DEFAULT_LEDGER_SORT) params.set('sort', ledgerParams.sort);
             }
@@ -216,7 +219,7 @@ function renderRoute(route, options = {}) {
                 renderCover();
                 break;
             case 'ledger':
-                renderLedger(route.params);
+                renderLedger(route.params, options);
                 break;
             case 'archive':
                 renderArchive(route.params);
@@ -263,8 +266,9 @@ function deriveTravelModel(records) {
     const yearRangeShort = years.length > 1 ? `${years[years.length - 1]}-${years[0].slice(2)}` : (years[0] || '未知');
     const firstDate = sortedAsc.find(record => record.date)?.date || '';
     const lastDate = recordsDesc.find(record => record.date)?.date || '';
+    const todayDate = getTodayDate();
     const dateRangeCompact = formatDateRange(firstDate, lastDate, 'month');
-    const dateRangeLabel = formatDateRange(firstDate, lastDate, 'day');
+    const dateRangeLabel = formatDateRange(firstDate, todayDate, 'day');
     const countries = buildLocationIndex(enhanced);
     const latestRecord = recordsDesc[0] || null;
     const firstRecord = sortedAsc[0] || null;
@@ -616,7 +620,7 @@ function renderRouteMap(records) {
     }).join('');
 }
 
-function renderLedger(params = {}) {
+function renderLedger(params = {}, options = {}) {
     const ledgerParams = normalizeLedgerParams(params);
     const filtered = getLedgerRecords(ledgerParams);
     const resultLabel = createLedgerResultLabel(filtered.length, travelModel.records.length, ledgerParams);
@@ -642,8 +646,9 @@ function renderLedger(params = {}) {
             <p class="journal-label">索引夹层</p>
             <h2>高级筛选</h2>
             ${renderLedgerSnapshot(snapshot, resultLabel)}
+            ${renderLedgerResetAction(ledgerParams)}
             ${renderLedgerFilterWorkbench(ledgerParams)}
-    `, 'map-pocket');
+    `, 'map-pocket', { preserveRightScroll: options.preserveRightScroll });
 }
 
 function createLedgerResultLabel(count, total, params) {
@@ -681,7 +686,6 @@ function renderLedgerSnapshot(snapshot, resultLabel) {
 
 function renderLedgerFilterWorkbench(params) {
     const cityOptions = getCityFilterOptions(params.province);
-    const canReset = hasActiveLedgerFilter(params) || params.sort !== DEFAULT_LEDGER_SORT;
     const yearOptions = [
         { value: 'all', label: '全部年份' },
         ...travelModel.years.map(year => ({ value: year, label: `${year}年` }))
@@ -733,12 +737,27 @@ function renderLedgerFilterWorkbench(params) {
                 ${filterToggleButton('有照片', 'media', 'photos', params.media)}
                 ${filterToggleButton('无照片', 'media', 'none', params.media)}
             </div>
+            <span class="field-label">笔记内容</span>
+            <div class="index-segment-group" aria-label="笔记内容">
+                ${filterToggleButton('全部', 'note', 'all', params.note)}
+                ${filterToggleButton('有笔记', 'note', 'filled', params.note)}
+                ${filterToggleButton('无笔记', 'note', 'empty', params.note)}
+            </div>
         </section>
         <section class="index-filter-section" aria-labelledby="indexSortFilter">
             <h3 id="indexSortFilter">排序方式</h3>
             ${renderLedgerSelect('排序方式', 'sort', sortOptions, params.sort, true)}
         </section>
-        <button class="paper-button full-width index-reset" type="button" data-action="reset-ledger-filters" ${canReset ? '' : 'disabled'}>重置全部</button>
+    `;
+}
+
+function renderLedgerResetAction(params) {
+    const canReset = hasActiveLedgerFilter(params) || params.sort !== DEFAULT_LEDGER_SORT;
+
+    return `
+        <div class="index-reset-anchor">
+            <button class="paper-button full-width index-reset" type="button" data-action="reset-ledger-filters" ${canReset ? '' : 'disabled'}>重置全部</button>
+        </div>
     `;
 }
 
@@ -1159,7 +1178,7 @@ function handleDocumentClick(event) {
         const key = ledgerToggle.getAttribute('data-ledger-toggle');
         const value = ledgerToggle.getAttribute('data-value') || 'all';
         if (key) {
-            updateLedgerRoute({ [key]: value }, { replace: true, animate: false });
+            updateLedgerRoute({ [key]: value }, { replace: true, animate: false, preserveRightScroll: true });
         }
         return;
     }
@@ -1240,7 +1259,7 @@ function handleDocumentChange(event) {
         nextParams.city = 'all';
     }
 
-    updateLedgerRoute(nextParams, { replace: true, focusId: filter.id || '', animate: false });
+    updateLedgerRoute(nextParams, { replace: true, focusId: filter.id || '', animate: false, preserveRightScroll: true });
 }
 
 function handleSearchCompositionStart(event) {
@@ -1340,12 +1359,17 @@ function updateChapterTabs(routeName) {
     });
 }
 
-function setPages(leftHtml, rightHtml, rightPageMode = '') {
+function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
+    const rightScrollTop = options.preserveRightScroll ? refs.rightPage.scrollTop : 0;
+
     refs.leftPage.innerHTML = leftHtml;
     refs.rightPage.className = ['paper-page', 'paper-page-right', rightPageMode].filter(Boolean).join(' ');
     refs.rightPage.innerHTML = rightHtml;
     refs.leftPage.scrollTop = 0;
     refs.rightPage.scrollTop = 0;
+    if (rightScrollTop) {
+        refs.rightPage.scrollTop = rightScrollTop;
+    }
 }
 
 function getLedgerRecords(params) {
@@ -1359,8 +1383,10 @@ function getLedgerRecords(params) {
         const visitMatch = normalized.visit === 'all' || (normalized.visit === 'repeat' ? record.isRepeated : !record.isRepeated);
         const hasPhotos = Array.isArray(record.photos) && record.photos.length > 0;
         const mediaMatch = normalized.media === 'all' || (normalized.media === 'photos' ? hasPhotos : !hasPhotos);
+        const hasNote = hasRecordNoteContent(record);
+        const noteMatch = normalized.note === 'all' || (normalized.note === 'filled' ? hasNote : !hasNote);
         const searchMatch = !query || record.searchText.includes(query);
-        return yearMatch && monthMatch && provinceMatch && cityMatch && visitMatch && mediaMatch && searchMatch;
+        return yearMatch && monthMatch && provinceMatch && cityMatch && visitMatch && mediaMatch && noteMatch && searchMatch;
     });
 
     return records.sort((a, b) => compareLedgerRecords(a, b, normalized.sort));
@@ -1560,6 +1586,7 @@ function hasActiveLedgerFilter(params) {
         || normalized.city !== 'all'
         || normalized.visit !== 'all'
         || normalized.media !== 'all'
+        || normalized.note !== 'all'
         || Boolean(normalized.q);
 }
 
@@ -1579,6 +1606,7 @@ function normalizeLedgerParams(params = {}) {
         city: normalizeFilterValue(params.city),
         visit: normalizeVisit(params.visit),
         media: normalizeMedia(params.media),
+        note: normalizeNote(params.note),
         q: (params.q || '').trim(),
         sort: normalizeLedgerSort(params.sort)
     };
@@ -1604,6 +1632,10 @@ function normalizeVisit(visit) {
 
 function normalizeMedia(media) {
     return media === 'photos' || media === 'none' ? media : 'all';
+}
+
+function normalizeNote(note) {
+    return note === 'filled' || note === 'empty' ? note : 'all';
 }
 
 function normalizeLedgerSort(sort) {
@@ -1659,6 +1691,23 @@ function createRecordId(record) {
 
 function maxDate(current, next) {
     return !current || (next || '') > current ? (next || '') : current;
+}
+
+function hasRecordNoteContent(record) {
+    if (typeof record.descMarkdown === 'string' && record.descMarkdown.trim()) {
+        return Boolean(record.descMarkdown.replace(/^#\s+.*(?:\n|$)/, '').trim());
+    }
+
+    return Boolean(String(record.descBodyHtml || '').replace(/<[^>]*>/g, '').trim());
+}
+
+function getTodayDate() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+
+    return `${year}-${month}-${day}`;
 }
 
 function formatDateRange(startDate, endDate, precision = 'month') {

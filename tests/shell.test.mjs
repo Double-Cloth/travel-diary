@@ -24,8 +24,24 @@ test('索引夹层包含完整且唯一的高级筛选工作台', () => {
     }
     assert.match(appJs, /filterToggleButton\('首次到访', 'visit'/);
     assert.match(appJs, /filterToggleButton\('有照片', 'media'/);
+    assert.match(appJs, /filterToggleButton\('有笔记', 'note'/);
     assert.match(appJs, /重置全部/);
     assert.doesNotMatch(appJs, /当前筛选|当前排序|切到最早优先|切回最新优先/);
+});
+
+test('索引夹层重置筛选固定在筛选项之前', () => {
+    assert.match(appJs, /renderLedgerSnapshot\(snapshot, resultLabel\)\}\s+\$\{renderLedgerResetAction\(ledgerParams\)\}\s+\$\{renderLedgerFilterWorkbench\(ledgerParams\)\}/);
+    assert.match(journalCss, /\.index-reset-anchor\s*{[^}]*position: sticky;[^}]*top: 0;/);
+    assert.match(journalCss, /\.index-reset-anchor\s*{[^}]*background: transparent;/);
+    assert.doesNotMatch(journalCss, /\.index-reset-anchor\s*{[^}]*linear-gradient/);
+});
+
+test('索引夹层筛选更新时保留右页滚动位置', () => {
+    assert.match(appJs, /updateLedgerRoute\(\{ \[key\]: value \}, \{ replace: true, animate: false, preserveRightScroll: true \}\)/);
+    assert.match(appJs, /updateLedgerRoute\(nextParams, \{ replace: true, focusId: filter\.id \|\| '', animate: false, preserveRightScroll: true \}\)/);
+    assert.match(appJs, /function setPages\(leftHtml, rightHtml, rightPageMode = '', options = \{\}\)/);
+    assert.match(appJs, /const rightScrollTop = options\.preserveRightScroll \? refs\.rightPage\.scrollTop : 0;/);
+    assert.match(appJs, /refs\.rightPage\.scrollTop = rightScrollTop;/);
 });
 
 test('索引夹层总数只保留一个视觉锚点', () => {
@@ -52,6 +68,7 @@ test('旅行概览渲染新增的可靠统计', () => {
         assert.match(appJs, new RegExp(label));
     }
     assert.match(appJs, /overviewAnalytics: deriveOverviewAnalytics\(enhanced\)/);
+    assert.match(appJs, /const todayDate = getTodayDate\(\);[\s\S]+const dateRangeLabel = formatDateRange\(firstDate, todayDate, 'day'\);/);
 });
 
 test('本地服务器以 JavaScript MIME 类型提供 mjs 模块', () => {
