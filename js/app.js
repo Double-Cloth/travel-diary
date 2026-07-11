@@ -552,6 +552,7 @@ function renderCoverRecord(record, index) {
 
     return `
         <article class="cover-record" id="entry-card-cover-${escapeHtml(record.id)}" data-open-entry="${escapeHtml(record.id)}" tabindex="0" role="button" aria-label="打开 ${escapeHtml(record.title)} 档案">
+            ${renderRecordPaperclip()}
             <span class="cover-record-thumb" aria-hidden="true"></span>
             <div class="cover-record-body">
                 <h2>${escapeHtml(record.title)}</h2>
@@ -561,6 +562,12 @@ function renderCoverRecord(record, index) {
             <span class="cover-record-index">${String(index + 1).padStart(2, '0')}</span>
         </article>
     `;
+}
+
+function renderRecordPaperclip() {
+    return `
+            <span class="record-paperclip record-paperclip-back" aria-hidden="true"></span>
+            <span class="record-paperclip record-paperclip-front" aria-hidden="true"></span>`;
 }
 
 function getRouteMapRecords() {
@@ -1510,6 +1517,7 @@ function getLedgerGroupAriaLabel(label, sort) {
 function renderLedgerEntry(record) {
     return `
         <article class="ledger-entry" id="entry-card-${escapeHtml(record.id)}" data-open-entry="${escapeHtml(record.id)}" tabindex="0" role="button" aria-label="打开 ${escapeHtml(record.title)} 日记">
+            ${renderRecordPaperclip()}
             <time datetime="${escapeHtml(record.date || '')}" class="entry-date-chip">
                 <strong>${escapeHtml((record.date || '').slice(8, 10) || '--')}</strong>
                 <span>${escapeHtml((record.date || '').slice(0, 7) || '')}</span>

@@ -302,10 +302,6 @@
     padding: 10px 14px 10px 16px;
 }
 
-.place-records .ledger-entry::before {
-    top: 14px;
-}
-
 .place-records .entry-date-chip {
     align-self: center;
     min-height: 86px;

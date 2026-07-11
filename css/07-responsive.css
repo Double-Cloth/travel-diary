@@ -302,6 +302,14 @@
         padding: 10px;
     }
 
+    .record-paperclip {
+        left: 15px;
+        top: -8px;
+        width: 21px;
+        height: 38px;
+        filter: drop-shadow(0 2px 2px var(--clip-shadow));
+    }
+
     .entry-note h3 {
         white-space: normal;
     }

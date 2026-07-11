@@ -116,19 +116,6 @@
     box-shadow: 0 6px 12px rgba(52, 31, 14, 0.16);
 }
 
-.cover-record::before {
-    content: "";
-    position: absolute;
-    left: -9px;
-    top: 19px;
-    width: 28px;
-    height: 18px;
-    border: 2px solid rgba(76, 53, 32, 0.44);
-    border-right: 0;
-    border-radius: 14px 0 0 14px;
-    transform: rotate(-17deg);
-}
-
 .cover-record-thumb {
     position: relative;
     display: block;

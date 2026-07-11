@@ -92,6 +92,20 @@ test('索引夹层分段按钮具备拟物化层次', () => {
     assert.match(journalCss, /0 7px 0 rgba\(121, 84, 43/);
 });
 
+test('记录卡片回形针具备前后遮挡关系', () => {
+    assert.match(appJs, /class="record-paperclip record-paperclip-back" aria-hidden="true"/);
+    assert.match(appJs, /class="record-paperclip record-paperclip-front" aria-hidden="true"/);
+    assert.match(journalCss, /\.cover-record,\s*\.ledger-entry\s*{[\s\S]*--clip-svg: url\("data:image\/svg\+xml,[\s\S]*%3Cpath/);
+    assert.match(journalCss, /\.record-paperclip\s*{[\s\S]*background: var\(--clip-svg\) center \/ contain no-repeat;[\s\S]*filter: drop-shadow/);
+    assert.match(journalCss, /\.record-paperclip-back\s*{[\s\S]*z-index: 1;[\s\S]*clip-path: inset\(50% 0 0 0\);/);
+    assert.match(journalCss, /\.record-paperclip-front\s*{[\s\S]*z-index: 4;[\s\S]*clip-path: inset\(0 0 48% 0\);/);
+    assert.match(journalCss, /\.cover-record-thumb,\s*\.entry-date-chip\s*{[\s\S]*z-index: 2;/);
+    assert.doesNotMatch(journalCss, /linear-gradient\(var\(--clip-metal\), var\(--clip-metal\)\)/);
+    assert.match(journalCss, /\.cover-record:hover \.record-paperclip,[\s\S]*\.ledger-entry:focus-visible \.record-paperclip/);
+    assert.doesNotMatch(journalCss, /\.place-records \.ledger-entry::before\s*{[\s\S]*top:/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.record-paperclip\s*{[\s\S]*width: 21px;[\s\S]*height: 38px;/);
+});
+
 test('旅行概览渲染新增的可靠统计', () => {
     for (const label of ['复访地点', '覆盖最广', '活跃年份', '活跃月份', '最长记录间隔']) {
         assert.match(appJs, new RegExp(label));
