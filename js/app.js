@@ -40,6 +40,12 @@ let lastEntryFocusId = '';
 let searchRouteTimer = null;
 let isSearchComposing = false;
 let viewportResizeTimer = null;
+const PHOTO_VIEWER_MIN_SCALE = 0.5;
+const PHOTO_VIEWER_MAX_SCALE = 5;
+const PHOTO_ROTATION_ANIMATION_MS = 220;
+let photoViewerState = null;
+let photoGestureState = createPhotoGestureState();
+let photoRotationTimer = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     void initApp();
@@ -76,6 +82,12 @@ function bindGlobalEvents() {
     document.addEventListener('change', handleDocumentChange);
     document.addEventListener('compositionstart', handleSearchCompositionStart);
     document.addEventListener('compositionend', handleSearchCompositionEnd);
+    document.addEventListener('pointerdown', handlePhotoPointerDown);
+    document.addEventListener('pointermove', handlePhotoPointerMove);
+    document.addEventListener('pointerup', handlePhotoPointerEnd);
+    document.addEventListener('pointercancel', handlePhotoPointerEnd);
+    document.addEventListener('dblclick', handlePhotoDoubleClick);
+    document.addEventListener('wheel', handlePhotoWheel, { passive: false });
     window.addEventListener('hashchange', () => syncRouteFromHash());
     window.addEventListener('resize', handleViewportResize);
 }
@@ -1130,6 +1142,9 @@ function renderEntrySheetNav(navigation) {
 function closeEntrySheet(options = {}) {
     if (!refs.sheet) return;
 
+    photoViewerState = null;
+    photoGestureState = createPhotoGestureState();
+    clearPhotoRotationTimer();
     refs.sheet.classList.remove('entry-sheet-root-open');
     refs.sheet.setAttribute('aria-hidden', 'true');
     refs.sheet.innerHTML = '';
@@ -1142,6 +1157,346 @@ function closeEntrySheet(options = {}) {
     if (options.restoreFocus && lastEntryFocusId) {
         restoreFocus(lastEntryFocusId);
     }
+}
+
+function openPhotoViewer(photos, index = 0) {
+    if (!Array.isArray(photos) || photos.length === 0 || !refs.sheet) {
+        return;
+    }
+
+    photoViewerState = {
+        photos,
+        index: normalizePhotoIndex(index, photos.length),
+        scale: 1,
+        rotation: 0,
+        translateX: 0,
+        translateY: 0
+    };
+    photoGestureState = createPhotoGestureState();
+    renderPhotoViewer();
+}
+
+function renderPhotoViewer() {
+    refs.sheet?.querySelector('[data-photo-viewer]')?.remove();
+    if (!photoViewerState || !refs.sheet) {
+        return;
+    }
+
+    const photo = photoViewerState.photos[photoViewerState.index];
+    const position = `${photoViewerState.index + 1} / ${photoViewerState.photos.length}`;
+
+    refs.sheet.insertAdjacentHTML('beforeend', `
+        <div class="photo-viewer" data-photo-viewer>
+            <div class="photo-viewer-backdrop" data-action="close-photo-viewer"></div>
+            <section class="photo-viewer-panel" role="dialog" aria-modal="true" aria-label="照片查看器" tabindex="-1">
+                <div class="photo-viewer-toolbar">
+                    <button class="photo-viewer-control" type="button" data-action="photo-prev" data-photo-action="prev" aria-label="上一张照片">‹</button>
+                    <span class="photo-viewer-count">${escapeHtml(position)}</span>
+                    <button class="photo-viewer-control" type="button" data-action="photo-next" data-photo-action="next" aria-label="下一张照片">›</button>
+                    <span class="photo-viewer-separator" aria-hidden="true"></span>
+                    <button class="photo-viewer-control" type="button" data-action="photo-zoom-out" data-photo-action="zoom-out" aria-label="缩小">−</button>
+                    <span class="photo-viewer-zoom" data-photo-viewer-zoom>100%</span>
+                    <button class="photo-viewer-control" type="button" data-action="photo-zoom-in" data-photo-action="zoom-in" aria-label="放大">+</button>
+                    <button class="photo-viewer-control" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="重置照片">1:1</button>
+                    <button class="photo-viewer-control" type="button" data-action="photo-rotate-left" data-photo-action="rotate-left" aria-label="向左旋转">↺</button>
+                    <button class="photo-viewer-control" type="button" data-action="photo-rotate-right" data-photo-action="rotate-right" aria-label="向右旋转">↻</button>
+                    <button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer" aria-label="关闭照片查看器">×</button>
+                </div>
+                <div class="photo-viewer-stage" data-photo-viewer-stage>
+                    <img class="photo-viewer-image" data-photo-viewer-image src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" draggable="false">
+                </div>
+                <p class="photo-viewer-caption">${escapeHtml(photo.alt)}</p>
+            </section>
+        </div>
+    `);
+
+    updatePhotoViewerTransform();
+    requestAnimationFrame(() => {
+        refs.sheet.querySelector('.photo-viewer-panel')?.focus({ preventScroll: true });
+    });
+}
+
+function closePhotoViewerDialog() {
+    refs.sheet?.querySelector('[data-photo-viewer]')?.remove();
+    photoViewerState = null;
+    photoGestureState = createPhotoGestureState();
+    clearPhotoRotationTimer();
+}
+
+function getPhotoViewerItems(button) {
+    const buttons = Array.from(button.closest('.photo-sleeve')?.querySelectorAll('[data-action="open-photo-viewer"]') || [button]);
+    return buttons.map(item => ({
+        src: item.dataset.photoSrc || '',
+        alt: item.dataset.photoAlt || '旅行照片'
+    })).filter(item => item.src);
+}
+
+function handlePhotoViewerAction(action) {
+    if (!photoViewerState) {
+        return;
+    }
+
+    switch (action) {
+        case 'prev':
+            showPhotoAt(photoViewerState.index - 1);
+            break;
+        case 'next':
+            showPhotoAt(photoViewerState.index + 1);
+            break;
+        case 'zoom-in':
+            zoomPhoto(1.16);
+            break;
+        case 'zoom-out':
+            zoomPhoto(0.86);
+            break;
+        case 'reset':
+            resetPhotoTransform();
+            break;
+        case 'rotate-left':
+            rotatePhoto(-90);
+            break;
+        case 'rotate-right':
+            rotatePhoto(90);
+            break;
+        default:
+            break;
+    }
+}
+
+function showPhotoAt(index) {
+    if (!photoViewerState) {
+        return;
+    }
+
+    photoViewerState.index = normalizePhotoIndex(index, photoViewerState.photos.length);
+    resetPhotoTransform({ render: false });
+    renderPhotoViewer();
+}
+
+function zoomPhoto(factor, focalPoint) {
+    if (!photoViewerState) {
+        return;
+    }
+
+    const previousScale = photoViewerState.scale;
+    const nextScale = clamp(previousScale * factor, PHOTO_VIEWER_MIN_SCALE, PHOTO_VIEWER_MAX_SCALE);
+    if (focalPoint && previousScale > 0) {
+        const ratio = nextScale / previousScale;
+        photoViewerState.translateX = focalPoint.x - (focalPoint.x - photoViewerState.translateX) * ratio;
+        photoViewerState.translateY = focalPoint.y - (focalPoint.y - photoViewerState.translateY) * ratio;
+    }
+    photoViewerState.scale = nextScale;
+    updatePhotoViewerTransform();
+}
+
+function rotatePhoto(delta) {
+    if (!photoViewerState) {
+        return;
+    }
+
+    photoViewerState.rotation += delta;
+    updatePhotoViewerTransform({ animateRotation: true });
+}
+
+function resetPhotoTransform(options = {}) {
+    if (!photoViewerState) {
+        return;
+    }
+
+    photoViewerState.scale = 1;
+    photoViewerState.rotation = 0;
+    photoViewerState.translateX = 0;
+    photoViewerState.translateY = 0;
+    photoGestureState = createPhotoGestureState();
+    if (options.render !== false) {
+        updatePhotoViewerTransform();
+    }
+}
+
+function updatePhotoViewerTransform(options = {}) {
+    if (!photoViewerState) {
+        return;
+    }
+
+    const image = refs.sheet?.querySelector('[data-photo-viewer-image]');
+    if (!image) {
+        return;
+    }
+
+    if (options.animateRotation) {
+        clearPhotoRotationTimer();
+        image.classList.remove('photo-viewer-image-rotating');
+        void image.offsetWidth;
+        image.classList.add('photo-viewer-image-rotating');
+        photoRotationTimer = window.setTimeout(() => {
+            image.classList.remove('photo-viewer-image-rotating');
+            photoRotationTimer = null;
+        }, PHOTO_ROTATION_ANIMATION_MS);
+    }
+
+    image.style.transform = `translate3d(${photoViewerState.translateX}px, ${photoViewerState.translateY}px, 0) rotate(${photoViewerState.rotation}deg) scale(${photoViewerState.scale})`;
+    const zoom = refs.sheet.querySelector('[data-photo-viewer-zoom]');
+    if (zoom) {
+        zoom.textContent = `${Math.round(photoViewerState.scale * 100)}%`;
+    }
+}
+
+function clearPhotoRotationTimer() {
+    if (!photoRotationTimer) {
+        return;
+    }
+
+    window.clearTimeout(photoRotationTimer);
+    photoRotationTimer = null;
+}
+
+function handlePhotoPointerDown(event) {
+    const stage = event.target.closest?.('[data-photo-viewer-stage]');
+    if (!stage || !photoViewerState || (event.pointerType === 'mouse' && event.button !== 0)) {
+        return;
+    }
+
+    event.preventDefault();
+    stage.setPointerCapture?.(event.pointerId);
+    photoGestureState.pointers.set(event.pointerId, getPointerPoint(event));
+    syncPhotoGestureStart();
+}
+
+function handlePhotoPointerMove(event) {
+    if (!photoViewerState || !photoGestureState.pointers.has(event.pointerId)) {
+        return;
+    }
+
+    event.preventDefault();
+    photoGestureState.pointers.set(event.pointerId, getPointerPoint(event));
+    const points = Array.from(photoGestureState.pointers.values());
+
+    if (points.length >= 2 && photoGestureState.pinchStart) {
+        const current = getGestureMetrics(points[0], points[1]);
+        const start = photoGestureState.pinchStart;
+        photoViewerState.scale = clamp(start.scale * (current.distance / Math.max(start.distance, 1)), PHOTO_VIEWER_MIN_SCALE, PHOTO_VIEWER_MAX_SCALE);
+        photoViewerState.rotation = start.rotation + current.angle - start.angle;
+        photoViewerState.translateX = start.translateX + current.centerX - start.centerX;
+        photoViewerState.translateY = start.translateY + current.centerY - start.centerY;
+        updatePhotoViewerTransform();
+        return;
+    }
+
+    if (points.length === 1 && photoGestureState.dragStart) {
+        const point = points[0];
+        photoViewerState.translateX = photoGestureState.dragStart.translateX + point.x - photoGestureState.dragStart.x;
+        photoViewerState.translateY = photoGestureState.dragStart.translateY + point.y - photoGestureState.dragStart.y;
+        updatePhotoViewerTransform();
+    }
+}
+
+function handlePhotoPointerEnd(event) {
+    if (!photoGestureState.pointers.has(event.pointerId)) {
+        return;
+    }
+
+    photoGestureState.pointers.delete(event.pointerId);
+    syncPhotoGestureStart();
+}
+
+function handlePhotoWheel(event) {
+    if (!photoViewerState || !event.target.closest?.('[data-photo-viewer]')) {
+        return;
+    }
+
+    event.preventDefault();
+    const stage = refs.sheet?.querySelector('[data-photo-viewer-stage]');
+    const rect = stage?.getBoundingClientRect();
+    const focalPoint = rect
+        ? { x: event.clientX - rect.left - rect.width / 2, y: event.clientY - rect.top - rect.height / 2 }
+        : undefined;
+    zoomPhoto(event.deltaY < 0 ? 1.12 : 0.88, focalPoint);
+}
+
+function handlePhotoDoubleClick(event) {
+    if (!photoViewerState || !event.target.closest?.('[data-photo-viewer-stage]')) {
+        return;
+    }
+
+    event.preventDefault();
+    if (photoViewerState.scale > 1.2) {
+        resetPhotoTransform();
+        return;
+    }
+
+    photoViewerState.scale = 2.2;
+    updatePhotoViewerTransform();
+}
+
+function syncPhotoGestureStart() {
+    const points = Array.from(photoGestureState.pointers.values());
+    photoGestureState.dragStart = null;
+    photoGestureState.pinchStart = null;
+
+    if (!photoViewerState || points.length === 0) {
+        return;
+    }
+
+    if (points.length === 1) {
+        photoGestureState.dragStart = {
+            x: points[0].x,
+            y: points[0].y,
+            translateX: photoViewerState.translateX,
+            translateY: photoViewerState.translateY
+        };
+        return;
+    }
+
+    const metrics = getGestureMetrics(points[0], points[1]);
+    photoGestureState.pinchStart = {
+        ...metrics,
+        scale: photoViewerState.scale,
+        rotation: photoViewerState.rotation,
+        translateX: photoViewerState.translateX,
+        translateY: photoViewerState.translateY
+    };
+}
+
+function createPhotoGestureState() {
+    return {
+        pointers: new Map(),
+        dragStart: null,
+        pinchStart: null
+    };
+}
+
+function getPointerPoint(event) {
+    return {
+        x: event.clientX,
+        y: event.clientY
+    };
+}
+
+function getGestureMetrics(first, second) {
+    const dx = second.x - first.x;
+    const dy = second.y - first.y;
+    return {
+        distance: Math.hypot(dx, dy),
+        angle: Math.atan2(dy, dx) * 180 / Math.PI,
+        centerX: (first.x + second.x) / 2,
+        centerY: (first.y + second.y) / 2
+    };
+}
+
+function isPhotoViewerOpen() {
+    return Boolean(photoViewerState && refs.sheet?.querySelector('[data-photo-viewer]'));
+}
+
+function normalizePhotoIndex(index, length) {
+    if (!length) {
+        return 0;
+    }
+
+    return ((Number(index) % length) + length) % length;
+}
+
+function clamp(value, min, max) {
+    return Math.min(max, Math.max(min, value));
 }
 
 function renderWithPageTurn(renderFn, options = {}) {
@@ -1175,6 +1530,28 @@ function handleDocumentClick(event) {
     if (closeEntry) {
         event.preventDefault();
         closeEntrySheet({ restoreHash: true });
+        return;
+    }
+
+    const closePhotoViewer = event.target.closest('[data-action="close-photo-viewer"]');
+    if (closePhotoViewer) {
+        event.preventDefault();
+        closePhotoViewerDialog();
+        return;
+    }
+
+    const openPhoto = event.target.closest('[data-action="open-photo-viewer"]');
+    if (openPhoto) {
+        event.preventDefault();
+        const photos = getPhotoViewerItems(openPhoto);
+        openPhotoViewer(photos, Number(openPhoto.dataset.photoIndex || 0));
+        return;
+    }
+
+    const photoAction = event.target.closest('[data-photo-action]');
+    if (photoAction) {
+        event.preventDefault();
+        handlePhotoViewerAction(photoAction.dataset.photoAction);
         return;
     }
 
@@ -1242,6 +1619,44 @@ function handleDocumentClick(event) {
 }
 
 function handleDocumentKeydown(event) {
+    if (isPhotoViewerOpen()) {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            closePhotoViewerDialog();
+            return;
+        }
+
+        if (event.key === 'ArrowLeft') {
+            event.preventDefault();
+            showPhotoAt((photoViewerState.index || 0) - 1);
+            return;
+        }
+
+        if (event.key === 'ArrowRight') {
+            event.preventDefault();
+            showPhotoAt((photoViewerState.index || 0) + 1);
+            return;
+        }
+
+        if (event.key === '+' || event.key === '=') {
+            event.preventDefault();
+            zoomPhoto(1.16);
+            return;
+        }
+
+        if (event.key === '-' || event.key === '_') {
+            event.preventDefault();
+            zoomPhoto(0.86);
+            return;
+        }
+
+        if (event.key === '0') {
+            event.preventDefault();
+            resetPhotoTransform();
+            return;
+        }
+    }
+
     if (event.key === 'Escape') {
         if (refs.sheet?.classList.contains('entry-sheet-root-open')) {
             closeEntrySheet({ restoreHash: true });
@@ -1580,10 +1995,17 @@ function renderPhotoSleeve(record) {
     }
 
     return `
-        <div class="photo-sleeve">
-            ${record.photos.map(photo => `
-                <img src="${escapeHtml(`${record.photo_folder}/${photo}`)}" alt="${escapeHtml(photo)}" loading="lazy">
-            `).join('')}
+        <div class="photo-sleeve" aria-label="照片附件">
+            ${record.photos.map((photo, index) => {
+                const src = `${record.photo_folder}/${photo}`;
+                const alt = `${record.title} · ${photo}`;
+                return `
+                <button class="photo-sleeve-button" type="button" data-action="open-photo-viewer" data-photo-index="${index}" data-photo-src="${escapeHtml(src)}" data-photo-alt="${escapeHtml(alt)}" aria-label="打开照片 ${escapeHtml(photo)}">
+                    <img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy">
+                    <span>${escapeHtml(String(index + 1).padStart(2, '0'))}</span>
+                </button>
+            `;
+            }).join('')}
         </div>
     `;
 }

@@ -170,3 +170,29 @@ test('地点详情页仅保留左页返回按钮', () => {
     assert.doesNotMatch(journalCss, /\.place-detail-actions/);
     assert.doesNotMatch(journalCss, /\.location-close/);
 });
+
+test('日记照片支持沉浸式查看与基础变换操作', () => {
+    assert.match(appJs, /function openPhotoViewer/);
+    assert.match(appJs, /function renderPhotoViewer/);
+    assert.match(appJs, /data-action="open-photo-viewer"/);
+    assert.match(appJs, /data-action="photo-zoom-in"/);
+    assert.match(appJs, /data-action="photo-zoom-out"/);
+    assert.match(appJs, /data-action="photo-rotate-left"/);
+    assert.match(appJs, /data-action="photo-rotate-right"/);
+    assert.match(appJs, /data-photo-viewer-image/);
+    assert.match(appJs, /handlePhotoPointerDown/);
+    assert.match(appJs, /handlePhotoPointerMove/);
+    assert.match(appJs, /handlePhotoWheel/);
+    assert.match(journalCss, /\.photo-sleeve-button\s*{/);
+    assert.match(journalCss, /\.photo-viewer\s*{/);
+    assert.match(journalCss, /\.photo-viewer-image\s*{/);
+});
+
+test('移动端照片缩略图保持双列且旋转角度连续递增', () => {
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-sleeve\s*{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
+    assert.doesNotMatch(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-sleeve\s*{[\s\S]*grid-template-columns: 1fr;/);
+    assert.match(journalCss, /\.photo-viewer-image-rotating\s*{[\s\S]*transition: transform 0\.22s/);
+    assert.match(appJs, /const PHOTO_ROTATION_ANIMATION_MS = 220;/);
+    assert.match(appJs, /photoViewerState\.rotation \+= delta;/);
+    assert.doesNotMatch(appJs, /photoViewerState\.rotation = normalizeRotation\(photoViewerState\.rotation \+ delta\);/);
+});
