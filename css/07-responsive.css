@@ -369,20 +369,25 @@
     }
 
     .photo-viewer-toolbar {
-        gap: 6px;
-        justify-content: flex-start;
+        grid-template-columns: repeat(2, max-content);
+        gap: 7px 8px;
+        justify-content: center;
         overflow-x: auto;
     }
 
+    .photo-viewer-control-group {
+        gap: 5px;
+    }
+
     .photo-viewer-control {
-        min-width: 34px;
-        height: 34px;
-        padding-inline: 8px;
+        min-width: 32px;
+        height: 32px;
+        padding-inline: 7px;
     }
 
     .photo-viewer-count,
     .photo-viewer-zoom {
-        min-width: 50px;
+        min-width: 48px;
     }
 
     .sheet-nav-button,

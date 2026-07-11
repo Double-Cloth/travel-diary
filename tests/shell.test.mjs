@@ -196,3 +196,35 @@ test('移动端照片缩略图保持双列且旋转角度连续递增', () => {
     assert.match(appJs, /photoViewerState\.rotation \+= delta;/);
     assert.doesNotMatch(appJs, /photoViewerState\.rotation = normalizeRotation\(photoViewerState\.rotation \+ delta\);/);
 });
+
+test('照片查看器工具栏按功能分组且原图以自然尺寸显示', () => {
+    for (const group of ['photo-viewer-nav-group', 'photo-viewer-zoom-group', 'photo-viewer-rotate-group']) {
+        assert.match(appJs, new RegExp(`class="${group} photo-viewer-control-group"`));
+    }
+    assert.match(journalCss, /\.photo-viewer-toolbar\s*{[\s\S]*display: grid;/);
+    assert.match(journalCss, /\.photo-viewer-control-group\s*{[\s\S]*display: inline-flex;/);
+    assert.match(journalCss, /\.photo-viewer-close\s*{[\s\S]*justify-self: start;[\s\S]*width: 38px;/);
+    assert.doesNotMatch(appJs, /photo-viewer-separator/);
+    assert.match(journalCss, /\.photo-viewer-image\s*{[\s\S]*width: auto;[\s\S]*height: auto;[\s\S]*max-width: none;[\s\S]*max-height: none;/);
+    assert.doesNotMatch(journalCss, /\.photo-viewer-image\s*{[\s\S]*max-width: min/);
+});
+
+test('照片初始居中适配舞台且移动端双指不触发旋转', () => {
+    assert.match(appJs, /function fitPhotoToStage/);
+    assert.match(appJs, /function getInitialPhotoScale/);
+    assert.match(appJs, /function getMinimumPhotoScale/);
+    assert.match(appJs, /function getMaximumPhotoScale/);
+    assert.match(appJs, /image\.addEventListener\('load', fitPhotoToStage, \{ once: true \}\)/);
+    assert.match(appJs, /Math\.min\(1, stageRect\.width \/ image\.naturalWidth, stageRect\.height \/ image\.naturalHeight\)/);
+    assert.match(appJs, /photoViewerState\.scale = getInitialPhotoScale\(stage, image\);/);
+    assert.match(appJs, /photoViewerState\.initialScale = photoViewerState\.scale;/);
+    assert.match(appJs, /return Math\.min\(PHOTO_VIEWER_MIN_SCALE_BASE, photoViewerState\.initialScale \* PHOTO_VIEWER_MIN_SCALE_RATIO\);/);
+    assert.match(appJs, /return Math\.max\(PHOTO_VIEWER_MAX_SCALE_BASE, photoViewerState\.initialScale \* PHOTO_VIEWER_MAX_SCALE_RATIO\);/);
+    assert.doesNotMatch(appJs, /const PHOTO_VIEWER_MIN_SCALE = 0\.5;/);
+    assert.doesNotMatch(appJs, /const PHOTO_VIEWER_MAX_SCALE = 5;/);
+    assert.match(appJs, /clamp\(previousScale \* factor, getMinimumPhotoScale\(\), getMaximumPhotoScale\(\)\)/);
+    assert.match(appJs, /clamp\(start\.scale \* \(current\.distance \/ Math\.max\(start\.distance, 1\)\), getMinimumPhotoScale\(\), getMaximumPhotoScale\(\)\)/);
+    assert.match(appJs, /photoViewerState\.translateX = 0;[\s\S]*photoViewerState\.translateY = 0;/);
+    assert.doesNotMatch(appJs, /photoViewerState\.rotation = start\.rotation \+ current\.angle - start\.angle;/);
+    assert.doesNotMatch(appJs, /pinchStart = \{[\s\S]*rotation: photoViewerState\.rotation/);
+});

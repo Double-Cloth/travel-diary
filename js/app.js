@@ -40,8 +40,11 @@ let lastEntryFocusId = '';
 let searchRouteTimer = null;
 let isSearchComposing = false;
 let viewportResizeTimer = null;
-const PHOTO_VIEWER_MIN_SCALE = 0.5;
-const PHOTO_VIEWER_MAX_SCALE = 5;
+const PHOTO_VIEWER_MIN_SCALE_BASE = 0.25;
+const PHOTO_VIEWER_MIN_SCALE_RATIO = 0.5;
+const PHOTO_VIEWER_MAX_SCALE_BASE = 5;
+const PHOTO_VIEWER_MAX_SCALE_RATIO = 5;
+const PHOTO_VIEWER_FIT_MIN_SCALE = 0.08;
 const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
 let photoGestureState = createPhotoGestureState();
@@ -1168,6 +1171,7 @@ function openPhotoViewer(photos, index = 0) {
         photos,
         index: normalizePhotoIndex(index, photos.length),
         scale: 1,
+        initialScale: 1,
         rotation: 0,
         translateX: 0,
         translateY: 0
@@ -1190,27 +1194,42 @@ function renderPhotoViewer() {
             <div class="photo-viewer-backdrop" data-action="close-photo-viewer"></div>
             <section class="photo-viewer-panel" role="dialog" aria-modal="true" aria-label="照片查看器" tabindex="-1">
                 <div class="photo-viewer-toolbar">
-                    <button class="photo-viewer-control" type="button" data-action="photo-prev" data-photo-action="prev" aria-label="上一张照片">‹</button>
-                    <span class="photo-viewer-count">${escapeHtml(position)}</span>
-                    <button class="photo-viewer-control" type="button" data-action="photo-next" data-photo-action="next" aria-label="下一张照片">›</button>
-                    <span class="photo-viewer-separator" aria-hidden="true"></span>
-                    <button class="photo-viewer-control" type="button" data-action="photo-zoom-out" data-photo-action="zoom-out" aria-label="缩小">−</button>
-                    <span class="photo-viewer-zoom" data-photo-viewer-zoom>100%</span>
-                    <button class="photo-viewer-control" type="button" data-action="photo-zoom-in" data-photo-action="zoom-in" aria-label="放大">+</button>
-                    <button class="photo-viewer-control" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="重置照片">1:1</button>
-                    <button class="photo-viewer-control" type="button" data-action="photo-rotate-left" data-photo-action="rotate-left" aria-label="向左旋转">↺</button>
-                    <button class="photo-viewer-control" type="button" data-action="photo-rotate-right" data-photo-action="rotate-right" aria-label="向右旋转">↻</button>
+                    <div class="photo-viewer-nav-group photo-viewer-control-group" aria-label="照片切换">
+                        <button class="photo-viewer-control" type="button" data-action="photo-prev" data-photo-action="prev" aria-label="上一张照片">‹</button>
+                        <span class="photo-viewer-count">${escapeHtml(position)}</span>
+                        <button class="photo-viewer-control" type="button" data-action="photo-next" data-photo-action="next" aria-label="下一张照片">›</button>
+                    </div>
+                    <div class="photo-viewer-zoom-group photo-viewer-control-group" aria-label="照片缩放">
+                        <button class="photo-viewer-control" type="button" data-action="photo-zoom-out" data-photo-action="zoom-out" aria-label="缩小">−</button>
+                        <span class="photo-viewer-zoom" data-photo-viewer-zoom>100%</span>
+                        <button class="photo-viewer-control" type="button" data-action="photo-zoom-in" data-photo-action="zoom-in" aria-label="放大">+</button>
+                        <button class="photo-viewer-control" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="重置照片">1:1</button>
+                    </div>
+                    <div class="photo-viewer-rotate-group photo-viewer-control-group" aria-label="照片旋转">
+                        <button class="photo-viewer-control" type="button" data-action="photo-rotate-left" data-photo-action="rotate-left" aria-label="向左旋转">↺</button>
+                        <button class="photo-viewer-control" type="button" data-action="photo-rotate-right" data-photo-action="rotate-right" aria-label="向右旋转">↻</button>
+                    </div>
                     <button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer" aria-label="关闭照片查看器">×</button>
                 </div>
                 <div class="photo-viewer-stage" data-photo-viewer-stage>
-                    <img class="photo-viewer-image" data-photo-viewer-image src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" draggable="false">
+                    <div class="photo-viewer-image-frame" data-photo-viewer-frame>
+                        <img class="photo-viewer-image" data-photo-viewer-image src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" draggable="false">
+                    </div>
                 </div>
                 <p class="photo-viewer-caption">${escapeHtml(photo.alt)}</p>
             </section>
         </div>
     `);
 
-    updatePhotoViewerTransform();
+    const image = refs.sheet.querySelector('[data-photo-viewer-image]');
+    if (image?.complete) {
+        fitPhotoToStage();
+    } else {
+        if (image) {
+            image.addEventListener('load', fitPhotoToStage, { once: true });
+        }
+        updatePhotoViewerTransform();
+    }
     requestAnimationFrame(() => {
         refs.sheet.querySelector('.photo-viewer-panel')?.focus({ preventScroll: true });
     });
@@ -1273,13 +1292,45 @@ function showPhotoAt(index) {
     renderPhotoViewer();
 }
 
+function fitPhotoToStage() {
+    if (!photoViewerState) {
+        return;
+    }
+
+    const stage = refs.sheet?.querySelector('[data-photo-viewer-stage]');
+    const image = refs.sheet?.querySelector('[data-photo-viewer-image]');
+    if (!stage || !image) {
+        return;
+    }
+
+    photoViewerState.scale = getInitialPhotoScale(stage, image);
+    photoViewerState.initialScale = photoViewerState.scale;
+    photoViewerState.translateX = 0;
+    photoViewerState.translateY = 0;
+    updatePhotoViewerTransform();
+}
+
+function getInitialPhotoScale(stage, image) {
+    if (!image.naturalWidth || !image.naturalHeight) {
+        return 1;
+    }
+
+    const stageRect = stage.getBoundingClientRect();
+    if (!stageRect.width || !stageRect.height) {
+        return 1;
+    }
+
+    const fitScale = Math.min(1, stageRect.width / image.naturalWidth, stageRect.height / image.naturalHeight);
+    return Math.max(PHOTO_VIEWER_FIT_MIN_SCALE, fitScale);
+}
+
 function zoomPhoto(factor, focalPoint) {
     if (!photoViewerState) {
         return;
     }
 
     const previousScale = photoViewerState.scale;
-    const nextScale = clamp(previousScale * factor, PHOTO_VIEWER_MIN_SCALE, PHOTO_VIEWER_MAX_SCALE);
+    const nextScale = clamp(previousScale * factor, getMinimumPhotoScale(), getMaximumPhotoScale());
     if (focalPoint && previousScale > 0) {
         const ratio = nextScale / previousScale;
         photoViewerState.translateX = focalPoint.x - (focalPoint.x - photoViewerState.translateX) * ratio;
@@ -1287,6 +1338,22 @@ function zoomPhoto(factor, focalPoint) {
     }
     photoViewerState.scale = nextScale;
     updatePhotoViewerTransform();
+}
+
+function getMinimumPhotoScale() {
+    if (!photoViewerState) {
+        return PHOTO_VIEWER_MIN_SCALE_BASE;
+    }
+
+    return Math.min(PHOTO_VIEWER_MIN_SCALE_BASE, photoViewerState.initialScale * PHOTO_VIEWER_MIN_SCALE_RATIO);
+}
+
+function getMaximumPhotoScale() {
+    if (!photoViewerState) {
+        return PHOTO_VIEWER_MAX_SCALE_BASE;
+    }
+
+    return Math.max(PHOTO_VIEWER_MAX_SCALE_BASE, photoViewerState.initialScale * PHOTO_VIEWER_MAX_SCALE_RATIO);
 }
 
 function rotatePhoto(delta) {
@@ -1319,7 +1386,8 @@ function updatePhotoViewerTransform(options = {}) {
     }
 
     const image = refs.sheet?.querySelector('[data-photo-viewer-image]');
-    if (!image) {
+    const frame = refs.sheet?.querySelector('[data-photo-viewer-frame]');
+    if (!image || !frame) {
         return;
     }
 
@@ -1334,7 +1402,8 @@ function updatePhotoViewerTransform(options = {}) {
         }, PHOTO_ROTATION_ANIMATION_MS);
     }
 
-    image.style.transform = `translate3d(${photoViewerState.translateX}px, ${photoViewerState.translateY}px, 0) rotate(${photoViewerState.rotation}deg) scale(${photoViewerState.scale})`;
+    frame.style.transform = `translate3d(calc(-50% + ${photoViewerState.translateX}px), calc(-50% + ${photoViewerState.translateY}px), 0)`;
+    image.style.transform = `rotate(${photoViewerState.rotation}deg) scale(${photoViewerState.scale})`;
     const zoom = refs.sheet.querySelector('[data-photo-viewer-zoom]');
     if (zoom) {
         zoom.textContent = `${Math.round(photoViewerState.scale * 100)}%`;
@@ -1374,8 +1443,7 @@ function handlePhotoPointerMove(event) {
     if (points.length >= 2 && photoGestureState.pinchStart) {
         const current = getGestureMetrics(points[0], points[1]);
         const start = photoGestureState.pinchStart;
-        photoViewerState.scale = clamp(start.scale * (current.distance / Math.max(start.distance, 1)), PHOTO_VIEWER_MIN_SCALE, PHOTO_VIEWER_MAX_SCALE);
-        photoViewerState.rotation = start.rotation + current.angle - start.angle;
+        photoViewerState.scale = clamp(start.scale * (current.distance / Math.max(start.distance, 1)), getMinimumPhotoScale(), getMaximumPhotoScale());
         photoViewerState.translateX = start.translateX + current.centerX - start.centerX;
         photoViewerState.translateY = start.translateY + current.centerY - start.centerY;
         updatePhotoViewerTransform();
@@ -1451,7 +1519,6 @@ function syncPhotoGestureStart() {
     photoGestureState.pinchStart = {
         ...metrics,
         scale: photoViewerState.scale,
-        rotation: photoViewerState.rotation,
         translateX: photoViewerState.translateX,
         translateY: photoViewerState.translateY
     };
