@@ -18,6 +18,9 @@ build/
 coverage/
 .cache/
 
+# Generated font subsets
+assets/fonts/*-subset.woff2
+
 # Codex / agent local artifacts
 .codex/
 .codex-cache/

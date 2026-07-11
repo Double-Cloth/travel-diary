@@ -2,7 +2,7 @@ import { buildFallbackTitle, escapeHtml } from './utils.js';
 
 export async function loadTravelData() {
     const dataPath = new URL('data/travel_data.json', window.location.href).href;
-    const response = await fetch(dataPath, { cache: 'no-store' });
+    const response = await fetch(dataPath);
 
     if (!response.ok) {
         throw new Error(`Failed to load travel data (${response.status})`);
@@ -18,35 +18,31 @@ export async function loadTravelData() {
 }
 
 export async function loadTravelRecords(records) {
-    const hydratedRecords = [];
-
-    for (const record of records) {
+    return Promise.all(records.map(async (record) => {
         try {
             const markdown = await fetchMarkdown(record.desc_md);
             const parsedMarkdown = parseMarkdown(markdown, record);
 
-            hydratedRecords.push({
+            return {
                 ...record,
                 descMarkdown: markdown,
                 descTitle: parsedMarkdown.title,
                 descBodyHtml: parsedMarkdown.bodyHtml,
                 searchText: parsedMarkdown.searchText
-            });
+            };
         } catch (error) {
             const fallbackTitle = buildFallbackTitle(record);
             const fallbackSearchText = [record.country, record.province, record.city, fallbackTitle].join(' ').toLowerCase();
 
-            hydratedRecords.push({
+            return {
                 ...record,
                 descMarkdown: '',
                 descTitle: fallbackTitle,
                 descBodyHtml: `<p class="markdown-load-error">Markdown load failed for ${escapeHtml(record.desc_md || '')}.</p>`,
                 searchText: fallbackSearchText
-            });
+            };
         }
-    }
-
-    return hydratedRecords;
+    }));
 }
 
 async function fetchMarkdown(markdownPath) {
@@ -57,14 +53,14 @@ async function fetchMarkdown(markdownPath) {
     const resolvedPath = new URL(markdownPath, window.location.href).href;
 
     try {
-        const response = await fetch(resolvedPath, { cache: 'no-store' });
+        const response = await fetch(resolvedPath);
         if (!response.ok) {
             throw new Error(`Failed to load ${markdownPath} (${response.status})`);
         }
 
         return response.text();
     } catch (error) {
-        const retryResponse = await fetch(resolvedPath, { cache: 'no-store' });
+        const retryResponse = await fetch(resolvedPath);
         if (!retryResponse.ok) {
             throw error;
         }

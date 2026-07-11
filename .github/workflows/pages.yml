@@ -27,8 +27,19 @@ jobs:
           node-version: 20
           cache: npm
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install font tools
+        run: pip install "fonttools[woff]"
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Generate font subsets
+        run: npm run fonts
 
       - name: Run tests
         run: npm test
@@ -44,14 +55,35 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install font tools
+        run: pip install "fonttools[woff]"
+
+      - name: Install dependencies
+        run: npm ci
+
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
+
+      - name: Generate font subsets
+        run: npm run fonts
 
       - name: Prepare static site
         run: |
           mkdir -p _site
           cp index.html _site/
           cp -R assets css data docs js _site/
+          find _site/assets/fonts -name '*.ttf' -delete
           touch _site/.nojekyll
 
       - name: Upload Pages artifact

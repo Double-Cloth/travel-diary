@@ -8,6 +8,7 @@
 
 - Node.js 14 或更高版本
 - npm
+- Python fonttools 提供的 `pyftsubset`（用于启动和部署前生成字体子集）
 
 常用命令：
 
@@ -15,6 +16,12 @@
 npm install
 npm start
 npm test
+```
+
+如本机缺少 `pyftsubset`，先安装字体工具：
+
+```bash
+pip install "fonttools[woff]"
 ```
 
 开发服务器默认运行在 [http://localhost:9000](http://localhost:9000)。如需指定端口：
