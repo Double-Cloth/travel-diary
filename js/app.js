@@ -8,7 +8,8 @@ import {
     getMaximumPhotoScale as calculateMaximumPhotoScale,
     getMinimumPhotoScale as calculateMinimumPhotoScale,
     getPhotoViewerBounds as calculatePhotoViewerBounds,
-    getPhotoViewerRenderMetrics
+    getPhotoViewerRenderMetrics,
+    getPhotoViewerZoomTranslate
 } from './photo-viewer-transform.mjs';
 
 const DEFAULT_LEDGER_SORT = 'desc';
@@ -1428,9 +1429,15 @@ function zoomPhoto(factor, focalPoint) {
     const previousScale = photoViewerState.scale;
     const nextScale = clamp(previousScale * factor, getMinimumPhotoScale(), getMaximumPhotoScale());
     if (focalPoint && previousScale > 0) {
-        const ratio = nextScale / previousScale;
-        photoViewerState.translateX = focalPoint.x - (focalPoint.x - photoViewerState.translateX) * ratio;
-        photoViewerState.translateY = focalPoint.y - (focalPoint.y - photoViewerState.translateY) * ratio;
+        const nextTranslate = getPhotoViewerZoomTranslate({
+            translateX: photoViewerState.translateX,
+            translateY: photoViewerState.translateY,
+            previousScale,
+            nextScale,
+            startFocalPoint: focalPoint
+        });
+        photoViewerState.translateX = nextTranslate.translateX;
+        photoViewerState.translateY = nextTranslate.translateY;
     }
     photoViewerState.scale = nextScale;
     updatePhotoViewerTransform();
@@ -1600,9 +1607,19 @@ function handlePhotoPointerMove(event) {
     if (points.length >= 2 && photoGestureState.pinchStart) {
         const current = getGestureMetrics(points[0], points[1]);
         const start = photoGestureState.pinchStart;
-        photoViewerState.scale = clamp(start.scale * (current.distance / Math.max(start.distance, 1)), getMinimumPhotoScale(), getMaximumPhotoScale());
-        photoViewerState.translateX = start.translateX + current.centerX - start.centerX;
-        photoViewerState.translateY = start.translateY + current.centerY - start.centerY;
+        const nextScale = clamp(start.scale * (current.distance / Math.max(start.distance, 1)), getMinimumPhotoScale(), getMaximumPhotoScale());
+        const currentFocalPoint = getPhotoViewerStageFocalPoint({ x: current.centerX, y: current.centerY });
+        const nextTranslate = getPhotoViewerZoomTranslate({
+            translateX: start.translateX,
+            translateY: start.translateY,
+            previousScale: start.scale,
+            nextScale,
+            startFocalPoint: start.focalPoint,
+            currentFocalPoint
+        });
+        photoViewerState.scale = nextScale;
+        photoViewerState.translateX = nextTranslate.translateX;
+        photoViewerState.translateY = nextTranslate.translateY;
         updatePhotoViewerTransform();
         return;
     }
@@ -1675,6 +1692,7 @@ function syncPhotoGestureStart() {
     const metrics = getGestureMetrics(points[0], points[1]);
     photoGestureState.pinchStart = {
         ...metrics,
+        focalPoint: getPhotoViewerStageFocalPoint({ x: metrics.centerX, y: metrics.centerY }),
         scale: photoViewerState.scale,
         translateX: photoViewerState.translateX,
         translateY: photoViewerState.translateY
@@ -1693,6 +1711,19 @@ function getPointerPoint(event) {
     return {
         x: event.clientX,
         y: event.clientY
+    };
+}
+
+function getPhotoViewerStageFocalPoint(point) {
+    const stage = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-stage]');
+    const rect = stage?.getBoundingClientRect();
+    if (!rect) {
+        return null;
+    }
+
+    return {
+        x: point.x - rect.left - rect.width / 2,
+        y: point.y - rect.top - rect.height / 2
     };
 }
 

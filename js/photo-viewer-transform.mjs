@@ -71,6 +71,29 @@ export function getPhotoViewerRenderMetrics({ naturalWidth, naturalHeight, scale
     };
 }
 
+export function getPhotoViewerZoomTranslate({
+    translateX,
+    translateY,
+    previousScale,
+    nextScale,
+    startFocalPoint,
+    currentFocalPoint = startFocalPoint
+}) {
+    if (!startFocalPoint || !currentFocalPoint || !previousScale) {
+        return {
+            translateX,
+            translateY
+        };
+    }
+
+    const ratio = nextScale / previousScale;
+
+    return {
+        translateX: currentFocalPoint.x - (startFocalPoint.x - translateX) * ratio,
+        translateY: currentFocalPoint.y - (startFocalPoint.y - translateY) * ratio
+    };
+}
+
 function getPhotoViewerAxisTranslateLimit(stageSize, imageSize) {
     if (!stageSize || !imageSize || imageSize <= stageSize) {
         return 0;
