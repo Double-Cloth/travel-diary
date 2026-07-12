@@ -18,6 +18,8 @@ test('GitHub Pages workflow publishes prepared static files', () => {
     assert.match(workflow, /id-token:\s+write/);
     assert.match(workflow, /actions\/configure-pages@v[0-9]+/);
     assert.match(workflow, /npm run fonts/);
+    assert.match(workflow, /cp -R assets css data doc js _site\//);
+    assert.doesNotMatch(workflow, /cp -R assets css data docs js _site\//);
     assert.match(workflow, /find _site\/assets\/fonts -name '\*\.ttf' -delete/);
     assert.match(workflow, /actions\/upload-pages-artifact@v[0-9]+/);
     assert.match(workflow, /path:\s+_site/);

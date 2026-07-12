@@ -82,7 +82,7 @@ jobs:
         run: |
           mkdir -p _site
           cp index.html _site/
-          cp -R assets css data docs js _site/
+          cp -R assets css data doc js _site/
           find _site/assets/fonts -name '*.ttf' -delete
           touch _site/.nojekyll
 
