@@ -62,10 +62,12 @@ export function getPhotoViewerRenderMetrics({ naturalWidth, naturalHeight, scale
         return null;
     }
 
+    const renderScale = scale > 0 && scale < 1 ? scale : 1;
+
     return {
-        width: naturalWidth,
-        height: naturalHeight,
-        transformScale: scale
+        width: naturalWidth * renderScale,
+        height: naturalHeight * renderScale,
+        transformScale: scale / renderScale
     };
 }
 
