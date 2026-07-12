@@ -638,6 +638,43 @@
     font-size: 12px;
 }
 
+.mobile-context-toggle {
+    display: none;
+}
+
+.mobile-context-toggle small {
+    color: var(--ink-soft);
+    font-family: var(--font-code);
+    font-size: 11px;
+    font-weight: 400;
+}
+
+.context-panel-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: start;
+}
+
+.context-panel-title {
+    min-width: 0;
+}
+
+.context-panel-heading .journal-label {
+    margin-bottom: 10px;
+}
+
+.context-panel-heading h2 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 30px;
+    line-height: 1.12;
+}
+
+.context-panel-close {
+    display: none;
+}
+
 .index-dashboard,
 .archive-overview-block {
     display: grid;

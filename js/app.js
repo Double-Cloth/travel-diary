@@ -30,6 +30,12 @@ const ROUTE_MAP_SLOTS = [
     { ticket: 'ticket-e', stamp: 'stamp-e', label: '05' },
     { ticket: 'ticket-f', stamp: 'stamp-f', label: '06' }
 ];
+const ROUTE_MAP_RESPONSIVE_LIMITS = [
+    { maxWidth: 420, count: 3 },
+    { maxWidth: 760, count: 4 },
+    { maxWidth: 1024, count: 5 }
+];
+const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
 
 const refs = {};
 let travelModel = null;
@@ -39,12 +45,16 @@ let lastReadingHash = '#ledger';
 let lastEntryFocusId = '';
 let searchRouteTimer = null;
 let isSearchComposing = false;
+let isMobileContextPanelOpen = false;
+let isMobileContextPageScrollLocked = false;
+let mobileContextScrollY = 0;
 let viewportResizeTimer = null;
 const PHOTO_VIEWER_MIN_SCALE_BASE = 0.25;
 const PHOTO_VIEWER_MIN_SCALE_RATIO = 0.5;
 const PHOTO_VIEWER_MAX_SCALE_BASE = 5;
 const PHOTO_VIEWER_MAX_SCALE_RATIO = 5;
 const PHOTO_VIEWER_FIT_MIN_SCALE = 0.08;
+const PHOTO_VIEWER_MIN_VISIBLE_EDGE = 48;
 const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
 let photoGestureState = createPhotoGestureState();
@@ -599,7 +609,7 @@ function getRouteMapRecords() {
         uniqueRecords.push(record);
     });
 
-    const slotLimit = Math.min(ROUTE_MAP_SLOTS.length, uniqueRecords.length);
+    const slotLimit = Math.min(getRouteMapSlotLimit(), uniqueRecords.length);
     if (slotLimit === 0) {
         return [];
     }
@@ -610,6 +620,15 @@ function getRouteMapRecords() {
     return shuffleRecords(uniqueRecords)
         .slice(0, randomCount)
         .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+}
+
+function getRouteMapSlotLimit() {
+    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || ROUTE_MAP_SLOTS.length * 160;
+    const panelWidth = refs.rightPage?.clientWidth || refs.stage?.clientWidth || viewportWidth;
+    const availableWidth = Math.min(viewportWidth, panelWidth || viewportWidth);
+    const matchedLimit = ROUTE_MAP_RESPONSIVE_LIMITS.find(limit => availableWidth <= limit.maxWidth);
+
+    return matchedLimit ? matchedLimit.count : ROUTE_MAP_SLOTS.length;
 }
 
 function shuffleRecords(records) {
@@ -655,6 +674,7 @@ function renderLedger(params = {}, options = {}) {
                 <h1>出发，到新的爱与喧闹中去！</h1>
             </header>
             ${renderLedgerControls(ledgerParams, 'ledgerSearch')}
+            ${renderMobileContextToggle('打开索引夹层', '查看高级筛选与结果快照')}
             <div class="year-bookmarks" aria-label="年份书签">
                 ${yearLink('全部', 'all', ledgerParams)}
                 ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
@@ -665,12 +685,14 @@ function renderLedger(params = {}, options = {}) {
             </div>
         </div>
     `, `
-            <p class="journal-label">索引夹层</p>
-            <h2>高级筛选</h2>
+            ${renderContextPanelHeading('索引夹层', '高级筛选')}
             ${renderLedgerSnapshot(snapshot, resultLabel)}
             ${renderLedgerResetAction(ledgerParams)}
             ${renderLedgerFilterWorkbench(ledgerParams)}
-    `, 'map-pocket', { preserveRightScroll: options.preserveRightScroll });
+    `, 'map-pocket context-panel', {
+        preserveRightScroll: options.preserveRightScroll,
+        keepContextPanelOpen: options.keepContextPanelOpen
+    });
 }
 
 function createLedgerResultLabel(count, total, params) {
@@ -824,13 +846,13 @@ function renderArchive(params = {}) {
                 <input id="archiveSearch" type="search" value="${escapeHtml(params.q || '')}" autocomplete="off" placeholder="例如：云南、苏州、北京">
                 <button class="search-clear" type="button" data-action="clear-search" data-target="archive" aria-label="清空地点搜索" ${params.q ? '' : 'disabled'}>×</button>
             </div>
+            ${renderMobileContextToggle('打开旅行概览', '查看足迹摘要与统计')}
             <div class="archive-country-list">
                 ${countries.length ? countries.map(renderCountryFolder).join('') : '<div class="empty-note">没有找到匹配的地点。</div>'}
             </div>
         </div>
     `, `
-            <p class="journal-label">旅行概览</p>
-            <h2>足迹摘要</h2>
+            ${renderContextPanelHeading('旅行概览', '足迹摘要')}
             <section class="archive-overview-hero" aria-label="旅行记录摘要">
                 <span>记录跨度</span>
                 <strong>${escapeHtml(travelModel.dateRangeLabel)}</strong>
@@ -863,7 +885,28 @@ function renderArchive(params = {}) {
                     ${renderRepeatLocationInsights(travelModel.repeatLocations)}
                 </div>
             </section>
-    `, 'dossier-page');
+    `, 'dossier-page context-panel');
+}
+
+function renderMobileContextToggle(label, description) {
+    return `
+        <button class="paper-button mobile-context-toggle" type="button" data-action="open-context-panel" aria-controls="rightPage" aria-expanded="false">
+            <span>${escapeHtml(label)}</span>
+            <small>${escapeHtml(description)}</small>
+        </button>
+    `;
+}
+
+function renderContextPanelHeading(label, title) {
+    return `
+        <div class="context-panel-heading">
+            <div class="context-panel-title">
+                <p class="journal-label">${escapeHtml(label)}</p>
+                <h2>${escapeHtml(title)}</h2>
+            </div>
+            <button class="paper-button context-panel-close" type="button" data-action="close-context-panel" aria-label="关闭${escapeHtml(label)}">×</button>
+        </div>
+    `;
 }
 
 function renderOverviewMetric(label, value) {
@@ -1209,8 +1252,8 @@ function renderPhotoViewer() {
                         <button class="photo-viewer-control" type="button" data-action="photo-rotate-left" data-photo-action="rotate-left" aria-label="向左旋转">↺</button>
                         <button class="photo-viewer-control" type="button" data-action="photo-rotate-right" data-photo-action="rotate-right" aria-label="向右旋转">↻</button>
                     </div>
-                    <button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer" aria-label="关闭照片查看器">×</button>
                 </div>
+                <button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer" aria-label="关闭照片查看器">×</button>
                 <div class="photo-viewer-stage" data-photo-viewer-stage>
                     <div class="photo-viewer-image-frame" data-photo-viewer-frame>
                         <img class="photo-viewer-image" data-photo-viewer-image src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" draggable="false">
@@ -1391,6 +1434,8 @@ function updatePhotoViewerTransform(options = {}) {
         return;
     }
 
+    constrainPhotoViewerTransform();
+
     if (options.animateRotation) {
         clearPhotoRotationTimer();
         image.classList.remove('photo-viewer-image-rotating');
@@ -1408,6 +1453,57 @@ function updatePhotoViewerTransform(options = {}) {
     if (zoom) {
         zoom.textContent = `${Math.round(photoViewerState.scale * 100)}%`;
     }
+}
+
+function constrainPhotoViewerTransform() {
+    if (!photoViewerState) {
+        return;
+    }
+
+    const bounds = getPhotoViewerBounds();
+    if (!bounds) {
+        return;
+    }
+
+    const visibleX = Math.min(PHOTO_VIEWER_MIN_VISIBLE_EDGE, bounds.stageWidth, bounds.imageWidth);
+    const visibleY = Math.min(PHOTO_VIEWER_MIN_VISIBLE_EDGE, bounds.stageHeight, bounds.imageHeight);
+    const maxTranslateX = Math.max(0, (bounds.stageWidth + bounds.imageWidth) / 2 - visibleX);
+    const maxTranslateY = Math.max(0, (bounds.stageHeight + bounds.imageHeight) / 2 - visibleY);
+
+    photoViewerState.translateX = clamp(photoViewerState.translateX, -maxTranslateX, maxTranslateX);
+    photoViewerState.translateY = clamp(photoViewerState.translateY, -maxTranslateY, maxTranslateY);
+}
+
+function getPhotoViewerBounds() {
+    if (!photoViewerState) {
+        return null;
+    }
+
+    const stage = refs.sheet?.querySelector('[data-photo-viewer-stage]');
+    const image = refs.sheet?.querySelector('[data-photo-viewer-image]');
+    if (!stage || !image) {
+        return null;
+    }
+
+    const stageRect = stage.getBoundingClientRect();
+    const sourceWidth = image.naturalWidth || image.width;
+    const sourceHeight = image.naturalHeight || image.height;
+    if (!stageRect.width || !stageRect.height || !sourceWidth || !sourceHeight) {
+        return null;
+    }
+
+    const radians = (Math.abs(photoViewerState.rotation) % 180) * Math.PI / 180;
+    const scaledWidth = sourceWidth * photoViewerState.scale;
+    const scaledHeight = sourceHeight * photoViewerState.scale;
+    const imageWidth = Math.abs(Math.cos(radians)) * scaledWidth + Math.abs(Math.sin(radians)) * scaledHeight;
+    const imageHeight = Math.abs(Math.sin(radians)) * scaledWidth + Math.abs(Math.cos(radians)) * scaledHeight;
+
+    return {
+        stageWidth: stageRect.width,
+        stageHeight: stageRect.height,
+        imageWidth,
+        imageHeight
+    };
 }
 
 function clearPhotoRotationTimer() {
@@ -1586,6 +1682,25 @@ function renderWithPageTurn(renderFn, options = {}) {
 }
 
 function handleDocumentClick(event) {
+    const closeContextPanel = event.target.closest('[data-action="close-context-panel"]');
+    if (closeContextPanel) {
+        event.preventDefault();
+        closeMobileContextPanel();
+        return;
+    }
+
+    const openContextPanel = event.target.closest('[data-action="open-context-panel"]');
+    if (openContextPanel) {
+        event.preventDefault();
+        openMobileContextPanel();
+        return;
+    }
+
+    if (isMobileContextPanelOpen && refs.rightPage?.classList.contains('context-panel') && !event.target.closest('.paper-page-right.context-panel')) {
+        closeMobileContextPanel();
+        return;
+    }
+
     const clearSearch = event.target.closest('[data-action="clear-search"]');
     if (clearSearch) {
         event.preventDefault();
@@ -1637,7 +1752,12 @@ function handleDocumentClick(event) {
         event.preventDefault();
         updateLedgerRoute(
             { ...LEDGER_FILTER_DEFAULTS },
-            { replace: true, focusId: 'ledgerSearch', animate: false }
+            {
+                replace: true,
+                focusId: 'ledgerSearch',
+                animate: false,
+                keepContextPanelOpen: isMobileContextPanelOpen
+            }
         );
         return;
     }
@@ -1648,7 +1768,12 @@ function handleDocumentClick(event) {
         const key = ledgerToggle.getAttribute('data-ledger-toggle');
         const value = ledgerToggle.getAttribute('data-value') || 'all';
         if (key) {
-            updateLedgerRoute({ [key]: value }, { replace: true, animate: false, preserveRightScroll: true });
+            updateLedgerRoute({ [key]: value }, {
+                replace: true,
+                animate: false,
+                preserveRightScroll: true,
+                keepContextPanelOpen: isMobileContextPanelOpen
+            });
         }
         return;
     }
@@ -1725,6 +1850,12 @@ function handleDocumentKeydown(event) {
     }
 
     if (event.key === 'Escape') {
+        if (isMobileContextPanelOpen) {
+            event.preventDefault();
+            closeMobileContextPanel();
+            return;
+        }
+
         if (refs.sheet?.classList.contains('entry-sheet-root-open')) {
             closeEntrySheet({ restoreHash: true });
             return;
@@ -1767,7 +1898,13 @@ function handleDocumentChange(event) {
         nextParams.city = 'all';
     }
 
-    updateLedgerRoute(nextParams, { replace: true, focusId: filter.id || '', animate: false, preserveRightScroll: true });
+    updateLedgerRoute(nextParams, {
+        replace: true,
+        focusId: filter.id || '',
+        animate: false,
+        preserveRightScroll: true,
+        keepContextPanelOpen: isMobileContextPanelOpen
+    });
 }
 
 function handleSearchCompositionStart(event) {
@@ -1821,6 +1958,8 @@ function clearSearchRouteTimer() {
 }
 
 function handleViewportResize() {
+    syncMobileContextPanelState();
+
     if (activeRoute?.name !== 'cover') {
         return;
     }
@@ -1867,16 +2006,131 @@ function updateChapterTabs(routeName) {
     });
 }
 
+function openMobileContextPanel() {
+    if (!refs.rightPage?.classList.contains('context-panel')) {
+        return;
+    }
+
+    isMobileContextPanelOpen = true;
+    syncMobileContextPanelState();
+    requestAnimationFrame(() => refs.rightPage?.focus({ preventScroll: true }));
+}
+
+function closeMobileContextPanel() {
+    restoreFocusBeforeHidingContextPanel();
+    isMobileContextPanelOpen = false;
+    syncMobileContextPanelState();
+}
+
+function restoreFocusBeforeHidingContextPanel() {
+    if (!refs.rightPage || !refs.rightPage.contains(document.activeElement)) {
+        return;
+    }
+
+    const toggle = document.querySelector('[data-action="open-context-panel"]');
+    if (toggle instanceof HTMLElement && !toggle.disabled) {
+        toggle.focus({ preventScroll: true });
+        return;
+    }
+
+    if (refs.stage instanceof HTMLElement) {
+        refs.stage.focus({ preventScroll: true });
+        return;
+    }
+
+    document.activeElement?.blur?.();
+}
+
+function lockMobileContextPageScroll() {
+    if (isMobileContextPageScrollLocked) {
+        return;
+    }
+
+    mobileContextScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    isMobileContextPageScrollLocked = true;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${mobileContextScrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+}
+
+function unlockMobileContextPageScroll() {
+    if (!isMobileContextPageScrollLocked) {
+        return;
+    }
+
+    isMobileContextPageScrollLocked = false;
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, mobileContextScrollY);
+    mobileContextScrollY = 0;
+}
+
+function syncMobileContextPanelState() {
+    const hasContextPanel = Boolean(refs.rightPage?.classList.contains('context-panel'));
+    const supportsMobilePanel = hasContextPanel && isMobileLayout();
+
+    if (!supportsMobilePanel) {
+        isMobileContextPanelOpen = false;
+    }
+
+    const isOpen = supportsMobilePanel && isMobileContextPanelOpen;
+    refs.shell?.classList.toggle('mobile-context-panel-open', isOpen);
+    document.documentElement.classList.toggle('mobile-context-panel-open', isOpen);
+    document.body.classList.toggle('mobile-context-panel-open', isOpen);
+    if (isOpen) {
+        lockMobileContextPageScroll();
+    } else {
+        unlockMobileContextPageScroll();
+    }
+
+    if (refs.rightPage) {
+        if (supportsMobilePanel) {
+            refs.rightPage.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+            refs.rightPage.setAttribute('role', 'dialog');
+            refs.rightPage.setAttribute('aria-modal', 'true');
+            refs.rightPage.setAttribute('tabindex', '-1');
+            refs.rightPage.toggleAttribute('inert', !isOpen);
+        } else {
+            refs.rightPage.removeAttribute('aria-hidden');
+            refs.rightPage.removeAttribute('role');
+            refs.rightPage.removeAttribute('aria-modal');
+            refs.rightPage.removeAttribute('tabindex');
+            refs.rightPage.removeAttribute('inert');
+        }
+    }
+
+    document.querySelectorAll('[data-action="open-context-panel"]').forEach((button) => {
+        button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+    });
+}
+
+function isMobileLayout() {
+    return window.matchMedia?.(MOBILE_CONTEXT_PANEL_QUERY).matches
+        ?? ((window.innerWidth || document.documentElement.clientWidth || 1024) <= 760);
+}
+
 function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
     const rightScrollTop = options.preserveRightScroll ? refs.rightPage.scrollTop : 0;
+    const keepContextPanelOpen = Boolean(options.keepContextPanelOpen && isMobileContextPanelOpen);
 
     refs.leftPage.innerHTML = leftHtml;
     refs.rightPage.className = ['paper-page', 'paper-page-right', rightPageMode].filter(Boolean).join(' ');
     refs.rightPage.innerHTML = rightHtml;
+    isMobileContextPanelOpen = keepContextPanelOpen;
     refs.leftPage.scrollTop = 0;
     refs.rightPage.scrollTop = 0;
     if (rightScrollTop) {
         refs.rightPage.scrollTop = rightScrollTop;
+    }
+    syncMobileContextPanelState();
+
+    if (isMobileContextPanelOpen) {
+        requestAnimationFrame(() => refs.rightPage?.focus({ preventScroll: true }));
     }
 }
 

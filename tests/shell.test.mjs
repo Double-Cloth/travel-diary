@@ -66,8 +66,8 @@ test('索引夹层重置筛选固定在筛选项之前', () => {
 });
 
 test('索引夹层筛选更新时保留右页滚动位置', () => {
-    assert.match(appJs, /updateLedgerRoute\(\{ \[key\]: value \}, \{ replace: true, animate: false, preserveRightScroll: true \}\)/);
-    assert.match(appJs, /updateLedgerRoute\(nextParams, \{ replace: true, focusId: filter\.id \|\| '', animate: false, preserveRightScroll: true \}\)/);
+    assert.match(appJs, /updateLedgerRoute\(\{ \[key\]: value \}, \{[\s\S]*preserveRightScroll: true,[\s\S]*keepContextPanelOpen: isMobileContextPanelOpen/);
+    assert.match(appJs, /updateLedgerRoute\(nextParams, \{[\s\S]*focusId: filter\.id \|\| '',[\s\S]*preserveRightScroll: true,[\s\S]*keepContextPanelOpen: isMobileContextPanelOpen/);
     assert.match(appJs, /function setPages\(leftHtml, rightHtml, rightPageMode = '', options = \{\}\)/);
     assert.match(appJs, /const rightScrollTop = options\.preserveRightScroll \? refs\.rightPage\.scrollTop : 0;/);
     assert.match(appJs, /refs\.rightPage\.scrollTop = rightScrollTop;/);
@@ -106,6 +106,17 @@ test('记录卡片回形针具备前后遮挡关系', () => {
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.record-paperclip\s*{[\s\S]*width: 21px;[\s\S]*height: 38px;/);
 });
 
+test('移动端首页回形针为标题区域预留安全留白', () => {
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.cover-record\s*{[\s\S]*padding: 14px 44px 14px 50px;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.cover-record \.record-paperclip\s*{[\s\S]*left: 13px;/);
+});
+
+test('随机路线图按视口尺寸限制票据数量', () => {
+    assert.match(appJs, /const ROUTE_MAP_RESPONSIVE_LIMITS = \[[\s\S]*maxWidth: 420,\s*count: 3[\s\S]*maxWidth: 760,\s*count: 4/);
+    assert.match(appJs, /function getRouteMapSlotLimit\(\)/);
+    assert.match(appJs, /const slotLimit = Math\.min\(getRouteMapSlotLimit\(\), uniqueRecords\.length\);/);
+});
+
 test('旅行概览渲染新增的可靠统计', () => {
     for (const label of ['复访地点', '覆盖最广', '活跃年份', '活跃月份', '最长记录间隔']) {
         assert.match(appJs, new RegExp(label));
@@ -136,9 +147,48 @@ test('切换纸页内容时重置左右页滚动位置', () => {
     assert.match(appJs, /function setPages[\s\S]+refs\.leftPage\.scrollTop = 0;[\s\S]+refs\.rightPage\.scrollTop = 0;/);
 });
 
-test('窄屏优先显示筛选工作台和旅行概览', () => {
-    assert.match(journalCss, /data-route="ledger"[^}]+map-pocket[^}]+order: -1/);
-    assert.match(journalCss, /data-route="archive"[^}]+dossier-page[^}]+order: -1/);
+test('窄屏将索引夹层和旅行概览放入弹出层', () => {
+    assert.match(appJs, /data-action="open-context-panel"/);
+    assert.match(appJs, /data-action="close-context-panel"/);
+    assert.match(appJs, /'map-pocket context-panel'/);
+    assert.match(appJs, /'dossier-page context-panel'/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.paper-page-right\.context-panel\s*{[\s\S]*position: fixed;[\s\S]*display: none;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.journal-shell\.mobile-context-panel-open \.paper-page-right\.context-panel\s*{[\s\S]*display: grid;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.journal-shell\.mobile-context-panel-open::before/);
+    assert.doesNotMatch(journalCss, /data-route="ledger"[^}]+map-pocket[^}]+order: -1/);
+    assert.doesNotMatch(journalCss, /data-route="archive"[^}]+dossier-page[^}]+order: -1/);
+});
+
+test('关闭移动端夹层前先把焦点移出即将隐藏的右页', () => {
+    assert.match(appJs, /function closeMobileContextPanel\(\)\s*{[\s\S]*restoreFocusBeforeHidingContextPanel\(\);[\s\S]*syncMobileContextPanelState\(\);/);
+    assert.match(appJs, /function restoreFocusBeforeHidingContextPanel\(\)/);
+    assert.match(appJs, /refs\.rightPage\.contains\(document\.activeElement\)/);
+    assert.match(appJs, /refs\.rightPage\.toggleAttribute\('inert', !isOpen\);/);
+});
+
+test('移动端夹层自身保留纵向触摸滚动能力', () => {
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.paper-page-right\.context-panel\s*{[\s\S]*height: calc\(100dvh - var\(--context-panel-inset-top\) - var\(--context-panel-inset-bottom\)\);[\s\S]*max-height: calc\(100dvh - var\(--context-panel-inset-top\) - var\(--context-panel-inset-bottom\)\);[\s\S]*min-height: 0;[\s\S]*overflow-y: auto;[\s\S]*-webkit-overflow-scrolling: touch;[\s\S]*touch-action: pan-y;/);
+});
+
+test('移动端夹层打开时锁定页面滚动且不被翻页透视捕获', () => {
+    assert.match(appJs, /document\.documentElement\.classList\.toggle\('mobile-context-panel-open', isOpen\);/);
+    assert.match(appJs, /function lockMobileContextPageScroll\(\)/);
+    assert.match(appJs, /function unlockMobileContextPageScroll\(\)/);
+    assert.match(appJs, /document\.body\.style\.position = 'fixed';/);
+    assert.match(appJs, /window\.scrollTo\(0, mobileContextScrollY\);/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*html\.mobile-context-panel-open,\s*body\.mobile-context-panel-open\s*{[\s\S]*overflow: hidden;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.journal-shell\.mobile-context-panel-open \.page-spread\s*{[\s\S]*perspective: none;/);
+});
+
+test('移动端夹层滚动条轨道可以贴到底部', () => {
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.paper-page-right\.context-panel::-webkit-scrollbar-track\s*{[\s\S]*margin: 0;/);
+});
+
+test('移动端夹层遮罩不使用全屏模糊', () => {
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.journal-shell\.mobile-context-panel-open::before\s*{[\s\S]*content: none;[\s\S]*display: none;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.journal-shell\.mobile-context-panel-open::before\s*{[\s\S]*pointer-events: none;/);
+    assert.doesNotMatch(journalCss, /\.journal-shell\.mobile-context-panel-open::before\s*{[\s\S]*backdrop-filter/);
+    assert.doesNotMatch(journalCss, /\.journal-shell\.mobile-context-panel-open::before\s*{[\s\S]*pointer-events: auto;/);
 });
 
 test('旅行档案仅使用项目本地字体族', () => {
@@ -201,19 +251,37 @@ test('照片查看器工具栏按功能分组且原图以自然尺寸显示', ()
     for (const group of ['photo-viewer-nav-group', 'photo-viewer-zoom-group', 'photo-viewer-rotate-group']) {
         assert.match(appJs, new RegExp(`class="${group} photo-viewer-control-group"`));
     }
+    assert.match(appJs, /<\/div>\s*<button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer"/);
     assert.match(journalCss, /\.photo-viewer-toolbar\s*{[\s\S]*display: grid;/);
+    assert.match(journalCss, /\.photo-viewer-toolbar\s*{[\s\S]*grid-template-columns: repeat\(3, max-content\);/);
     assert.match(journalCss, /\.photo-viewer-control-group\s*{[\s\S]*display: inline-flex;/);
-    assert.match(journalCss, /\.photo-viewer-close\s*{[\s\S]*justify-self: start;[\s\S]*width: 38px;/);
+    assert.match(journalCss, /\.photo-viewer-close\s*{[\s\S]*position: absolute;[\s\S]*top: 8px;[\s\S]*right: 8px;[\s\S]*width: 38px;[\s\S]*height: 36px;/);
     assert.doesNotMatch(appJs, /photo-viewer-separator/);
     assert.match(journalCss, /\.photo-viewer-image\s*{[\s\S]*width: auto;[\s\S]*height: auto;[\s\S]*max-width: none;[\s\S]*max-height: none;/);
     assert.doesNotMatch(journalCss, /\.photo-viewer-image\s*{[\s\S]*max-width: min/);
 });
 
-test('照片初始居中适配舞台且移动端双指不触发旋转', () => {
+test('移动端照片查看器充分利用上下空间', () => {
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer\s*{[\s\S]*padding: 8px;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-panel\s*{[\s\S]*height: 100%;[\s\S]*max-height: calc\(100dvh - 16px\);/);
+    assert.doesNotMatch(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-panel\s*{[\s\S]*height: min\(720px, 100%\);/);
+});
+
+test('移动端照片查看器工具栏可换行且关闭按钮不继承横向内边距', () => {
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-toolbar\s*{[\s\S]*display: flex;[\s\S]*flex-wrap: wrap;[\s\S]*overflow-x: visible;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-toolbar\s*{[\s\S]*padding: 8px 48px 8px 8px;/);
+    assert.doesNotMatch(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-toolbar\s*{[\s\S]*grid-template-columns: repeat\(3, max-content\);/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-close\s*{[\s\S]*top: 8px;[\s\S]*right: 8px;[\s\S]*height: 36px;[\s\S]*padding: 0;/);
+});
+
+test('照片初始居中适配舞台且平移不会完全移出屏幕', () => {
     assert.match(appJs, /function fitPhotoToStage/);
     assert.match(appJs, /function getInitialPhotoScale/);
     assert.match(appJs, /function getMinimumPhotoScale/);
     assert.match(appJs, /function getMaximumPhotoScale/);
+    assert.match(appJs, /function constrainPhotoViewerTransform\(\)/);
+    assert.match(appJs, /function getPhotoViewerBounds\(\)/);
+    assert.match(appJs, /const PHOTO_VIEWER_MIN_VISIBLE_EDGE = 48;/);
     assert.match(appJs, /image\.addEventListener\('load', fitPhotoToStage, \{ once: true \}\)/);
     assert.match(appJs, /Math\.min\(1, stageRect\.width \/ image\.naturalWidth, stageRect\.height \/ image\.naturalHeight\)/);
     assert.match(appJs, /photoViewerState\.scale = getInitialPhotoScale\(stage, image\);/);
@@ -224,6 +292,7 @@ test('照片初始居中适配舞台且移动端双指不触发旋转', () => {
     assert.doesNotMatch(appJs, /const PHOTO_VIEWER_MAX_SCALE = 5;/);
     assert.match(appJs, /clamp\(previousScale \* factor, getMinimumPhotoScale\(\), getMaximumPhotoScale\(\)\)/);
     assert.match(appJs, /clamp\(start\.scale \* \(current\.distance \/ Math\.max\(start\.distance, 1\)\), getMinimumPhotoScale\(\), getMaximumPhotoScale\(\)\)/);
+    assert.match(appJs, /constrainPhotoViewerTransform\(\);[\s\S]*frame\.style\.transform/);
     assert.match(appJs, /photoViewerState\.translateX = 0;[\s\S]*photoViewerState\.translateY = 0;/);
     assert.doesNotMatch(appJs, /photoViewerState\.rotation = start\.rotation \+ current\.angle - start\.angle;/);
     assert.doesNotMatch(appJs, /pinchStart = \{[\s\S]*rotation: photoViewerState\.rotation/);

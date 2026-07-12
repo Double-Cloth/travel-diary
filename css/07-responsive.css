@@ -40,6 +40,11 @@
         overflow: auto;
     }
 
+    html.mobile-context-panel-open,
+    body.mobile-context-panel-open {
+        overflow: hidden;
+    }
+
     .journal-shell {
         display: grid;
         grid-template-rows: auto auto;
@@ -157,6 +162,88 @@
         scrollbar-color: auto;
     }
 
+    .journal-shell.mobile-context-panel-open::before {
+        content: none;
+        display: none;
+        pointer-events: none;
+    }
+
+    .journal-shell.mobile-context-panel-open .page-spread {
+        perspective: none;
+    }
+
+    .paper-page-right.context-panel {
+        --context-panel-inset-top: max(12px, env(safe-area-inset-top));
+        --context-panel-inset-bottom: max(12px, env(safe-area-inset-bottom));
+
+        position: fixed;
+        top: var(--context-panel-inset-top);
+        right: 12px;
+        bottom: var(--context-panel-inset-bottom);
+        left: 12px;
+        z-index: 160;
+        display: none;
+        align-content: start;
+        width: auto;
+        height: calc(100dvh - var(--context-panel-inset-top) - var(--context-panel-inset-bottom));
+        max-height: calc(100dvh - var(--context-panel-inset-top) - var(--context-panel-inset-bottom));
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        scrollbar-gutter: stable;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-y;
+        padding: 18px;
+        border-radius: 12px;
+        box-shadow: 0 28px 52px rgba(9, 4, 2, 0.46);
+    }
+
+    .journal-shell.mobile-context-panel-open .paper-page-right.context-panel {
+        display: grid;
+    }
+
+    .paper-page-right.context-panel::-webkit-scrollbar-track {
+        margin: 0;
+    }
+
+    .paper-page-right.context-panel .context-panel-heading {
+        position: sticky;
+        top: -18px;
+        z-index: 12;
+        align-items: center;
+        margin: -18px -18px 2px;
+        padding: 16px 14px 12px 18px;
+        border-bottom: 1px solid rgba(76, 49, 26, 0.18);
+        background:
+            linear-gradient(180deg, rgba(255, 246, 222, 0.96), rgba(222, 194, 138, 0.88)),
+            url("../assets/textures/paper-grain.png"),
+            #d8bd82;
+        box-shadow: 0 8px 14px rgba(52, 31, 14, 0.1);
+    }
+
+    .paper-page-right.context-panel .context-panel-heading h2 {
+        font-size: 25px;
+    }
+
+    .paper-page-right.context-panel .context-panel-close {
+        display: inline-grid;
+        place-items: center;
+        width: 38px;
+        min-height: 38px;
+        padding: 0;
+        font-size: 24px;
+        line-height: 1;
+    }
+
+    .mobile-context-toggle {
+        display: grid;
+        justify-items: start;
+        gap: 3px;
+        margin: 12px 0 14px;
+        text-align: left;
+    }
+
     .overview-metric-grid,
     .overview-insight-list {
         grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -181,14 +268,6 @@
 
     .overview-location-secondary {
         grid-column: 1 / -1;
-    }
-
-    .journal-shell[data-route="ledger"] .paper-page-right.map-pocket {
-        order: -1;
-    }
-
-    .journal-shell[data-route="archive"] .paper-page-right.dossier-page {
-        order: -1;
     }
 
     .cover-page h1,
@@ -216,7 +295,7 @@
     }
 
     .cover-record {
-        padding: 12px 44px 12px 12px;
+        padding: 14px 44px 14px 50px;
     }
 
     .cover-record-thumb {
@@ -310,6 +389,10 @@
         filter: drop-shadow(0 2px 2px var(--clip-shadow));
     }
 
+    .cover-record .record-paperclip {
+        left: 13px;
+    }
+
     .entry-note h3 {
         white-space: normal;
     }
@@ -360,22 +443,28 @@
     }
 
     .photo-viewer {
-        padding: 12px;
+        padding: 8px;
     }
 
     .photo-viewer-panel {
-        height: min(720px, 100%);
-        max-height: calc(100vh - 24px);
+        height: 100%;
+        max-height: calc(100dvh - 16px);
+        gap: 8px;
     }
 
     .photo-viewer-toolbar {
-        grid-template-columns: repeat(2, max-content);
-        gap: 7px 8px;
+        display: flex;
+        flex-wrap: wrap;
+        align-content: start;
+        gap: 8px 10px;
         justify-content: center;
-        overflow-x: auto;
+        overflow-x: visible;
+        padding: 8px 48px 8px 8px;
     }
 
     .photo-viewer-control-group {
+        flex: 0 1 auto;
+        justify-content: center;
         gap: 5px;
     }
 
@@ -383,6 +472,15 @@
         min-width: 32px;
         height: 32px;
         padding-inline: 7px;
+    }
+
+    .photo-viewer-close {
+        top: 8px;
+        right: 8px;
+        width: 36px;
+        min-width: 36px;
+        height: 36px;
+        padding: 0;
     }
 
     .photo-viewer-count,

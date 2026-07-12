@@ -207,7 +207,7 @@
 
 .photo-viewer-toolbar {
     display: grid;
-    grid-template-columns: repeat(4, max-content);
+    grid-template-columns: repeat(3, max-content);
     gap: 8px 10px;
     align-items: center;
     justify-content: center;
@@ -251,10 +251,13 @@
 }
 
 .photo-viewer-close {
-    justify-self: start;
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 5;
     width: 38px;
     min-width: 38px;
-    margin-left: 0;
+    height: 36px;
     padding: 0;
 }
 
