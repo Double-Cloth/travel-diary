@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const indexHtml = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const appJs = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
+const photoViewerTransformJs = await readFile(new URL('../js/photo-viewer-transform.mjs', import.meta.url), 'utf8');
 const serverJs = await readFile(new URL('../js/server.js', import.meta.url), 'utf8');
 const journalEntryCss = await readFile(new URL('../css/journal.css', import.meta.url), 'utf8');
 const cssPartFiles = [
@@ -75,7 +76,7 @@ test('索引夹层筛选更新时保留右页滚动位置', () => {
 
 test('索引夹层总数只保留一个视觉锚点', () => {
     assert.match(appJs, /return '全部旅行记录';/);
-    assert.match(appJs, /筛选结果 · 全部 \$\{total\} 条/);
+    assert.match(appJs, /筛选结果 · 全部 \$\{count\} 条/);
     assert.match(appJs, /class="index-dashboard-value"/);
     assert.match(appJs, /class="index-dashboard-unit"/);
     assert.match(journalCss, /\.index-dashboard-main > span,/);
@@ -328,19 +329,24 @@ test('照片初始居中适配舞台且平移不会完全移出屏幕', () => {
     assert.match(appJs, /function getMaximumPhotoScale/);
     assert.match(appJs, /function constrainPhotoViewerTransform\(\)/);
     assert.match(appJs, /function getPhotoViewerBounds\(\)/);
-    assert.match(appJs, /const PHOTO_VIEWER_MIN_VISIBLE_EDGE = 48;/);
+    assert.match(photoViewerTransformJs, /function getPhotoViewerAxisTranslateLimit/);
+    assert.match(photoViewerTransformJs, /function getPhotoViewerRenderMetrics/);
     assert.match(appJs, /image\.addEventListener\('load', fitPhotoToStage, \{ once: true \}\)/);
-    assert.match(appJs, /Math\.min\(1, stageRect\.width \/ image\.naturalWidth, stageRect\.height \/ image\.naturalHeight\)/);
+    assert.match(photoViewerTransformJs, /Math\.min\(1, stageWidth \/ naturalWidth, stageHeight \/ naturalHeight\)/);
     assert.match(appJs, /photoViewerState\.scale = getInitialPhotoScale\(stage, image\);/);
     assert.match(appJs, /photoViewerState\.initialScale = photoViewerState\.scale;/);
-    assert.match(appJs, /return Math\.min\(PHOTO_VIEWER_MIN_SCALE_BASE, photoViewerState\.initialScale \* PHOTO_VIEWER_MIN_SCALE_RATIO\);/);
-    assert.match(appJs, /return Math\.max\(PHOTO_VIEWER_MAX_SCALE_BASE, photoViewerState\.initialScale \* PHOTO_VIEWER_MAX_SCALE_RATIO\);/);
+    assert.match(photoViewerTransformJs, /return Math\.min\(PHOTO_VIEWER_MIN_SCALE_BASE, initialScale \* PHOTO_VIEWER_MIN_SCALE_RATIO\);/);
+    assert.match(photoViewerTransformJs, /return Math\.max\(PHOTO_VIEWER_MAX_SCALE_BASE, initialScale \* PHOTO_VIEWER_MAX_SCALE_RATIO\);/);
     assert.doesNotMatch(appJs, /const PHOTO_VIEWER_MIN_SCALE = 0\.5;/);
     assert.doesNotMatch(appJs, /const PHOTO_VIEWER_MAX_SCALE = 5;/);
     assert.match(appJs, /clamp\(previousScale \* factor, getMinimumPhotoScale\(\), getMaximumPhotoScale\(\)\)/);
     assert.match(appJs, /clamp\(start\.scale \* \(current\.distance \/ Math\.max\(start\.distance, 1\)\), getMinimumPhotoScale\(\), getMaximumPhotoScale\(\)\)/);
     assert.match(appJs, /constrainPhotoViewerTransform\(\);[\s\S]*frame\.style\.transform/);
     assert.match(appJs, /photoViewerState\.translateX = 0;[\s\S]*photoViewerState\.translateY = 0;/);
+    assert.match(photoViewerTransformJs, /imageSize <= stageSize[\s\S]*return 0;/);
+    assert.match(photoViewerTransformJs, /return \(imageSize - stageSize\) \/ 2;/);
+    assert.match(appJs, /getPhotoViewerRenderMetrics\(\{[\s\S]*initialScale: photoViewerState\.initialScale,[\s\S]*scale: photoViewerState\.scale/);
+    assert.match(photoViewerTransformJs, /transformScale: scale \/ renderScale/);
     assert.doesNotMatch(appJs, /photoViewerState\.rotation = start\.rotation \+ current\.angle - start\.angle;/);
     assert.doesNotMatch(appJs, /pinchStart = \{[\s\S]*rotation: photoViewerState\.rotation/);
 });

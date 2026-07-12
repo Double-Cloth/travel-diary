@@ -2,6 +2,14 @@ import { loadTravelData, loadTravelRecords } from './data.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { getRouteMapRandomCount } from './route-map.mjs';
+import {
+    constrainPhotoViewerTranslate,
+    getInitialPhotoScale as calculateInitialPhotoScale,
+    getMaximumPhotoScale as calculateMaximumPhotoScale,
+    getMinimumPhotoScale as calculateMinimumPhotoScale,
+    getPhotoViewerBounds as calculatePhotoViewerBounds,
+    getPhotoViewerRenderMetrics
+} from './photo-viewer-transform.mjs';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_SORT_OPTIONS = new Set(['desc', 'asc', 'location', 'province', 'title']);
@@ -49,12 +57,6 @@ let viewportResizeTimer = null;
 let photoPreviewResizeTimer = null;
 let photoPreviewLateResizeTimer = null;
 let photoSleeveResizeObserver = null;
-const PHOTO_VIEWER_MIN_SCALE_BASE = 0.25;
-const PHOTO_VIEWER_MIN_SCALE_RATIO = 0.5;
-const PHOTO_VIEWER_MAX_SCALE_BASE = 5;
-const PHOTO_VIEWER_MAX_SCALE_RATIO = 5;
-const PHOTO_VIEWER_FIT_MIN_SCALE = 0.08;
-const PHOTO_VIEWER_MIN_VISIBLE_EDGE = 48;
 const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
 let photoGestureState = createPhotoGestureState();
@@ -712,7 +714,7 @@ function createLedgerResultLabel(count, total, params) {
         return '全部旅行记录';
     }
 
-    return `筛选结果 · 全部 ${total} 条`;
+    return `筛选结果 · 全部 ${count} 条`;
 }
 
 function renderLedgerSnapshot(snapshot, resultLabel) {
@@ -1409,17 +1411,13 @@ function fitPhotoToStage() {
 }
 
 function getInitialPhotoScale(stage, image) {
-    if (!image.naturalWidth || !image.naturalHeight) {
-        return 1;
-    }
-
     const stageRect = stage.getBoundingClientRect();
-    if (!stageRect.width || !stageRect.height) {
-        return 1;
-    }
-
-    const fitScale = Math.min(1, stageRect.width / image.naturalWidth, stageRect.height / image.naturalHeight);
-    return Math.max(PHOTO_VIEWER_FIT_MIN_SCALE, fitScale);
+    return calculateInitialPhotoScale({
+        stageWidth: stageRect.width,
+        stageHeight: stageRect.height,
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight
+    });
 }
 
 function zoomPhoto(factor, focalPoint) {
@@ -1440,18 +1438,18 @@ function zoomPhoto(factor, focalPoint) {
 
 function getMinimumPhotoScale() {
     if (!photoViewerState) {
-        return PHOTO_VIEWER_MIN_SCALE_BASE;
+        return calculateMinimumPhotoScale();
     }
 
-    return Math.min(PHOTO_VIEWER_MIN_SCALE_BASE, photoViewerState.initialScale * PHOTO_VIEWER_MIN_SCALE_RATIO);
+    return calculateMinimumPhotoScale(photoViewerState.initialScale);
 }
 
 function getMaximumPhotoScale() {
     if (!photoViewerState) {
-        return PHOTO_VIEWER_MAX_SCALE_BASE;
+        return calculateMaximumPhotoScale();
     }
 
-    return Math.max(PHOTO_VIEWER_MAX_SCALE_BASE, photoViewerState.initialScale * PHOTO_VIEWER_MAX_SCALE_RATIO);
+    return calculateMaximumPhotoScale(photoViewerState.initialScale);
 }
 
 function rotatePhoto(delta) {
@@ -1502,8 +1500,20 @@ function updatePhotoViewerTransform(options = {}) {
         }, PHOTO_ROTATION_ANIMATION_MS);
     }
 
+    const renderMetrics = getPhotoViewerRenderMetrics({
+        naturalWidth: image.naturalWidth,
+        naturalHeight: image.naturalHeight,
+        initialScale: photoViewerState.initialScale,
+        scale: photoViewerState.scale
+    });
+    const visualScale = renderMetrics?.transformScale || photoViewerState.scale;
+
+    if (renderMetrics) {
+        image.style.width = `${renderMetrics.width}px`;
+        image.style.height = `${renderMetrics.height}px`;
+    }
     frame.style.transform = `translate3d(calc(-50% + ${photoViewerState.translateX}px), calc(-50% + ${photoViewerState.translateY}px), 0)`;
-    image.style.transform = `rotate(${photoViewerState.rotation}deg) scale(${photoViewerState.scale})`;
+    image.style.transform = `rotate(${photoViewerState.rotation}deg) scale(${visualScale})`;
     const zoom = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-zoom]');
     if (zoom) {
         zoom.textContent = `${Math.round(photoViewerState.scale * 100)}%`;
@@ -1520,13 +1530,14 @@ function constrainPhotoViewerTransform() {
         return;
     }
 
-    const visibleX = Math.min(PHOTO_VIEWER_MIN_VISIBLE_EDGE, bounds.stageWidth, bounds.imageWidth);
-    const visibleY = Math.min(PHOTO_VIEWER_MIN_VISIBLE_EDGE, bounds.stageHeight, bounds.imageHeight);
-    const maxTranslateX = Math.max(0, (bounds.stageWidth + bounds.imageWidth) / 2 - visibleX);
-    const maxTranslateY = Math.max(0, (bounds.stageHeight + bounds.imageHeight) / 2 - visibleY);
+    const nextTranslate = constrainPhotoViewerTranslate({
+        translateX: photoViewerState.translateX,
+        translateY: photoViewerState.translateY,
+        bounds
+    });
 
-    photoViewerState.translateX = clamp(photoViewerState.translateX, -maxTranslateX, maxTranslateX);
-    photoViewerState.translateY = clamp(photoViewerState.translateY, -maxTranslateY, maxTranslateY);
+    photoViewerState.translateX = nextTranslate.translateX;
+    photoViewerState.translateY = nextTranslate.translateY;
 }
 
 function getPhotoViewerBounds() {
@@ -1547,18 +1558,14 @@ function getPhotoViewerBounds() {
         return null;
     }
 
-    const radians = (Math.abs(photoViewerState.rotation) % 180) * Math.PI / 180;
-    const scaledWidth = sourceWidth * photoViewerState.scale;
-    const scaledHeight = sourceHeight * photoViewerState.scale;
-    const imageWidth = Math.abs(Math.cos(radians)) * scaledWidth + Math.abs(Math.sin(radians)) * scaledHeight;
-    const imageHeight = Math.abs(Math.sin(radians)) * scaledWidth + Math.abs(Math.cos(radians)) * scaledHeight;
-
-    return {
+    return calculatePhotoViewerBounds({
         stageWidth: stageRect.width,
         stageHeight: stageRect.height,
-        imageWidth,
-        imageHeight
-    };
+        sourceWidth,
+        sourceHeight,
+        scale: photoViewerState.scale,
+        rotation: photoViewerState.rotation
+    });
 }
 
 function clearPhotoRotationTimer() {
