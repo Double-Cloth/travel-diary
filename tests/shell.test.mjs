@@ -300,7 +300,7 @@ test('照片查看器工具栏按功能分组且原图以自然尺寸显示', ()
         assert.match(appJs, new RegExp(`class="${group} photo-viewer-control-group"`));
     }
     assert.match(appJs, /<\/div>\s*<button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer"/);
-    assert.match(appJs, /data-action="photo-reset"[\s\S]*aria-label="恢复到初始适配比例"[\s\S]*>原始比例<\/button>/);
+    assert.match(appJs, /data-action="photo-reset"[\s\S]*aria-label="恢复到初始适配比例"[\s\S]*>原比例<\/button>/);
     assert.match(appJs, /photoViewerState\.scale = photoViewerState\.initialScale \|\| 1;/);
     assert.match(journalCss, /\.photo-viewer-toolbar\s*{[\s\S]*display: grid;/);
     assert.match(journalCss, /\.photo-viewer-toolbar\s*{[\s\S]*grid-template-columns: repeat\(3, max-content\);/);
