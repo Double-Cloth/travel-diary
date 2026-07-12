@@ -245,7 +245,7 @@
     color: #fff7df;
     background:
         linear-gradient(180deg, rgba(130, 94, 48, 0.82), rgba(64, 42, 24, 0.88));
-    font-family: var(--font-code);
+    font-family: var(--font-serif);
     font-size: 15px;
     box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
 }

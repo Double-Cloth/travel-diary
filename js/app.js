@@ -1295,7 +1295,7 @@ function renderPhotoViewer() {
                         <button class="photo-viewer-control" type="button" data-action="photo-zoom-out" data-photo-action="zoom-out" aria-label="缩小">−</button>
                         <span class="photo-viewer-zoom" data-photo-viewer-zoom>100%</span>
                         <button class="photo-viewer-control" type="button" data-action="photo-zoom-in" data-photo-action="zoom-in" aria-label="放大">+</button>
-                        <button class="photo-viewer-control" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="重置照片">1:1</button>
+                        <button class="photo-viewer-control" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="恢复到初始适配比例">原比例</button>
                     </div>
                     <div class="photo-viewer-rotate-group photo-viewer-control-group" aria-label="照片旋转">
                         <button class="photo-viewer-control" type="button" data-action="photo-rotate-left" data-photo-action="rotate-left" aria-label="向左旋转">↺</button>
@@ -1466,7 +1466,7 @@ function resetPhotoTransform(options = {}) {
         return;
     }
 
-    photoViewerState.scale = 1;
+    photoViewerState.scale = photoViewerState.initialScale || 1;
     photoViewerState.rotation = 0;
     photoViewerState.translateX = 0;
     photoViewerState.translateY = 0;
