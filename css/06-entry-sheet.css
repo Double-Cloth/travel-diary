@@ -170,13 +170,21 @@
     font-size: 12px;
 }
 
+.photo-sleeve-action {
+    grid-column: 1 / -1;
+    justify-self: center;
+    min-width: min(100%, 220px);
+    margin-top: 2px;
+    text-align: center;
+}
+
 .photo-note {
     margin-top: 24px;
     color: var(--ink-muted);
 }
 
 .photo-viewer {
-    position: absolute;
+    position: fixed;
     inset: 0;
     z-index: 5;
     display: grid;

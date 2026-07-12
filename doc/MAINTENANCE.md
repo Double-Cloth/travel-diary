@@ -19,7 +19,7 @@ node js/server.js --port 8080 --network
 2. 检查静态资源引用：
 
    ```bash
-   rg -n "assets/|data/|css/|js/" index.html css js data docs README.md
+   rg -n "assets/|data/|css/|js/" index.html css js data doc README.md
    ```
 
 3. 启动本地服务器：
@@ -52,7 +52,7 @@ node js/server.js --port 8080 --network
 
 - 先确认入口引用，再删除文件。
 - 不保留未被当前入口加载的“备用实现”。
-- 历史计划保留在 `docs/superpowers/`，但不能作为当前结构依据。
+- 历史计划保留在 `doc/superpowers/`，但不能作为当前结构依据。
 - 删除文件后必须同步 README、专题文档和测试。
 - 不为清理引入新依赖或构建步骤。
 

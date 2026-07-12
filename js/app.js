@@ -1,6 +1,7 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
+import { getRouteMapRandomCount } from './route-map.mjs';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_SORT_OPTIONS = new Set(['desc', 'asc', 'location', 'province', 'title']);
@@ -22,6 +23,7 @@ const COVER_RECENT_RECORD_LIMIT = 7;
 const COVER_RECENT_RECORD_MIN = 2;
 const COVER_RECENT_RECORD_RESERVED_HEIGHT = 132;
 const COVER_RECENT_RECORD_ROW_HEIGHT = 108;
+const ENTRY_PHOTO_PREVIEW_ROWS = 3;
 const ROUTE_MAP_SLOTS = [
     { ticket: 'ticket-a', stamp: 'stamp-a', label: '01' },
     { ticket: 'ticket-b', stamp: 'stamp-b', label: '02' },
@@ -29,11 +31,6 @@ const ROUTE_MAP_SLOTS = [
     { ticket: 'ticket-d', stamp: 'stamp-d', label: '04' },
     { ticket: 'ticket-e', stamp: 'stamp-e', label: '05' },
     { ticket: 'ticket-f', stamp: 'stamp-f', label: '06' }
-];
-const ROUTE_MAP_RESPONSIVE_LIMITS = [
-    { maxWidth: 420, count: 3 },
-    { maxWidth: 760, count: 4 },
-    { maxWidth: 1024, count: 5 }
 ];
 const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
 
@@ -49,6 +46,9 @@ let isMobileContextPanelOpen = false;
 let isMobileContextPageScrollLocked = false;
 let mobileContextScrollY = 0;
 let viewportResizeTimer = null;
+let photoPreviewResizeTimer = null;
+let photoPreviewLateResizeTimer = null;
+let photoSleeveResizeObserver = null;
 const PHOTO_VIEWER_MIN_SCALE_BASE = 0.25;
 const PHOTO_VIEWER_MIN_SCALE_RATIO = 0.5;
 const PHOTO_VIEWER_MAX_SCALE_BASE = 5;
@@ -155,6 +155,14 @@ function parseRoute(hash = window.location.hash) {
                 },
                 valid: true
             };
+        case 'photos':
+            return {
+                name: 'photos',
+                params: {
+                    id: params.get('id') || ''
+                },
+                valid: true
+            };
         default:
             return { name: 'cover', params: {}, valid: false };
     }
@@ -195,6 +203,9 @@ function serializeRoute(route) {
         case 'entry':
             if (route.params.id) params.set('id', route.params.id);
             return `#entry${params.toString() ? `?${params}` : ''}`;
+        case 'photos':
+            if (route.params.id) params.set('id', route.params.id);
+            return `#photos${params.toString() ? `?${params}` : ''}`;
         default:
             return '#cover';
     }
@@ -254,6 +265,9 @@ function renderRoute(route, options = {}) {
                 break;
             case 'entry':
                 renderEntryRoute(route.params);
+                break;
+            case 'photos':
+                renderEntryPhotosRoute(route.params);
                 break;
             default:
                 renderCover();
@@ -609,26 +623,22 @@ function getRouteMapRecords() {
         uniqueRecords.push(record);
     });
 
-    const slotLimit = Math.min(getRouteMapSlotLimit(), uniqueRecords.length);
-    if (slotLimit === 0) {
-        return [];
-    }
-
-    const minimumCount = Math.min(3, slotLimit);
-    const randomCount = minimumCount + Math.floor(Math.random() * (slotLimit - minimumCount + 1));
+    const randomCount = getRouteMapRandomCount(
+        getRouteMapAvailableWidth(),
+        uniqueRecords.length,
+        ROUTE_MAP_SLOTS.length
+    );
 
     return shuffleRecords(uniqueRecords)
         .slice(0, randomCount)
         .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
 }
 
-function getRouteMapSlotLimit() {
+function getRouteMapAvailableWidth() {
     const viewportWidth = window.innerWidth || document.documentElement.clientWidth || ROUTE_MAP_SLOTS.length * 160;
     const panelWidth = refs.rightPage?.clientWidth || refs.stage?.clientWidth || viewportWidth;
-    const availableWidth = Math.min(viewportWidth, panelWidth || viewportWidth);
-    const matchedLimit = ROUTE_MAP_RESPONSIVE_LIMITS.find(limit => availableWidth <= limit.maxWidth);
 
-    return matchedLimit ? matchedLimit.count : ROUTE_MAP_SLOTS.length;
+    return Math.min(viewportWidth, panelWidth || viewportWidth);
 }
 
 function shuffleRecords(records) {
@@ -1070,6 +1080,37 @@ function renderEntryRoute(params = {}) {
     openEntrySheet(record);
 }
 
+function renderEntryPhotosRoute(params = {}) {
+    const record = travelModel.recordsById.get(params.id);
+
+    if (!record) {
+        setPages(`
+            <div class="place-page">
+                <a class="ribbon-back" href="#ledger">返回路线档案</a>
+                <p class="journal-label">照片附件</p>
+                <h1>没有找到这篇日记</h1>
+            </div>
+        `, `
+            <div class="photo-note">无法加载对应的照片附件。</div>
+        `, 'dossier-page place-detail-page');
+        return;
+    }
+
+    setPages(`
+        <div class="place-page">
+            <a class="ribbon-back" href="${serializeRoute({ name: 'entry', params: { id: record.id } })}">返回笔记</a>
+            <p class="journal-label">照片附件</p>
+            <h1>${escapeHtml(record.title)}</h1>
+            <p class="place-count">${escapeHtml(getLocationText(record))} · ${record.photos?.length || 0} 张照片</p>
+        </div>
+    `, `
+        <div class="place-records entry-photos-page">
+            <p class="journal-label">全部照片</p>
+            ${renderPhotoSleeve(record)}
+        </div>
+    `, 'dossier-page place-detail-page');
+}
+
 function renderLoading() {
     setPages(`
         <div class="loading-page">
@@ -1134,13 +1175,17 @@ function openEntrySheet(record) {
                 </div>
                 <h1 id="entrySheetTitle">${escapeHtml(record.title)}</h1>
                 <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
-                ${renderPhotoSleeve(record)}
+                ${renderPhotoSleeve(record, {
+                    previewRows: ENTRY_PHOTO_PREVIEW_ROWS,
+                    showViewAll: true
+                })}
                 ${renderEntrySheetNav(navigation)}
             </article>
         </div>
     `;
 
     requestAnimationFrame(() => {
+        queuePhotoSleevePreviewSync();
         refs.sheet.querySelector('.entry-sheet')?.focus({ preventScroll: true });
     });
 }
@@ -1191,6 +1236,7 @@ function closeEntrySheet(options = {}) {
     photoViewerState = null;
     photoGestureState = createPhotoGestureState();
     clearPhotoRotationTimer();
+    document.querySelector('[data-photo-viewer]')?.remove();
     refs.sheet.classList.remove('entry-sheet-root-open');
     refs.sheet.setAttribute('aria-hidden', 'true');
     refs.sheet.innerHTML = '';
@@ -1206,7 +1252,7 @@ function closeEntrySheet(options = {}) {
 }
 
 function openPhotoViewer(photos, index = 0) {
-    if (!Array.isArray(photos) || photos.length === 0 || !refs.sheet) {
+    if (!Array.isArray(photos) || photos.length === 0 || !getPhotoViewerRoot()) {
         return;
     }
 
@@ -1224,15 +1270,16 @@ function openPhotoViewer(photos, index = 0) {
 }
 
 function renderPhotoViewer() {
-    refs.sheet?.querySelector('[data-photo-viewer]')?.remove();
-    if (!photoViewerState || !refs.sheet) {
+    document.querySelector('[data-photo-viewer]')?.remove();
+    const root = getPhotoViewerRoot();
+    if (!photoViewerState || !root) {
         return;
     }
 
     const photo = photoViewerState.photos[photoViewerState.index];
     const position = `${photoViewerState.index + 1} / ${photoViewerState.photos.length}`;
 
-    refs.sheet.insertAdjacentHTML('beforeend', `
+    root.insertAdjacentHTML('beforeend', `
         <div class="photo-viewer" data-photo-viewer>
             <div class="photo-viewer-backdrop" data-action="close-photo-viewer"></div>
             <section class="photo-viewer-panel" role="dialog" aria-modal="true" aria-label="照片查看器" tabindex="-1">
@@ -1264,7 +1311,7 @@ function renderPhotoViewer() {
         </div>
     `);
 
-    const image = refs.sheet.querySelector('[data-photo-viewer-image]');
+    const image = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]');
     if (image?.complete) {
         fitPhotoToStage();
     } else {
@@ -1274,19 +1321,27 @@ function renderPhotoViewer() {
         updatePhotoViewerTransform();
     }
     requestAnimationFrame(() => {
-        refs.sheet.querySelector('.photo-viewer-panel')?.focus({ preventScroll: true });
+        getPhotoViewerRoot()?.querySelector('.photo-viewer-panel')?.focus({ preventScroll: true });
     });
 }
 
 function closePhotoViewerDialog() {
-    refs.sheet?.querySelector('[data-photo-viewer]')?.remove();
+    document.querySelector('[data-photo-viewer]')?.remove();
     photoViewerState = null;
     photoGestureState = createPhotoGestureState();
     clearPhotoRotationTimer();
 }
 
+function getPhotoViewerRoot() {
+    if (refs.sheet?.classList.contains('entry-sheet-root-open')) {
+        return refs.sheet;
+    }
+
+    return document.body;
+}
+
 function getPhotoViewerItems(button) {
-    const buttons = Array.from(button.closest('.photo-sleeve')?.querySelectorAll('[data-action="open-photo-viewer"]') || [button]);
+    const buttons = Array.from(button.closest('.photo-sleeve')?.querySelectorAll('[data-action="open-photo-viewer"]:not([hidden])') || [button]);
     return buttons.map(item => ({
         src: item.dataset.photoSrc || '',
         alt: item.dataset.photoAlt || '旅行照片'
@@ -1340,8 +1395,8 @@ function fitPhotoToStage() {
         return;
     }
 
-    const stage = refs.sheet?.querySelector('[data-photo-viewer-stage]');
-    const image = refs.sheet?.querySelector('[data-photo-viewer-image]');
+    const stage = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-stage]');
+    const image = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]');
     if (!stage || !image) {
         return;
     }
@@ -1428,8 +1483,8 @@ function updatePhotoViewerTransform(options = {}) {
         return;
     }
 
-    const image = refs.sheet?.querySelector('[data-photo-viewer-image]');
-    const frame = refs.sheet?.querySelector('[data-photo-viewer-frame]');
+    const image = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]');
+    const frame = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-frame]');
     if (!image || !frame) {
         return;
     }
@@ -1449,7 +1504,7 @@ function updatePhotoViewerTransform(options = {}) {
 
     frame.style.transform = `translate3d(calc(-50% + ${photoViewerState.translateX}px), calc(-50% + ${photoViewerState.translateY}px), 0)`;
     image.style.transform = `rotate(${photoViewerState.rotation}deg) scale(${photoViewerState.scale})`;
-    const zoom = refs.sheet.querySelector('[data-photo-viewer-zoom]');
+    const zoom = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-zoom]');
     if (zoom) {
         zoom.textContent = `${Math.round(photoViewerState.scale * 100)}%`;
     }
@@ -1479,8 +1534,8 @@ function getPhotoViewerBounds() {
         return null;
     }
 
-    const stage = refs.sheet?.querySelector('[data-photo-viewer-stage]');
-    const image = refs.sheet?.querySelector('[data-photo-viewer-image]');
+    const stage = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-stage]');
+    const image = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]');
     if (!stage || !image) {
         return null;
     }
@@ -1569,7 +1624,7 @@ function handlePhotoWheel(event) {
     }
 
     event.preventDefault();
-    const stage = refs.sheet?.querySelector('[data-photo-viewer-stage]');
+    const stage = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-stage]');
     const rect = stage?.getBoundingClientRect();
     const focalPoint = rect
         ? { x: event.clientX - rect.left - rect.width / 2, y: event.clientY - rect.top - rect.height / 2 }
@@ -1647,7 +1702,7 @@ function getGestureMetrics(first, second) {
 }
 
 function isPhotoViewerOpen() {
-    return Boolean(photoViewerState && refs.sheet?.querySelector('[data-photo-viewer]'));
+    return Boolean(photoViewerState && document.querySelector('[data-photo-viewer]'));
 }
 
 function normalizePhotoIndex(index, length) {
@@ -1782,7 +1837,7 @@ function handleDocumentClick(event) {
     if (latestAction) {
         event.preventDefault();
         if (travelModel?.latestRecord) {
-            lastReadingHash = serializeRoute(activeRoute?.name === 'entry' ? parseRoute(lastReadingHash) : activeRoute);
+            lastReadingHash = getEntryBackgroundHash();
             lastEntryFocusId = '';
             navigateTo({ name: 'entry', params: { id: travelModel.latestRecord.id } });
         }
@@ -1792,7 +1847,7 @@ function handleDocumentClick(event) {
     const entryCard = event.target.closest('[data-open-entry]');
     if (entryCard && !event.target.closest('a, button, input')) {
         event.preventDefault();
-        lastReadingHash = serializeRoute(activeRoute?.name === 'entry' ? parseRoute(lastReadingHash) : activeRoute);
+        lastReadingHash = getEntryBackgroundHash();
         lastEntryFocusId = entryCard.id || '';
         navigateTo({ name: 'entry', params: { id: entryCard.dataset.openEntry } });
         return;
@@ -1803,11 +1858,19 @@ function handleDocumentClick(event) {
         event.preventDefault();
         const href = routeAnchor.getAttribute('href');
         if (href.startsWith('#entry')) {
-            lastReadingHash = serializeRoute(activeRoute?.name === 'entry' ? parseRoute(lastReadingHash) : activeRoute);
+            lastReadingHash = getEntryBackgroundHash();
             lastEntryFocusId = '';
         }
         navigateTo(href);
     }
+}
+
+function getEntryBackgroundHash() {
+    if (activeRoute?.name === 'entry' || activeRoute?.name === 'photos') {
+        return lastReadingHash || '#ledger';
+    }
+
+    return serializeRoute(activeRoute || { name: 'ledger', params: {} });
 }
 
 function handleDocumentKeydown(event) {
@@ -1959,6 +2022,7 @@ function clearSearchRouteTimer() {
 
 function handleViewportResize() {
     syncMobileContextPanelState();
+    queuePhotoSleevePreviewSync();
 
     if (activeRoute?.name !== 'cover') {
         return;
@@ -1998,7 +2062,7 @@ function updateLedgerRoute(nextParams, options = {}) {
 }
 
 function updateChapterTabs(routeName) {
-    const activeName = routeName === 'entry' ? 'ledger' : routeName;
+    const activeName = routeName === 'entry' || routeName === 'photos' ? 'ledger' : routeName;
     document.querySelectorAll('[data-route-link]').forEach((link) => {
         const isActive = link.dataset.routeLink === activeName;
         link.classList.toggle('chapter-tab-active', isActive);
@@ -2310,13 +2374,17 @@ function renderLatestTicket(record) {
     `;
 }
 
-function renderPhotoSleeve(record) {
+function renderPhotoSleeve(record, options = {}) {
     if (!record.photo_folder || !Array.isArray(record.photos) || record.photos.length === 0) {
         return '<p class="photo-note">这篇记录没有照片附件。</p>';
     }
 
+    const { previewRows = 0, showViewAll = false } = options;
+    const isPreview = Number.isFinite(previewRows) && previewRows > 0;
+    const shouldRenderViewAll = showViewAll && isPreview && record.photos.length > previewRows;
+
     return `
-        <div class="photo-sleeve" aria-label="照片附件">
+        <div class="photo-sleeve${isPreview ? ' photo-sleeve-preview' : ''}"${isPreview ? ` data-preview-rows="${previewRows}"` : ''} aria-label="照片附件">
             ${record.photos.map((photo, index) => {
                 const src = `${record.photo_folder}/${photo}`;
                 const alt = `${record.title} · ${photo}`;
@@ -2327,8 +2395,73 @@ function renderPhotoSleeve(record) {
                 </button>
             `;
             }).join('')}
+            ${shouldRenderViewAll ? `
+                <a class="paper-button photo-sleeve-action" href="${serializeRoute({ name: 'photos', params: { id: record.id } })}" data-action="view-all-photos">
+                    查看全部照片（${record.photos.length} 张）
+                </a>
+            ` : ''}
         </div>
     `;
+}
+
+function syncPhotoSleevePreviewRows() {
+    document.querySelectorAll('.photo-sleeve-preview').forEach((sleeve) => {
+        observePhotoSleevePreview(sleeve);
+        const previewRows = Number(sleeve.dataset.previewRows || ENTRY_PHOTO_PREVIEW_ROWS);
+        const columnCount = getPhotoSleeveColumnCount(sleeve);
+        const visibleLimit = columnCount * previewRows;
+        const buttons = Array.from(sleeve.querySelectorAll('.photo-sleeve-button'));
+        const action = sleeve.querySelector('[data-action="view-all-photos"]');
+
+        buttons.forEach((button, index) => {
+            button.hidden = index >= visibleLimit;
+        });
+
+        if (action) {
+            action.hidden = buttons.length <= visibleLimit;
+        }
+    });
+}
+
+function queuePhotoSleevePreviewSync() {
+    syncPhotoSleevePreviewRows();
+
+    if (photoPreviewResizeTimer) {
+        window.clearTimeout(photoPreviewResizeTimer);
+    }
+    if (photoPreviewLateResizeTimer) {
+        window.clearTimeout(photoPreviewLateResizeTimer);
+    }
+
+    photoPreviewResizeTimer = window.setTimeout(() => {
+        photoPreviewResizeTimer = null;
+        syncPhotoSleevePreviewRows();
+    }, 160);
+    photoPreviewLateResizeTimer = window.setTimeout(() => {
+        photoPreviewLateResizeTimer = null;
+        syncPhotoSleevePreviewRows();
+    }, 900);
+}
+
+function observePhotoSleevePreview(sleeve) {
+    if (!('ResizeObserver' in window)) {
+        return;
+    }
+
+    if (!photoSleeveResizeObserver) {
+        photoSleeveResizeObserver = new ResizeObserver(() => {
+            queuePhotoSleevePreviewSync();
+        });
+    }
+
+    photoSleeveResizeObserver.observe(sleeve);
+}
+
+function getPhotoSleeveColumnCount(sleeve) {
+    const columns = window.getComputedStyle(sleeve).gridTemplateColumns;
+    const columnCount = columns.split(' ').filter(Boolean).length;
+
+    return Math.max(1, columnCount || 1);
 }
 
 function filterToggleButton(label, key, value, activeValue) {
@@ -2415,7 +2548,7 @@ function normalizeLedgerSort(sort) {
 function getTurnDirection(previousRoute, nextRoute) {
     if (!previousRoute) return 'forward';
 
-    const order = ['cover', 'ledger', 'archive', 'place', 'entry'];
+    const order = ['cover', 'ledger', 'archive', 'place', 'entry', 'photos'];
     const previousIndex = order.indexOf(previousRoute.name);
     const nextIndex = order.indexOf(nextRoute.name);
 

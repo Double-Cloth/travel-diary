@@ -1,7 +1,7 @@
-@import url('./01-foundation.css');
-@import url('./02-shell.css');
-@import url('./03-cover-route.css');
-@import url('./04-ledger.css');
-@import url('./05-archive-place.css');
-@import url('./06-entry-sheet.css');
-@import url('./07-responsive.css');
+@import url('./01-foundation.css?v=20260712-scrollbar-fix');
+@import url('./02-shell.css?v=20260712-scrollbar-fix');
+@import url('./03-cover-route.css?v=20260712-scrollbar-fix');
+@import url('./04-ledger.css?v=20260712-scrollbar-fix');
+@import url('./05-archive-place.css?v=20260712-scrollbar-fix');
+@import url('./06-entry-sheet.css?v=20260712-scrollbar-fix');
+@import url('./07-responsive.css?v=20260712-scrollbar-fix');

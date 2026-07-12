@@ -28,7 +28,7 @@ index.html
 ```text
 data/travel_data.json
   ↓ loadTravelData()
-data/travel-diary/*.md
+data/travel-diary/YYYY/*.md
   ↓ loadTravelRecords()
 deriveTravelModel()
   ↓

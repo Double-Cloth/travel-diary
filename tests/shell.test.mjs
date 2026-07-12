@@ -31,7 +31,7 @@ const journalCss = cssPartContents.length > 0 ? `${journalEntryCss}\n${cssPartCo
 
 test('主样式入口拆分为按职责导入的 CSS 文件', () => {
     for (const file of cssPartFiles) {
-        assert.match(journalEntryCss, new RegExp(`@import url\\('\\./${file}'\\);`));
+        assert.match(journalEntryCss, new RegExp(`@import url\\('\\./${file}(?:\\?[^']+)?'\\);`));
     }
 
     assert.doesNotMatch(journalEntryCss, /@font-face|:root|\\.journal-shell|\\.cover-page|\\.index-dashboard|@media/);
@@ -112,9 +112,9 @@ test('移动端首页回形针为标题区域预留安全留白', () => {
 });
 
 test('随机路线图按视口尺寸限制票据数量', () => {
-    assert.match(appJs, /const ROUTE_MAP_RESPONSIVE_LIMITS = \[[\s\S]*maxWidth: 420,\s*count: 3[\s\S]*maxWidth: 760,\s*count: 4/);
-    assert.match(appJs, /function getRouteMapSlotLimit\(\)/);
-    assert.match(appJs, /const slotLimit = Math\.min\(getRouteMapSlotLimit\(\), uniqueRecords\.length\);/);
+    assert.match(appJs, /import \{ getRouteMapRandomCount \} from '\.\/route-map\.mjs';/);
+    assert.match(appJs, /function getRouteMapAvailableWidth\(\)/);
+    assert.match(appJs, /getRouteMapRandomCount\(\s*getRouteMapAvailableWidth\(\),\s*uniqueRecords\.length,\s*ROUTE_MAP_SLOTS\.length\s*\)/);
 });
 
 test('旅行概览渲染新增的可靠统计', () => {
@@ -184,6 +184,17 @@ test('移动端夹层滚动条轨道可以贴到底部', () => {
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.paper-page-right\.context-panel::-webkit-scrollbar-track\s*{[\s\S]*margin: 0;/);
 });
 
+test('右侧档案页滚动条没有底部原生箭头占位', () => {
+    assert.match(journalCss, /\.paper-page-right\.map-pocket::-webkit-scrollbar-track,\s*\.paper-page-right\.dossier-page::-webkit-scrollbar-track\s*{[\s\S]*margin: 0;/);
+    assert.match(journalCss, /\.paper-page-right\.map-pocket::-webkit-scrollbar-track-piece,\s*\.paper-page-right\.dossier-page::-webkit-scrollbar-track-piece\s*{[\s\S]*margin: 0;/);
+    assert.match(journalCss, /\.paper-page-right\.map-pocket::-webkit-scrollbar-button,\s*\.paper-page-right\.dossier-page::-webkit-scrollbar-button\s*{[\s\S]*width: 0;[\s\S]*height: 0;[\s\S]*min-width: 0;[\s\S]*min-height: 0;[\s\S]*-webkit-appearance: none;/);
+    assert.match(journalCss, /\.paper-page-right\.map-pocket::-webkit-scrollbar-button:vertical:start:decrement,[\s\S]*\.paper-page-right\.dossier-page::-webkit-scrollbar-button:vertical:increment\s*{[\s\S]*display: none;[\s\S]*height: 0;/);
+});
+
+test('地点详情右侧记录列表保留底部滚动缓冲', () => {
+    assert.match(journalCss, /\.paper-page-right > \.place-records\s*{[\s\S]*min-height: max-content;[\s\S]*padding-bottom: 48px;/);
+});
+
 test('移动端夹层遮罩不使用全屏模糊', () => {
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.journal-shell\.mobile-context-panel-open::before\s*{[\s\S]*content: none;[\s\S]*display: none;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.journal-shell\.mobile-context-panel-open::before\s*{[\s\S]*pointer-events: none;/);
@@ -236,6 +247,42 @@ test('日记照片支持沉浸式查看与基础变换操作', () => {
     assert.match(journalCss, /\.photo-sleeve-button\s*{/);
     assert.match(journalCss, /\.photo-viewer\s*{/);
     assert.match(journalCss, /\.photo-viewer-image\s*{/);
+});
+
+test('日记页最多预览三行照片且提供全集照片页', () => {
+    assert.match(appJs, /const ENTRY_PHOTO_PREVIEW_ROWS = 3;/);
+    assert.doesNotMatch(appJs, /ENTRY_PHOTO_PREVIEW_LIMIT|limit: ENTRY_PHOTO_PREVIEW_LIMIT/);
+    assert.match(appJs, /case 'photos':[\s\S]*id: params\.get\('id'\) \|\| ''/);
+    assert.match(appJs, /case 'photos':[\s\S]*return `#photos\$\{params\.toString\(\) \? `\?\$\{params\}` : ''\}`;/);
+    assert.match(appJs, /case 'photos':[\s\S]*renderEntryPhotosRoute\(route\.params\);/);
+    assert.match(appJs, /renderPhotoSleeve\(record, \{[\s\S]*previewRows: ENTRY_PHOTO_PREVIEW_ROWS,[\s\S]*showViewAll: true[\s\S]*\}\)/);
+    assert.match(appJs, /previewRows: ENTRY_PHOTO_PREVIEW_ROWS/);
+    assert.match(appJs, /function syncPhotoSleevePreviewRows\(\)/);
+    assert.match(appJs, /function getPhotoSleeveColumnCount\(sleeve\)/);
+    assert.match(appJs, /const visibleLimit = columnCount \* previewRows;/);
+    assert.match(appJs, /button\.hidden = index >= visibleLimit;/);
+    assert.match(appJs, /photo-sleeve-preview/);
+    assert.match(appJs, /data-action="view-all-photos"/);
+    assert.match(appJs, /查看全部照片/);
+    assert.match(appJs, /function renderEntryPhotosRoute\(params = \{\}\)/);
+    assert.match(appJs, /renderPhotoSleeve\(record\)/);
+    assert.match(journalCss, /\.photo-sleeve-action\s*{/);
+});
+
+test('从照片全集页返回笔记不会把照片页保存为关闭后的背景页', () => {
+    assert.match(appJs, /function getEntryBackgroundHash\(\)/);
+    assert.match(appJs, /activeRoute\?\.name === 'photos'[\s\S]*return lastReadingHash \|\| '#ledger';/);
+    assert.match(appJs, /if \(href\.startsWith\('#entry'\)\) \{[\s\S]*lastReadingHash = getEntryBackgroundHash\(\);/);
+    assert.doesNotMatch(appJs, /href\.startsWith\('#entry'\)\) \{[\s\S]*lastReadingHash = serializeRoute\(activeRoute\?\.name === 'entry' \? parseRoute\(lastReadingHash\) : activeRoute\);/);
+});
+
+test('照片全集页打开照片查看器时不会挂载到隐藏的笔记弹层', () => {
+    assert.match(appJs, /function getPhotoViewerRoot\(\)/);
+    assert.match(appJs, /refs\.sheet\?\.classList\.contains\('entry-sheet-root-open'\)/);
+    assert.match(appJs, /return document\.body;/);
+    assert.match(appJs, /const root = getPhotoViewerRoot\(\);[\s\S]*root\.insertAdjacentHTML\('beforeend'/);
+    assert.match(appJs, /getPhotoViewerRoot\(\)\?\.querySelector\('\[data-photo-viewer-image\]'\)/);
+    assert.match(journalCss, /\.photo-viewer\s*{[\s\S]*position: fixed;/);
 });
 
 test('移动端照片缩略图保持双列且旋转角度连续递增', () => {

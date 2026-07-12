@@ -2,7 +2,7 @@
 
 ## 新增日记
 
-1. 在 `data/travel-diary/` 新建 Markdown 文件。
+1. 在 `data/travel-diary/YYYY/` 新建 Markdown 文件。
 2. 在 `data/travel_data.json` 添加一条记录。
 3. 运行 `npm test`。
 4. 启动 `npm start`，在浏览器检查首页、旅行路径和日记详情。
@@ -10,13 +10,13 @@
 推荐文件名：
 
 ```text
-YYYY-MM-DD-slug.md
+data/travel-diary/YYYY/YYYY-MM-DD-slug.md
 ```
 
 示例：
 
 ```text
-2026-07-11-suzhou.md
+data/travel-diary/2026/2026-07-11-suzhou.md
 ```
 
 ## 元数据字段
@@ -41,7 +41,7 @@ YYYY-MM-DD-slug.md
   "country": "中国",
   "province": "江苏省",
   "city": "苏州市",
-  "desc_md": "data/travel-diary/2026-07-11-suzhou.md",
+  "desc_md": "data/travel-diary/2026/2026-07-11-suzhou.md",
   "photo_folder": "data/photos/suzhou",
   "photos": ["canal.jpg", "garden.jpg"]
 }

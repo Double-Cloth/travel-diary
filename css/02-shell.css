@@ -452,6 +452,10 @@
     background: transparent;
 }
 
+.paper-page::-webkit-scrollbar-track-piece {
+    background: transparent;
+}
+
 .paper-page::-webkit-scrollbar-thumb {
     border-radius: 999px;
     background: rgba(117, 73, 40, 0.42);
@@ -462,6 +466,18 @@
 }
 
 .paper-page::-webkit-scrollbar-button {
+    width: 0;
+    height: 0;
+    min-width: 0;
+    min-height: 0;
+    background: transparent;
+    -webkit-appearance: none;
+}
+
+.paper-page::-webkit-scrollbar-button:vertical:start:decrement,
+.paper-page::-webkit-scrollbar-button:vertical:end:increment,
+.paper-page::-webkit-scrollbar-button:vertical:decrement,
+.paper-page::-webkit-scrollbar-button:vertical:increment {
     display: none;
     width: 0;
     height: 0;
