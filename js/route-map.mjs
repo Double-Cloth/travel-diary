@@ -13,30 +13,49 @@ export function getRouteMapCountRange(availableWidth, slotCapacity) {
         return { min: 0, max: 0 };
     }
 
-    const width = Number.isFinite(availableWidth) && availableWidth > 0
-        ? availableWidth
-        : capacity * ROUTE_MAP_FALLBACK_SLOT_WIDTH;
+    const width = normalizeAvailableWidth(availableWidth, capacity);
     const matchedRange = ROUTE_MAP_RESPONSIVE_COUNT_RANGES.find(range => width <= range.maxWidth)
         || ROUTE_MAP_RESPONSIVE_COUNT_RANGES[ROUTE_MAP_RESPONSIVE_COUNT_RANGES.length - 1];
-    const max = Math.min(matchedRange.max, capacity);
-    const min = Math.min(matchedRange.min, max);
 
-    return { min, max };
+    return { min: matchedRange.min, max: matchedRange.max };
 }
 
 export function getRouteMapRandomCount(availableWidth, availableLocations, slotCapacity, random = Math.random) {
-    const capacity = Math.min(normalizeCapacity(availableLocations), normalizeCapacity(slotCapacity));
-    if (capacity === 0) {
+    const locationCapacity = normalizeCapacity(availableLocations);
+    const slotCount = normalizeCapacity(slotCapacity);
+    if (locationCapacity === 0 || slotCount === 0) {
         return 0;
     }
 
-    const { min, max } = getRouteMapCountRange(availableWidth, capacity);
+    const visualCapacity = getRouteMapVisualCapacity(availableWidth, slotCount);
+    const capacity = Math.min(locationCapacity, slotCount, visualCapacity);
+    const range = getRouteMapCountRange(availableWidth, slotCount);
+    const max = Math.min(range.max, capacity);
+    const min = Math.min(range.min, max);
     const randomValue = typeof random === 'function' ? random() : Math.random();
     const normalizedRandom = Number.isFinite(randomValue)
         ? Math.min(Math.max(randomValue, 0), 0.999999999999)
         : 0;
 
     return min + Math.floor(normalizedRandom * (max - min + 1));
+}
+
+function normalizeAvailableWidth(availableWidth, slotCapacity) {
+    return Number.isFinite(availableWidth) && availableWidth > 0
+        ? availableWidth
+        : slotCapacity * ROUTE_MAP_FALLBACK_SLOT_WIDTH;
+}
+
+function getRouteMapVisualCapacity(availableWidth, slotCapacity) {
+    const width = normalizeAvailableWidth(availableWidth, slotCapacity);
+    if (width <= ROUTE_MAP_RESPONSIVE_COUNT_RANGES[0].maxWidth) {
+        return ROUTE_MAP_RESPONSIVE_COUNT_RANGES[0].max;
+    }
+
+    return Math.max(
+        ROUTE_MAP_RESPONSIVE_COUNT_RANGES[0].max,
+        Math.floor(width / ROUTE_MAP_FALLBACK_SLOT_WIDTH)
+    );
 }
 
 function normalizeCapacity(value) {
