@@ -365,10 +365,6 @@
         font-size: 14px;
     }
 
-    .latest-ticket {
-        grid-template-columns: 1fr;
-    }
-
     .timeline-list,
     .archive-country-list,
     .place-records {

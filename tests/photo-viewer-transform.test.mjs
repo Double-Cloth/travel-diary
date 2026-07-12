@@ -41,26 +41,24 @@ test('大于舞台的照片只允许拖动到边缘贴合舞台', () => {
     });
 });
 
-test('手机适配比例作为图片渲染基准，避免缩小时保留超大合成层', () => {
+test('图片始终以原图尺寸作为渲染基准，初始缩放只影响变换倍率', () => {
     const fitted = getPhotoViewerRenderMetrics({
         naturalWidth: 4000,
         naturalHeight: 2526,
-        initialScale: 0.13,
         scale: 0.13
     });
 
-    assert.equal(fitted.width, 520);
-    assert.equal(fitted.height, 328.38);
-    assert.equal(fitted.transformScale, 1);
+    assert.equal(fitted.width, 4000);
+    assert.equal(fitted.height, 2526);
+    assert.equal(fitted.transformScale, 0.13);
 
     const zoomed = getPhotoViewerRenderMetrics({
         naturalWidth: 4000,
         naturalHeight: 2526,
-        initialScale: 0.13,
         scale: 1
     });
 
-    assert.equal(zoomed.width, 520);
-    assert.equal(zoomed.height, 328.38);
-    assert.equal(Number(zoomed.transformScale.toFixed(4)), 7.6923);
+    assert.equal(zoomed.width, 4000);
+    assert.equal(zoomed.height, 2526);
+    assert.equal(zoomed.transformScale, 1);
 });

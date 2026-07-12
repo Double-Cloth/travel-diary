@@ -137,7 +137,6 @@
     gap: 9px;
 }
 
-.mini-luggage-tag,
 .luggage-tag {
     position: relative;
     display: grid;
@@ -152,17 +151,6 @@
     transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
 }
 
-.mini-luggage-tag {
-    align-items: center;
-    justify-content: center;
-    min-height: 34px;
-    padding: 7px 10px;
-    border-radius: 7px;
-    font-size: 13px;
-}
-
-.mini-luggage-tag:hover,
-.mini-luggage-tag:focus-visible,
 .luggage-tag:hover,
 .luggage-tag:focus-visible {
     border-color: rgba(96, 62, 30, 0.4);
@@ -174,7 +162,6 @@
     transform: translateY(-1px);
 }
 
-.mini-luggage-tag:active,
 .luggage-tag:active {
     transform: translateY(0);
     box-shadow: 0 5px 11px rgba(48, 28, 12, 0.14);

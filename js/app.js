@@ -1503,7 +1503,6 @@ function updatePhotoViewerTransform(options = {}) {
     const renderMetrics = getPhotoViewerRenderMetrics({
         naturalWidth: image.naturalWidth,
         naturalHeight: image.naturalHeight,
-        initialScale: photoViewerState.initialScale,
         scale: photoViewerState.scale
     });
     const visualScale = renderMetrics?.transformScale || photoViewerState.scale;
@@ -2362,22 +2361,6 @@ function renderLuggageTag(province) {
             <span>${province.count} 次到访 · ${province.cityCount} 座城市</span>
             <small>最近 ${escapeHtml(province.latestDate)}</small>
         </a>
-    `;
-}
-
-function renderMiniLuggageTag(province) {
-    return `<a class="mini-luggage-tag" href="${placeHash(province.country, province.province, '')}">${escapeHtml(province.label)}</a>`;
-}
-
-function renderLatestTicket(record) {
-    return `
-        <article class="latest-ticket" id="entry-card-latest-${escapeHtml(record.id)}" data-open-entry="${escapeHtml(record.id)}" tabindex="0" role="button" aria-label="打开最近日记">
-            <span class="latest-ticket-label">最近旅行记录</span>
-            <time datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '')}</time>
-            <h2>${escapeHtml(record.title)}</h2>
-            <p>${escapeHtml(getLocationText(record))}</p>
-            <span>点击展开档案页</span>
-        </article>
     `;
 }
 

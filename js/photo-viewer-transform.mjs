@@ -57,17 +57,15 @@ export function constrainPhotoViewerTranslate({ translateX, translateY, bounds }
     };
 }
 
-export function getPhotoViewerRenderMetrics({ naturalWidth, naturalHeight, initialScale = 1, scale = 1 }) {
+export function getPhotoViewerRenderMetrics({ naturalWidth, naturalHeight, scale = 1 }) {
     if (!naturalWidth || !naturalHeight) {
         return null;
     }
 
-    const renderScale = initialScale > 0 ? initialScale : 1;
-
     return {
-        width: naturalWidth * renderScale,
-        height: naturalHeight * renderScale,
-        transformScale: scale / renderScale
+        width: naturalWidth,
+        height: naturalHeight,
+        transformScale: scale
     };
 }
 

@@ -345,8 +345,12 @@ test('照片初始居中适配舞台且平移不会完全移出屏幕', () => {
     assert.match(appJs, /photoViewerState\.translateX = 0;[\s\S]*photoViewerState\.translateY = 0;/);
     assert.match(photoViewerTransformJs, /imageSize <= stageSize[\s\S]*return 0;/);
     assert.match(photoViewerTransformJs, /return \(imageSize - stageSize\) \/ 2;/);
-    assert.match(appJs, /getPhotoViewerRenderMetrics\(\{[\s\S]*initialScale: photoViewerState\.initialScale,[\s\S]*scale: photoViewerState\.scale/);
-    assert.match(photoViewerTransformJs, /transformScale: scale \/ renderScale/);
+    assert.match(appJs, /getPhotoViewerRenderMetrics\(\{[\s\S]*naturalWidth: image\.naturalWidth,[\s\S]*naturalHeight: image\.naturalHeight,[\s\S]*scale: photoViewerState\.scale/);
+    assert.match(photoViewerTransformJs, /width: naturalWidth,/);
+    assert.match(photoViewerTransformJs, /height: naturalHeight,/);
+    assert.match(photoViewerTransformJs, /transformScale: scale/);
+    assert.doesNotMatch(photoViewerTransformJs, /initialScale > 0 \? initialScale : 1/);
+    assert.doesNotMatch(appJs, /initialScale: photoViewerState\.initialScale/);
     assert.doesNotMatch(appJs, /photoViewerState\.rotation = start\.rotation \+ current\.angle - start\.angle;/);
     assert.doesNotMatch(appJs, /pinchStart = \{[\s\S]*rotation: photoViewerState\.rotation/);
 });
