@@ -6,17 +6,18 @@ export function buildRecordSetSnapshot(records = []) {
         .map(record => record.date || '')
         .filter(Boolean)
         .sort();
-    const cities = new Set(records
-        .map(record => record.locationKey || [record.country, record.province, record.city].filter(Boolean).join('|'))
+    const localities = new Set(records
+        .map(record => record.locationKey || [record.countryCode || record.country, record.adminArea || record.province, record.locality || record.city].filter(Boolean).join('|'))
         .filter(Boolean));
-    const provinces = new Set(records
-        .map(record => [record.country, record.province].filter(Boolean).join('|'))
+    const adminAreas = new Set(records
+        .filter(record => record.adminArea || record.province)
+        .map(record => record.adminAreaKey || [record.countryCode || record.country, record.adminArea || record.province].filter(Boolean).join('|'))
         .filter(Boolean));
 
     return {
         count: records.length,
-        cityCount: cities.size,
-        provinceCount: provinces.size,
+        localityCount: localities.size,
+        adminAreaCount: adminAreas.size,
         firstDate: dates[0] || '',
         latestDate: dates[dates.length - 1] || ''
     };
@@ -37,7 +38,11 @@ export function deriveOverviewAnalytics(records = [], rangeEndDate = '') {
     let longestGap = null;
 
     records.forEach((record) => {
-        const locationKey = record.locationKey || [record.country, record.province, record.city].filter(Boolean).join('|');
+        const locationKey = record.locationKey || [
+            record.countryCode || record.country,
+            record.adminArea || record.province,
+            record.locality || record.city
+        ].filter(Boolean).join('|');
         if (!locationKey) return;
 
         locationCounts.set(locationKey, (locationCounts.get(locationKey) || 0) + 1);

@@ -8,5 +8,5 @@ export function escapeHtml(text) {
 }
 
 export function buildFallbackTitle(record) {
-    return record.city || record.province || record.country || record.date;
+    return record.locality || record.city || record.adminArea || record.province || record.country || record.date;
 }

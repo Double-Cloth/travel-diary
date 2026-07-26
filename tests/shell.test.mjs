@@ -49,7 +49,7 @@ test('路线页不存在重复筛选入口', () => {
 
 test('索引夹层包含完整且唯一的高级筛选工作台', () => {
     assert.match(appJs, /function renderLedgerFilterWorkbench/);
-    for (const key of ['year', 'month', 'province', 'city', 'sort']) {
+    for (const key of ['year', 'month', 'country', 'area', 'locality', 'sort']) {
         assert.match(appJs, new RegExp(`renderLedgerSelect\\([^;]+['"]${key}['"]`));
     }
     assert.match(appJs, /filterToggleButton\('首次到访', 'visit'/);
@@ -125,8 +125,8 @@ test('旅行概览渲染新增的可靠统计', () => {
     assert.doesNotMatch(appJs, /复访率|repeatRate/);
     assert.match(appJs, /activeMonthCount\}\s*\/\s*\$\{travelModel\.overviewAnalytics\.activeMonthCapacity\}/);
     assert.match(appJs, /renderRepeatLocationInsights\(travelModel\.repeatLocations\)/);
-    assert.match(appJs, /renderBroadProvinceInsight\(broadestProvince\)/);
-    assert.match(appJs, /function getBroadestProvince/);
+    assert.match(appJs, /renderBroadAdminAreaInsight\(broadestAdminArea\)/);
+    assert.match(appJs, /function getBroadestAdminArea/);
     assert.doesNotMatch(appJs, /items\.slice\(0,\s*3\)/);
     assert.match(appJs, /overview-insight-list overview-location-list/);
     assert.match(appJs, /overview-insight overview-location-feature/);

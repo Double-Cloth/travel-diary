@@ -1,20 +1,34 @@
 import { buildFallbackTitle, escapeHtml } from './utils.js';
+import {
+    configureCountryCatalog,
+    getLocationSearchValues,
+    normalizeTravelLocation
+} from './location.mjs';
 
 export async function loadTravelData() {
     const dataPath = new URL('data/travel_data.json', window.location.href).href;
-    const response = await fetch(dataPath);
+    const countryCatalogPath = new URL('data/countries.json', window.location.href).href;
+    const [response, countryCatalogResponse] = await Promise.all([
+        fetch(dataPath),
+        fetch(countryCatalogPath)
+    ]);
 
     if (!response.ok) {
         throw new Error(`Failed to load travel data (${response.status})`);
     }
+    if (!countryCatalogResponse.ok) {
+        throw new Error(`Failed to load country catalog (${countryCatalogResponse.status})`);
+    }
 
     const data = await response.json();
+    const countryCatalog = await countryCatalogResponse.json();
 
     if (!Array.isArray(data)) {
         throw new Error('Travel data file must contain an array.');
     }
+    configureCountryCatalog(countryCatalog);
 
-    return data;
+    return data.map(normalizeTravelLocation);
 }
 
 export async function loadTravelRecords(records) {
@@ -32,7 +46,7 @@ export async function loadTravelRecords(records) {
             };
         } catch (error) {
             const fallbackTitle = buildFallbackTitle(record);
-            const fallbackSearchText = [record.country, record.province, record.city, fallbackTitle].join(' ').toLowerCase();
+            const fallbackSearchText = [...getLocationSearchValues(record), fallbackTitle].join(' ').toLowerCase();
 
             return {
                 ...record,
@@ -75,7 +89,7 @@ function parseMarkdown(markdown, record) {
     const title = titleMatch ? titleMatch[1].trim() : buildFallbackTitle(record);
     const bodyMarkdown = normalized.replace(/^#\s+.*(?:\n|$)/, '').trim();
     const bodyHtml = markdownToHtml(bodyMarkdown);
-    const searchText = [record.country, record.province, record.city, title, plainTextFromMarkdown(bodyMarkdown)]
+    const searchText = [...getLocationSearchValues(record), title, plainTextFromMarkdown(bodyMarkdown)]
         .filter(Boolean)
         .join(' ')
         .toLowerCase();

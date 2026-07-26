@@ -17,6 +17,7 @@ index.html
   └─ js/app.js
        ├─ js/data.js
        │    └─ js/utils.js
+       ├─ js/location.mjs
        ├─ js/analytics.mjs
        └─ js/utils.js
 ```
@@ -26,8 +27,8 @@ index.html
 ## 数据流
 
 ```text
-data/travel_data.json
-  ↓ loadTravelData()
+data/countries.json ──→ configureCountryCatalog()
+data/travel_data.json ─→ loadTravelData()
 data/travel-diary/YYYY/*.md
   ↓ loadTravelRecords()
 deriveTravelModel()
@@ -37,7 +38,11 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 左页与右页 DOM
 ```
 
-`js/data.js` 会读取每条记录的 `desc_md`，把 Markdown 转成 HTML，并为搜索生成 `searchText`。`js/app.js` 在此基础上派生年份、月份、地点、复访、概览统计和路由状态。
+`js/data.js` 会并行加载旅行记录和 `data/countries.json`，先用国家目录配置 `js/location.mjs`，再把国家、一级行政区和目的地规范化。之后读取每条记录的 `desc_md`，把 Markdown 转成 HTML，并为搜索生成 `searchText`。`js/app.js` 在此基础上派生年份、月份、地点、复访、概览统计和路由状态。
+
+地点运行时模型使用 `countryKey → adminAreaKey → locationKey` 三层稳定键。国家优先使用 `country_code`，行政区和目的地键包含上级键，因此不同国家的同名州、省或城市不会在筛选和统计中合并。`admin_area` 可以为空，以支持城市国家及没有必要记录一级行政区的目的地。
+
+`data/countries.json` 覆盖 ISO 3166-1 的 249 个当前分配代码，包含中英文名称、alpha-2/alpha-3/数字代码、别名和行政区显示规则。运行时不再维护内联国家表。该文件由 `scripts/update-countries.mjs` 从 Unicode CLDR 的固定版本生成，更新时运行 `npm run countries`。
 
 ## 路由
 
@@ -45,13 +50,15 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 
 - `#cover`：首页。
 - `#ledger`：旅行路径索引。
-- `#ledger?year=2026&province=江苏省`：带筛选的旅行路径。
+- `#ledger?year=2026&country=CN&area=CN%7C江苏省`：带国家和一级行政区筛选的旅行路径。
 - `#archive`：个人档案。
 - `#archive?q=云南`：个人档案搜索。
-- `#place?country=中国&province=江苏省&city=苏州市`：地点详情。
+- `#place?country=CN&area=CN%7C江苏省&locality=CN%7C江苏省%7C苏州市`：地点详情。
 - `#entry?id=2026-06-21-suzhou`：日记详情。
 
 新增路由时优先在 `js/app.js` 中补齐四处逻辑：解析、序列化、渲染、交互入口。
+
+旧版 `province`、`city` 查询参数与地点名称形式的 `country` 参数会在加载时解析并迁移到新键，避免已有书签失效。
 
 ## 文件职责
 
@@ -66,6 +73,9 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 - `css/07-responsive.css`：断点适配和 `prefers-reduced-motion` 降级。
 - `js/app.js`：页面状态、路由、渲染、事件绑定和筛选逻辑。
 - `js/data.js`：数据读取、Markdown 解析和基础安全过滤。
+- `js/location.mjs`：地点字段兼容、国家规则、层级键、显示名称和搜索字段。
+- `data/countries.json`：完整国家/地区目录和行政区显示规则。
+- `scripts/update-countries.mjs`：从固定 CLDR 版本重新生成国家目录。
 - `js/analytics.mjs`：与 DOM 无关的统计计算，适合单元测试。
 - `js/utils.js`：通用格式化与转义工具。
 - `js/server.js`：开发服务器。

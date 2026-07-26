@@ -3,6 +3,12 @@ import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import {
+    formatLocationText,
+    getAdminAreaFilterLabel,
+    getCountryLocationLabels,
+    isDomesticLocation
+} from './location.mjs';
+import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
     getMaximumPhotoScale as calculateMaximumPhotoScale,
@@ -13,12 +19,13 @@ import {
 } from './photo-viewer-transform.mjs';
 
 const DEFAULT_LEDGER_SORT = 'desc';
-const LEDGER_SORT_OPTIONS = new Set(['desc', 'asc', 'location', 'province', 'title']);
+const LEDGER_SORT_OPTIONS = new Set(['desc', 'asc', 'location', 'area', 'title']);
 const LEDGER_FILTER_DEFAULTS = {
     year: 'all',
     month: 'all',
-    province: 'all',
-    city: 'all',
+    country: 'all',
+    area: 'all',
+    locality: 'all',
     visit: 'all',
     media: 'all',
     note: 'all',
@@ -122,8 +129,9 @@ function parseRoute(hash = window.location.hash) {
                 params: {
                     year: normalizeYear(params.get('year')),
                     month: normalizeMonth(params.get('month')),
-                    province: normalizeFilterValue(params.get('province')),
-                    city: normalizeFilterValue(params.get('city')),
+                    country: normalizeFilterValue(params.get('country')),
+                    area: normalizeFilterValue(params.get('area') || params.get('province')),
+                    locality: normalizeFilterValue(params.get('locality') || params.get('city')),
                     visit: normalizeVisit(params.get('visit')),
                     media: normalizeMedia(params.get('media')),
                     note: normalizeNote(params.get('note')),
@@ -145,8 +153,8 @@ function parseRoute(hash = window.location.hash) {
                 name: 'place',
                 params: {
                     country: params.get('country') || '',
-                    province: params.get('province') || '',
-                    city: params.get('city') || ''
+                    area: params.get('area') || params.get('province') || '',
+                    locality: params.get('locality') || params.get('city') || ''
                 },
                 valid: true
             };
@@ -186,8 +194,9 @@ function serializeRoute(route) {
                 const ledgerParams = normalizeLedgerParams(route.params);
                 if (ledgerParams.year !== 'all') params.set('year', ledgerParams.year);
                 if (ledgerParams.month !== 'all') params.set('month', ledgerParams.month);
-                if (ledgerParams.province !== 'all') params.set('province', ledgerParams.province);
-                if (ledgerParams.city !== 'all') params.set('city', ledgerParams.city);
+                if (ledgerParams.country !== 'all') params.set('country', ledgerParams.country);
+                if (ledgerParams.area !== 'all') params.set('area', ledgerParams.area);
+                if (ledgerParams.locality !== 'all') params.set('locality', ledgerParams.locality);
                 if (ledgerParams.visit !== 'all') params.set('visit', ledgerParams.visit);
                 if (ledgerParams.media !== 'all') params.set('media', ledgerParams.media);
                 if (ledgerParams.note !== 'all') params.set('note', ledgerParams.note);
@@ -200,8 +209,8 @@ function serializeRoute(route) {
             return `#archive${params.toString() ? `?${params}` : ''}`;
         case 'place':
             if (route.params.country) params.set('country', route.params.country);
-            if (route.params.province) params.set('province', route.params.province);
-            if (route.params.city) params.set('city', route.params.city);
+            if (route.params.area) params.set('area', route.params.area);
+            if (route.params.locality) params.set('locality', route.params.locality);
             return `#place${params.toString() ? `?${params}` : ''}`;
         case 'entry':
             if (route.params.id) params.set('id', route.params.id);
@@ -217,10 +226,10 @@ function serializeRoute(route) {
 function syncRouteFromHash(options = {}) {
     if (!travelModel) return;
 
-    const parsed = parseRoute(window.location.hash);
+    const parsed = canonicalizeLocationRoute(parseRoute(window.location.hash));
     const normalizedHash = serializeRoute(parsed);
 
-    if (!parsed.valid || !window.location.hash) {
+    if (!parsed.valid || !window.location.hash || normalizedHash !== window.location.hash || hasLegacyLocationQuery(window.location.hash)) {
         history.replaceState(null, document.title, normalizedHash);
     }
 
@@ -286,7 +295,7 @@ function deriveTravelModel(records) {
         const id = createRecordId(record);
         const year = (record.date || '').slice(0, 4) || '未知';
         const month = (record.date || '').slice(5, 7) || '';
-        const locationKey = [record.country, record.province, record.city].filter(Boolean).join('|');
+        const locationKey = record.locationKey || [record.countryKey || record.country, record.adminArea, record.locality].filter(Boolean).join('|');
         const isRepeated = seenLocations.has(locationKey);
         seenLocations.add(locationKey);
 
@@ -316,7 +325,7 @@ function deriveTravelModel(records) {
     const firstRecord = sortedAsc[0] || null;
     const yearStats = buildYearStats(enhanced);
     const monthStats = buildMonthStats(enhanced);
-    const topProvinces = buildTopProvinces(countries);
+    const topAdminAreas = buildTopAdminAreas(countries);
     const repeatLocations = buildRepeatLocations(enhanced);
     const filterOptions = buildLedgerFilterOptions(enhanced);
 
@@ -333,15 +342,15 @@ function deriveTravelModel(records) {
         firstRecord,
         yearStats,
         monthStats,
-        topProvinces,
+        topAdminAreas,
         repeatLocations,
         filterOptions,
         overviewAnalytics: deriveOverviewAnalytics(enhanced, todayDate),
         stats: {
             total: enhanced.length,
             countries: countries.length,
-            provinces: countries.reduce((sum, country) => sum + country.provinces.length, 0),
-            cities: new Set(enhanced.map(record => [record.country, record.province, record.city].join('|'))).size
+            adminAreas: countries.reduce((sum, country) => sum + country.adminAreas.length, 0),
+            localities: new Set(enhanced.map(record => record.locationKey)).size
         },
         latestRecord
     };
@@ -355,13 +364,13 @@ function buildYearStats(records) {
         const item = yearMap.get(year) || {
             year,
             count: 0,
-            cities: new Set(),
+            localities: new Set(),
             firstDate: '',
             latestDate: ''
         };
 
         item.count += 1;
-        item.cities.add(record.locationKey || getLocationText(record));
+        item.localities.add(record.locationKey || getLocationText(record));
         item.firstDate = !item.firstDate || (record.date || '') < item.firstDate ? (record.date || '') : item.firstDate;
         item.latestDate = maxDate(item.latestDate, record.date);
         yearMap.set(year, item);
@@ -370,16 +379,16 @@ function buildYearStats(records) {
     return Array.from(yearMap.values())
         .map(item => ({
             ...item,
-            cityCount: item.cities.size,
-            cities: undefined
+            localityCount: item.localities.size,
+            localities: undefined
         }))
         .sort((a, b) => b.year.localeCompare(a.year));
 }
 
-function buildTopProvinces(countries) {
+function buildTopAdminAreas(countries) {
     return countries
-        .flatMap(country => country.provinces)
-        .sort((a, b) => b.count - a.count || b.cityCount - a.cityCount || a.label.localeCompare(b.label, 'zh-CN'));
+        .flatMap(country => country.adminAreas)
+        .sort((a, b) => b.count - a.count || b.localityCount - a.localityCount || a.label.localeCompare(b.label, 'zh-CN'));
 }
 
 function buildMonthStats(records) {
@@ -395,12 +404,12 @@ function buildMonthStats(records) {
             month,
             label: `${Number(month)}月`,
             count: 0,
-            cities: new Set(),
+            localities: new Set(),
             latestDate: ''
         };
 
         item.count += 1;
-        item.cities.add(record.locationKey || getLocationText(record));
+        item.localities.add(record.locationKey || getLocationText(record));
         item.latestDate = maxDate(item.latestDate, record.date);
         monthMap.set(month, item);
     });
@@ -408,8 +417,8 @@ function buildMonthStats(records) {
     return Array.from(monthMap.values())
         .map(item => ({
             ...item,
-            cityCount: item.cities.size,
-            cities: undefined
+            localityCount: item.localities.size,
+            localities: undefined
         }))
         .sort((a, b) => a.month.localeCompare(b.month));
 }
@@ -444,8 +453,9 @@ function buildRepeatLocations(records) {
 }
 
 function buildLedgerFilterOptions(records) {
-    const provinceMap = new Map();
-    const cityMap = new Map();
+    const countryMap = new Map();
+    const adminAreaMap = new Map();
+    const localityMap = new Map();
     const months = new Set();
 
     records.forEach((record) => {
@@ -453,28 +463,43 @@ function buildLedgerFilterOptions(records) {
             months.add(record.month);
         }
 
-        const provinceKey = record.province || record.country || '未知地点';
-        const province = provinceMap.get(provinceKey) || {
-            value: provinceKey,
-            label: provinceKey,
+        const country = countryMap.get(record.countryKey) || {
+            value: record.countryKey,
+            label: record.country,
             count: 0,
             latestDate: ''
         };
-        province.count += 1;
-        province.latestDate = maxDate(province.latestDate, record.date);
-        provinceMap.set(provinceKey, province);
+        country.count += 1;
+        country.latestDate = maxDate(country.latestDate, record.date);
+        countryMap.set(record.countryKey, country);
 
-        const cityKey = [provinceKey, record.city || provinceKey].join('|');
-        const city = cityMap.get(cityKey) || {
-            value: record.city || provinceKey,
-            label: record.city || provinceKey,
-            province: provinceKey,
+        if (record.adminArea) {
+            const adminArea = adminAreaMap.get(record.adminAreaKey) || {
+                value: record.adminAreaKey,
+                label: record.adminArea,
+                country: record.country,
+                countryKey: record.countryKey,
+                count: 0,
+                latestDate: ''
+            };
+            adminArea.count += 1;
+            adminArea.latestDate = maxDate(adminArea.latestDate, record.date);
+            adminAreaMap.set(record.adminAreaKey, adminArea);
+        }
+
+        const locality = localityMap.get(record.locationKey) || {
+            value: record.locationKey,
+            label: record.locality,
+            country: record.country,
+            countryKey: record.countryKey,
+            adminArea: record.adminArea,
+            adminAreaKey: record.adminAreaKey,
             count: 0,
             latestDate: ''
         };
-        city.count += 1;
-        city.latestDate = maxDate(city.latestDate, record.date);
-        cityMap.set(cityKey, city);
+        locality.count += 1;
+        locality.latestDate = maxDate(locality.latestDate, record.date);
+        localityMap.set(record.locationKey, locality);
     });
 
     return {
@@ -482,10 +507,16 @@ function buildLedgerFilterOptions(records) {
             value: month,
             label: `${Number(month)}月`
         })),
-        provinces: Array.from(provinceMap.values())
+        countries: Array.from(countryMap.values())
+            .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'zh-CN')),
+        adminAreas: Array.from(adminAreaMap.values())
             .sort((a, b) => b.count - a.count || b.latestDate.localeCompare(a.latestDate) || a.label.localeCompare(b.label, 'zh-CN')),
-        cities: Array.from(cityMap.values())
-            .sort((a, b) => a.province.localeCompare(b.province, 'zh-CN') || a.label.localeCompare(b.label, 'zh-CN'))
+        localities: Array.from(localityMap.values())
+            .sort((a, b) => (
+                a.country.localeCompare(b.country, 'zh-CN')
+                || a.adminArea.localeCompare(b.adminArea, 'zh-CN')
+                || a.label.localeCompare(b.label, 'zh-CN')
+            ))
     };
 }
 
@@ -493,51 +524,63 @@ function buildLocationIndex(records) {
     const countryMap = new Map();
 
     records.forEach((record) => {
-        const countryKey = record.country || '未知国家';
-        const provinceKey = record.province || countryKey;
+        const countryKey = record.countryKey || record.country || '未知国家/地区';
+        const areaGroupKey = record.adminAreaKey || `country:${countryKey}`;
         const country = countryMap.get(countryKey) || {
+            countryKey,
             country: countryKey,
+            countryCode: record.countryCode,
             count: 0,
-            cities: new Set(),
-            provinces: new Map(),
+            localities: new Set(),
+            areas: new Map(),
             latestDate: '',
             searchText: ''
         };
-        const province = country.provinces.get(provinceKey) || {
+        country.country = record.country;
+        const area = country.areas.get(areaGroupKey) || {
+            key: areaGroupKey,
+            countryKey,
             country: countryKey,
-            province: record.province || '',
-            label: record.province || countryKey,
+            adminArea: record.adminArea,
+            label: record.adminArea || record.country,
+            isCountryLevel: !record.adminArea,
             count: 0,
-            cities: new Set(),
+            localities: new Set(),
             latestDate: '',
             searchText: ''
         };
 
         country.count += 1;
-        country.cities.add(record.city);
+        country.localities.add(record.locationKey);
         country.latestDate = maxDate(country.latestDate, record.date);
-        country.searchText = `${country.searchText} ${record.country || ''} ${record.province || ''} ${record.city || ''}`.toLowerCase();
+        country.searchText = `${country.searchText} ${record.searchText || ''}`.toLowerCase();
 
-        province.count += 1;
-        province.cities.add(record.city);
-        province.latestDate = maxDate(province.latestDate, record.date);
-        province.searchText = `${province.searchText} ${record.country || ''} ${record.province || ''} ${record.city || ''}`.toLowerCase();
+        area.count += 1;
+        area.localities.add(record.locality);
+        area.latestDate = maxDate(area.latestDate, record.date);
+        area.searchText = `${area.searchText} ${record.searchText || ''}`.toLowerCase();
 
-        country.provinces.set(provinceKey, province);
+        country.areas.set(areaGroupKey, area);
         countryMap.set(countryKey, country);
     });
 
     return Array.from(countryMap.values())
         .map(country => ({
             ...country,
-            cityCount: country.cities.size,
-            provinces: Array.from(country.provinces.values())
-                .map(province => ({
-                    ...province,
-                    cityCount: province.cities.size,
-                    cities: Array.from(province.cities).filter(Boolean).sort((a, b) => a.localeCompare(b, 'zh-CN'))
+            labels: getCountryLocationLabels(country),
+            localityCount: country.localities.size,
+            areas: Array.from(country.areas.values())
+                .map(area => ({
+                    ...area,
+                    country: country.country,
+                    localityCount: area.localities.size,
+                    localities: Array.from(area.localities).filter(Boolean).sort((a, b) => a.localeCompare(b, 'zh-CN'))
                 }))
                 .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, 'zh-CN'))
+        }))
+        .map(country => ({
+            ...country,
+            adminAreas: country.areas.filter(area => !area.isCountryLevel)
         }))
         .sort((a, b) => b.count - a.count || a.country.localeCompare(b.country, 'zh-CN'));
 }
@@ -560,7 +603,7 @@ function renderCover() {
             <div class="route-insert">
                 <div class="route-map-label">
                     <strong>随机路线图</strong>
-                    <span>本次抽取 ${routeRecords.length} 座城市</span>
+                    <span>本次抽取 ${routeRecords.length} 个目的地</span>
                 </div>
                 <div class="route-sketch route-collage" aria-label="随机旅行路线拼贴">
                     <svg class="route-doodle" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false" aria-hidden="true">
@@ -572,7 +615,7 @@ function renderCover() {
                     <span class="route-washi route-washi-a" aria-hidden="true"></span>
                     <span class="route-washi route-washi-b" aria-hidden="true"></span>
                     <span class="route-postmark" aria-hidden="true">TRAVEL<br>DIARY</span>
-                    ${routeRecords.length ? renderRouteMap(routeRecords) : '<span class="route-map-empty">还没有城市可抽取</span>'}
+                    ${routeRecords.length ? renderRouteMap(routeRecords) : '<span class="route-map-empty">还没有目的地可抽取</span>'}
                     <span class="map-compass">N</span>
                 </div>
             </div>
@@ -617,7 +660,7 @@ function getRouteMapRecords() {
     const uniqueRecords = [];
 
     travelModel.recordsDesc.forEach((record) => {
-        const key = record.locationKey || [record.country, record.province, record.city].filter(Boolean).join('|');
+        const key = record.locationKey || [record.countryKey, record.adminArea, record.locality].filter(Boolean).join('|');
         if (!key || seenLocations.has(key)) {
             return;
         }
@@ -660,7 +703,7 @@ function renderRouteMap(records) {
         const slot = ROUTE_MAP_SLOTS[index];
         const entryHref = `#entry?id=${encodeURIComponent(record.id)}`;
         const label = getLocationText(record);
-        const place = record.city || record.province || record.country;
+        const place = record.locality || record.adminArea || record.country;
         const date = record.date ? record.date.replace(/-/g, '.') : '未注明日期';
 
         return `
@@ -668,7 +711,7 @@ function renderRouteMap(records) {
                 <span class="route-ticket-label">${escapeHtml(slot.label)}</span>
                 <strong class="route-ticket-place">${escapeHtml(place)}</strong>
                 <small>${escapeHtml(date)}</small>
-                <span class="ticket-stamp ${slot.stamp}" aria-hidden="true">${escapeHtml((record.province || record.country || '出发').slice(0, 3))}</span>
+                <span class="ticket-stamp ${slot.stamp}" aria-hidden="true">${escapeHtml((record.adminArea || record.country || '出发').slice(0, 3))}</span>
             </a>
         `;
     }).join('');
@@ -733,8 +776,8 @@ function renderLedgerSnapshot(snapshot, resultLabel) {
                 </strong>
             </div>
             <div class="index-dashboard-grid">
-                <span><strong>${snapshot.cityCount}</strong> 座城市</span>
-                <span><strong>${snapshot.provinceCount}</strong> 个省份</span>
+                <span><strong>${snapshot.localityCount}</strong> 个地点</span>
+                <span><strong>${snapshot.adminAreaCount}</strong> 个一级行政区</span>
                 <span>${escapeHtml(dateRange)}</span>
             </div>
         </div>
@@ -742,7 +785,9 @@ function renderLedgerSnapshot(snapshot, resultLabel) {
 }
 
 function renderLedgerFilterWorkbench(params) {
-    const cityOptions = getCityFilterOptions(params.province);
+    const adminAreaLabel = getAdminAreaFilterLabel(travelModel.records, params.country);
+    const adminAreaOptions = getAdminAreaFilterOptions(params.country);
+    const localityOptions = getLocalityFilterOptions(params.country, params.area);
     const yearOptions = [
         { value: 'all', label: '全部年份' },
         ...travelModel.years.map(year => ({ value: year, label: `${year}年` }))
@@ -751,22 +796,31 @@ function renderLedgerFilterWorkbench(params) {
         { value: 'all', label: '全部月份' },
         ...travelModel.filterOptions.months
     ];
-    const provinceOptions = [
-        { value: 'all', label: '全部省份' },
-        ...travelModel.filterOptions.provinces.map(item => ({ value: item.value, label: `${item.label} · ${item.count}` }))
+    const countryOptions = [
+        { value: 'all', label: '全部国家 / 地区' },
+        ...travelModel.filterOptions.countries.map(item => ({ value: item.value, label: `${item.label} · ${item.count}` }))
     ];
-    const scopedCityOptions = [
-        { value: 'all', label: '全部城市' },
-        ...cityOptions.map(item => ({
+    const scopedAdminAreaOptions = [
+        { value: 'all', label: `全部${adminAreaLabel}` },
+        ...adminAreaOptions.map(item => ({
             value: item.value,
-            label: params.province === 'all' ? `${item.label} · ${item.province}` : item.label
+            label: params.country === 'all' ? `${item.label} · ${item.country}` : `${item.label} · ${item.count}`
+        }))
+    ];
+    const scopedLocalityOptions = [
+        { value: 'all', label: '全部城市 / 目的地' },
+        ...localityOptions.map(item => ({
+            value: item.value,
+            label: params.area === 'all'
+                ? `${item.label} · ${item.adminArea || item.country}`
+                : item.label
         }))
     ];
     const sortOptions = [
         { value: 'desc', label: '最新优先' },
         { value: 'asc', label: '最早优先' },
         { value: 'location', label: '按地点名称' },
-        { value: 'province', label: '按省份归类' },
+        { value: 'area', label: '按一级行政区归类' },
         { value: 'title', label: '按标题名称' }
     ];
 
@@ -776,8 +830,9 @@ function renderLedgerFilterWorkbench(params) {
             <div class="index-filter-grid">
                 ${renderLedgerSelect('年份', 'year', yearOptions, params.year)}
                 ${renderLedgerSelect('月份', 'month', monthOptions, params.month)}
-                ${renderLedgerSelect('省份', 'province', provinceOptions, params.province)}
-                ${renderLedgerSelect('城市', 'city', scopedCityOptions, params.city)}
+                ${renderLedgerSelect('国家 / 地区', 'country', countryOptions, params.country)}
+                ${renderLedgerSelect(adminAreaLabel, 'area', scopedAdminAreaOptions, params.area)}
+                ${renderLedgerSelect('城市 / 目的地', 'locality', scopedLocalityOptions, params.locality)}
             </div>
         </section>
         <section class="index-filter-section" aria-labelledby="indexRecordFilters">
@@ -835,18 +890,18 @@ function renderArchive(params = {}) {
     const latest = travelModel.latestRecord;
     const topYear = getTopYearStat(travelModel.yearStats);
     const topMonth = getTopMonthStat(travelModel.monthStats);
-    const leadingProvince = travelModel.topProvinces[0] || null;
-    const broadestProvince = getBroadestProvince(travelModel.topProvinces);
+    const leadingAdminArea = travelModel.topAdminAreas[0] || null;
+    const broadestAdminArea = getBroadestAdminArea(travelModel.topAdminAreas);
     const countries = travelModel.countries
         .map(country => {
             if (!query) return country;
             const countryMatch = country.country.toLowerCase().includes(query);
-            const provinces = countryMatch
-                ? country.provinces
-                : country.provinces.filter(province => province.searchText.includes(query));
-            return { ...country, provinces };
+            const areas = countryMatch
+                ? country.areas
+                : country.areas.filter(area => area.searchText.includes(query));
+            return { ...country, areas };
         })
-        .filter(country => country.provinces.length > 0);
+        .filter(country => country.areas.length > 0);
 
     setPages(`
         <div class="archive-page">
@@ -854,7 +909,7 @@ function renderArchive(params = {}) {
                 <p class="journal-label">个人主页</p>
                 <p class="page-copy">"I was surprised, as always, by how easy the act of leaving was, and how good it felt. The world was suddenly rich with possibility."</p>
             </header>
-            <label class="field-label" for="archiveSearch">搜索国家、省份或城市</label>
+            <label class="field-label" for="archiveSearch">搜索国家、一级行政区或目的地</label>
             <div class="ink-field search-field">
                 <input id="archiveSearch" type="search" value="${escapeHtml(params.q || '')}" autocomplete="off" placeholder="例如：云南、苏州、北京">
                 <button class="search-clear" type="button" data-action="clear-search" data-target="archive" aria-label="清空地点搜索" ${params.q ? '' : 'disabled'}>×</button>
@@ -875,8 +930,8 @@ function renderArchive(params = {}) {
                 <h3>覆盖范围</h3>
                 <div class="overview-metric-grid">
                     ${renderOverviewMetric('国家', travelModel.stats.countries)}
-                    ${renderOverviewMetric('省份', travelModel.stats.provinces)}
-                    ${renderOverviewMetric('城市', travelModel.stats.cities)}
+                    ${renderOverviewMetric('一级行政区', travelModel.stats.adminAreas)}
+                    ${renderOverviewMetric('目的地', travelModel.stats.localities)}
                     ${renderOverviewMetric('活跃年份', travelModel.overviewAnalytics.activeYearCount)}
                     ${renderOverviewMetric('活跃月份', `${travelModel.overviewAnalytics.activeMonthCount} / ${travelModel.overviewAnalytics.activeMonthCapacity}`)}
                     ${renderOverviewMetric('复访地点', `${travelModel.overviewAnalytics.repeatLocationCount} 处`)}
@@ -893,8 +948,8 @@ function renderArchive(params = {}) {
             <section class="archive-overview-block">
                 <h3>地点倾向</h3>
                 <div class="overview-insight-list overview-location-list">
-                    ${renderTopProvinceInsight(leadingProvince)}
-                    ${renderBroadProvinceInsight(broadestProvince)}
+                    ${renderTopAdminAreaInsight(leadingAdminArea)}
+                    ${renderBroadAdminAreaInsight(broadestAdminArea)}
                     ${renderRepeatLocationInsights(travelModel.repeatLocations)}
                 </div>
             </section>
@@ -940,7 +995,7 @@ function renderTopYearInsight(stat) {
         <a class="overview-insight" href="${serializeRoute({ name: 'ledger', params: { year: stat.year, q: '', sort: DEFAULT_LEDGER_SORT } })}">
             <span>年度高峰</span>
             <strong>${escapeHtml(stat.year)}</strong>
-            <small>${stat.count} 篇日记 · ${stat.cityCount} 城</small>
+            <small>${stat.count} 篇日记 · ${stat.localityCount} 个地点</small>
         </a>
     `;
 }
@@ -954,7 +1009,7 @@ function renderTopMonthInsight(stat) {
         <a class="overview-insight" href="${serializeRoute({ name: 'ledger', params: { month: stat.month, q: '', sort: DEFAULT_LEDGER_SORT } })}">
             <span>常出发月份</span>
             <strong>${escapeHtml(stat.label)}</strong>
-            <small>${stat.count} 篇日记 · ${stat.cityCount} 城</small>
+            <small>${stat.count} 篇日记 · ${stat.localityCount} 个地点</small>
         </a>
     `;
 }
@@ -973,30 +1028,30 @@ function renderLongestGapInsight(longestGap) {
     `;
 }
 
-function renderTopProvinceInsight(province) {
-    if (!province) {
-        return renderEmptyOverviewInsight('高频省份', '暂无地点');
+function renderTopAdminAreaInsight(adminArea) {
+    if (!adminArea) {
+        return renderEmptyOverviewInsight('高频行政区', '暂无地点');
     }
 
     return `
-        <a class="overview-insight overview-location-feature" href="${placeHash(province.country, province.province, '')}">
-            <span>高频省份</span>
-            <strong>${escapeHtml(province.label)}</strong>
-            <small>${province.count} 篇日记 · ${province.cityCount} 城</small>
+        <a class="overview-insight overview-location-feature" href="${placeHash(adminArea.countryKey, adminArea.adminArea, '')}">
+            <span>高频行政区</span>
+            <strong>${escapeHtml(adminArea.label)}</strong>
+            <small>${adminArea.count} 篇日记 · ${adminArea.localityCount} 个地点</small>
         </a>
     `;
 }
 
-function renderBroadProvinceInsight(province) {
-    if (!province) {
+function renderBroadAdminAreaInsight(adminArea) {
+    if (!adminArea) {
         return renderEmptyOverviewInsight('覆盖最广', '暂无地点');
     }
 
     return `
-        <a class="overview-insight overview-location-secondary" href="${placeHash(province.country, province.province, '')}">
+        <a class="overview-insight overview-location-secondary" href="${placeHash(adminArea.countryKey, adminArea.adminArea, '')}">
             <span>覆盖最广</span>
-            <strong>${escapeHtml(province.label)}</strong>
-            <small>${province.cityCount} 座城市 · 最近 ${escapeHtml(province.latestDate)}</small>
+            <strong>${escapeHtml(adminArea.label)}</strong>
+            <small>${adminArea.localityCount} 个地点 · 最近 ${escapeHtml(adminArea.latestDate)}</small>
         </a>
     `;
 }
@@ -1013,7 +1068,7 @@ function renderRepeatLocationInsight(item) {
     const record = item.record;
 
     return `
-        <a class="overview-insight overview-repeat-location" href="${placeHash(record.country, record.province, record.city)}">
+        <a class="overview-insight overview-repeat-location" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">
             <span>复访地点</span>
             <strong>${escapeHtml(getLocationText(record))}</strong>
             <small>${item.count} 次 · ${escapeHtml(item.firstDate)} 至 ${escapeHtml(item.latestDate)}</small>
@@ -1035,17 +1090,17 @@ function getTopYearStat(yearStats) {
 }
 
 function getTopMonthStat(monthStats) {
-    return [...monthStats].sort((a, b) => b.count - a.count || b.cityCount - a.cityCount || a.month.localeCompare(b.month))[0] || null;
+    return [...monthStats].sort((a, b) => b.count - a.count || b.localityCount - a.localityCount || a.month.localeCompare(b.month))[0] || null;
 }
 
-function getBroadestProvince(provinces = []) {
-    return [...provinces].sort((a, b) => b.cityCount - a.cityCount || b.count - a.count || b.latestDate.localeCompare(a.latestDate))[0] || null;
+function getBroadestAdminArea(adminAreas = []) {
+    return [...adminAreas].sort((a, b) => b.localityCount - a.localityCount || b.count - a.count || b.latestDate.localeCompare(a.latestDate))[0] || null;
 }
 
 function renderPlace(params = {}) {
     const matching = getPlaceRecords(params);
-    const label = getPlaceLabel(params);
-    const cities = Array.from(new Set(matching.map(record => record.city).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+    const label = getPlaceLabel(params, matching);
+    const localities = Array.from(new Set(matching.map(record => record.locality).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-CN'));
 
     setPages(`
         <div class="place-page">
@@ -1054,8 +1109,8 @@ function renderPlace(params = {}) {
             <h1>${escapeHtml(label)}</h1>
             <p class="place-count">${matching.length} 次到访</p>
             <div class="city-tags">
-                ${cities.map(city => `
-                    <a class="location-chip" href="${placeHash(params.country, params.province, city)}">${escapeHtml(city)}</a>
+                ${localities.map(locality => `
+                    <a class="location-chip" href="${placeHash(params.country, params.area, locality)}">${escapeHtml(locality)}</a>
                 `).join('')}
             </div>
         </div>
@@ -1174,7 +1229,7 @@ function openEntrySheet(record) {
             <article class="entry-sheet" role="dialog" aria-modal="true" aria-labelledby="entrySheetTitle" tabindex="-1">
                 <div class="sheet-meta">
                     <time datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '')}</time>
-                    <a class="location-chip" href="${placeHash(record.country, record.province, record.city)}">${escapeHtml(getLocationText(record))}</a>
+                    <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(getLocationText(record))}</a>
                 </div>
                 <h1 id="entrySheetTitle">${escapeHtml(record.title)}</h1>
                 <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
@@ -1994,8 +2049,11 @@ function handleDocumentChange(event) {
     const value = filter.value || 'all';
     const nextParams = { [key]: value };
 
-    if (key === 'province') {
-        nextParams.city = 'all';
+    if (key === 'country') {
+        nextParams.area = 'all';
+        nextParams.locality = 'all';
+    } else if (key === 'area') {
+        nextParams.locality = 'all';
     }
 
     updateLedgerRoute(nextParams, {
@@ -2241,15 +2299,16 @@ function getLedgerRecords(params) {
     const records = travelModel.records.filter((record) => {
         const yearMatch = normalized.year === 'all' || record.year === normalized.year;
         const monthMatch = normalized.month === 'all' || record.month === normalized.month;
-        const provinceMatch = normalized.province === 'all' || (record.province || record.country || '未知地点') === normalized.province;
-        const cityMatch = normalized.city === 'all' || (record.city || record.province || record.country || '未知地点') === normalized.city;
+        const countryMatch = normalized.country === 'all' || record.countryKey === normalized.country;
+        const adminAreaMatch = normalized.area === 'all' || record.adminAreaKey === normalized.area;
+        const localityMatch = normalized.locality === 'all' || record.locationKey === normalized.locality;
         const visitMatch = normalized.visit === 'all' || (normalized.visit === 'repeat' ? record.isRepeated : !record.isRepeated);
         const hasPhotos = Array.isArray(record.photos) && record.photos.length > 0;
         const mediaMatch = normalized.media === 'all' || (normalized.media === 'photos' ? hasPhotos : !hasPhotos);
         const hasNote = hasRecordNoteContent(record);
         const noteMatch = normalized.note === 'all' || (normalized.note === 'filled' ? hasNote : !hasNote);
         const searchMatch = !query || record.searchText.includes(query);
-        return yearMatch && monthMatch && provinceMatch && cityMatch && visitMatch && mediaMatch && noteMatch && searchMatch;
+        return yearMatch && monthMatch && countryMatch && adminAreaMatch && localityMatch && visitMatch && mediaMatch && noteMatch && searchMatch;
     });
 
     return records.sort((a, b) => compareLedgerRecords(a, b, normalized.sort));
@@ -2261,8 +2320,8 @@ function compareLedgerRecords(a, b, sort) {
             return (a.date || '').localeCompare(b.date || '') || getLocationText(a).localeCompare(getLocationText(b), 'zh-CN');
         case 'location':
             return getLocationText(a).localeCompare(getLocationText(b), 'zh-CN') || (b.date || '').localeCompare(a.date || '');
-        case 'province':
-            return (a.province || a.country || '').localeCompare(b.province || b.country || '', 'zh-CN') || (b.date || '').localeCompare(a.date || '');
+        case 'area':
+            return (a.adminArea || a.country || '').localeCompare(b.adminArea || b.country || '', 'zh-CN') || (b.date || '').localeCompare(a.date || '');
         case 'title':
             return (a.title || '').localeCompare(b.title || '', 'zh-CN') || (b.date || '').localeCompare(a.date || '');
         case 'desc':
@@ -2273,9 +2332,9 @@ function compareLedgerRecords(a, b, sort) {
 
 function getPlaceRecords(params) {
     return travelModel.recordsDesc.filter(record => (
-        (!params.country || record.country === params.country) &&
-        (!params.province || record.province === params.province) &&
-        (!params.city || record.city === params.city)
+        (!params.country || record.countryKey === params.country || record.country === params.country) &&
+        (!params.area || record.adminAreaKey === params.area || record.adminArea === params.area) &&
+        (!params.locality || record.locationKey === params.locality || record.locality === params.locality)
     ));
 }
 
@@ -2284,7 +2343,7 @@ function renderLedgerControls(params, inputId) {
         <div class="ledger-controls">
             <label class="field-label" for="${inputId}">搜索路线</label>
             <div class="ink-field search-field">
-                <input id="${inputId}" type="search" value="${escapeHtml(params.q)}" autocomplete="off" placeholder="搜索城市、省份或日记内容">
+                <input id="${inputId}" type="search" value="${escapeHtml(params.q)}" autocomplete="off" placeholder="搜索国家、行政区、目的地或日记内容">
                 <button class="search-clear" type="button" data-action="clear-search" data-target="ledger" aria-label="清空路线搜索" ${params.q ? '' : 'disabled'}>×</button>
             </div>
         </div>
@@ -2328,8 +2387,8 @@ function renderLedgerGroups(records, params = {}) {
 }
 
 function getLedgerGroupLabel(record, sort) {
-    if (sort === 'province' || sort === 'location') {
-        return record.province || record.country || '未知地点';
+    if (sort === 'area' || sort === 'location') {
+        return record.adminArea || record.country || '未知地点';
     }
 
     if (sort === 'title') {
@@ -2340,7 +2399,7 @@ function getLedgerGroupLabel(record, sort) {
 }
 
 function getLedgerGroupAriaLabel(label, sort) {
-    if (sort === 'province' || sort === 'location') {
+    if (sort === 'area' || sort === 'location') {
         return `${label} 路线`;
     }
 
@@ -2363,7 +2422,7 @@ function renderLedgerEntry(record) {
                 <span class="entry-location">${escapeHtml(getLocationText(record))}</span>
                 <h3>${escapeHtml(record.title)}</h3>
                 <div class="entry-tags">
-                    <a class="location-chip" href="${placeHash(record.country, record.province, record.city)}">${escapeHtml(record.province || record.country)}</a>
+                    <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(record.adminArea || record.country)}</a>
                     ${record.isRepeated ? '<span class="repeat-stamp">再次到访</span>' : ''}
                 </div>
             </div>
@@ -2372,25 +2431,29 @@ function renderLedgerEntry(record) {
 }
 
 function renderCountryFolder(country) {
+    const scopeSummary = country.adminAreas.length
+        ? `${country.adminAreas.length} 个${country.labels.adminArea}`
+        : `${country.localityCount} 个${country.labels.locality}`;
+
     return `
         <section class="country-folder" aria-label="${escapeHtml(country.country)}">
             <div class="country-head">
                 <h2>${escapeHtml(country.country)}</h2>
-                <span>${country.provinces.length} 个省份 · ${country.count} 次到访</span>
+                <span>${escapeHtml(scopeSummary)} · ${country.count} 次到访</span>
             </div>
             <div class="luggage-grid">
-                ${country.provinces.map(renderLuggageTag).join('')}
+                ${country.areas.map(renderLuggageTag).join('')}
             </div>
         </section>
     `;
 }
 
-function renderLuggageTag(province) {
+function renderLuggageTag(area) {
     return `
-        <a class="luggage-tag" href="${placeHash(province.country, province.province, '')}">
-            <strong>${escapeHtml(province.label)}</strong>
-            <span>${province.count} 次到访 · ${province.cityCount} 座城市</span>
-            <small>最近 ${escapeHtml(province.latestDate)}</small>
+        <a class="luggage-tag" href="${placeHash(area.countryKey, area.adminArea, '')}">
+            <strong>${escapeHtml(area.label)}</strong>
+            <span>${area.count} 次到访 · ${area.localityCount} 个地点</span>
+            <small>最近 ${escapeHtml(area.latestDate)}</small>
         </a>
     `;
 }
@@ -2495,10 +2558,22 @@ function filterToggleButton(label, key, value, activeValue) {
     `;
 }
 
-function getCityFilterOptions(province) {
-    const normalizedProvince = normalizeFilterValue(province);
+function getAdminAreaFilterOptions(country) {
+    const normalizedCountry = normalizeFilterValue(country);
 
-    return travelModel.filterOptions.cities.filter(city => normalizedProvince === 'all' || city.province === normalizedProvince);
+    return travelModel.filterOptions.adminAreas.filter(area => (
+        normalizedCountry === 'all' || area.countryKey === normalizedCountry
+    ));
+}
+
+function getLocalityFilterOptions(country, area) {
+    const normalizedCountry = normalizeFilterValue(country);
+    const normalizedArea = normalizeFilterValue(area);
+
+    return travelModel.filterOptions.localities.filter(locality => (
+        (normalizedCountry === 'all' || locality.countryKey === normalizedCountry)
+        && (normalizedArea === 'all' || locality.adminAreaKey === normalizedArea)
+    ));
 }
 
 function hasActiveLedgerFilter(params) {
@@ -2506,8 +2581,9 @@ function hasActiveLedgerFilter(params) {
 
     return normalized.year !== 'all'
         || normalized.month !== 'all'
-        || normalized.province !== 'all'
-        || normalized.city !== 'all'
+        || normalized.country !== 'all'
+        || normalized.area !== 'all'
+        || normalized.locality !== 'all'
         || normalized.visit !== 'all'
         || normalized.media !== 'all'
         || normalized.note !== 'all'
@@ -2521,13 +2597,12 @@ function yearLink(label, year, params) {
 }
 
 function normalizeLedgerParams(params = {}) {
-    const normalizedProvince = normalizeFilterValue(params.province);
-
     return {
         year: normalizeYear(params.year),
         month: normalizeMonth(params.month),
-        province: normalizedProvince,
-        city: normalizeFilterValue(params.city),
+        country: normalizeFilterValue(params.country),
+        area: normalizeFilterValue(params.area || params.province),
+        locality: normalizeFilterValue(params.locality || params.city),
         visit: normalizeVisit(params.visit),
         media: normalizeMedia(params.media),
         note: normalizeNote(params.note),
@@ -2563,7 +2638,65 @@ function normalizeNote(note) {
 }
 
 function normalizeLedgerSort(sort) {
+    if (sort === 'province') return 'area';
     return LEDGER_SORT_OPTIONS.has(sort) ? sort : DEFAULT_LEDGER_SORT;
+}
+
+function canonicalizeLocationRoute(route) {
+    if (!travelModel || !route) return route;
+
+    if (route.name === 'ledger') {
+        const params = normalizeLedgerParams(route.params);
+        const country = resolveCountryFilterValue(params.country);
+        const area = resolveAdminAreaFilterValue(params.area, country);
+        const locality = resolveLocalityFilterValue(params.locality, country, area);
+
+        return { ...route, params: { ...params, country, area, locality } };
+    }
+
+    if (route.name === 'place') {
+        const country = resolveCountryFilterValue(route.params.country, '');
+        const area = resolveAdminAreaFilterValue(route.params.area, country, '');
+        const locality = resolveLocalityFilterValue(route.params.locality, country, area, '');
+
+        return { ...route, params: { country, area, locality } };
+    }
+
+    return route;
+}
+
+function resolveCountryFilterValue(value, fallback = 'all') {
+    if (!value || value === 'all') return fallback;
+
+    const match = travelModel.filterOptions.countries.find(option => (
+        option.value === value || option.label === value
+    ));
+    return match?.value || fallback;
+}
+
+function resolveAdminAreaFilterValue(value, country = 'all', fallback = 'all') {
+    if (!value || value === 'all') return fallback;
+
+    const match = travelModel.filterOptions.adminAreas.find(option => (
+        (option.value === value || option.label === value)
+        && (!country || country === 'all' || option.countryKey === country)
+    ));
+    return match?.value || fallback;
+}
+
+function resolveLocalityFilterValue(value, country = 'all', area = 'all', fallback = 'all') {
+    if (!value || value === 'all') return fallback;
+
+    const match = travelModel.filterOptions.localities.find(option => (
+        (option.value === value || option.label === value)
+        && (!country || country === 'all' || option.countryKey === country)
+        && (!area || area === 'all' || option.adminAreaKey === area)
+    ));
+    return match?.value || fallback;
+}
+
+function hasLegacyLocationQuery(hash = '') {
+    return /[?&](?:province|city)=/.test(hash) || /[?&]sort=province(?:&|$)/.test(hash);
 }
 
 function getTurnDirection(previousRoute, nextRoute) {
@@ -2576,41 +2709,44 @@ function getTurnDirection(previousRoute, nextRoute) {
     return nextIndex < previousIndex ? 'back' : 'forward';
 }
 
-function getPlaceLabel(params) {
-    if (params.country === '中国') {
-        if (params.city) return params.province && params.province !== params.city ? `${params.province} · ${params.city}` : params.city;
-        return params.province || params.country || '地点';
-    }
+function getPlaceLabel(params, matching = []) {
+    const record = matching[0];
+    if (!record) return '地点';
+    if (!params.area && !params.locality) return record.country;
 
-    return [params.country, params.province && params.province !== params.city ? params.province : '', params.city]
-        .filter(Boolean)
-        .join(' ') || '地点';
+    return formatLocationText({
+        country: record.country,
+        countryCode: record.countryCode,
+        adminArea: params.area ? record.adminArea : '',
+        locality: params.locality ? record.locality : ''
+    }, {
+        includeCountry: !isDomesticLocation(record)
+    });
 }
 
 function getLocationText(record) {
-    if (record.province === record.city) {
-        return record.country === '中国' ? record.city : `${record.country} ${record.city}`;
-    }
-
-    return record.country === '中国'
-        ? `${record.province} ${record.city}`
-        : `${record.country} ${record.province} ${record.city}`;
+    const includeCountry = (travelModel?.stats?.countries || 1) > 1 || !isDomesticLocation(record);
+    return formatLocationText(record, { includeCountry });
 }
 
-function placeHash(country, province, city) {
+function placeHash(country, adminArea, locality) {
+    const countryValue = resolveCountryFilterValue(country, '');
+    const areaValue = resolveAdminAreaFilterValue(adminArea, countryValue, '');
+    const localityValue = resolveLocalityFilterValue(locality, countryValue, areaValue, '');
+
     return serializeRoute({
         name: 'place',
         params: {
-            country: country || '',
-            province: province || '',
-            city: city || ''
+            country: countryValue,
+            area: areaValue,
+            locality: localityValue
         }
     });
 }
 
 function createRecordId(record) {
     const file = (record.desc_md || '').split('/').pop() || '';
-    return file.replace(/\.md$/i, '') || `${record.date || 'entry'}-${record.city || record.province || 'unknown'}`;
+    return file.replace(/\.md$/i, '') || `${record.date || 'entry'}-${record.locality || record.adminArea || 'unknown'}`;
 }
 
 function maxDate(current, next) {

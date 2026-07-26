@@ -10,33 +10,41 @@ const records = [
     {
         date: '2024-01-01',
         country: '中国',
-        province: '云南省',
-        city: '昆明市',
-        locationKey: '中国|云南省|昆明市',
+        countryCode: 'CN',
+        adminArea: '云南省',
+        locality: '昆明市',
+        adminAreaKey: 'CN|云南省',
+        locationKey: 'CN|云南省|昆明市',
         isRepeated: false
     },
     {
         date: '2024-01-11',
         country: '中国',
-        province: '云南省',
-        city: '昆明市',
-        locationKey: '中国|云南省|昆明市',
+        countryCode: 'CN',
+        adminArea: '云南省',
+        locality: '昆明市',
+        adminAreaKey: 'CN|云南省',
+        locationKey: 'CN|云南省|昆明市',
         isRepeated: true
     },
     {
         date: '2025-03-12',
         country: '中国',
-        province: '江苏省',
-        city: '苏州市',
-        locationKey: '中国|江苏省|苏州市',
+        countryCode: 'CN',
+        adminArea: '江苏省',
+        locality: '苏州市',
+        adminAreaKey: 'CN|江苏省',
+        locationKey: 'CN|江苏省|苏州市',
         isRepeated: false
     },
     {
         date: '2025-01-20',
         country: '中国',
-        province: '浙江省',
-        city: '杭州市',
-        locationKey: '中国|浙江省|杭州市',
+        countryCode: 'CN',
+        adminArea: '浙江省',
+        locality: '杭州市',
+        adminAreaKey: 'CN|浙江省',
+        locationKey: 'CN|浙江省|杭州市',
         isRepeated: false
     }
 ];
@@ -44,8 +52,8 @@ const records = [
 test('统计筛选后的记录集合', () => {
     assert.deepEqual(buildRecordSetSnapshot(records), {
         count: 4,
-        cityCount: 3,
-        provinceCount: 3,
+        localityCount: 3,
+        adminAreaCount: 3,
         firstDate: '2024-01-01',
         latestDate: '2025-03-12'
     });
@@ -71,17 +79,19 @@ test('活跃月份分母按首条记录日期到统计截止日期计算', () =>
         {
             date: '2024-07-08',
             country: '中国',
-            province: '云南省',
-            city: '玉溪市',
-            locationKey: '中国|云南省|玉溪市',
+            countryCode: 'CN',
+            adminArea: '云南省',
+            locality: '玉溪市',
+            locationKey: 'CN|云南省|玉溪市',
             isRepeated: false
         },
         {
             date: '2026-07-02',
             country: '中国',
-            province: '山东省',
-            city: '济南市',
-            locationKey: '中国|山东省|济南市',
+            countryCode: 'CN',
+            adminArea: '山东省',
+            locality: '济南市',
+            locationKey: 'CN|山东省|济南市',
             isRepeated: false
         }
     ], '2026-07-11'), {
@@ -101,8 +111,8 @@ test('活跃月份分母按首条记录日期到统计截止日期计算', () =>
 test('空数据和无效日期不会产生错误统计', () => {
     assert.deepEqual(buildRecordSetSnapshot([]), {
         count: 0,
-        cityCount: 0,
-        provinceCount: 0,
+        localityCount: 0,
+        adminAreaCount: 0,
         firstDate: '',
         latestDate: ''
     });

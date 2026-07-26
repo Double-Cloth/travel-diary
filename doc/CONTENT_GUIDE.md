@@ -26,9 +26,12 @@ data/travel-diary/2026/2026-07-11-suzhou.md
 | 字段 | 类型 | 必需 | 说明 |
 | --- | --- | --- | --- |
 | `date` | string | 是 | 日期，格式为 `YYYY-MM-DD`。 |
-| `country` | string | 是 | 国家或地区。 |
-| `province` | string | 是 | 省份、直辖市、自治区或上级区域。 |
-| `city` | string | 是 | 城市或具体目的地。 |
+| `country` | string | 是 | 面向读者显示的国家或地区名称。 |
+| `country_code` | string | 是 | ISO 3166-1 alpha-2 两位代码，用作稳定的国家标识，例如 `CN`、`US`、`JP`。 |
+| `admin_area` | string | 否 | 一级行政区名称。可表示州、省、大区、都道府县、自治区等；城市国家或不需要该层级时可以省略。 |
+| `admin_area_type` | string | 否 | 一级行政区类型覆盖值，例如 `州`、`省`、`都`。常见国家会自动提供界面标签，只在需要更精确说明时填写。 |
+| `locality` | string | 是 | 实际目的地，不限于城市，也可以是村镇、岛屿、景区或其他地点。 |
+| `locality_type` | string | 否 | 目的地类型，例如 `城市`、`岛屿`、`国家公园`。 |
 | `desc_md` | string | 是 | Markdown 正文路径，相对项目根目录。 |
 | `photo_folder` | string | 否 | 照片目录，相对项目根目录。 |
 | `photos` | string[] | 否 | 照片文件名列表，与 `photo_folder` 拼接成图片路径。 |
@@ -39,13 +42,76 @@ data/travel-diary/2026/2026-07-11-suzhou.md
 {
   "date": "2026-07-11",
   "country": "中国",
-  "province": "江苏省",
-  "city": "苏州市",
+  "country_code": "CN",
+  "admin_area": "江苏省",
+  "locality": "苏州市",
   "desc_md": "data/travel-diary/2026/2026-07-11-suzhou.md",
   "photo_folder": "data/photos/suzhou",
   "photos": ["canal.jpg", "garden.jpg"]
 }
 ```
+
+## 不同国家和特殊地区
+
+一级行政区统一写入 `admin_area`，界面会根据 `country_code` 使用适合该国家的名称。例如美国显示“州 / 特区”，日本显示“都道府县”，加拿大显示“省 / 地区”；未配置的国家回退为“一级行政区”。
+
+美国州：
+
+```json
+{
+  "country": "美国",
+  "country_code": "US",
+  "admin_area": "California",
+  "admin_area_type": "州",
+  "locality": "San Francisco"
+}
+```
+
+日本都道府县：
+
+```json
+{
+  "country": "日本",
+  "country_code": "JP",
+  "admin_area": "東京都",
+  "locality": "東京"
+}
+```
+
+城市国家可以省略 `admin_area`：
+
+```json
+{
+  "country": "新加坡",
+  "country_code": "SG",
+  "locality": "新加坡"
+}
+```
+
+系统仍能读取旧内容中的 `province` 和 `city`，旧版 `province/city` 路由也会自动转换；新增内容应统一使用新字段。
+
+## 国家目录
+
+`data/countries.json` 是应用使用的独立国家目录，当前包含 ISO 3166-1 的 249 个国家、属地及特殊地理区域。每一项包含：
+
+- `code`：ISO alpha-2，两位代码。
+- `alpha3`：ISO alpha-3，三位代码。
+- `numeric`：ISO 三位数字代码。
+- `name_zh`、`name_en`：Unicode CLDR 提供的简体中文和英文名称。
+- `aliases`：常用简称或名称变体，可用于旧内容兼容和国家识别。
+- `admin_area_label`、`admin_area_option`：一级行政区在界面中的称谓。
+- `admin_area_optional`：该国家或区域是否通常可以省略一级行政区。
+
+旅行记录中的 `country_code` 必须能在该目录中找到。常见行政体系会显示具体称谓，例如“州 / 特区”“省 / 地区”“都道府县”“酋长国”；未单独配置的国家统一回退为“一级行政区”，不会错误地假设为省。
+
+国家目录由 `scripts/update-countries.mjs` 生成。需要同步 Unicode CLDR 数据时：
+
+```bash
+npm run countries
+npm test
+```
+
+生成脚本固定 CLDR 版本，避免每次安装或启动时访问外部网络。不要直接在运行时代码中新增国家表。
 
 ## Markdown 写法
 
@@ -104,5 +170,7 @@ data/photos/suzhou/
 - `desc_md` 指向的 Markdown 文件存在。
 - `photos` 中每个文件都存在于 `photo_folder`。
 - 日期格式为 `YYYY-MM-DD`。
+- `country_code` 是有效的两位大写代码。
+- `locality` 已填写；`admin_area` 是否填写应以当地行政层级为准，不要为了满足层级而重复国家名。
 - 同一天多篇日记时，文件名 slug 必须不同。
 - 运行 `npm test` 通过。

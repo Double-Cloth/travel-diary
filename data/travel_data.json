@@ -2,8 +2,9 @@
   {
     "date": "2024-07-08",
     "country": "中国",
-    "province": "云南省",
-    "city": "玉溪市",
+    "country_code": "CN",
+    "admin_area": "云南省",
+    "locality": "玉溪市",
     "desc_md": "data/travel-diary/2024/2024-07-08-yuxi.md",
     "photo_folder": "data/photos/yuxi",
     "photos": ["IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg"]
@@ -11,8 +12,9 @@
   {
     "date": "2024-07-28",
     "country": "中国",
-    "province": "云南省",
-    "city": "楚雄市",
+    "country_code": "CN",
+    "admin_area": "云南省",
+    "locality": "楚雄市",
     "desc_md": "data/travel-diary/2024/2024-07-28-chuxiong.md",
     "photo_folder": "data/photos/chuxiong",
     "photos": []
@@ -20,8 +22,9 @@
   {
     "date": "2024-08-12",
     "country": "中国",
-    "province": "上海市",
-    "city": "上海市",
+    "country_code": "CN",
+    "admin_area": "上海市",
+    "locality": "上海市",
     "desc_md": "data/travel-diary/2024/2024-08-12-shanghai.md",
     "photo_folder": "data/photos/shanghai",
     "photos": []
@@ -29,8 +32,9 @@
   {
     "date": "2024-10-04",
     "country": "中国",
-    "province": "云南省",
-    "city": "昆明市",
+    "country_code": "CN",
+    "admin_area": "云南省",
+    "locality": "昆明市",
     "desc_md": "data/travel-diary/2024/2024-10-04-kunming.md",
     "photo_folder": "data/photos/kunming",
     "photos": []
@@ -38,8 +42,9 @@
   {
     "date": "2024-10-18",
     "country": "中国",
-    "province": "北京市",
-    "city": "北京市",
+    "country_code": "CN",
+    "admin_area": "北京市",
+    "locality": "北京市",
     "desc_md": "data/travel-diary/2024/2024-10-18-beijing.md",
     "photo_folder": "data/photos/beijing",
     "photos": []
@@ -47,8 +52,9 @@
   {
     "date": "2024-11-02",
     "country": "中国",
-    "province": "江苏省",
-    "city": "南京市",
+    "country_code": "CN",
+    "admin_area": "江苏省",
+    "locality": "南京市",
     "desc_md": "data/travel-diary/2024/2024-11-02-nanjing.md",
     "photo_folder": "data/photos/nanjing",
     "photos": []
@@ -56,8 +62,9 @@
   {
     "date": "2024-11-03",
     "country": "中国",
-    "province": "江苏省",
-    "city": "苏州市",
+    "country_code": "CN",
+    "admin_area": "江苏省",
+    "locality": "苏州市",
     "desc_md": "data/travel-diary/2024/2024-11-03-suzhou.md",
     "photo_folder": "data/photos/suzhou",
     "photos": []
@@ -65,8 +72,9 @@
   {
     "date": "2025-01-31",
     "country": "中国",
-    "province": "四川省",
-    "city": "成都市",
+    "country_code": "CN",
+    "admin_area": "四川省",
+    "locality": "成都市",
     "desc_md": "data/travel-diary/2025/2025-01-31-chengdu.md",
     "photo_folder": "data/photos/chengdu",
     "photos": []
@@ -74,8 +82,9 @@
   {
     "date": "2025-04-03",
     "country": "中国",
-    "province": "江西省",
-    "city": "南昌市",
+    "country_code": "CN",
+    "admin_area": "江西省",
+    "locality": "南昌市",
     "desc_md": "data/travel-diary/2025/2025-04-03-nanchang.md",
     "photo_folder": "data/photos/nanchang",
     "photos": []
@@ -83,8 +92,9 @@
   {
     "date": "2025-05-02",
     "country": "中国",
-    "province": "河南省",
-    "city": "洛阳市",
+    "country_code": "CN",
+    "admin_area": "河南省",
+    "locality": "洛阳市",
     "desc_md": "data/travel-diary/2025/2025-05-02-luoyang.md",
     "photo_folder": "data/photos/luoyang",
     "photos": []
@@ -92,8 +102,9 @@
   {
     "date": "2025-07-06",
     "country": "中国",
-    "province": "湖南省",
-    "city": "张家界市",
+    "country_code": "CN",
+    "admin_area": "湖南省",
+    "locality": "张家界市",
     "desc_md": "data/travel-diary/2025/2025-07-06-zhangjiajie.md",
     "photo_folder": "data/photos/zhangjiajie",
     "photos": []
@@ -101,8 +112,9 @@
   {
     "date": "2025-07-11",
     "country": "中国",
-    "province": "湖南省",
-    "city": "长沙市",
+    "country_code": "CN",
+    "admin_area": "湖南省",
+    "locality": "长沙市",
     "desc_md": "data/travel-diary/2025/2025-07-11-changsha.md",
     "photo_folder": "data/photos/changsha",
     "photos": []
@@ -110,8 +122,9 @@
   {
     "date": "2025-07-17",
     "country": "中国",
-    "province": "浙江省",
-    "city": "杭州市",
+    "country_code": "CN",
+    "admin_area": "浙江省",
+    "locality": "杭州市",
     "desc_md": "data/travel-diary/2025/2025-07-17-hangzhou.md",
     "photo_folder": "data/photos/hangzhou",
     "photos": []
@@ -119,8 +132,9 @@
   {
     "date": "2025-08-08",
     "country": "中国",
-    "province": "云南省",
-    "city": "大理市",
+    "country_code": "CN",
+    "admin_area": "云南省",
+    "locality": "大理市",
     "desc_md": "data/travel-diary/2025/2025-08-08-dali.md",
     "photo_folder": "data/photos/dali",
     "photos": []
@@ -128,8 +142,9 @@
   {
     "date": "2025-08-27",
     "country": "中国",
-    "province": "云南省",
-    "city": "玉溪市",
+    "country_code": "CN",
+    "admin_area": "云南省",
+    "locality": "玉溪市",
     "desc_md": "data/travel-diary/2025/2025-08-27-yuxi.md",
     "photo_folder": "data/photos/yuxi",
     "photos": []
@@ -137,8 +152,9 @@
   {
     "date": "2025-08-29",
     "country": "中国",
-    "province": "云南省",
-    "city": "建水县",
+    "country_code": "CN",
+    "admin_area": "云南省",
+    "locality": "建水县",
     "desc_md": "data/travel-diary/2025/2025-08-29-jianshui.md",
     "photo_folder": "data/photos/jianshui",
     "photos": []
@@ -146,8 +162,9 @@
   {
     "date": "2025-09-10",
     "country": "中国",
-    "province": "江西省",
-    "city": "萍乡市",
+    "country_code": "CN",
+    "admin_area": "江西省",
+    "locality": "萍乡市",
     "desc_md": "data/travel-diary/2025/2025-09-10-pingxiang.md",
     "photo_folder": "data/photos/pingxiang",
     "photos": []
@@ -155,8 +172,9 @@
   {
     "date": "2025-09-30",
     "country": "中国",
-    "province": "北京市",
-    "city": "北京市",
+    "country_code": "CN",
+    "admin_area": "北京市",
+    "locality": "北京市",
     "desc_md": "data/travel-diary/2025/2025-09-30-beijing.md",
     "photo_folder": "data/photos/beijing",
     "photos": []
@@ -164,8 +182,9 @@
   {
     "date": "2025-10-04",
     "country": "中国",
-    "province": "内蒙古自治区",
-    "city": "鄂尔多斯市",
+    "country_code": "CN",
+    "admin_area": "内蒙古自治区",
+    "locality": "鄂尔多斯市",
     "desc_md": "data/travel-diary/2025/2025-10-04-ordos.md",
     "photo_folder": "data/photos/ordos",
     "photos": []
@@ -173,8 +192,9 @@
   {
     "date": "2025-10-05",
     "country": "中国",
-    "province": "内蒙古自治区",
-    "city": "呼和浩特市",
+    "country_code": "CN",
+    "admin_area": "内蒙古自治区",
+    "locality": "呼和浩特市",
     "desc_md": "data/travel-diary/2025/2025-10-05-hohhot.md",
     "photo_folder": "data/photos/hohhot",
     "photos": []
@@ -182,8 +202,9 @@
   {
     "date": "2025-10-06",
     "country": "中国",
-    "province": "内蒙古自治区",
-    "city": "乌兰察布市",
+    "country_code": "CN",
+    "admin_area": "内蒙古自治区",
+    "locality": "乌兰察布市",
     "desc_md": "data/travel-diary/2025/2025-10-06-ulanchab.md",
     "photo_folder": "data/photos/ulanchab",
     "photos": []
@@ -191,8 +212,9 @@
   {
     "date": "2025-11-01",
     "country": "中国",
-    "province": "安徽省",
-    "city": "黄山市",
+    "country_code": "CN",
+    "admin_area": "安徽省",
+    "locality": "黄山市",
     "desc_md": "data/travel-diary/2025/2025-11-01-huangshan.md",
     "photo_folder": "data/photos/huangshan",
     "photos": []
@@ -200,8 +222,9 @@
   {
     "date": "2025-11-07",
     "country": "中国",
-    "province": "上海市",
-    "city": "上海市",
+    "country_code": "CN",
+    "admin_area": "上海市",
+    "locality": "上海市",
     "desc_md": "data/travel-diary/2025/2025-11-07-shanghai.md",
     "photo_folder": "data/photos/shanghai",
     "photos": []
@@ -209,8 +232,9 @@
   {
     "date": "2026-02-18",
     "country": "中国",
-    "province": "湖北省",
-    "city": "武汉市",
+    "country_code": "CN",
+    "admin_area": "湖北省",
+    "locality": "武汉市",
     "desc_md": "data/travel-diary/2026/2026-02-18-wuhan.md",
     "photo_folder": "data/photos/wuhan",
     "photos": []
@@ -218,8 +242,9 @@
   {
     "date": "2026-03-14",
     "country": "中国",
-    "province": "浙江省",
-    "city": "温州市",
+    "country_code": "CN",
+    "admin_area": "浙江省",
+    "locality": "温州市",
     "desc_md": "data/travel-diary/2026/2026-03-14-wenzhou.md",
     "photo_folder": "data/photos/wenzhou",
     "photos": []
@@ -227,8 +252,9 @@
   {
     "date": "2026-03-15",
     "country": "中国",
-    "province": "浙江省",
-    "city": "宁波市",
+    "country_code": "CN",
+    "admin_area": "浙江省",
+    "locality": "宁波市",
     "desc_md": "data/travel-diary/2026/2026-03-15-ningbo.md",
     "photo_folder": "data/photos/ningbo",
     "photos": []
@@ -236,8 +262,9 @@
   {
     "date": "2026-04-04",
     "country": "中国",
-    "province": "山西省",
-    "city": "大同市",
+    "country_code": "CN",
+    "admin_area": "山西省",
+    "locality": "大同市",
     "desc_md": "data/travel-diary/2026/2026-04-04-datong.md",
     "photo_folder": "data/photos/datong",
     "photos": []
@@ -245,8 +272,9 @@
   {
     "date": "2026-05-01",
     "country": "中国",
-    "province": "河南省",
-    "city": "郑州市",
+    "country_code": "CN",
+    "admin_area": "河南省",
+    "locality": "郑州市",
     "desc_md": "data/travel-diary/2026/2026-05-01-zhengzhou.md",
     "photo_folder": "data/photos/zhengzhou",
     "photos": []
@@ -254,8 +282,9 @@
   {
     "date": "2026-05-22",
     "country": "中国",
-    "province": "陕西省",
-    "city": "西安市",
+    "country_code": "CN",
+    "admin_area": "陕西省",
+    "locality": "西安市",
     "desc_md": "data/travel-diary/2026/2026-05-22-xian.md",
     "photo_folder": "data/photos/xian",
     "photos": []
@@ -263,8 +292,9 @@
   {
     "date": "2026-06-21",
     "country": "中国",
-    "province": "江苏省",
-    "city": "苏州市",
+    "country_code": "CN",
+    "admin_area": "江苏省",
+    "locality": "苏州市",
     "desc_md": "data/travel-diary/2026/2026-06-21-suzhou.md",
     "photo_folder": "data/photos/suzhou",
     "photos": []
@@ -272,10 +302,31 @@
   {
     "date": "2026-07-02",
     "country": "中国",
-    "province": "山东省",
-    "city": "济南市",
+    "country_code": "CN",
+    "admin_area": "山东省",
+    "locality": "济南市",
     "desc_md": "data/travel-diary/2026/2026-07-02-jinan.md",
     "photo_folder": "data/photos/jinan",
+    "photos": []
+  },
+  {
+    "date": "2026-07-21",
+    "country": "马来西亚",
+    "country_code": "MY",
+    "admin_area": "吉隆坡联邦直辖区",
+    "locality": "吉隆坡",
+    "desc_md": "data/travel-diary/2026/2026-07-21-kuala-lumpur.md",
+    "photo_folder": "data/photos/kuala-lumpur",
+    "photos": []
+  },
+  {
+    "date": "2026-07-22",
+    "country": "马来西亚",
+    "country_code": "MY",
+    "admin_area": "马六甲州",
+    "locality": "马六甲市",
+    "desc_md": "data/travel-diary/2026/2026-07-22-melaka.md",
+    "photo_folder": "data/photos/melaka",
     "photos": []
   }
 ]

@@ -5,6 +5,7 @@
   "description": "Personal travel diary static site.",
   "type": "commonjs",
   "scripts": {
+    "countries": "node scripts/update-countries.mjs",
     "fonts": "node scripts/subset-fonts.mjs",
     "start": "npm run fonts && node js/server.js",
     "serve": "npm run fonts && node js/server.js",
