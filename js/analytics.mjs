@@ -1,3 +1,5 @@
+import { getScopedVisitKey, getVisitKey } from './visits.mjs';
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -24,8 +26,8 @@ export function buildRecordSetSnapshot(records = []) {
 }
 
 export function deriveOverviewAnalytics(records = [], rangeEndDate = '') {
-    const repeatCount = records.filter(record => record.isRepeated).length;
-    const locationCounts = new Map();
+    const repeatedVisits = new Set();
+    const locationVisits = new Map();
     const dates = records
         .map(record => record.date || '')
         .filter(isValidDateString)
@@ -45,7 +47,13 @@ export function deriveOverviewAnalytics(records = [], rangeEndDate = '') {
         ].filter(Boolean).join('|');
         if (!locationKey) return;
 
-        locationCounts.set(locationKey, (locationCounts.get(locationKey) || 0) + 1);
+        const visits = locationVisits.get(locationKey) || new Set();
+        visits.add(getVisitKey(record));
+        locationVisits.set(locationKey, visits);
+
+        if (record.isRepeated) {
+            repeatedVisits.add(getScopedVisitKey(record, locationKey));
+        }
     });
 
     for (let index = 1; index < dates.length; index += 1) {
@@ -59,8 +67,8 @@ export function deriveOverviewAnalytics(records = [], rangeEndDate = '') {
     }
 
     return {
-        repeatCount,
-        repeatLocationCount: Array.from(locationCounts.values()).filter(count => count > 1).length,
+        repeatCount: repeatedVisits.size,
+        repeatLocationCount: Array.from(locationVisits.values()).filter(visits => visits.size > 1).length,
         activeYearCount: years.size,
         activeMonthCount: activeMonths.size,
         activeMonthCapacity: countInclusiveMonths(firstDate, capacityEndDate),

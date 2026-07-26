@@ -55,6 +55,7 @@
     "country_code": "CN",
     "admin_area": "江苏省",
     "locality": "南京市",
+    "trip_id": "2024-11-jiangsu",
     "desc_md": "data/travel-diary/2024/2024-11-02-nanjing.md",
     "photo_folder": "data/photos/nanjing",
     "photos": []
@@ -65,6 +66,7 @@
     "country_code": "CN",
     "admin_area": "江苏省",
     "locality": "苏州市",
+    "trip_id": "2024-11-jiangsu",
     "desc_md": "data/travel-diary/2024/2024-11-03-suzhou.md",
     "photo_folder": "data/photos/suzhou",
     "photos": []
@@ -145,6 +147,7 @@
     "country_code": "CN",
     "admin_area": "云南省",
     "locality": "玉溪市",
+    "trip_id": "2025-08-central-yunnan",
     "desc_md": "data/travel-diary/2025/2025-08-27-yuxi.md",
     "photo_folder": "data/photos/yuxi",
     "photos": []
@@ -155,6 +158,7 @@
     "country_code": "CN",
     "admin_area": "云南省",
     "locality": "建水县",
+    "trip_id": "2025-08-central-yunnan",
     "desc_md": "data/travel-diary/2025/2025-08-29-jianshui.md",
     "photo_folder": "data/photos/jianshui",
     "photos": []
@@ -185,6 +189,7 @@
     "country_code": "CN",
     "admin_area": "内蒙古自治区",
     "locality": "鄂尔多斯市",
+    "trip_id": "2025-10-inner-mongolia",
     "desc_md": "data/travel-diary/2025/2025-10-04-ordos.md",
     "photo_folder": "data/photos/ordos",
     "photos": []
@@ -195,6 +200,7 @@
     "country_code": "CN",
     "admin_area": "内蒙古自治区",
     "locality": "呼和浩特市",
+    "trip_id": "2025-10-inner-mongolia",
     "desc_md": "data/travel-diary/2025/2025-10-05-hohhot.md",
     "photo_folder": "data/photos/hohhot",
     "photos": []
@@ -205,6 +211,7 @@
     "country_code": "CN",
     "admin_area": "内蒙古自治区",
     "locality": "乌兰察布市",
+    "trip_id": "2025-10-inner-mongolia",
     "desc_md": "data/travel-diary/2025/2025-10-06-ulanchab.md",
     "photo_folder": "data/photos/ulanchab",
     "photos": []
@@ -245,6 +252,7 @@
     "country_code": "CN",
     "admin_area": "浙江省",
     "locality": "温州市",
+    "trip_id": "2026-03-zhejiang",
     "desc_md": "data/travel-diary/2026/2026-03-14-wenzhou.md",
     "photo_folder": "data/photos/wenzhou",
     "photos": []
@@ -255,6 +263,7 @@
     "country_code": "CN",
     "admin_area": "浙江省",
     "locality": "宁波市",
+    "trip_id": "2026-03-zhejiang",
     "desc_md": "data/travel-diary/2026/2026-03-15-ningbo.md",
     "photo_folder": "data/photos/ningbo",
     "photos": []
@@ -315,6 +324,7 @@
     "country_code": "MY",
     "admin_area": "吉隆坡联邦直辖区",
     "locality": "吉隆坡",
+    "trip_id": "2026-07-malaysia",
     "desc_md": "data/travel-diary/2026/2026-07-21-kuala-lumpur.md",
     "photo_folder": "data/photos/kuala-lumpur",
     "photos": []
@@ -325,6 +335,7 @@
     "country_code": "MY",
     "admin_area": "马六甲州",
     "locality": "马六甲市",
+    "trip_id": "2026-07-malaysia",
     "desc_md": "data/travel-diary/2026/2026-07-22-melaka.md",
     "photo_folder": "data/photos/melaka",
     "photos": []

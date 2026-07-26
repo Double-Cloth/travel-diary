@@ -32,6 +32,7 @@ data/travel-diary/2026/2026-07-11-suzhou.md
 | `admin_area_type` | string | 否 | 一级行政区类型覆盖值，例如 `州`、`省`、`都`。常见国家会自动提供界面标签，只在需要更精确说明时填写。 |
 | `locality` | string | 是 | 实际目的地，不限于城市，也可以是村镇、岛屿、景区或其他地点。 |
 | `locality_type` | string | 否 | 目的地类型，例如 `城市`、`岛屿`、`国家公园`。 |
+| `trip_id` | string | 否 | 旅行标识。同一次旅行包含多篇日记或多个目的地时填写相同值，用于按旅行去重计算到访次数。 |
 | `desc_md` | string | 是 | Markdown 正文路径，相对项目根目录。 |
 | `photo_folder` | string | 否 | 照片目录，相对项目根目录。 |
 | `photos` | string[] | 否 | 照片文件名列表，与 `photo_folder` 拼接成图片路径。 |
@@ -45,11 +46,14 @@ data/travel-diary/2026/2026-07-11-suzhou.md
   "country_code": "CN",
   "admin_area": "江苏省",
   "locality": "苏州市",
+  "trip_id": "2026-07-jiangsu",
   "desc_md": "data/travel-diary/2026/2026-07-11-suzhou.md",
   "photo_folder": "data/photos/suzhou",
   "photos": ["canal.jpg", "garden.jpg"]
 }
 ```
+
+如果同一次旅行去了同一省的多座城市，应为这些记录填写相同的 `trip_id`。例如南京和苏州属于同一次江苏旅行时，两篇记录都填写 `"trip_id": "2024-11-jiangsu"`；界面会将江苏省计算为 1 次到访，同时仍展示 2 个地点和 2 篇日记。未填写 `trip_id` 的旧记录会各自视为一次独立旅行。
 
 ## 不同国家和特殊地区
 
@@ -172,5 +176,6 @@ data/photos/suzhou/
 - 日期格式为 `YYYY-MM-DD`。
 - `country_code` 是有效的两位大写代码。
 - `locality` 已填写；`admin_area` 是否填写应以当地行政层级为准，不要为了满足层级而重复国家名。
+- 同一次旅行的多篇记录使用完全相同的 `trip_id`，不同旅行不要复用同一标识。
 - 同一天多篇日记时，文件名 slug 必须不同。
 - 运行 `npm test` 通过。

@@ -18,6 +18,10 @@ test('Markdown 日记按年份目录存放并由元数据引用', async () => {
         assert.equal(countryCodes.has(record.country_code), true, `${record.country_code} should exist in countries.json`);
         assert.ok(record.country);
         assert.ok(record.locality);
+        if ('trip_id' in record) {
+            assert.equal(typeof record.trip_id, 'string');
+            assert.ok(record.trip_id.trim());
+        }
         assert.equal('province' in record, false);
         assert.equal('city' in record, false);
         assert.ok(record.desc_md.startsWith(expectedPrefix), `${record.desc_md} should start with ${expectedPrefix}`);

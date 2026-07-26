@@ -2,6 +2,7 @@ import { loadTravelData, loadTravelRecords } from './data.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { getRouteMapRandomCount } from './route-map.mjs';
+import { countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
@@ -290,14 +291,18 @@ function renderRoute(route, options = {}) {
 
 function deriveTravelModel(records) {
     const sortedAsc = [...records].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-    const seenLocations = new Set();
+    const firstVisitsByLocation = new Map();
     const enhancedAsc = sortedAsc.map((record) => {
         const id = createRecordId(record);
         const year = (record.date || '').slice(0, 4) || '未知';
         const month = (record.date || '').slice(5, 7) || '';
         const locationKey = record.locationKey || [record.countryKey || record.country, record.adminArea, record.locality].filter(Boolean).join('|');
-        const isRepeated = seenLocations.has(locationKey);
-        seenLocations.add(locationKey);
+        const visitKey = getVisitKey({ ...record, id });
+        const firstVisitKey = firstVisitsByLocation.get(locationKey);
+        const isRepeated = Boolean(firstVisitKey && firstVisitKey !== visitKey);
+        if (!firstVisitKey) {
+            firstVisitsByLocation.set(locationKey, visitKey);
+        }
 
         return {
             ...record,
@@ -305,6 +310,7 @@ function deriveTravelModel(records) {
             year,
             month,
             locationKey,
+            visitKey,
             isRepeated,
             title: record.descTitle || buildFallbackTitle(record)
         };
@@ -434,11 +440,13 @@ function buildRepeatLocations(records) {
             key,
             record,
             count: 0,
+            visits: new Set(),
             firstDate: '',
             latestDate: ''
         };
 
-        item.count += 1;
+        item.visits.add(getVisitKey(record));
+        item.count = item.visits.size;
         item.firstDate = !item.firstDate || (record.date || '') < item.firstDate ? (record.date || '') : item.firstDate;
         item.latestDate = maxDate(item.latestDate, record.date);
         if ((record.date || '') >= (item.record.date || '')) {
@@ -531,6 +539,7 @@ function buildLocationIndex(records) {
             country: countryKey,
             countryCode: record.countryCode,
             count: 0,
+            visits: new Set(),
             localities: new Set(),
             areas: new Map(),
             latestDate: '',
@@ -545,17 +554,20 @@ function buildLocationIndex(records) {
             label: record.adminArea || record.country,
             isCountryLevel: !record.adminArea,
             count: 0,
+            visits: new Set(),
             localities: new Set(),
             latestDate: '',
             searchText: ''
         };
 
-        country.count += 1;
+        country.visits.add(getVisitKey(record));
+        country.count = country.visits.size;
         country.localities.add(record.locationKey);
         country.latestDate = maxDate(country.latestDate, record.date);
         country.searchText = `${country.searchText} ${record.searchText || ''}`.toLowerCase();
 
-        area.count += 1;
+        area.visits.add(getVisitKey(record));
+        area.count = area.visits.size;
         area.localities.add(record.locality);
         area.latestDate = maxDate(area.latestDate, record.date);
         area.searchText = `${area.searchText} ${record.searchText || ''}`.toLowerCase();
@@ -567,11 +579,13 @@ function buildLocationIndex(records) {
     return Array.from(countryMap.values())
         .map(country => ({
             ...country,
+            visits: undefined,
             labels: getCountryLocationLabels(country),
             localityCount: country.localities.size,
             areas: Array.from(country.areas.values())
                 .map(area => ({
                     ...area,
+                    visits: undefined,
                     country: country.country,
                     localityCount: area.localities.size,
                     localities: Array.from(area.localities).filter(Boolean).sort((a, b) => a.localeCompare(b, 'zh-CN'))
@@ -1037,7 +1051,7 @@ function renderTopAdminAreaInsight(adminArea) {
         <a class="overview-insight overview-location-feature" href="${placeHash(adminArea.countryKey, adminArea.adminArea, '')}">
             <span>高频行政区</span>
             <strong>${escapeHtml(adminArea.label)}</strong>
-            <small>${adminArea.count} 篇日记 · ${adminArea.localityCount} 个地点</small>
+            <small>${adminArea.count} 次到访 · ${adminArea.localityCount} 个地点</small>
         </a>
     `;
 }
@@ -1100,6 +1114,7 @@ function getBroadestAdminArea(adminAreas = []) {
 function renderPlace(params = {}) {
     const matching = getPlaceRecords(params);
     const label = getPlaceLabel(params, matching);
+    const visitCount = countDistinctVisits(matching);
     const localities = Array.from(new Set(matching.map(record => record.locality).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-CN'));
 
     setPages(`
@@ -1107,7 +1122,7 @@ function renderPlace(params = {}) {
             <a class="ribbon-back" href="#archive">返回档案夹</a>
             <p class="journal-label">地点档案</p>
             <h1>${escapeHtml(label)}</h1>
-            <p class="place-count">${matching.length} 次到访</p>
+            <p class="place-count">${visitCount} 次到访</p>
             <div class="city-tags">
                 ${localities.map(locality => `
                     <a class="location-chip" href="${placeHash(params.country, params.area, locality)}">${escapeHtml(locality)}</a>

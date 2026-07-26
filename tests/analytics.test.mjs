@@ -133,3 +133,22 @@ test('空数据和无效日期不会产生错误统计', () => {
         longestGap: null
     });
 });
+
+test('同一次旅行的重复日记不会虚增复访统计', () => {
+    const sameTripRecords = [
+        {
+            date: '2026-03-14',
+            trip_id: '2026-03-zhejiang',
+            locationKey: 'CN|浙江省|温州市',
+            isRepeated: false
+        },
+        {
+            date: '2026-03-15',
+            trip_id: '2026-03-zhejiang',
+            locationKey: 'CN|浙江省|温州市',
+            isRepeated: false
+        }
+    ];
+
+    assert.equal(deriveOverviewAnalytics(sameTripRecords).repeatLocationCount, 0);
+});
