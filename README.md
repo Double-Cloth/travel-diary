@@ -11,7 +11,7 @@ npm start
 
 默认启动后打开 [http://localhost:9000](http://localhost:9000)。
 
-如需指定端口：
+如要指定端口：
 
 ```bash
 node js/server.js --port 8080
