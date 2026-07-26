@@ -25,10 +25,10 @@ test('首屏字体使用压缩后的本地 woff2 文件', async () => {
     }
 });
 
-test('本地启动前会重新生成字体子集', () => {
+test('本地启动直接使用仓库内的字体子集', () => {
     assert.equal(packageJson.scripts.fonts, 'node scripts/subset-fonts.mjs');
-    assert.match(packageJson.scripts.start, /npm run fonts && node js\/server\.js/);
-    assert.match(packageJson.scripts.serve, /npm run fonts && node js\/server\.js/);
+    assert.equal(packageJson.scripts.start, 'node js/server.js');
+    assert.equal(packageJson.scripts.serve, 'node js/server.js');
 });
 
 test('字体子集脚本显式丢弃不需要的 meta 表', () => {

@@ -18,8 +18,7 @@ build/
 coverage/
 .cache/
 
-# Generated font subsets
-assets/fonts/*-subset.woff2
+# 压缩字体必须纳入版本控制，确保全新检出后也能离线启动。
 
 # Codex / agent local artifacts
 .codex/

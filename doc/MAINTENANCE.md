@@ -5,9 +5,12 @@
 ```bash
 npm start
 npm test
+npm run fonts
 npm run countries
 node js/server.js --port 8080 --network
 ```
+
+`npm start` 和 `npm test` 可以离线运行。`npm run fonts` 需要本机已有 `pyftsubset`；`npm run countries` 会访问固定版本的 Unicode CLDR。两者都是显式维护命令，不属于启动流程。
 
 ## 发布前检查
 
@@ -46,6 +49,8 @@ node js/server.js --port 8080 --network
 `tests/location.test.mjs` 关注多国行政区命名、稳定地点键、城市国家和旧字段兼容。调整地点模型或新增国家规则时应优先扩展这里。
 
 `tests/countries.test.mjs` 验证 `data/countries.json` 保持 249 个 ISO 3166-1 当前代码、代码唯一性、多语言名称、行政区回退和数据来源信息。
+
+`tests/offline.test.mjs` 验证启动脚本不会执行下载或资产生成命令，HTML/CSS 引用均指向实际存在的本地资源，压缩字体随项目分发，运行时数据请求不会指向远程地址。
 
 ## 更新国家目录
 
