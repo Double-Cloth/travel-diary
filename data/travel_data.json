@@ -284,8 +284,20 @@
     "country_code": "CN",
     "admin_area": "河南省",
     "locality": "郑州市",
+    "trip_id": "2026-05-zhengzhou-songshan",
     "desc_md": "data/travel-diary/2026/2026-05-01-zhengzhou.md",
     "photo_folder": "data/photos/zhengzhou",
+    "photos": []
+  },
+  {
+    "date": "2026-05-03",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "河南省",
+    "locality": "登封市",
+    "trip_id": "2026-05-zhengzhou-songshan",
+    "desc_md": "data/travel-diary/2026/2026-05-03-songshan.md",
+    "photo_folder": "data/photos/songshan",
     "photos": []
   },
   {
@@ -294,8 +306,20 @@
     "country_code": "CN",
     "admin_area": "陕西省",
     "locality": "西安市",
+    "trip_id": "2026-05-xian-huashan",
     "desc_md": "data/travel-diary/2026/2026-05-22-xian.md",
     "photo_folder": "data/photos/xian",
+    "photos": []
+  },
+  {
+    "date": "2026-05-23",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "陕西省",
+    "locality": "华阴市",
+    "trip_id": "2026-05-xian-huashan",
+    "desc_md": "data/travel-diary/2026/2026-05-23-huashan.md",
+    "photo_folder": "data/photos/huashan",
     "photos": []
   },
   {
@@ -314,8 +338,20 @@
     "country_code": "CN",
     "admin_area": "山东省",
     "locality": "济南市",
+    "trip_id": "2026-07-jinan-taishan",
     "desc_md": "data/travel-diary/2026/2026-07-02-jinan.md",
     "photo_folder": "data/photos/jinan",
+    "photos": []
+  },
+  {
+    "date": "2026-07-04",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "山东省",
+    "locality": "泰安市",
+    "trip_id": "2026-07-jinan-taishan",
+    "desc_md": "data/travel-diary/2026/2026-07-04-taishan.md",
+    "photo_folder": "data/photos/taishan",
     "photos": []
   },
   {
@@ -338,6 +374,28 @@
     "trip_id": "2026-07-malaysia",
     "desc_md": "data/travel-diary/2026/2026-07-22-melaka.md",
     "photo_folder": "data/photos/melaka",
+    "photos": []
+  },
+  {
+    "date": "2026-07-30",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "江西省",
+    "locality": "景德镇市",
+    "trip_id": "2026-07-jingdezhen-jiujiang",
+    "desc_md": "data/travel-diary/2026/2026-07-30-jingdezhen.md",
+    "photo_folder": "data/photos/jingdezhen",
+    "photos": []
+  },
+  {
+    "date": "2026-07-31",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "江西省",
+    "locality": "九江市",
+    "trip_id": "2026-07-jingdezhen-jiujiang",
+    "desc_md": "data/travel-diary/2026/2026-07-31-jiujiang.md",
+    "photo_folder": "data/photos/jiujiang",
     "photos": []
   }
 ]

@@ -2,7 +2,7 @@ import { loadTravelData, loadTravelRecords } from './data.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { getRouteMapRandomCount } from './route-map.mjs';
-import { countDistinctVisits, getVisitKey } from './visits.mjs';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
@@ -57,6 +57,7 @@ let activeRoute = null;
 let pageTurnTimer = null;
 let lastReadingHash = '#ledger';
 let lastEntryFocusId = '';
+let lastReadingScrollPosition = null;
 let searchRouteTimer = null;
 let isSearchComposing = false;
 let isMobileContextPanelOpen = false;
@@ -252,6 +253,7 @@ function navigateTo(route, options = {}) {
 
 function renderRoute(route, options = {}) {
     const previousRoute = activeRoute;
+    const shouldRestoreReadingScroll = isReturningToReadingBackground(previousRoute, route);
     activeRoute = route;
     refs.shell.dataset.route = route.name;
     document.body.dataset.route = route.name;
@@ -285,6 +287,9 @@ function renderRoute(route, options = {}) {
             default:
                 renderCover();
         }
+        if (shouldRestoreReadingScroll) {
+            restoreReadingScrollPosition();
+        }
         restoreFocus(options.focusId);
     }, { direction, animate: options.animate !== false && !options.initial });
 }
@@ -315,7 +320,16 @@ function deriveTravelModel(records) {
             title: record.descTitle || buildFallbackTitle(record)
         };
     });
-    const enhanced = records.map((record) => enhancedAsc.find(item => item.desc_md === record.desc_md) || record);
+    const itineraryGroups = buildItineraryGroups(enhancedAsc);
+    const recordsWithTripCounts = enhancedAsc.map((record) => {
+        const tripGroup = itineraryGroups.get(record.visitKey);
+        return {
+            ...record,
+            tripRecordCount: tripGroup?.count || 0,
+            tripGroupLabel: tripGroup?.label || ''
+        };
+    });
+    const enhanced = records.map((record) => recordsWithTripCounts.find(item => item.desc_md === record.desc_md) || record);
     const recordsById = new Map(enhanced.map(record => [record.id, record]));
     const recordsDesc = [...enhanced].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const years = Array.from(new Set(recordsDesc.map(record => record.year))).filter(Boolean);
@@ -1150,6 +1164,7 @@ function renderEntryRoute(params = {}) {
             : (record ? { year: record.year, q: '', sort: DEFAULT_LEDGER_SORT } : { year: 'all', q: '', sort: DEFAULT_LEDGER_SORT });
         renderLedger(ledgerParams);
     }
+    restoreReadingScrollPosition();
     openEntrySheet(record);
 }
 
@@ -1245,6 +1260,7 @@ function openEntrySheet(record) {
                 <div class="sheet-meta">
                     <time datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '')}</time>
                     <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(getLocationText(record))}</a>
+                    ${renderTripGroupHint(record)}
                 </div>
                 <h1 id="entrySheetTitle">${escapeHtml(record.title)}</h1>
                 <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
@@ -1944,8 +1960,7 @@ function handleDocumentClick(event) {
     if (latestAction) {
         event.preventDefault();
         if (travelModel?.latestRecord) {
-            lastReadingHash = getEntryBackgroundHash();
-            lastEntryFocusId = '';
+            rememberReadingContext();
             navigateTo({ name: 'entry', params: { id: travelModel.latestRecord.id } });
         }
         return;
@@ -1954,8 +1969,7 @@ function handleDocumentClick(event) {
     const entryCard = event.target.closest('[data-open-entry]');
     if (entryCard && !event.target.closest('a, button, input')) {
         event.preventDefault();
-        lastReadingHash = getEntryBackgroundHash();
-        lastEntryFocusId = entryCard.id || '';
+        rememberReadingContext(entryCard.id || '');
         navigateTo({ name: 'entry', params: { id: entryCard.dataset.openEntry } });
         return;
     }
@@ -1965,8 +1979,7 @@ function handleDocumentClick(event) {
         event.preventDefault();
         const href = routeAnchor.getAttribute('href');
         if (href.startsWith('#entry')) {
-            lastReadingHash = getEntryBackgroundHash();
-            lastEntryFocusId = '';
+            rememberReadingContext();
         }
         navigateTo(href);
     }
@@ -2036,10 +2049,41 @@ function handleDocumentKeydown(event) {
 
     if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('[data-open-entry]')) {
         event.preventDefault();
-        lastReadingHash = serializeRoute(activeRoute || { name: 'ledger', params: {} });
-        lastEntryFocusId = event.target.id || '';
+        rememberReadingContext(event.target.id || '');
         navigateTo({ name: 'entry', params: { id: event.target.dataset.openEntry } });
     }
+}
+
+function rememberReadingContext(focusId = '') {
+    if (activeRoute?.name === 'entry' || activeRoute?.name === 'photos') {
+        return;
+    }
+
+    lastReadingHash = getEntryBackgroundHash();
+    lastEntryFocusId = focusId;
+    lastReadingScrollPosition = {
+        left: refs.leftPage?.scrollTop || 0,
+        right: refs.rightPage?.scrollTop || 0,
+        windowY: window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0
+    };
+}
+
+function isReturningToReadingBackground(previousRoute, nextRoute) {
+    if (previousRoute?.name !== 'entry' && previousRoute?.name !== 'photos') {
+        return false;
+    }
+
+    return serializeRoute(nextRoute) === lastReadingHash;
+}
+
+function restoreReadingScrollPosition() {
+    if (!lastReadingScrollPosition) {
+        return;
+    }
+
+    refs.leftPage.scrollTop = lastReadingScrollPosition.left;
+    refs.rightPage.scrollTop = lastReadingScrollPosition.right;
+    window.scrollTo(0, lastReadingScrollPosition.windowY);
 }
 
 function handleDocumentInput(event) {
@@ -2439,9 +2483,24 @@ function renderLedgerEntry(record) {
                 <div class="entry-tags">
                     <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(record.adminArea || record.country)}</a>
                     ${record.isRepeated ? '<span class="repeat-stamp">再次到访</span>' : ''}
+                    ${renderTripGroupHint(record)}
                 </div>
             </div>
         </article>
+    `;
+}
+
+function renderTripGroupHint(record) {
+    const count = Number(record.tripRecordCount) || 0;
+    const label = String(record.tripGroupLabel || '');
+    if (!label) {
+        return '';
+    }
+
+    const variant = Math.max(0, (Number.parseInt(label, 10) || 1) - 1) % 8;
+
+    return `
+        <span class="trip-stamp trip-variant-${variant}" aria-label="行程 ${escapeHtml(label)}，本次行程共有 ${count} 篇日记" title="同色同号属于同一次旅行">行程 ${escapeHtml(label)}</span>
     `;
 }
 

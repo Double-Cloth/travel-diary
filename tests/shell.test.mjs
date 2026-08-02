@@ -148,6 +148,27 @@ test('切换纸页内容时重置左右页滚动位置', () => {
     assert.match(appJs, /function setPages[\s\S]+refs\.leftPage\.scrollTop = 0;[\s\S]+refs\.rightPage\.scrollTop = 0;/);
 });
 
+test('打开并退出日记时恢复路线档案滚动位置', () => {
+    assert.match(appJs, /function rememberReadingContext\(focusId = ''\)[\s\S]*left: refs\.leftPage\?\.scrollTop \|\| 0,[\s\S]*right: refs\.rightPage\?\.scrollTop \|\| 0,[\s\S]*windowY: window\.scrollY/);
+    assert.match(appJs, /function renderEntryRoute[\s\S]*restoreReadingScrollPosition\(\);[\s\S]*openEntrySheet\(record\);/);
+    assert.match(appJs, /const shouldRestoreReadingScroll = isReturningToReadingBackground\(previousRoute, route\);[\s\S]*if \(shouldRestoreReadingScroll\) \{[\s\S]*restoreReadingScrollPosition\(\);/);
+    assert.match(appJs, /function restoreReadingScrollPosition\(\)[\s\S]*refs\.leftPage\.scrollTop = lastReadingScrollPosition\.left;[\s\S]*refs\.rightPage\.scrollTop = lastReadingScrollPosition\.right;[\s\S]*window\.scrollTo\(0, lastReadingScrollPosition\.windowY\);/);
+});
+
+test('每篇日记按最早行程起显示编号但不暴露 trip_id', () => {
+    assert.match(appJs, /import \{ buildItineraryGroups, countDistinctVisits, getVisitKey \} from '\.\/visits\.mjs';/);
+    assert.match(appJs, /const itineraryGroups = buildItineraryGroups\(enhancedAsc\);/);
+    assert.match(appJs, /tripRecordCount: tripGroup\?\.count \|\| 0,[\s\S]*tripGroupLabel: tripGroup\?\.label \|\| ''/);
+    assert.match(appJs, /function renderTripGroupHint\(record\)[\s\S]*if \(!label\)[\s\S]*const variant = Math\.max\(0,[\s\S]*class="trip-stamp trip-variant-\$\{variant\}"[\s\S]*>行程 \$\{escapeHtml\(label\)\}<\/span>/);
+    assert.match(appJs, /class="sheet-meta"[\s\S]*renderTripGroupHint\(record\)/);
+    assert.match(appJs, /class="entry-tags"[\s\S]*renderTripGroupHint\(record\)/);
+    assert.doesNotMatch(appJs, /escapeHtml\(record\.(?:trip_id|tripId)\)/);
+    assert.match(journalCss, /\.trip-stamp\s*{[\s\S]*min-width: 54px;[\s\S]*height: 26px;[\s\S]*border-radius: 999px;[\s\S]*background: var\(--trip-color\);/);
+    assert.match(journalCss, /\.entry-tags \.trip-stamp\s*{[\s\S]*margin-left: auto;/);
+    assert.match(journalCss, /\.trip-variant-0 \{ --trip-color: #[0-9a-f]{6}; \}[\s\S]*\.trip-variant-7 \{ --trip-color: #[0-9a-f]{6}; \}/i);
+    assert.doesNotMatch(journalCss, /\.entry-sheet\.trip-grouped|repeating-linear-gradient\(135deg, var\(--trip-accent\)/);
+});
+
 test('窄屏将索引夹层和旅行概览放入弹出层', () => {
     assert.match(appJs, /data-action="open-context-panel"/);
     assert.match(appJs, /data-action="close-context-panel"/);

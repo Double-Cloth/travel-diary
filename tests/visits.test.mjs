@@ -2,6 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+    buildTripRecordCounts,
+    buildItineraryGroups,
     countDistinctVisits,
     getScopedVisitKey,
     getVisitKey
@@ -19,6 +21,11 @@ test('同一次旅行的多座城市共享同一个到访标识', () => {
 
     assert.equal(getVisitKey(nanjing), getVisitKey(suzhou));
     assert.equal(countDistinctVisits([nanjing, suzhou]), 1);
+    assert.equal(buildTripRecordCounts([nanjing, suzhou]).get(getVisitKey(nanjing)), 2);
+    assert.deepEqual(buildItineraryGroups([suzhou, nanjing]).get(getVisitKey(nanjing)), {
+        count: 2,
+        label: '1'
+    });
 });
 
 test('未填写 trip_id 的旧记录仍分别计算到访', () => {
@@ -29,6 +36,20 @@ test('未填写 trip_id 的旧记录仍分别计算到访', () => {
 
     assert.equal(countDistinctVisits(records), 2);
     assert.notEqual(getVisitKey(records[0]), getVisitKey(records[1]));
+    assert.equal(buildTripRecordCounts(records).size, 0);
+    assert.deepEqual([...buildItineraryGroups(records).values()], [
+        { count: 1, label: '1' },
+        { count: 1, label: '2' }
+    ]);
+});
+
+test('行程编号从最早记录开始递增', () => {
+    const earliest = { date: '2024-01-01', desc_md: 'data/travel-diary/2024/earliest.md' };
+    const latest = { date: '2025-01-01', desc_md: 'data/travel-diary/2025/latest.md' };
+    const groups = buildItineraryGroups([latest, earliest]);
+
+    assert.equal(groups.get(getVisitKey(earliest)).label, '1');
+    assert.equal(groups.get(getVisitKey(latest)).label, '2');
 });
 
 test('同一旅行在不同地点范围内分别形成一次到访', () => {
