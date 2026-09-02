@@ -7,7 +7,7 @@
     "locality": "玉溪市",
     "desc_md": "data/travel-diary/2024/2024-07-08-yuxi.md",
     "photo_folder": "data/photos/yuxi",
-    "photos": ["IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg","IMG_20240917_130241.png","壁纸.jpg"]
+    "photos": ["Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png"]
   },
   {
     "date": "2024-07-28",
@@ -396,6 +396,17 @@
     "trip_id": "2026-07-jingdezhen-jiujiang",
     "desc_md": "data/travel-diary/2026/2026-07-31-jiujiang.md",
     "photo_folder": "data/photos/jiujiang",
+    "photos": []
+  },
+  {
+    "date": "2026-08-28",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "重庆市",
+    "locality": "重庆市",
+    "trip_id": "2026-08-28-chongqing",
+    "desc_md": "data/travel-diary/2026/2026-08-28-chongqing.md",
+    "photo_folder": "data/photos/chongqing",
     "photos": []
   }
 ]
