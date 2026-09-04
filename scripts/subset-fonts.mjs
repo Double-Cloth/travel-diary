@@ -78,6 +78,8 @@ function runPyftsubset({ source, output, unicodeRanges }) {
         '--flavor=woff2',
         '--layout-features=*',
         '--drop-tables+=meta',
+        // 日期会在运行时更新，所有字体都必须保留完整数字。
+        '--text=0123456789',
         `--text-file=${textFile}`,
         `--unicodes=${unicodeRanges}`
     ], {
