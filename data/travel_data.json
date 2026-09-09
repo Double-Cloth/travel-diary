@@ -408,5 +408,16 @@
     "desc_md": "data/travel-diary/2026/2026-08-28-chongqing.md",
     "photo_folder": "data/photos/chongqing",
     "photos": []
+  },
+  {
+    "date": "2026-09-07",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "湖南省",
+    "locality": "衡阳市",
+    "trip_id": "2026-09-07-hengyang",
+    "desc_md": "data/travel-diary/2026/2026-09-07-hengyang.md",
+    "photo_folder": "data/photos/hengyang",
+    "photos": []
   }
 ]
