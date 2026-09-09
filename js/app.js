@@ -67,6 +67,7 @@ let viewportResizeTimer = null;
 let photoPreviewResizeTimer = null;
 let photoPreviewLateResizeTimer = null;
 let photoSleeveResizeObserver = null;
+const observedPhotoSleeves = new Set();
 const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
 let photoGestureState = createPhotoGestureState();
@@ -119,7 +120,9 @@ function bindGlobalEvents() {
 
 function parseRoute(hash = window.location.hash) {
     const source = (hash || '#cover').replace(/^#/, '');
-    const [routeName = 'cover', query = ''] = source.split('?');
+    const queryIndex = source.indexOf('?');
+    const routeName = queryIndex < 0 ? source : source.slice(0, queryIndex);
+    const query = queryIndex < 0 ? '' : source.slice(queryIndex + 1);
     const params = new URLSearchParams(query);
 
     switch (routeName || 'cover') {
@@ -226,6 +229,8 @@ function serializeRoute(route) {
 }
 
 function syncRouteFromHash(options = {}) {
+    clearSearchRouteTimer();
+    isSearchComposing = false;
     if (!travelModel) return;
 
     const parsed = canonicalizeLocationRoute(parseRoute(window.location.hash));
@@ -295,10 +300,20 @@ function renderRoute(route, options = {}) {
 }
 
 function deriveTravelModel(records) {
+    const usedIds = new Set();
+    const reservedIds = new Set(records.map(createRecordId));
+    const recordIds = new Map(records.map((record) => {
+        const baseId = createRecordId(record);
+        let id = baseId;
+        let suffix = 2;
+        while (usedIds.has(id) || (id !== baseId && reservedIds.has(id))) id = `${baseId}-${suffix++}`;
+        usedIds.add(id);
+        return [record, id];
+    }));
     const sortedAsc = [...records].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     const firstVisitsByLocation = new Map();
     const enhancedAsc = sortedAsc.map((record) => {
-        const id = createRecordId(record);
+        const id = recordIds.get(record);
         const year = (record.date || '').slice(0, 4) || '未知';
         const month = (record.date || '').slice(5, 7) || '';
         const locationKey = record.locationKey || [record.countryKey || record.country, record.adminArea, record.locality].filter(Boolean).join('|');
@@ -329,7 +344,8 @@ function deriveTravelModel(records) {
             tripGroupLabel: tripGroup?.label || ''
         };
     });
-    const enhanced = records.map((record) => recordsWithTripCounts.find(item => item.desc_md === record.desc_md) || record);
+    const enhancedByRecord = new Map(sortedAsc.map((record, index) => [record, recordsWithTripCounts[index]]));
+    const enhanced = records.map(record => enhancedByRecord.get(record));
     const recordsById = new Map(enhanced.map(record => [record.id, record]));
     const recordsDesc = [...enhanced].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const years = Array.from(new Set(recordsDesc.map(record => record.year))).filter(Boolean);
@@ -1234,6 +1250,7 @@ function handleClearSearch(button) {
 
 function openEntrySheet(record) {
     if (!refs.sheet) return;
+    closePhotoViewerDialog();
 
     refs.sheet.setAttribute('aria-hidden', 'false');
     refs.sheet.classList.add('entry-sheet-root-open');
@@ -1329,6 +1346,7 @@ function closeEntrySheet(options = {}) {
     refs.sheet.classList.remove('entry-sheet-root-open');
     refs.sheet.setAttribute('aria-hidden', 'true');
     refs.sheet.innerHTML = '';
+    syncPhotoSleevePreviewRows();
 
     if (options.restoreHash) {
         navigateTo(lastReadingHash || '#ledger', { replace: true, focusId: lastEntryFocusId, animate: false });
@@ -1405,7 +1423,9 @@ function renderPhotoViewer() {
         fitPhotoToStage();
     } else {
         if (image) {
-            image.addEventListener('load', fitPhotoToStage, { once: true });
+            image.addEventListener('load', () => {
+                if (image === getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]')) fitPhotoToStage();
+            }, { once: true });
         }
         updatePhotoViewerTransform();
     }
@@ -1829,11 +1849,12 @@ function isPhotoViewerOpen() {
 }
 
 function normalizePhotoIndex(index, length) {
-    if (!length) {
+    if (!Number.isInteger(length) || length <= 0) {
         return 0;
     }
-
-    return ((Number(index) % length) + length) % length;
+    const value = Number(index);
+    if (!Number.isFinite(value)) return 0;
+    return ((Math.trunc(value) % length) + length) % length;
 }
 
 function clamp(value, min, max) {
@@ -1842,13 +1863,14 @@ function clamp(value, min, max) {
 
 function renderWithPageTurn(renderFn, options = {}) {
     clearTimeout(pageTurnTimer);
+    pageTurnTimer = null;
+    refs.spread?.classList.remove('turn-forward', 'turn-back', 'turn-in');
 
     if (!refs.spread || options.animate === false || prefersReducedMotion()) {
         renderFn();
         return;
     }
 
-    refs.spread.classList.remove('turn-forward', 'turn-back', 'turn-in');
     refs.spread.classList.add(options.direction === 'back' ? 'turn-back' : 'turn-forward');
 
     pageTurnTimer = setTimeout(() => {
@@ -2195,6 +2217,8 @@ function handleViewportResize() {
 }
 
 function applySearchRouteUpdate({ id, value }) {
+    if ((id === 'ledgerSearch' && activeRoute?.name !== 'ledger')
+        || (id === 'archiveSearch' && activeRoute?.name !== 'archive')) return;
     if (id === 'ledgerSearch') {
         if (activeRoute?.name === 'ledger' && normalizeLedgerParams(activeRoute.params).q === value) return;
         updateLedgerRoute({ q: value }, { replace: true, focusId: 'ledgerSearch', animate: false });
@@ -2563,6 +2587,12 @@ function renderPhotoSleeve(record, options = {}) {
 }
 
 function syncPhotoSleevePreviewRows() {
+    observedPhotoSleeves.forEach((sleeve) => {
+        if (!sleeve.isConnected) {
+            photoSleeveResizeObserver?.unobserve(sleeve);
+            observedPhotoSleeves.delete(sleeve);
+        }
+    });
     document.querySelectorAll('.photo-sleeve-preview').forEach((sleeve) => {
         observePhotoSleevePreview(sleeve);
         const previewRows = Number(sleeve.dataset.previewRows || ENTRY_PHOTO_PREVIEW_ROWS);
@@ -2602,7 +2632,7 @@ function queuePhotoSleevePreviewSync() {
 }
 
 function observePhotoSleevePreview(sleeve) {
-    if (!('ResizeObserver' in window)) {
+    if (!('ResizeObserver' in window) || observedPhotoSleeves.has(sleeve)) {
         return;
     }
 
@@ -2613,6 +2643,7 @@ function observePhotoSleevePreview(sleeve) {
     }
 
     photoSleeveResizeObserver.observe(sleeve);
+    observedPhotoSleeves.add(sleeve);
 }
 
 function getPhotoSleeveColumnCount(sleeve) {
@@ -2828,6 +2859,7 @@ function maxDate(current, next) {
 }
 
 function hasRecordNoteContent(record) {
+    if (record.descLoadFailed) return false;
     if (typeof record.descMarkdown === 'string' && record.descMarkdown.trim()) {
         return Boolean(record.descMarkdown.replace(/^#\s+.*(?:\n|$)/, '').trim());
     }

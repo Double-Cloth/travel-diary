@@ -37,11 +37,16 @@ function parseArgs(argv) {
       args.local = false;
     } else if (current === '--help' || current === '-h') {
       printHelpAndExit();
+    } else {
+      throw new Error(`未知参数或缺少参数值：${current}`);
     }
   }
 
-  if (!Number.isInteger(args.port) || args.port <= 0) {
-    throw new Error('Port must be a positive integer.');
+  if (!Number.isInteger(args.port) || args.port <= 0 || args.port > 65535) {
+    throw new Error('端口必须是 1 到 65535 之间的整数。');
+  }
+  if (!args.dir.trim() || args.dir.startsWith('--')) {
+    throw new Error('请指定有效的目录路径。');
   }
 
   return args;
@@ -101,7 +106,10 @@ function openBrowser(url) {
     args = [url];
   }
 
-  const child = spawn(command, args, { stdio: 'ignore', detached: true });
+  const child = spawn(command, args, { stdio: 'ignore', detached: true, windowsHide: true });
+  child.on('error', (error) => {
+    console.warn(`无法自动打开浏览器，请手动访问 ${url}：${error.message}`);
+  });
   child.unref();
 }
 
@@ -143,25 +151,31 @@ function guessContentType(filePath) {
 }
 
 function safeJoin(rootDir, requestPath) {
-  const normalizedPath = path.normalize(decodeURIComponent(requestPath)).replace(/^([/\\])+/, '');
+  const normalizedPath = requestPath.replace(/\\/g, '/').replace(/^\/+/, '');
+  if (normalizedPath.includes('\0') || normalizedPath.includes(':')) return null;
   const resolvedPath = path.resolve(rootDir, normalizedPath);
-
-  if (!resolvedPath.startsWith(rootDir)) {
+  if (!isWithinRoot(rootDir, resolvedPath)) {
     return null;
   }
 
   return resolvedPath;
 }
 
+function isWithinRoot(rootDir, targetPath) {
+  const relativePath = path.relative(rootDir, targetPath);
+  return relativePath !== '..' && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath);
+}
+
 function createHandler(rootDir) {
-  return (req, res) => {
+  rootDir = fs.realpathSync(rootDir);
+  return async (req, res) => {
     if (req.method === 'OPTIONS') {
       res.writeHead(200, {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         Pragma: 'no-cache',
         Expires: '0',
         'Access-Control-Allow-Origin': '*',
-        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
         'Access-Control-Allow-Headers': 'X-Requested-With, Content-Type'
       });
       res.end('ok');
@@ -177,8 +191,16 @@ function createHandler(rootDir) {
       return;
     }
 
-    const requestUrl = new URL(req.url, 'http://localhost');
-    let pathname = decodeURIComponent(requestUrl.pathname);
+    let requestUrl;
+    let pathname;
+    try {
+      requestUrl = new URL(req.url, 'http://localhost');
+      pathname = decodeURIComponent(requestUrl.pathname);
+    } catch {
+      res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Bad Request');
+      return;
+    }
     if (pathname === '/') {
       pathname = '/index.html';
     }
@@ -190,40 +212,59 @@ function createHandler(rootDir) {
       return;
     }
 
-    fs.stat(filePath, (statError, stats) => {
-      if (statError) {
+    try {
+      let targetPath = await fs.promises.realpath(filePath);
+      if (!isWithinRoot(rootDir, targetPath)) {
+        res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('Forbidden');
+        return;
+      }
+      let stats = await fs.promises.stat(targetPath);
+      if (stats.isDirectory()) {
+        if (!pathname.endsWith('/')) {
+          res.writeHead(301, { Location: `${requestUrl.pathname}/${requestUrl.search}` });
+          res.end();
+          return;
+        }
+        targetPath = await fs.promises.realpath(path.join(targetPath, 'index.html'));
+        stats = await fs.promises.stat(targetPath);
+      }
+      if (!isWithinRoot(rootDir, targetPath)) {
+        res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+        res.end('Forbidden');
+        return;
+      }
+      if (!stats.isFile()) {
         res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('Not Found');
         return;
       }
 
-      const targetPath = stats.isDirectory() ? path.join(filePath, 'index.html') : filePath;
-
-      fs.readFile(targetPath, (readError, data) => {
-        if (readError) {
-          res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' });
-          res.end('Not Found');
-          return;
-        }
-
-        res.writeHead(200, {
-          'Content-Type': guessContentType(targetPath),
-          'Cache-Control': 'no-cache, no-store, must-revalidate',
-          Pragma: 'no-cache',
-          Expires: '0',
-          'Access-Control-Allow-Origin': '*',
-          'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-          'Access-Control-Allow-Headers': 'X-Requested-With, Content-Type'
-        });
-
-        if (req.method === 'HEAD') {
-          res.end();
-          return;
-        }
-
-        res.end(data);
+      res.writeHead(200, {
+        'Content-Type': guessContentType(targetPath),
+        'Content-Length': stats.size,
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        Pragma: 'no-cache',
+        Expires: '0',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
+        'Access-Control-Allow-Headers': 'X-Requested-With, Content-Type'
       });
-    });
+
+      if (req.method === 'HEAD') {
+        res.end();
+        return;
+      }
+
+      const stream = fs.createReadStream(targetPath);
+      stream.on('error', () => res.destroy());
+      res.on('close', () => stream.destroy());
+      stream.pipe(res);
+    } catch (error) {
+      const status = error.code === 'EACCES' || error.code === 'EPERM' ? 403 : 404;
+      res.writeHead(status, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end(status === 403 ? 'Forbidden' : 'Not Found');
+    }
   };
 }
 
@@ -238,7 +279,7 @@ function listenWithRetries(rootDir, port, bindAll) {
       server.on('error', (error) => {
         if (error.code === 'EADDRINUSE') {
           currentPort += 1;
-          if (currentPort >= port + CONFIG.maxPortRetries) {
+          if (currentPort > 65535 || currentPort >= port + CONFIG.maxPortRetries) {
             reject(new Error(`Unable to find a free port between ${port} and ${currentPort}.`));
             return;
           }
@@ -261,7 +302,7 @@ async function main() {
   const args = parseArgs(process.argv.slice(2));
   const rootDir = path.resolve(args.dir);
 
-  if (!fs.existsSync(rootDir)) {
+  if (!fs.existsSync(rootDir) || !fs.statSync(rootDir).isDirectory()) {
     throw new Error(`Directory does not exist: ${rootDir}`);
   }
 
@@ -294,7 +335,11 @@ async function main() {
   });
 }
 
-main().catch((error) => {
-  console.error(`\nError: ${error.message}`);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((error) => {
+    console.error(`\nError: ${error.message}`);
+    process.exit(1);
+  });
+}
+
+module.exports = { createHandler, parseArgs, safeJoin, listenWithRetries };

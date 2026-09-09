@@ -3,8 +3,23 @@ import assert from 'node:assert/strict';
 
 import {
     buildRecordSetSnapshot,
-    deriveOverviewAnalytics
+    deriveOverviewAnalytics,
+    isValidDateString
 } from '../js/analytics.mjs';
+
+test('日期校验覆盖闰年、世纪及低年份，快照忽略无效日期', () => {
+    for (const date of ['2024-02-29', '2000-02-29', '0099-01-01']) assert.equal(isValidDateString(date), true);
+    for (const date of ['2023-02-29', '1900-02-29', '2024-04-31', '坏日期', 20240101, null]) assert.equal(isValidDateString(date), false);
+    const snapshot = buildRecordSetSnapshot([{ date: '坏日期' }, { date: '2024-02-29' }]);
+    assert.equal(snapshot.firstDate, '2024-02-29');
+    assert.equal(snapshot.latestDate, '2024-02-29');
+});
+
+test('统计范围包含未来记录，活跃月份数不会超过容量', () => {
+    const result = deriveOverviewAnalytics([{ date: '2026-07-01' }, { date: '2026-08-01' }], '2026-06-01');
+    assert.equal(result.activeMonthCount, 2);
+    assert.equal(result.activeMonthCapacity, 2);
+});
 
 const records = [
     {

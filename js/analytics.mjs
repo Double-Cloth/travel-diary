@@ -6,7 +6,7 @@ const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 export function buildRecordSetSnapshot(records = []) {
     const dates = records
         .map(record => record.date || '')
-        .filter(Boolean)
+        .filter(isValidDateString)
         .sort();
     const localities = new Set(records
         .map(record => record.locationKey || [record.countryCode || record.country, record.adminArea || record.province, record.locality || record.city].filter(Boolean).join('|'))
@@ -36,7 +36,7 @@ export function deriveOverviewAnalytics(records = [], rangeEndDate = '') {
     const activeMonths = new Set(dates.map(date => date.slice(0, 7)));
     const firstDate = dates[0] || '';
     const latestDate = dates[dates.length - 1] || '';
-    const capacityEndDate = isValidDateString(rangeEndDate) ? rangeEndDate : latestDate;
+    const capacityEndDate = isValidDateString(rangeEndDate) && rangeEndDate > latestDate ? rangeEndDate : latestDate;
     let longestGap = null;
 
     records.forEach((record) => {
@@ -87,11 +87,11 @@ function countInclusiveMonths(fromDate, toDate) {
     return ((toYear - fromYear) * 12) + (toMonth - fromMonth) + 1;
 }
 
-function isValidDateString(date) {
-    if (!DATE_PATTERN.test(date)) return false;
+export function isValidDateString(date) {
+    if (typeof date !== 'string' || !DATE_PATTERN.test(date)) return false;
 
     const [year, month, day] = date.split('-').map(Number);
-    const parsed = new Date(Date.UTC(year, month - 1, day));
+    const parsed = new Date(`${date}T00:00:00Z`);
 
     return parsed.getUTCFullYear() === year
         && parsed.getUTCMonth() === month - 1

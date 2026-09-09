@@ -1,4 +1,5 @@
 import { buildFallbackTitle, escapeHtml } from './utils.js';
+import { isValidDateString } from './analytics.mjs';
 import {
     configureCountryCatalog,
     getLocationSearchValues,
@@ -28,7 +29,24 @@ export async function loadTravelData() {
     }
     configureCountryCatalog(countryCatalog);
 
-    return data.map(normalizeTravelLocation);
+    return data.map((record, index) => {
+        if (!record || typeof record !== 'object' || Array.isArray(record)) {
+            throw new Error(`旅行记录第 ${index + 1} 项必须是对象。`);
+        }
+        if (!isValidDateString(record.date)) {
+            throw new Error(`旅行记录第 ${index + 1} 项的 date 必须是有效的 YYYY-MM-DD 日期。`);
+        }
+        if (record.desc_md != null && typeof record.desc_md !== 'string') {
+            throw new Error(`旅行记录第 ${index + 1} 项的 desc_md 必须是字符串。`);
+        }
+        return normalizeTravelLocation({
+            ...record,
+            photo_folder: typeof record.photo_folder === 'string' ? record.photo_folder.trim() : '',
+            photos: Array.isArray(record.photos)
+                ? record.photos.filter(photo => typeof photo === 'string' && photo.trim()).map(photo => photo.trim())
+                : []
+        });
+    });
 }
 
 export async function loadTravelRecords(records) {
@@ -40,6 +58,7 @@ export async function loadTravelRecords(records) {
             return {
                 ...record,
                 descMarkdown: markdown,
+                descLoadFailed: false,
                 descTitle: parsedMarkdown.title,
                 descBodyHtml: parsedMarkdown.bodyHtml,
                 searchText: parsedMarkdown.searchText
@@ -51,6 +70,7 @@ export async function loadTravelRecords(records) {
             return {
                 ...record,
                 descMarkdown: '',
+                descLoadFailed: true,
                 descTitle: fallbackTitle,
                 descBodyHtml: `<p class="markdown-load-error">Markdown load failed for ${escapeHtml(record.desc_md || '')}.</p>`,
                 searchText: fallbackSearchText
@@ -72,7 +92,7 @@ async function fetchMarkdown(markdownPath) {
             throw new Error(`Failed to load ${markdownPath} (${response.status})`);
         }
 
-        return response.text();
+        return await response.text();
     } catch (error) {
         const retryResponse = await fetch(resolvedPath);
         if (!retryResponse.ok) {
@@ -176,27 +196,33 @@ function markdownToHtml(markdown) {
 
 function formatInlineMarkdown(text) {
     const inlineTokens = [];
+    let tokenPrefix = '\uE000';
+    while (text.includes(tokenPrefix)) tokenPrefix += '\uE000';
+    const tokenPattern = new RegExp(`${tokenPrefix}(\\d+)\uE001`, 'g');
+    const restoreTokens = html => html.replace(tokenPattern, (_, index) => inlineTokens[Number(index)]);
     const stashToken = (html) => {
-        const token = `\uE000${inlineTokens.length}\uE001`;
+        const token = `${tokenPrefix}${inlineTokens.length}\uE001`;
         inlineTokens.push(html);
         return token;
     };
 
-    let html = escapeHtml(text)
+    const html = escapeHtml(text)
         .replace(/`([^`\n]+?)`/g, (_, code) => stashToken(`<code>${code}</code>`))
-        .replace(/\[([^\]\n]+?)\]\(([^)\s]+?)\)/g, (_, label, url) => formatInlineLink(label, url))
+        .replace(/\[([^\]\n]+?)\]\(([^)\s]+?)\)/g, (_, label, url) => (
+            stashToken(formatInlineLink(restoreTokens(formatInlineStyles(label)), url))
+        ));
+
+    return restoreTokens(formatInlineStyles(html));
+}
+
+function formatInlineStyles(html) {
+    return html
         .replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>')
         .replace(/~~([^~\n]+?)~~/g, '<del>$1</del>')
         .replace(/==([^=\n]+?)==/g, '<mark>$1</mark>')
         .replace(/\^([^^\n]+?)\^/g, '<sup>$1</sup>')
         .replace(/~([^~\n]+?)~/g, '<sub>$1</sub>')
         .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
-
-    inlineTokens.forEach((tokenHtml, index) => {
-        html = html.replace(new RegExp(`\\uE000${index}\\uE001`, 'g'), tokenHtml);
-    });
-
-    return html;
 }
 
 function formatInlineLink(label, url) {
@@ -210,7 +236,7 @@ function formatInlineLink(label, url) {
 
 function getSafeInlineUrl(url) {
     const trimmed = String(url || '').trim();
-    const normalized = trimmed.replace(/&amp;/g, '&').toLowerCase();
+    const normalized = trimmed.replace(/&amp;/g, '&').replace(/[\u0000-\u0020\u007F]/g, '').toLowerCase();
 
     if (/^(javascript|data|vbscript):/.test(normalized)) {
         return '';

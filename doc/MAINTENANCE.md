@@ -44,6 +44,12 @@ node js/server.js --port 8080 --network
 
 ## 测试说明
 
+`tests/data.test.mjs` 实际执行数据加载和 Markdown 解析，覆盖无效记录、照片附件过滤、响应中断重试、链接转义和行内代码保真。必需日期损坏时会明确指出记录序号；单篇正文加载失败不会阻塞其他记录，也不会被“有笔记”筛选误计。
+
+`tests/app.test.mjs` 覆盖记录身份冲突、搜索路由取消、翻页动画中断、照片索引和观察节点清理。测试通过 `tests/helpers/browser-modules.mjs` 加载浏览器模块，不需要更改项目模块配置或安装依赖。
+
+`tests/server.test.mjs` 通过真实 HTTP 请求覆盖畸形 URL、路径穿越、符号链接越界、目录跳转、HEAD 请求及端口参数。测试使用临时目录和动态端口，结束后自动清理。
+
 `tests/analytics.test.mjs` 关注纯函数统计，适合新增筛选、统计和排序能力时扩展。
 
 `tests/location.test.mjs` 关注多国行政区命名、稳定地点键、城市国家和旧字段兼容。调整地点模型或新增国家规则时应优先扩展这里。

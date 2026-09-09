@@ -355,7 +355,7 @@ test('照片初始居中适配舞台且平移不会完全移出屏幕', () => {
     assert.match(appJs, /function getPhotoViewerBounds\(\)/);
     assert.match(photoViewerTransformJs, /function getPhotoViewerAxisTranslateLimit/);
     assert.match(photoViewerTransformJs, /function getPhotoViewerRenderMetrics/);
-    assert.match(appJs, /image\.addEventListener\('load', fitPhotoToStage, \{ once: true \}\)/);
+    assert.match(appJs, /image\.addEventListener\('load', \(\) => \{\s*if \(image === getPhotoViewerRoot\(\)\?\.querySelector\('\[data-photo-viewer-image\]'\)\) fitPhotoToStage\(\);\s*\}, \{ once: true \}\)/);
     assert.match(photoViewerTransformJs, /Math\.min\(1, stageWidth \/ naturalWidth, stageHeight \/ naturalHeight\)/);
     assert.match(appJs, /photoViewerState\.scale = getInitialPhotoScale\(stage, image\);/);
     assert.match(appJs, /photoViewerState\.initialScale = photoViewerState\.scale;/);
