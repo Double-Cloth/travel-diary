@@ -455,11 +455,16 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 .record-editor-tabs button:hover { background: rgba(255, 251, 235, 0.75); }
 .record-editor-format { margin: auto 5px auto auto; color: var(--ink-muted); font: 11px var(--font-code); }
 .record-editor-workbench textarea { margin: 0; height: 320px; min-height: 320px; padding: 16px; border: 0; border-radius: 0; font-size: 15px; }
-.record-editor [data-editor-panel][hidden] { display: none; }
-.record-editor-preview,
-.record-editor-source { height: 320px; min-height: 320px; overflow: auto; padding: 16px; background: rgba(255, 251, 235, 0.5); overflow-wrap: anywhere; }
-.record-editor-preview > h3:first-child { margin-top: 0; font-size: 22px; }
-.record-editor-source pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-code), var(--font-serif); font-size: 14px; line-height: 1.8; }
+.record-editor [hidden] { display: none; }
+.record-editor-preview { height: 278px; min-height: 278px; overflow: auto; padding: 16px; background: rgba(255, 251, 235, 0.5); overflow-wrap: anywhere; outline: none; }
+.record-editor-preview > h1:first-child { margin-top: 0; font-size: 22px; }
+.record-editor-preview h1:empty::before { content: '日记标题'; color: var(--ink-muted); pointer-events: none; }
+.record-editor-preview[contenteditable="true"] { cursor: text; }
+.record-editor-workbench [data-editor-source] { font-family: var(--font-code), var(--font-serif); font-size: 14px; line-height: 1.8; tab-size: 4; resize: none; }
+.record-editor-formatting { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; min-height: 42px; padding: 4px 8px; border-bottom: 1px solid var(--hairline); background: rgba(255, 249, 229, 0.5); }
+.record-editor-formatting button { min-height: 32px; padding: 4px 10px; border-radius: 4px; background: transparent; color: var(--ink-soft); cursor: pointer; font-size: 13px; }
+.record-editor-formatting button:hover { background: rgba(142, 102, 52, 0.13); }
+.record-editor-formatting button:disabled { cursor: default; opacity: 0.5; }
 .record-editor-files { margin-top: 24px; border-top: 1px dashed var(--hairline); }
 .record-editor-files summary { padding: 18px 0; cursor: pointer; color: var(--ink-soft); font-size: 17px; }
 .record-editor-files summary > span:last-child { margin-left: 10px; font-size: 12px; color: var(--ink-muted); }
@@ -472,6 +477,46 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 .record-editor-footer > .record-editor-note { margin-top: 10px; }
 .record-editor-status { margin: 0 0 12px; color: var(--stamp); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; max-height: 90px; overflow: auto; }
 .record-editor-status:empty { display: none; }
+
+.record-editor-scroll,
+.record-editor textarea,
+.record-editor-preview,
+.record-editor-status {
+    scrollbar-width: thin;
+    scrollbar-color: #ae8955 rgba(130, 91, 46, 0.09);
+    scrollbar-gutter: stable;
+}
+.record-editor-scroll::-webkit-scrollbar,
+.record-editor textarea::-webkit-scrollbar,
+.record-editor-preview::-webkit-scrollbar,
+.record-editor-status::-webkit-scrollbar { width: 9px; height: 9px; }
+.record-editor-scroll::-webkit-scrollbar-track,
+.record-editor textarea::-webkit-scrollbar-track,
+.record-editor-preview::-webkit-scrollbar-track,
+.record-editor-status::-webkit-scrollbar-track { background: rgba(130, 91, 46, 0.09); border-radius: 12px; }
+.record-editor-scroll::-webkit-scrollbar-thumb,
+.record-editor textarea::-webkit-scrollbar-thumb,
+.record-editor-preview::-webkit-scrollbar-thumb,
+.record-editor-status::-webkit-scrollbar-thumb { background: #ae8955; border: 2px solid transparent; background-clip: padding-box; border-radius: 12px; }
+.record-editor-scroll::-webkit-scrollbar-thumb:hover,
+.record-editor textarea::-webkit-scrollbar-thumb:hover,
+.record-editor-preview::-webkit-scrollbar-thumb:hover { background-color: #886538; }
+.record-editor-photos { margin-top: 24px; padding-top: 20px; border-top: 1px dashed var(--hairline); }
+.record-editor-photos h3 { margin: 0 0 16px; font-size: 19px; }
+.record-editor-photos h3 span { margin-right: 10px; color: var(--stamp); font: 13px var(--font-code); }
+.record-editor-upload-zone { padding: 18px; border: 1px dashed rgba(127, 88, 43, 0.5); border-radius: 8px; background: rgba(255, 249, 229, 0.35); text-align: center; }
+.record-editor-upload-zone.is-dragging { background: var(--paper-50); box-shadow: var(--ring); }
+.record-editor-upload-zone button { width: auto; }
+.record-editor-upload-zone p { margin: 12px 0 6px; color: var(--ink-soft); font-size: 14px; }
+.record-editor-upload-zone small { color: var(--ink-muted); font-size: 12px; }
+.record-editor-photo-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
+.record-editor-photo { min-width: 0; margin: 14px 0 0; padding: 8px; border: 1px solid var(--hairline); border-radius: 6px; background: var(--paper-50); box-shadow: 0 4px 8px rgba(80, 50, 22, 0.1); }
+.record-editor-photo img { display: block; width: 100%; height: 100px; object-fit: cover; border-radius: 3px; }
+.record-editor-photo figcaption { margin: 8px 0; font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.record-editor-photo > div { display: flex; gap: 6px; }
+.record-editor-photo button { min-width: 30px; min-height: 32px; padding: 3px 6px; color: var(--ink-soft); border-radius: 3px; background: rgba(150, 112, 60, 0.12); cursor: pointer; }
+.record-editor-photo button:last-child { margin-left: auto; }
+.record-editor-photo button:disabled { opacity: 0.35; cursor: default; }
 
 @media (max-width: 800px) {
     .record-editor-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }

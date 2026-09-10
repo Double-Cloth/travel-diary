@@ -207,7 +207,8 @@ function formatInlineMarkdown(text) {
     };
 
     const html = escapeHtml(text)
-        .replace(/`([^`\n]+?)`/g, (_, code) => stashToken(`<code>${code}</code>`))
+        .replace(/`((?:\\.|[^`\\\n])+?)`/g, (_, code) => stashToken(`<code>${code.replace(/\\([\\`])/g, '$1')}</code>`))
+        .replace(/\\([\\*~^=`\[\]#-])/g, (_, character) => stashToken(character))
         .replace(/\[([^\]\n]+?)\]\(([^)\s]+?)\)/g, (_, label, url) => (
             stashToken(formatInlineLink(restoreTokens(formatInlineStyles(label)), url))
         ));
@@ -216,13 +217,54 @@ function formatInlineMarkdown(text) {
 }
 
 function formatInlineStyles(html) {
-    return html
-        .replace(/\*\*([^*\n]+?)\*\*/g, '<strong>$1</strong>')
+    return formatEmphasis(html)
         .replace(/~~([^~\n]+?)~~/g, '<del>$1</del>')
         .replace(/==([^=\n]+?)==/g, '<mark>$1</mark>')
         .replace(/\^([^^\n]+?)\^/g, '<sup>$1</sup>')
-        .replace(/~([^~\n]+?)~/g, '<sub>$1</sub>')
-        .replace(/\*([^*\n]+?)\*/g, '<em>$1</em>');
+        .replace(/~([^~\n]+?)~/g, '<sub>$1</sub>');
+}
+
+function formatEmphasis(text) {
+    const root = { children: [] };
+    const stack = [root];
+    let offset = 0;
+    for (const match of text.matchAll(/\*+/g)) {
+        stack.at(-1).children.push(text.slice(offset, match.index));
+        let remaining = match[0].length;
+        const canClose = match.index > 0 && !/\s/.test(text[match.index - 1]);
+        const next = text[match.index + remaining];
+        const canOpen = next !== undefined && !/\s/.test(next);
+        while (remaining) {
+            const current = stack.at(-1);
+            if (canClose && stack.length > 1 && current.marker.length <= remaining) {
+                current.closed = true;
+                remaining -= current.marker.length;
+                stack.pop();
+            } else if (canOpen) {
+                const length = Math.min(2, remaining);
+                const node = { marker: '*'.repeat(length), children: [], closed: false };
+                current.children.push(node);
+                stack.push(node);
+                remaining -= length;
+            } else {
+                current.children.push('*'.repeat(remaining));
+                remaining = 0;
+            }
+        }
+        offset = match.index + match[0].length;
+    }
+    stack.at(-1).children.push(text.slice(offset));
+    const result = [];
+    const pending = root.children.slice().reverse();
+    while (pending.length) {
+        const node = pending.pop();
+        if (typeof node === 'string') { result.push(node); continue; }
+        const tag = node.marker.length === 2 ? 'strong' : 'em';
+        result.push(node.closed ? `<${tag}>` : node.marker);
+        if (node.closed) pending.push(`</${tag}>`);
+        for (let index = node.children.length - 1; index >= 0; index -= 1) pending.push(node.children[index]);
+    }
+    return result.join('');
 }
 
 function formatInlineLink(label, url) {
@@ -234,7 +276,7 @@ function formatInlineLink(label, url) {
     return `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${label}</a>`;
 }
 
-function getSafeInlineUrl(url) {
+export function getSafeInlineUrl(url) {
     const trimmed = String(url || '').trim();
     const normalized = trimmed.replace(/&amp;/g, '&').replace(/[\u0000-\u0020\u007F]/g, '').toLowerCase();
 

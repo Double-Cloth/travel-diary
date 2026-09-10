@@ -17,6 +17,7 @@ const original = { date: '2024-01-01', custom: '保留已有未知字段', desc_
 const draft = (id = 'a', input = {}) => ({
     format: DRAFT_FORMAT,
     requestId: id.repeat(32),
+    uploads: [],
     input: { date: '2026-09-10', country_code: 'CN', country: '', admin_area: '江苏省', admin_area_type: '', locality: '苏州市', locality_type: '', trip_id: '', title: '沿河散步', body: '## 雨后\n\n石板路与茶馆。', desc_md: '', photo_folder: '', photos: [], ...input }
 });
 
@@ -126,8 +127,55 @@ test('写入端点拒绝跨源请求、伪造 Host、缺失令牌及不合法数
     assert.equal((await post(draft('b'), { 'Content-Type': 'text/plain' })).status, 403);
     assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Origin: 'https://example.com' } })).status, 403);
     assert.equal((await post(draft('b', { date: '2026-02-30' }))).status, 400);
-    assert.equal((await post(draft('b', { body: '字'.repeat(180000) }))).status, 413);
+    assert.equal((await post(draft('b', { body: '字'.repeat(180000) }))).status, 400);
     assert.deepEqual(await readIndex(), before);
+});
+
+test('上传照片自动建目录并写入原始字节，草稿重试校验照片内容', async () => {
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=';
+    const value = { ...draft('1'), uploads: [{ id: '2'.repeat(32), name: '湖边.png', data: png }] };
+    const response = await post(value);
+    assert.equal(response.status, 201);
+    const record = (await response.json()).record;
+    assert.equal(record.photo_folder, `data/photos/2026-09-10-${value.requestId}`);
+    assert.deepEqual(record.photos, [`photo-${'2'.repeat(32)}.png`]);
+    const bytes = await fs.readFile(path.join(root, record.photo_folder, record.photos[0]));
+    assert.deepEqual(bytes, Buffer.from(png, 'base64'));
+    assert.equal((await post(value)).status, 200);
+    assert.equal((await post({ ...value, uploads: [{ ...value.uploads[0], data: Buffer.concat([bytes, Buffer.from('改动')]).toString('base64') }] })).status, 409);
+    const invalid = { ...draft('3'), uploads: [{ id: '4'.repeat(32), name: '伪装.png', data: Buffer.from('<svg onload="evil"/>').toString('base64') }] };
+    assert.equal((await post(invalid)).status, 400);
+});
+
+test('上传与已有照片可以合并，索引提交失败会清理新照片和目录', async () => {
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=';
+    await fs.mkdir(path.join(root, 'data/photos/legacy'), { recursive: true });
+    await fs.writeFile(path.join(root, 'data/photos/legacy/old.png'), Buffer.from(png, 'base64'));
+    const value = { ...draft('5', { photo_folder: 'data/photos/legacy', photos: ['old.png'] }), uploads: [{ id: '6'.repeat(32), name: 'new.png', data: png }] };
+    const previous = await readIndex();
+    const rename = fs.rename;
+    fs.rename = async () => { throw new Error('模拟提交失败'); };
+    try { assert.equal((await post(value)).status, 500); }
+    finally { fs.rename = rename; }
+    assert.deepEqual(await readIndex(), previous);
+    const record = prepareRecord(value, countries).record;
+    await assert.rejects(fs.stat(path.join(root, record.photo_folder)), { code: 'ENOENT' });
+    await assert.rejects(fs.stat(path.join(root, record.desc_md)), { code: 'ENOENT' });
+    assert.deepEqual(await fs.readFile(path.join(root, 'data/photos/legacy/old.png')), Buffer.from(png, 'base64'));
+    assert.equal((await post(value)).status, 201);
+    assert.deepEqual(record.photos, ['existing-001-old.png', `photo-${'6'.repeat(32)}.png`]);
+    for (const name of record.photos) assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, name)), Buffer.from(png, 'base64'));
+});
+
+test('超出请求大小限制时在读取上传内容前拒绝', async () => {
+    const result = await new Promise((resolve, reject) => {
+        const request = http.request(`${base}/api/travel-records`, { method: 'POST', headers: {
+            'Content-Type': 'application/json', 'X-Travel-Token': token, 'Content-Length': 45 * 1024 * 1024
+        } }, response => { response.resume(); response.on('end', () => resolve(response.statusCode)); });
+        request.on('error', reject);
+        request.end();
+    });
+    assert.equal(result, 413);
 });
 
 test('并发保存发生冲突时可重试，最终不丢失任何一条记录', async () => {

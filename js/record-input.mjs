@@ -1,6 +1,7 @@
 import { isValidDateString } from './analytics.mjs';
+import { readUploads, uploadFileName, copiedPhotoName } from './photo-uploads.mjs';
 
-export const DRAFT_FORMAT = 'travel-diary-draft-v2';
+export const DRAFT_FORMAT = 'travel-diary-draft-v3';
 export const RECORD_FIELDS = ['date', 'country_code', 'country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'title', 'body', 'desc_md', 'photo_folder', 'photos'];
 const LEGACY_FIELDS = ['date', 'country_code', 'admin_area', 'locality', 'trip_id', 'title', 'body'];
 
@@ -18,7 +19,7 @@ function isSafeFileName(name) {
 }
 
 export function readDraft(value) {
-    if (!value || ![DRAFT_FORMAT, 'travel-diary-draft-v1'].includes(value.format) || !value.input || typeof value.input !== 'object' || Array.isArray(value.input)) {
+    if (!value || ![DRAFT_FORMAT, 'travel-diary-draft-v2', 'travel-diary-draft-v1'].includes(value.format) || !value.input || typeof value.input !== 'object' || Array.isArray(value.input)) {
         throw new Error('请选择从新增旅行记录窗口下载的草稿 JSON 文件。');
     }
     if (typeof value.requestId !== 'string' || !/^[a-f0-9]{32}$/.test(value.requestId)) throw new Error('草稿标识无效。');
@@ -37,7 +38,8 @@ export function readDraft(value) {
         }
         input[key] = field;
     }
-    return { format: DRAFT_FORMAT, requestId: value.requestId, input };
+    const uploads = readUploads(value.uploads).map(({ id, name, data }) => ({ id, name, data }));
+    return { format: DRAFT_FORMAT, requestId: value.requestId, input, uploads };
 }
 
 export function prepareRecord(value, countries) {
@@ -75,5 +77,10 @@ export function prepareRecord(value, countries) {
         photo_folder: input.photo_folder,
         photos: input.photos
     };
-    return { record, markdown: buildMarkdown(input) };
+    const uploads = readUploads(draft.uploads);
+    if (uploads.length) {
+        record.photo_folder = `data/photos/${input.date}-${draft.requestId}`;
+        record.photos = [...input.photos.map(copiedPhotoName), ...uploads.map(uploadFileName)];
+    }
+    return { record, markdown: buildMarkdown(input), uploads, sourcePhotos: { folder: input.photo_folder, names: input.photos } };
 }

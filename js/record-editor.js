@@ -1,5 +1,6 @@
 import { escapeHtml } from './utils.js';
-import { parseMarkdown } from './data.js';
+import { splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
+import { MAX_PHOTO_BYTES, MAX_TOTAL_PHOTO_BYTES, MAX_PHOTOS, MAX_DRAFT_BYTES, readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft } from './record-input.mjs';
 
 export function createRecordEditor(onSaved) {
@@ -15,7 +16,9 @@ export function createRecordEditor(onSaved) {
     let saved = false;
     let initialized = false;
     let opening = false;
-    let bodyView = 'edit';
+    let bodyView = 'source';
+    let uploads = [];
+    let readingPhotos = false;
     let trigger;
 
     const field = name => dialog.querySelector(`[name="${name}"]`);
@@ -23,6 +26,7 @@ export function createRecordEditor(onSaved) {
     const getDraft = () => ({
         format: DRAFT_FORMAT,
         requestId,
+        uploads: uploads.map(({ id, name, data }) => ({ id, name, data })),
         input: Object.fromEntries(RECORD_FIELDS.map(key => [key, key === 'photos'
             ? field(key).value.split(/\r?\n/).map(photo => photo.trim()).filter(Boolean)
             : field(key).value]))
@@ -86,23 +90,40 @@ export function createRecordEditor(onSaved) {
                             <label>日记标题 <span>必填</span><input name="title" maxlength="200" required placeholder="为这段旅途起个名字"></label>
                             <div class="record-editor-workbench">
                                 <div class="record-editor-tabs" role="tablist" aria-label="正文视图">
-                                    <button type="button" role="tab" id="recordTabEdit" aria-controls="recordPanelEdit" aria-selected="true" data-editor-view="edit">编辑</button>
+                                    <button type="button" role="tab" id="recordTabSource" aria-controls="recordPanelSource" aria-selected="true" data-editor-view="source">源码</button>
                                     <button type="button" role="tab" id="recordTabPreview" aria-controls="recordPanelPreview" aria-selected="false" tabindex="-1" data-editor-view="preview">预览</button>
-                                    <button type="button" role="tab" id="recordTabSource" aria-controls="recordPanelSource" aria-selected="false" tabindex="-1" data-editor-view="source">源码</button>
                                     <span class="record-editor-format">Markdown</span>
                                 </div>
-                                <div id="recordPanelEdit" role="tabpanel" aria-labelledby="recordTabEdit" data-editor-panel="edit">
-                                    <label class="sr-only" for="recordBody">旅途正文</label>
-                                    <textarea id="recordBody" name="body" maxlength="100000" rows="10" placeholder="沿途的风景、遇见的人，还有想记住的小事…" aria-describedby="recordBodyHelp"></textarea>
+                                <div id="recordPanelSource" role="tabpanel" aria-labelledby="recordTabSource" data-editor-panel="source">
+                                    <textarea data-editor-source maxlength="100210" rows="10" aria-label="Markdown 源码" aria-describedby="recordBodyHelp" spellcheck="false"></textarea>
                                 </div>
-                                <div id="recordPanelPreview" class="record-editor-preview markdown-content" role="tabpanel" aria-labelledby="recordTabPreview" tabindex="0" data-editor-panel="preview" hidden></div>
-                                <div id="recordPanelSource" class="record-editor-source" role="tabpanel" aria-labelledby="recordTabSource" tabindex="0" data-editor-panel="source" hidden><pre><code></code></pre></div>
+                                <div id="recordPanelPreview" role="tabpanel" aria-labelledby="recordTabPreview" data-editor-panel="preview" hidden>
+                                    <div class="record-editor-formatting" role="toolbar" aria-label="预览格式">
+                                        <button type="button" data-format="bold" aria-label="加粗"><b>粗体</b></button>
+                                        <button type="button" data-format="italic" aria-label="斜体"><i>斜体</i></button>
+                                        <button type="button" data-format="formatBlock" data-format-value="h2">标题</button>
+                                        <button type="button" data-format="formatBlock" data-format-value="p">段落</button>
+                                        <button type="button" data-format="insertUnorderedList">列表</button>
+                                    </div>
+                                    <div class="record-editor-preview markdown-content" data-editor-rich contenteditable="true" role="textbox" aria-label="预览正文，可直接编辑" aria-multiline="true" aria-describedby="recordBodyHelp"></div>
+                                </div>
+                                <textarea name="body" hidden></textarea>
                             </div>
-                            <p class="record-editor-note" id="recordBodyHelp">标题单独填写。支持段落、二至六级标题、列表、链接及行内格式；源码包含完整导出内容。</p>
+                            <p class="record-editor-note" id="recordBodyHelp">源码与预览均可直接编辑，切换时自动同步。预览支持选中文字设置格式，粘贴内容以纯文本插入。</p>
                         </section>
                     </div>
+                    <section class="record-editor-photos" aria-labelledby="recordPhotosTitle">
+                        <h3 id="recordPhotosTitle"><span>03</span> 旅行照片</h3>
+                        <div class="record-editor-upload-zone" data-editor-drop>
+                            <button class="paper-button" type="button" data-editor-upload>＋ 上传照片</button>
+                            <p>选择或拖入图片，保存时自动创建照片文件夹。</p>
+                            <small>JPEG / PNG / GIF / WebP · 最多 20 张 · 单张 10 MB · 合计 30 MB</small>
+                            <input type="file" data-editor-photos accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden aria-label="选择旅行照片">
+                        </div>
+                        <div class="record-editor-photo-list" data-editor-photo-list aria-label="待保存照片"></div>
+                    </section>
                     <details class="record-editor-files">
-                        <summary><span><b>03</b> 文件与照片</span><span>正文路径与照片配置</span></summary>
+                        <summary><span>文件设置</span><span>正文路径与已有照片引用</span></summary>
                         <div class="record-editor-fields">
                             <label>正文文件路径 <span>选填 · 留空自动生成</span><input name="desc_md" maxlength="200" aria-describedby="recordPathHelp"></label>
                             <p class="record-editor-note" id="recordPathHelp">路径按旅行日期归档，已有文件不会被覆盖。</p>
@@ -110,7 +131,7 @@ export function createRecordEditor(onSaved) {
                                 <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="recordPhotoHelp"></label>
                                 <label>照片文件列表 <span>选填 · 每行一个文件名</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="recordPhotoHelp"></textarea></label>
                             </div>
-                            <p class="record-editor-note" id="recordPhotoHelp">照片须已放入项目的 data/photos/ 目录，按列表顺序展示。这里只配置引用，不上传文件。</p>
+                            <p class="record-editor-note" id="recordPhotoHelp">仅用于引用项目内已有照片，无需为上传照片填写。存在上传照片时，已有照片会一并复制到自动生成的新目录。</p>
                         </div>
                     </details>
                 </div>
@@ -130,9 +151,11 @@ export function createRecordEditor(onSaved) {
             </form>`;
         saved = false;
         dirty = false;
-        bodyView = 'edit';
+        uploads = [];
+        bodyView = 'source';
         updateCountry(true);
         updatePathHint();
+        updateBodyView(bodyView);
     }
 
     function updateCountry(fillName = false) {
@@ -151,16 +174,72 @@ export function createRecordEditor(onSaved) {
         const input = getDraft().input;
         const markdown = buildMarkdown(input);
         if (view === 'preview') {
-            const parsed = parseMarkdown(markdown);
-            dialog.querySelector('[data-editor-panel="preview"]').innerHTML = `<h3>${escapeHtml(input.title.trim() || '未命名日记')}</h3>${parsed.bodyHtml || '<p class="record-editor-note">暂无正文。</p>'}`;
+            dialog.querySelector('[data-editor-rich]').innerHTML = previewHtml(markdown, input.title);
         }
-        if (view === 'source') dialog.querySelector('[data-editor-panel="source"] code').textContent = markdown;
+        if (view === 'source') dialog.querySelector('[data-editor-source]').value = markdown;
         dialog.querySelectorAll('[data-editor-view]').forEach(button => {
             const active = button.dataset.editorView === view;
             button.setAttribute('aria-selected', String(active));
             button.tabIndex = active ? 0 : -1;
         });
         dialog.querySelectorAll('[data-editor-panel]').forEach(panel => { panel.hidden = panel.dataset.editorPanel !== view; });
+    }
+
+    function syncMarkdown(source) {
+        const input = splitMarkdown(source, field('title').value);
+        field('title').value = input.title;
+        field('body').value = input.body;
+        dirty = true;
+    }
+
+    function syncPreview() {
+        syncMarkdown(previewToMarkdown(dialog.querySelector('[data-editor-rich]')));
+    }
+
+    function renderPhotos() {
+        dialog.querySelector('[data-editor-photo-list]').innerHTML = uploads.map((photo, index) => `
+            <figure class="record-editor-photo">
+                <img src="data:image/${photo.extension === 'jpg' ? 'jpeg' : photo.extension};base64,${photo.data}" alt="${escapeHtml(photo.name)}">
+                <figcaption>${escapeHtml(photo.name)}</figcaption>
+                <div>
+                    <button type="button" data-photo-move="${index}" data-direction="-1" aria-label="前移 ${escapeHtml(photo.name)}" ${index === 0 || saved ? 'disabled' : ''}>←</button>
+                    <button type="button" data-photo-move="${index}" data-direction="1" aria-label="后移 ${escapeHtml(photo.name)}" ${index === uploads.length - 1 || saved ? 'disabled' : ''}>→</button>
+                    <button type="button" data-photo-remove="${index}" aria-label="移除 ${escapeHtml(photo.name)}" ${saved ? 'disabled' : ''}>移除</button>
+                </div>
+            </figure>`).join('');
+    }
+
+    async function addPhotos(files) {
+        if (busy || saved || readingPhotos || !files.length) return;
+        readingPhotos = true;
+        const saveButton = dialog.querySelector('[data-editor-save]');
+        saveButton.disabled = true;
+        status('正在读取照片…');
+        try {
+            if (uploads.length + files.length > MAX_PHOTOS) throw new Error('每条记录最多上传 20 张照片。');
+            if (files.some(file => file.size > MAX_PHOTO_BYTES || !file.size)) throw new Error('单张照片须大于 0 字节且不超过 10 MB。');
+            if (uploads.reduce((sum, photo) => sum + photo.size, 0) + files.reduce((sum, file) => sum + file.size, 0) > MAX_TOTAL_PHOTO_BYTES) throw new Error('照片总大小不能超过 30 MB。');
+            const pending = [];
+            for (const file of files) {
+                const data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+                    reader.onerror = () => reject(new Error('照片读取失败，请重新选择。'));
+                    reader.readAsDataURL(file);
+                });
+                const id = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
+                const photo = readUploads([{ id, name: file.name.slice(0, 200), data }])[0];
+                const image = new Image();
+                image.src = `data:image/${photo.extension === 'jpg' ? 'jpeg' : photo.extension};base64,${data}`;
+                await image.decode().catch(() => { throw new Error(`无法解码图片：${file.name}`); });
+                pending.push(photo);
+            }
+            uploads.push(...pending);
+            dirty = true;
+            renderPhotos();
+            status(`已添加 ${pending.length} 张照片。保存旅行记录时将写入项目；导出草稿会包含照片。`);
+        } catch (error) { status(error.message); }
+        finally { readingPhotos = false; saveButton.disabled = saved || !token; }
     }
 
     function download(content, name, type) {
@@ -173,7 +252,7 @@ export function createRecordEditor(onSaved) {
     }
 
     function close() {
-        if (busy) return;
+        if (busy || readingPhotos) return;
         dialog.close();
         if (trigger?.isConnected) trigger.focus();
         else document.querySelector('[data-action="add-record"]')?.focus();
@@ -194,13 +273,59 @@ export function createRecordEditor(onSaved) {
         event.stopPropagation();
     });
     dialog.addEventListener('input', event => {
+        if (event.target.matches('[data-editor-source]')) syncMarkdown(event.target.value);
+        if (event.target.closest('[data-editor-rich]')) syncPreview();
         if (!saved && RECORD_FIELDS.includes(event.target.name)) dirty = true;
         if (event.target.name === 'date') updatePathHint();
-        if (event.target.name === 'title' && bodyView !== 'edit') updateBodyView(bodyView);
+        if (event.target.name === 'title') updateBodyView(bodyView);
+    });
+    dialog.addEventListener('pointerdown', event => {
+        if (event.target.closest('[data-format]')) event.preventDefault();
+    });
+    dialog.addEventListener('paste', event => {
+        if (!event.target.closest('[data-editor-rich]') || saved || busy) return;
+        event.preventDefault();
+        document.execCommand('insertText', false, event.clipboardData.getData('text/plain'));
+        syncPreview();
+    });
+    dialog.addEventListener('dragover', event => {
+        if (event.target.closest('[data-editor-drop], [data-editor-rich]')) event.preventDefault();
+        if (event.target.closest('[data-editor-drop]')) dialog.querySelector('[data-editor-drop]').classList.add('is-dragging');
+    });
+    dialog.addEventListener('dragleave', event => {
+        const zone = event.target.closest('[data-editor-drop]');
+        if (zone && !zone.contains(event.relatedTarget)) zone.classList.remove('is-dragging');
+    });
+    dialog.addEventListener('drop', event => {
+        if (event.target.closest('[data-editor-rich]')) { event.preventDefault(); return; }
+        if (!event.target.closest('[data-editor-drop]')) return;
+        event.preventDefault();
+        dialog.querySelector('[data-editor-drop]').classList.remove('is-dragging');
+        void addPhotos([...event.dataTransfer.files]);
     });
     dialog.addEventListener('click', event => {
         if (event.target.closest('[data-editor-close]')) close();
-        if (busy) return;
+        if (busy || readingPhotos) return;
+        if (event.target.closest('[data-editor-rich] a')) event.preventDefault();
+        const format = event.target.closest('[data-format]');
+        if (format && !saved) {
+            dialog.querySelector('[data-editor-rich]').focus();
+            document.execCommand(format.dataset.format, false, format.dataset.formatValue || null);
+            syncPreview();
+        }
+        if (event.target.closest('[data-editor-upload]') && !saved) dialog.querySelector('[data-editor-photos]').click();
+        const remove = event.target.closest('[data-photo-remove]');
+        const move = event.target.closest('[data-photo-move]');
+        if (remove && !saved) { uploads.splice(Number(remove.dataset.photoRemove), 1); dirty = true; renderPhotos(); }
+        if (move && !saved) {
+            const index = Number(move.dataset.photoMove);
+            const next = index + Number(move.dataset.direction);
+            if (next >= 0 && next < uploads.length) {
+                [uploads[index], uploads[next]] = [uploads[next], uploads[index]];
+                dirty = true;
+                renderPhotos();
+            }
+        }
         const view = event.target.closest('[data-editor-view]');
         if (view) updateBodyView(view.dataset.editorView);
         if (event.target.closest('[data-editor-download]')) {
@@ -218,19 +343,26 @@ export function createRecordEditor(onSaved) {
     });
     dialog.addEventListener('change', async event => {
         if (event.target.name === 'country_code') updateCountry(true);
+        if (event.target.matches('[data-editor-photos]')) {
+            await addPhotos([...event.target.files]);
+            event.target.value = '';
+            return;
+        }
         if (!event.target.matches('[data-editor-file]')) return;
         const file = event.target.files[0];
         if (!file) return;
         try {
-            if (file.size > 512 * 1024) throw new Error('草稿文件不能超过 512 KB。');
+            if (file.size > MAX_DRAFT_BYTES) throw new Error('包含照片的草稿文件不能超过 44 MB。');
             const draft = readDraft(JSON.parse(await file.text()));
             if (dirty) throw new Error('当前存在未保存内容。请先保存，或导出草稿并刷新页面后再导入。');
             for (const key of RECORD_FIELDS) field(key).value = key === 'photos' ? draft.input.photos.join('\n') : draft.input[key];
             requestId = draft.requestId;
+            uploads = readUploads(draft.uploads);
             dirty = true;
             updateCountry();
             updatePathHint();
             updateBodyView(bodyView);
+            renderPhotos();
             dialog.querySelector('.record-editor-files').open = Boolean(draft.input.desc_md || draft.input.photo_folder || draft.input.photos.length);
             status('草稿已导入，尚未保存。请核对内容后保存旅行记录。');
         } catch (error) {
@@ -241,17 +373,19 @@ export function createRecordEditor(onSaved) {
     });
     dialog.addEventListener('submit', async event => {
         event.preventDefault();
-        if (busy || saved || !token) return;
+        if (busy || saved || readingPhotos || !token) return;
         const draft = getDraft();
         try { prepareRecord(draft, countries); }
         catch (error) { status(error.message); return; }
         busy = true;
+        dialog.querySelector('[data-editor-rich]').contentEditable = 'false';
+        dialog.querySelector('[data-editor-source]').readOnly = true;
         dialog.querySelectorAll('[name], button').forEach(control => { control.disabled = true; });
         status('正在保存旅行记录…');
         try {
             const response = await fetch(new URL('api/travel-records', window.location.href), {
                 method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token },
-                body: JSON.stringify(draft), signal: AbortSignal.timeout(15000)
+                body: JSON.stringify(draft), signal: AbortSignal.timeout(60000)
             });
             const result = await response.json();
             if (!response.ok || !result.saved) throw new Error(result.error || '服务器未确认保存成功。');
@@ -268,10 +402,15 @@ export function createRecordEditor(onSaved) {
             dialog.querySelectorAll('button').forEach(button => { button.disabled = false; });
             dialog.querySelector('[data-editor-save]').disabled = saved || !token;
             dialog.querySelector('[data-editor-import]').disabled = saved;
+            dialog.querySelector('[data-editor-upload]').disabled = saved;
+            dialog.querySelectorAll('[data-format]').forEach(button => { button.disabled = saved; });
+            dialog.querySelector('[data-editor-rich]').contentEditable = String(!saved);
+            dialog.querySelector('[data-editor-source]').readOnly = saved;
+            renderPhotos();
         }
     });
     window.addEventListener('beforeunload', event => {
-        if (!dirty && !busy) return;
+        if (!dirty && !busy && !readingPhotos) return;
         event.preventDefault();
         event.returnValue = '';
     });
