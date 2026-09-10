@@ -17,7 +17,43 @@ const original = { date: '2024-01-01', custom: '保留已有未知字段', desc_
 const draft = (id = 'a', input = {}) => ({
     format: DRAFT_FORMAT,
     requestId: id.repeat(32),
-    input: { date: '2026-09-10', country_code: 'CN', admin_area: '江苏省', locality: '苏州市', trip_id: '', title: '沿河散步', body: '## 雨后\n\n石板路与茶馆。', ...input }
+    input: { date: '2026-09-10', country_code: 'CN', country: '', admin_area: '江苏省', admin_area_type: '', locality: '苏州市', locality_type: '', trip_id: '', title: '沿河散步', body: '## 雨后\n\n石板路与茶馆。', desc_md: '', photo_folder: '', photos: [], ...input }
+});
+
+test('旧版草稿补齐可选字段，完整字段草稿保留照片顺序和类型信息', () => {
+    const legacy = draft();
+    legacy.format = 'travel-diary-draft-v1';
+    for (const key of ['country', 'admin_area_type', 'locality_type', 'desc_md', 'photo_folder', 'photos']) delete legacy.input[key];
+    assert.deepEqual(readDraft(legacy), draft());
+    const value = draft('f', { country: '中华人民共和国', admin_area_type: '省', locality_type: '城市', trip_id: 'jiangsu', desc_md: 'data/travel-diary/2026/2026-09-10-suzhou.md', photo_folder: 'data/photos/suzhou', photos: ['river.jpg', 'garden.png', 'river.jpg'] });
+    const { record } = prepareRecord(value, countries);
+    for (const key of ['country', 'admin_area_type', 'locality_type', 'trip_id', 'desc_md', 'photo_folder', 'photos']) assert.deepEqual(record[key], value.input[key]);
+    for (const input of [
+        { desc_md: 'data/travel-diary/2026/2026-09-10-../../escape.md' },
+        { desc_md: 'data/travel-diary/2025/2026-09-10-suzhou.md' },
+        { desc_md: 'data/travel-diary/2026/2026-09-11-suzhou.md' },
+        { photo_folder: 'data/photos/../profile', photos: ['a.png'] },
+        { photo_folder: 'data/photos/CON', photos: ['a.png'] },
+        { photo_folder: 'data/photos/suzhou', photos: ['../a.png'] },
+        { photo_folder: 'data/photos/suzhou', photos: ['a.png:secret'] },
+        { photos: ['a.png'] }, { photos: 'a.png' }
+    ]) assert.throws(() => prepareRecord(draft('f', input), countries));
+});
+
+test('自定义正文路径和完整元数据真实落盘，缺失照片时不写索引', async () => {
+    const input = { country: '中华人民共和国', admin_area_type: '省', locality_type: '城市', trip_id: 'jiangsu', desc_md: 'data/travel-diary/2026/2026-09-10-complete.md', photo_folder: 'data/photos/suzhou', photos: ['river.jpg'] };
+    const previous = await readIndex();
+    assert.equal((await post(draft('f', input))).status, 400);
+    assert.deepEqual(await readIndex(), previous);
+    await fs.mkdir(path.join(root, 'data/photos/suzhou'), { recursive: true });
+    await fs.writeFile(path.join(root, 'data/photos/suzhou/river.jpg'), '测试图片内容');
+    const response = await post(draft('f', input));
+    assert.equal(response.status, 201);
+    const record = (await response.json()).record;
+    for (const [key, value] of Object.entries(input)) assert.deepEqual(record[key], value);
+    assert.equal((await post(draft('f', input))).status, 200);
+    assert.equal((await post(draft('f', { ...input, title: '其他标题' }))).status, 409);
+    assert.ok((await fs.readFile(path.join(root, record.desc_md), 'utf8')).startsWith('# 沿河散步'));
 });
 
 before(async () => {
@@ -58,20 +94,21 @@ test('字段校验支持闰年、空行政区和草稿往返，拒绝无效日�
 });
 
 test('保存真正写入 JSON 与 Markdown，保留旧数据，重试不重复新增', async () => {
+    const previousCount = (await readIndex()).length;
     const response = await post(draft());
     assert.equal(response.status, 201);
     const result = await response.json();
     assert.equal(result.saved, true);
     const records = await readIndex();
     assert.deepEqual(records[0], original);
-    assert.equal(records.length, 2);
+    assert.equal(records.length, previousCount + 1);
     assert.equal(await fs.readFile(path.join(root, result.record.desc_md), 'utf8'), '# 沿河散步\n\n## 雨后\n\n石板路与茶馆。\n');
     assert.equal((await fetch(`${base}/${result.record.desc_md}`)).status, 200);
     assert.equal((await post(draft())).status, 200);
-    assert.equal((await readIndex()).length, 2);
+    assert.equal((await readIndex()).length, previousCount + 1);
     assert.equal((await post(draft('a', { title: '修改后的标题' }))).status, 409);
     assert.equal((await post(draft('a', { date: '2027-01-01' }))).status, 409);
-    assert.equal((await readIndex()).length, 2);
+    assert.equal((await readIndex()).length, previousCount + 1);
 });
 
 test('写入端点拒绝跨源请求、伪造 Host、缺失令牌及不合法数据', async () => {

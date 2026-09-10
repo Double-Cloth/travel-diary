@@ -20,9 +20,9 @@ node js/server.js --port 8080
 
 ## 在页面中新增旅行记录
 
-点击头部的「＋」或首页「新增旅行记录」，填写日期、地点、标题和正文。在 `npm start` 打开的 localhost 页面中，「保存到项目文件」会真实更新 `data/travel_data.json` 并创建 Markdown 日记，断网也可保存，不需要安装依赖。
+点击头部「＋」或旅行路径页「新增旅行记录」，编辑行程、地点、正文和照片配置。正文支持 Markdown 编辑、预览、源码查看及独立导出。在本机 `npm start` 打开的 localhost 页面中保存，将更新 `data/travel_data.json` 并创建 Markdown 日记，离线可用。
 
-GitHub Pages 等静态页面不能写回仓库，会显示只读提示。可先「下载草稿」，再在本地页面「导入草稿」并保存；草稿下载不会新增站点记录。具体流程见 [内容维护指南](doc/CONTENT_GUIDE.md#在页面中新增推荐)。
+GitHub Pages 等静态页面不能写回仓库，会显示只读提示。可通过「导出草稿」保存完整记录，再在本机「导入草稿」并保存。功能说明、字段定义和环境限制见 [内容维护指南](doc/CONTENT_GUIDE.md#页面编辑器)。
 
 ## 资源维护
 

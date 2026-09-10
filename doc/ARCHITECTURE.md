@@ -1,6 +1,6 @@
 # 架构说明
 
-## 当前形态
+## 运行架构
 
 Travel Diary 是无构建步骤的静态前端项目。浏览器加载 `index.html`，再加载样式入口 `css/journal.css` 和唯一应用入口 `js/app.js`。`journal.css` 只维护 `@import` 顺序，实际样式按职责拆分到同级 CSS 分片。
 
@@ -17,6 +17,9 @@ index.html
   └─ js/app.js
        ├─ js/data.js
        │    └─ js/utils.js
+       ├─ js/record-editor.js
+       │    ├─ js/record-input.mjs
+       │    └─ js/data.js
        ├─ js/location.mjs
        ├─ js/analytics.mjs
        └─ js/utils.js
@@ -81,7 +84,7 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 - `css/07-responsive.css`：断点适配和 `prefers-reduced-motion` 降级。
 - `js/app.js`：页面状态、路由、渲染、事件绑定和筛选逻辑。
 - `js/data.js`：数据读取、Markdown 解析和基础安全过滤。
-- `js/record-editor.js`：原生 `dialog` 新增表单、能力检测、草稿导入导出和提交状态。
+- `js/record-editor.js`：原生 `dialog` 新增表单、能力检测、全部元数据字段、正文视图、草稿与 Markdown 导出、提交状态。
 - `js/record-input.mjs`：浏览器与 Node.js 共用的草稿字段校验、记录与 Markdown 生成。
 - `js/record-store.js`：本机写入端点、请求来源校验、写入锁、索引替换和失败回滚。
 - `js/location.mjs`：地点字段兼容、国家规则、层级键、显示名称和搜索字段。
@@ -93,13 +96,15 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 
 ## 新增记录的数据流
 
-头部和首页入口打开同一个原生 `dialog`。表单复用本地国家目录和纸张样式；`GET /api/travel-records` 返回服务标识和进程内写入令牌，前端确认后才启用保存。`POST` 使用 JSON 与 `X-Travel-Token` 提交版本化草稿，服务端再次校验字段与国家代码。
+头部和旅行路径页入口打开同一个原生 `dialog`。表单复用本地国家目录和纸张样式；`GET /api/travel-records` 返回服务标识和进程内写入令牌，前端确认后才启用保存。`POST` 使用 JSON 与 `X-Travel-Token` 提交 v2 草稿，服务端校验字段、国家代码、正文路径及照片引用。`record-input.mjs` 同时读取 v1 草稿，将新增可选字段补齐为空值。
 
 服务端仅允许回环地址连接、localhost / 回环 Host 和同源 Origin（如提供）；写入接口不设置跨域许可，`--network` 的其他设备访问仍只读。表单从非本机站点打开时直接提供只读草稿流程，不向第三方站点发送写入请求。
 
-写入使用 `data/.travel-write.lock` 独占锁，重新读取当前索引后，独占创建 Markdown 文件，写入并同步临时索引，最后用 `rename` 替换索引。目录和文件拒绝符号链接 / junction；失败时清理本次创建的正文和临时索引。同一草稿以固定路径和内容比对实现重试去重。锁可防止多个本项目服务器同时写入，替换前也检查手工修改，但不能与任意外部编辑器建立跨进程事务；保存期间应避免手工编辑索引。
+写入使用 `data/.travel-write.lock` 独占锁，重新读取当前索引后，独占创建 Markdown 文件，写入并同步临时索引，最后用 `rename` 替换索引。目录和文件拒绝符号链接 / junction；失败时清理本次创建的正文和临时索引。重复提交以正文路径、元数据和 Markdown 内容比对实现去重，默认路径同时包含草稿标识。自定义正文路径仍遵守年份目录和日期前缀规范，照片引用仅允许项目内的普通文件。锁可防止多个本项目服务器同时写入，替换前也检查手工修改，但不能与任意外部编辑器建立跨进程事务；保存期间应避免手工编辑索引。
 
-两个文件不构成跨文件系统事务，进程强制终止或断电可能留下锁、孤立 Markdown 或临时索引，恢复步骤见维护指南。确认写入成功后，页面重新从磁盘读取旅行数据并派生统计；读取失败与写入失败分别提示。
+Markdown 与 JSON 的写入不构成跨文件事务，进程强制终止或断电可能留下锁、孤立 Markdown 或临时索引，恢复步骤见维护指南。确认写入成功后，页面重新从磁盘读取旅行数据并派生统计；读取失败与写入失败分别提示。
+
+正文预览复用 `js/data.js` 导出的 `parseMarkdown()`，与日记详情使用相同的 HTML 转义和链接过滤规则。源码查看、Markdown 下载和文件写入统一使用 `buildMarkdown()` 生成内容。草稿 JSON 包含全部表单字段，照片以有序文件名数组保存，不嵌入图片数据。
 
 ## 拆分原则
 

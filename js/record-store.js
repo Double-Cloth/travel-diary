@@ -60,7 +60,7 @@ async function saveRecord(root, payload) {
         const previous = await fs.readFile(indexFile, 'utf8');
         const records = JSON.parse(previous);
         if (!Array.isArray(records)) throw failure(409, '旅行索引不是数组，请先修复 data/travel_data.json。');
-        const existing = records.find(item => typeof item.desc_md === 'string' && item.desc_md.endsWith(`-${payload.requestId}.md`));
+        const existing = records.find(item => item.desc_md === record.desc_md || (typeof item.desc_md === 'string' && item.desc_md.endsWith(`-${payload.requestId}.md`)));
         if (existing && JSON.stringify(existing) !== JSON.stringify(record)) {
             throw failure(409, '这份草稿已保存，但内容不同。请重新打开新增窗口创建另一条记录。');
         }
@@ -70,6 +70,15 @@ async function saveRecord(root, payload) {
             await checkedFile(diaryFile);
             if (await fs.readFile(diaryFile, 'utf8') !== markdown) throw failure(409, '这份草稿已保存，但正文已改变，未覆盖现有文件。');
             return { record, alreadySaved: true };
+        }
+        if (record.photos.length) {
+            try {
+                const photoDir = await checkedDirectory(root, record.photo_folder.split('/'));
+                for (const photo of record.photos) await checkedFile(path.join(photoDir, photo));
+            } catch (error) {
+                if (error.status) throw error;
+                throw failure(400, '照片目录或文件不存在、不可读。请先将照片放入项目对应目录，再保存记录。');
+            }
         }
         try {
             // 先独占创建文件，只有创建成功才允许失败时回滚。

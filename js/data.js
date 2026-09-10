@@ -103,7 +103,7 @@ async function fetchMarkdown(markdownPath) {
     }
 }
 
-function parseMarkdown(markdown, record) {
+export function parseMarkdown(markdown, record = {}) {
     const normalized = (markdown || '').replace(/\r\n/g, '\n').trim();
     const titleMatch = normalized.match(/^#\s+(.+)$/m);
     const title = titleMatch ? titleMatch[1].trim() : buildFallbackTitle(record);

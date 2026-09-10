@@ -396,78 +396,112 @@
     to { transform: translateY(0) scale(1); }
 }
 dialog.record-editor {
-    width: min(760px, calc(100% - 32px));
+    width: min(1080px, calc(100% - 32px));
     max-height: calc(100dvh - 32px);
     margin: auto;
-    padding: clamp(20px, 4vw, 36px);
+    padding: 0;
+    overflow: hidden;
 }
 
-.record-editor::backdrop {
-    background: rgba(17, 9, 4, 0.68);
-    backdrop-filter: blur(5px);
-}
-
-.record-editor-heading,
-.record-editor-actions {
+dialog.record-editor[open] { display: flex; flex-direction: column; }
+.record-editor::backdrop { background: rgba(17, 9, 4, 0.68); backdrop-filter: blur(5px); }
+.record-editor-heading {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    gap: 12px;
+    gap: 16px;
+    flex-shrink: 0;
+    padding: 24px 28px 18px;
+    border-bottom: 1px solid var(--hairline);
 }
-
-.record-editor-heading h2 { margin: 0; }
-.record-editor-heading .journal-label { margin: 0 0 8px; }
+.record-editor-heading > div { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+.record-editor-heading h2 { margin: 0; font-size: 25px; }
+.record-editor-heading .journal-label { margin: 0; }
 .record-editor-heading button { flex-shrink: 0; width: auto; }
-.record-editor-actions { justify-content: flex-start; flex-wrap: wrap; }
-
-.record-editor-mode {
-    padding: 12px 0;
-    border-block: 1px dashed var(--hairline);
-    color: var(--ink-soft);
-    font-size: 14px;
-    line-height: 1.7;
-}
-
-.record-editor-fields {
-    display: grid;
-    gap: 16px;
-    min-width: 0;
-    padding: 0;
-    margin: 0;
-    border: 0;
-}
-
-.record-editor-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 16px;
-}
-
-.record-editor label { display: block; min-width: 0; color: var(--ink-soft); }
-.record-editor label span { font-size: 13px; color: var(--ink-muted); }
+.record-editor form { display: flex; flex-direction: column; min-height: 0; }
+.record-editor-scroll { padding: 0 28px 24px; overflow-y: auto; overscroll-behavior: contain; }
+.record-editor-mode { margin: 16px 0 24px; color: var(--ink-soft); font-size: 13px; line-height: 1.7; }
+.record-editor-layout { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.2fr); gap: 28px; }
+.record-editor-section { min-width: 0; }
+.record-editor-section + .record-editor-section { padding-left: 28px; border-left: 1px dashed var(--hairline); }
+.record-editor-section > h3 { margin: 0 0 20px; font-size: 19px; }
+.record-editor-section > h3 span,
+.record-editor-files summary b { margin-right: 10px; color: var(--stamp); font: 13px var(--font-code); }
+.record-editor-fields { display: grid; gap: 14px; min-width: 0; }
+.record-editor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; }
+.record-editor label { display: block; min-width: 0; color: var(--ink-soft); font-size: 14px; }
+.record-editor label span { font-size: 12px; color: var(--ink-muted); }
+.record-editor label .record-editor-field-name { color: inherit; font-size: inherit; }
 .record-editor input:not([type="file"]),
 .record-editor select,
 .record-editor textarea {
     display: block;
     width: 100%;
     min-width: 0;
-    min-height: 44px;
-    margin-top: 6px;
-    padding: 10px 12px;
+    min-height: 42px;
+    margin-top: 7px;
+    padding: 10px;
     border: 1px solid var(--hairline);
-    border-radius: 6px;
+    border-radius: 5px;
     color: var(--ink);
     background: rgba(255, 251, 235, 0.5);
     font: inherit;
 }
-
 .record-editor textarea { resize: vertical; line-height: 1.7; }
-.record-editor-note { margin: 0; color: var(--ink-muted); font-size: 13px; line-height: 1.7; }
-.record-editor-actions + .record-editor-note { margin-top: 14px; }
-.record-editor-status { color: var(--stamp); line-height: 1.7; overflow-wrap: anywhere; }
-.record-editor-status:empty { margin: 18px 0 0; }
+.record-editor-workbench { margin: 18px 0 10px; border: 1px solid var(--hairline); border-radius: 6px; overflow: hidden; }
+.record-editor-tabs { display: flex; align-items: stretch; gap: 4px; padding: 6px; background: rgba(142, 102, 52, 0.08); border-bottom: 1px solid var(--hairline); }
+.record-editor-tabs button { min-height: 36px; padding: 6px 14px; border: 1px solid transparent; border-radius: 4px; color: var(--ink-soft); background: transparent; cursor: pointer; }
+.record-editor-tabs button[aria-selected="true"] { color: var(--stamp); background: var(--paper-50); border-color: var(--hairline); box-shadow: 0 2px 4px rgba(78, 48, 19, 0.1); }
+.record-editor-tabs button:hover { background: rgba(255, 251, 235, 0.75); }
+.record-editor-format { margin: auto 5px auto auto; color: var(--ink-muted); font: 11px var(--font-code); }
+.record-editor-workbench textarea { margin: 0; height: 320px; min-height: 320px; padding: 16px; border: 0; border-radius: 0; font-size: 15px; }
+.record-editor [data-editor-panel][hidden] { display: none; }
+.record-editor-preview,
+.record-editor-source { height: 320px; min-height: 320px; overflow: auto; padding: 16px; background: rgba(255, 251, 235, 0.5); overflow-wrap: anywhere; }
+.record-editor-preview > h3:first-child { margin-top: 0; font-size: 22px; }
+.record-editor-source pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font-family: var(--font-code), var(--font-serif); font-size: 14px; line-height: 1.8; }
+.record-editor-files { margin-top: 24px; border-top: 1px dashed var(--hairline); }
+.record-editor-files summary { padding: 18px 0; cursor: pointer; color: var(--ink-soft); font-size: 17px; }
+.record-editor-files summary > span:last-child { margin-left: 10px; font-size: 12px; color: var(--ink-muted); }
+.record-editor-note { margin: 0; color: var(--ink-muted); font-size: 12px; line-height: 1.7; }
+.record-editor-footer { flex-shrink: 0; padding: 14px 28px; border-top: 1px solid var(--hairline); background: rgba(234, 214, 175, 0.7); }
+.record-editor-actions,
+.record-editor-exports { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+.record-editor-actions { justify-content: space-between; }
+.record-editor-actions button { width: auto; padding: 9px 14px; font-size: 14px; }
+.record-editor-footer > .record-editor-note { margin-top: 10px; }
+.record-editor-status { margin: 0 0 12px; color: var(--stamp); font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; max-height: 90px; overflow: auto; }
+.record-editor-status:empty { display: none; }
+
+@media (max-width: 800px) {
+    .record-editor-layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    .record-editor-section + .record-editor-section { padding: 20px 0 0; border-left: 0; border-top: 1px dashed var(--hairline); }
+}
 
 @media (max-width: 540px) {
+    .record-editor-heading { padding: 16px; }
+    .record-editor-heading > div { gap: 6px; }
+    .record-editor-heading .journal-label { display: none; }
+    .record-editor-heading h2 { font-size: 22px; }
+    .record-editor-scroll { padding: 0 16px 20px; }
+    .record-editor-section > h3 { margin-bottom: 16px; }
+    .record-editor-footer { padding: 12px 16px; }
+    .record-editor-actions { gap: 10px; }
+    .record-editor-actions > button,
+    .record-editor-exports { width: 100%; }
+    .record-editor-exports { gap: 6px; }
+    .record-editor-exports button { flex: 1; padding: 8px 4px; font-size: 12px; }
+    .record-editor-files summary > span:last-child { display: block; margin: 6px 0 0 28px; }
+    .record-editor-grid { gap: 14px 10px; }
+}
+
+@media (max-width: 360px) {
     .record-editor-grid { grid-template-columns: minmax(0, 1fr); }
-    .record-editor-actions > button { flex: 1 1 auto; }
+    .record-editor-format { display: none; }
+}
+
+@media (max-height: 520px) {
+    .record-editor-heading { padding-block: 8px; }
+    .record-editor-footer > .record-editor-note { display: none; }
+    .record-editor-footer { padding-block: 8px; }
 }

@@ -859,3 +859,13 @@
     white-space: nowrap;
 }
 
+.ledger-record-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.ledger-record-heading .journal-label { margin: 0; }

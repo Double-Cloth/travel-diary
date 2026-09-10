@@ -84,7 +84,7 @@ async function initApp() {
     bindGlobalEvents();
     openRecordEditor = createRecordEditor(async () => {
         travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
-        window.location.hash = '#cover';
+        window.location.hash = '#ledger';
         syncRouteFromHash({ initial: true });
     });
     renderLoading();
@@ -644,10 +644,7 @@ function renderCover() {
     setPages(`
         <div class="cover-page cover-recent-page">
             <h1 class="archive-home-title">最近旅行记录</h1>
-            <div class="cover-record-heading">
-                <p class="journal-label">最近记录</p>
-                <button class="paper-button" type="button" data-action="add-record"><span aria-hidden="true">＋</span> 新增旅行记录</button>
-            </div>
+            <p class="journal-label">最近记录</p>
             <div class="cover-record-list">
                 ${recentRecords.length ? recentRecords.map(renderCoverRecord).join('') : '<div class="empty-note">还没有旅行记录。</div>'}
             </div>
@@ -780,7 +777,10 @@ function renderLedger(params = {}, options = {}) {
     setPages(`
         <div class="ledger-page">
             <header class="page-head">
-                <p class="journal-label">路线档案</p>
+                <div class="ledger-record-heading">
+                    <p class="journal-label">路线档案</p>
+                    <button class="paper-button" type="button" data-action="add-record"><span aria-hidden="true">＋</span> 新增旅行记录</button>
+                </div>
                 <h1>出发，到新的爱与喧闹中去！</h1>
             </header>
             ${renderLedgerControls(ledgerParams, 'ledgerSearch')}
