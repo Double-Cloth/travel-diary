@@ -54,7 +54,7 @@ node js/server.js --port 8080 --network
 
 `tests/location.test.mjs` 关注多国行政区命名、稳定地点键、城市国家和旧字段兼容。调整地点模型或新增国家规则时应优先扩展这里。
 
-`tests/countries.test.mjs` 验证 `data/countries.json` 保持 249 个 ISO 3166-1 当前代码、代码唯一性、多语言名称、行政区回退和数据来源信息。
+`tests/countries.test.mjs` 验证 `assets/catalogs/countries.json` 保持 249 个 ISO 3166-1 当前代码、代码唯一性、多语言名称、行政区回退和数据来源信息。
 
 `tests/offline.test.mjs` 验证启动脚本不会执行下载或资产生成命令，HTML/CSS 引用均指向实际存在的本地资源，压缩字体随项目分发，运行时数据请求不会指向远程地址。
 
@@ -65,7 +65,7 @@ node js/server.js --port 8080 --network
 1. 在 `scripts/update-countries.mjs` 更新 `CLDR_VERSION`。
 2. 查阅该 CLDR 版本发布说明，确认国家名称或区域代码变化。
 3. 运行 `npm run countries`。
-4. 检查生成差异，特别是新增、删除或更名的代码。
+4. 检查 `assets/catalogs/countries.json` 的生成差异，特别是新增、删除或更名的代码；生成文件不应写入个人内容目录 `data/`。
 5. 运行 `npm test` 并在浏览器检查国家筛选。
 
 `tests/shell.test.mjs` 关注运行时外壳约束，例如：
@@ -91,7 +91,7 @@ node js/server.js --port 8080 --network
 - 检查浏览器控制台是否有模块加载失败。
 - 确认 `index.html` 中 `js/app.js` 路径正确。
 - 确认 `data/travel_data.json` 是合法 JSON 数组。
-- 确认 `data/countries.json` 存在、是合法 JSON，且旅行记录的 `country_code` 能在目录中找到。
+- 确认 `assets/catalogs/countries.json` 存在、是合法 JSON，且旅行记录的 `country_code` 能在目录中找到。
 
 字体或背景缺失：
 
@@ -105,5 +105,6 @@ node js/server.js --port 8080 --network
 
 照片不显示：
 
+- 书脊头像缺失时，检查 `data/profile/profile-picture.png` 是否存在。
 - 检查 `photo_folder` 和 `photos` 拼接后的路径是否存在。
 - 检查图片文件名是否包含空格或大小写不一致。

@@ -8,7 +8,7 @@ const SOURCE_URLS = {
     territoryInfo: `${CLDR_BASE_URL}/cldr-core/supplemental/territoryInfo.json`,
     codeMappings: `${CLDR_BASE_URL}/cldr-core/supplemental/codeMappings.json`
 };
-const OUTPUT_URL = new URL('../data/countries.json', import.meta.url);
+const OUTPUT_URL = new URL('../assets/catalogs/countries.json', import.meta.url);
 
 // CLDR 还包含部分保留代码和自定义区域；这里保留 ISO 3166-1 正式分配的 249 项。
 const CLDR_NON_ISO_REGIONS = new Set(['AC', 'CP', 'CQ', 'DG', 'EA', 'IC', 'TA', 'XK', 'ZZ']);

@@ -24,10 +24,18 @@ index.html
 
 本地开发时，`js/server.js` 只负责静态文件服务和正确的 MIME 类型，不参与浏览器端业务逻辑。
 
+## 个人内容与通用资源
+
+- `data/`：个人旅行元数据、日记正文、旅行照片及 `profile/` 中的头像。不同使用者复用项目时，在此替换自己的内容。
+- `assets/`：通用国家目录（`catalogs/countries.json`）、字体、页面背景和纹理。
+- `index.html`、`js/`、`css/`：共享的页面结构与功能实现；`scripts/`、`tests/`、`doc/` 分别负责维护工具、验证和使用说明。
+
+头像由 `index.html` 直接引用 `data/profile/profile-picture.png`。个人档案页的统计由旅行记录计算，不需要单独维护个人资料配置文件。
+
 ## 数据流
 
 ```text
-data/countries.json ──→ configureCountryCatalog()
+assets/catalogs/countries.json ──→ configureCountryCatalog()
 data/travel_data.json ─→ loadTravelData()
 data/travel-diary/YYYY/*.md
   ↓ loadTravelRecords()
@@ -38,11 +46,11 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 左页与右页 DOM
 ```
 
-`js/data.js` 会并行加载旅行记录和 `data/countries.json`，先用国家目录配置 `js/location.mjs`，再把国家、一级行政区和目的地规范化。之后读取每条记录的 `desc_md`，把 Markdown 转成 HTML，并为搜索生成 `searchText`。`js/app.js` 在此基础上派生年份、月份、地点、复访、概览统计和路由状态。
+`js/data.js` 会并行加载旅行记录和 `assets/catalogs/countries.json`，先用国家目录配置 `js/location.mjs`，再把国家、一级行政区和目的地规范化。之后读取每条记录的 `desc_md`，把 Markdown 转成 HTML，并为搜索生成 `searchText`。`js/app.js` 在此基础上派生年份、月份、地点、复访、概览统计和路由状态。
 
 地点运行时模型使用 `countryKey → adminAreaKey → locationKey` 三层稳定键。国家优先使用 `country_code`，行政区和目的地键包含上级键，因此不同国家的同名州、省或城市不会在筛选和统计中合并。`admin_area` 可以为空，以支持城市国家及没有必要记录一级行政区的目的地。
 
-`data/countries.json` 覆盖 ISO 3166-1 的 249 个当前分配代码，包含中英文名称、alpha-2/alpha-3/数字代码、别名和行政区显示规则。运行时不再维护内联国家表。该文件由 `scripts/update-countries.mjs` 从 Unicode CLDR 的固定版本生成，更新时运行 `npm run countries`。
+`assets/catalogs/countries.json` 覆盖 ISO 3166-1 的 249 个当前分配代码，包含中英文名称、alpha-2/alpha-3/数字代码、别名和行政区显示规则。运行时不再维护内联国家表。该文件由 `scripts/update-countries.mjs` 从 Unicode CLDR 的固定版本生成，更新时运行 `npm run countries`。
 
 ## 路由
 
@@ -74,7 +82,7 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 - `js/app.js`：页面状态、路由、渲染、事件绑定和筛选逻辑。
 - `js/data.js`：数据读取、Markdown 解析和基础安全过滤。
 - `js/location.mjs`：地点字段兼容、国家规则、层级键、显示名称和搜索字段。
-- `data/countries.json`：完整国家/地区目录和行政区显示规则。
+- `assets/catalogs/countries.json`：完整国家/地区目录和行政区显示规则。
 - `scripts/update-countries.mjs`：从固定 CLDR 版本重新生成国家目录。
 - `js/analytics.mjs`：与 DOM 无关的统计计算，适合单元测试。
 - `js/utils.js`：通用格式化与转义工具。

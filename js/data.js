@@ -8,7 +8,7 @@ import {
 
 export async function loadTravelData() {
     const dataPath = new URL('data/travel_data.json', window.location.href).href;
-    const countryCatalogPath = new URL('data/countries.json', window.location.href).href;
+    const countryCatalogPath = new URL('assets/catalogs/countries.json', window.location.href).href;
     const [response, countryCatalogResponse] = await Promise.all([
         fetch(dataPath),
         fetch(countryCatalogPath)

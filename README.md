@@ -37,3 +37,5 @@ pip install "fonttools[woff]"
 ## 文档
 
 更多说明见 [项目文档](doc/README.md)。
+
+复用为自己的旅行档案时，个人头像、旅行记录、日记和照片统一在 `data/` 中维护；通用国家目录位于 `assets/catalogs/countries.json`，字体和页面素材也保留在 `assets/`。具体步骤见 [内容维护指南](doc/CONTENT_GUIDE.md#换成自己的旅行档案)。

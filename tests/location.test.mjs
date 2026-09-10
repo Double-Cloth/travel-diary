@@ -11,7 +11,7 @@ import {
     normalizeTravelLocation
 } from '../js/location.mjs';
 
-const countryCatalog = JSON.parse(await readFile(new URL('../data/countries.json', import.meta.url), 'utf8'));
+const countryCatalog = JSON.parse(await readFile(new URL('../assets/catalogs/countries.json', import.meta.url), 'utf8'));
 configureCountryCatalog(countryCatalog);
 
 test('从独立目录加载完整国家配置', () => {

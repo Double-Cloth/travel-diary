@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
-const countryCatalog = JSON.parse(await readFile(new URL('../data/countries.json', import.meta.url), 'utf8'));
+const countryCatalog = JSON.parse(await readFile(new URL('../assets/catalogs/countries.json', import.meta.url), 'utf8'));
 const countries = countryCatalog.countries;
 const dataJs = await readFile(new URL('../js/data.js', import.meta.url), 'utf8');
 const locationJs = await readFile(new URL('../js/location.mjs', import.meta.url), 'utf8');
@@ -57,7 +57,7 @@ test('国家目录记录来源版本和常见国家的本地行政区称谓', ()
 });
 
 test('运行时从独立 JSON 加载国家目录而不是维护内联国家表', () => {
-    assert.match(dataJs, /data\/countries\.json/);
+    assert.match(dataJs, /assets\/catalogs\/countries\.json/);
     assert.match(dataJs, /configureCountryCatalog\(countryCatalog\)/);
     assert.doesNotMatch(locationJs, /AU:\s*\{\s*names:/);
     assert.doesNotMatch(locationJs, /US:\s*\{\s*names:/);

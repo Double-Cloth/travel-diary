@@ -1,5 +1,16 @@
 # 内容维护指南
 
+## 换成自己的旅行档案
+
+个人内容统一放在 `data/`，复用项目时按以下步骤替换：
+
+1. 用自己的 PNG 头像替换 `data/profile/profile-picture.png`，保留文件名即可。
+2. 将旅行记录写入 `data/travel_data.json`，正文放入 `data/travel-diary/YYYY/`，照片放入 `data/photos/`，并同步记录中的路径。不保留任何记录时使用空数组 `[]`。
+3. 删除不再使用的示例日记和照片，避免它们仍随静态站点发布。
+4. 正文字符发生变化时，按 [资源维护规范](ASSET_MANAGEMENT.md) 运行 `npm run fonts` 更新本地压缩字体，再运行 `npm test` 并检查页面。
+
+`assets/catalogs/countries.json` 是共享参考目录，复用项目时保留完整文件；无需按自己的旅行范围删减国家，也无需修改页面代码或通用背景素材。
+
 ## 新增日记
 
 1. 在 `data/travel-diary/YYYY/` 新建 Markdown 文件。
@@ -96,7 +107,7 @@ data/travel-diary/2026/2026-07-11-suzhou.md
 
 ## 国家目录
 
-`data/countries.json` 是应用使用的独立国家目录，当前包含 ISO 3166-1 的 249 个国家、属地及特殊地理区域。每一项包含：
+`assets/catalogs/countries.json` 是应用使用的通用国家目录，与个人旅行记录分开维护，当前包含 ISO 3166-1 的 249 个国家、属地及特殊地理区域。每一项包含：
 
 - `code`：ISO alpha-2，两位代码。
 - `alpha3`：ISO alpha-3，三位代码。

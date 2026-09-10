@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { access, readFile } from 'node:fs/promises';
 
 const travelData = JSON.parse(await readFile(new URL('../data/travel_data.json', import.meta.url), 'utf8'));
-const countryCatalog = JSON.parse(await readFile(new URL('../data/countries.json', import.meta.url), 'utf8'));
+const countryCatalog = JSON.parse(await readFile(new URL('../assets/catalogs/countries.json', import.meta.url), 'utf8'));
 const countryCodes = new Set(countryCatalog.countries.map(country => country.code));
 
 test('Markdown 日记按年份目录存放并由元数据引用', async () => {
