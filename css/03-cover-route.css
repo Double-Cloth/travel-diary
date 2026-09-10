@@ -680,3 +680,15 @@
     transform: rotate(14deg);
 }
 
+.cover-record-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 16px;
+}
+
+.cover-record-heading .journal-label {
+    margin: 0;
+}

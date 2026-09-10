@@ -1,4 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
+import { createRecordEditor } from './record-editor.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { getRouteMapRandomCount } from './route-map.mjs';
@@ -52,6 +53,7 @@ const ROUTE_MAP_SLOTS = [
 const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
 
 const refs = {};
+let openRecordEditor;
 let travelModel = null;
 let activeRoute = null;
 let pageTurnTimer = null;
@@ -80,6 +82,11 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initApp() {
     cacheRefs();
     bindGlobalEvents();
+    openRecordEditor = createRecordEditor(async () => {
+        travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
+        window.location.hash = '#cover';
+        syncRouteFromHash({ initial: true });
+    });
     renderLoading();
 
     try {
@@ -637,7 +644,10 @@ function renderCover() {
     setPages(`
         <div class="cover-page cover-recent-page">
             <h1 class="archive-home-title">最近旅行记录</h1>
-            <p class="journal-label">最近记录</p>
+            <div class="cover-record-heading">
+                <p class="journal-label">最近记录</p>
+                <button class="paper-button" type="button" data-action="add-record"><span aria-hidden="true">＋</span> 新增旅行记录</button>
+            </div>
             <div class="cover-record-list">
                 ${recentRecords.length ? recentRecords.map(renderCoverRecord).join('') : '<div class="empty-note">还没有旅行记录。</div>'}
             </div>
@@ -1882,6 +1892,12 @@ function renderWithPageTurn(renderFn, options = {}) {
 }
 
 function handleDocumentClick(event) {
+    if (event.target.closest('[data-action="add-record"]')) {
+        event.preventDefault();
+        closeMobileContextPanel();
+        void openRecordEditor().catch(error => window.alert(error.message));
+        return;
+    }
     const closeContextPanel = event.target.closest('[data-action="close-context-panel"]');
     if (closeContextPanel) {
         event.preventDefault();

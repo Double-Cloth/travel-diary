@@ -11,6 +11,7 @@ pids/
 *.pid
 
 # Runtime data
+data/.travel-write.lock
 tmp/
 temp/
 dist/

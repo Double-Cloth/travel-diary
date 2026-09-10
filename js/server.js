@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
+const { createRecordApi } = require('./record-store.js');
 
 const CONFIG = {
   defaultPort: 9000,
@@ -168,7 +169,12 @@ function isWithinRoot(rootDir, targetPath) {
 
 function createHandler(rootDir) {
   rootDir = fs.realpathSync(rootDir);
+  const recordApi = createRecordApi(rootDir);
   return async (req, res) => {
+    if (req.url.split('?')[0] === '/api/travel-records') {
+      await recordApi(req, res);
+      return;
+    }
     if (req.method === 'OPTIONS') {
       res.writeHead(200, {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
