@@ -469,6 +469,8 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 .record-editor-files summary { padding: 18px 0; cursor: pointer; color: var(--ink-soft); font-size: 17px; }
 .record-editor-files summary > span:last-child { margin-left: 10px; font-size: 12px; color: var(--ink-muted); }
 .record-editor-note { margin: 0; color: var(--ink-muted); font-size: 12px; line-height: 1.7; }
+.record-editor-autofill { padding: 9px 11px; border-left: 3px solid rgba(139, 52, 45, 0.42); background: rgba(142, 102, 52, 0.07); }
+.record-editor-note output { color: var(--ink-soft); font-family: var(--font-code); overflow-wrap: anywhere; }
 .record-editor-footer { flex-shrink: 0; padding: 14px 28px; border-top: 1px solid var(--hairline); background: rgba(234, 214, 175, 0.7); }
 .record-editor-actions,
 .record-editor-exports { display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }

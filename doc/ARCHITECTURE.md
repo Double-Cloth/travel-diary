@@ -19,6 +19,7 @@ index.html
        │    └─ js/utils.js
        ├─ js/record-editor.js
        │    ├─ js/record-input.mjs
+       │    ├─ js/record-suggestions.mjs
        │    └─ js/data.js
        ├─ js/location.mjs
        ├─ js/analytics.mjs
@@ -86,6 +87,7 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 - `js/data.js`：数据读取、Markdown 解析和基础安全过滤。
 - `js/record-editor.js`：原生 `dialog` 新增表单、能力检测、全部元数据字段、正文视图、草稿导入导出与提交状态。
 - `js/record-input.mjs`：浏览器与 Node.js 共用的草稿字段校验、记录与 Markdown 生成。
+- `js/record-suggestions.mjs`：根据国家目录、已填地点和历史记录生成关联候选、可靠的空白字段补全值及旅行标识建议。
 - `js/record-store.js`：本机写入端点、请求来源校验、图片文件写入、写入锁、索引替换和失败回滚。
 - `js/markdown-editor.js`：源码拆分、预览渲染及可编辑 DOM 到 Markdown 的序列化。
 - `js/photo-uploads.mjs`：浏览器与服务器共用的图片签名校验及可读文件命名规则。
@@ -98,7 +100,9 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 
 ## 新增记录的数据流
 
-头部和旅行路径页入口打开同一个原生 `dialog`。表单复用本地国家目录和纸张样式；`GET /api/travel-records` 返回服务标识和进程内写入令牌，前端确认后才启用保存。`POST` 使用 JSON 与 `X-Travel-Token` 提交 v3 草稿，服务端校验字段、国家代码、正文路径及照片引用。`record-input.mjs` 兼容读取 v1 和 v2 草稿，将新增可选字段补齐为空值。
+头部和旅行路径页入口打开同一个原生 `dialog`。表单复用本地国家目录和当前内存中的旅行记录：`record-suggestions.mjs` 先按已填国家与行政区过滤 `datalist` 候选，再以历史精确匹配或明确名称后缀补全空白地点字段。补全状态与用户手工编辑状态分开记录，依赖项变化时可以更新旧的自动值，但不会覆盖已手工修改的内容；`trip_id` 只展示建议，由用户确认分组语义。
+
+`GET /api/travel-records` 返回服务标识和进程内写入令牌，前端确认后才启用保存。`POST` 使用 JSON 与 `X-Travel-Token` 提交 v3 草稿，服务端校验字段、国家代码、正文路径及照片引用。`record-input.mjs` 兼容读取 v1 和 v2 草稿，将新增可选字段补齐为空值。
 
 服务端仅允许回环地址连接、localhost / 回环 Host 和同源 Origin（如提供）；写入接口不设置跨域许可，`--network` 的其他设备访问仍只读。表单从非本机站点打开时直接提供只读草稿流程，不向第三方站点发送写入请求。
 

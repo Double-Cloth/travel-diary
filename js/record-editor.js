@@ -2,8 +2,9 @@ import { escapeHtml } from './utils.js';
 import { splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
 import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
+import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs';
 
-export function createRecordEditor(onSaved) {
+export function createRecordEditor(onSaved, getRecords = () => []) {
     const dialog = document.createElement('dialog');
     dialog.className = 'record-editor entry-sheet';
     dialog.setAttribute('aria-labelledby', 'recordEditorTitle');
@@ -20,6 +21,8 @@ export function createRecordEditor(onSaved) {
     let uploads = [];
     let readingPhotos = false;
     let trigger;
+    const userEditedAutofillFields = new Set();
+    const autoFilledValues = new Map();
 
     const field = name => dialog.querySelector(`[name="${name}"]`);
     const status = message => { dialog.querySelector('[data-editor-status]').textContent = message; };
@@ -70,19 +73,21 @@ export function createRecordEditor(onSaved) {
                             <div class="record-editor-fields">
                                 <div class="record-editor-grid">
                                     <label>旅行日期 <span>必填</span><input name="date" type="date" value="${date}" required></label>
-                                    <label>旅行标识 <span>选填</span><input name="trip_id" maxlength="200" placeholder="同次旅行共用" aria-describedby="recordTripHelp"></label>
+                                    <label>旅行标识 <span>选填</span><input name="trip_id" maxlength="200" list="recordTripOptions" placeholder="同次旅行共用" aria-describedby="recordTripHelp"></label>
                                 </div>
                                 <p class="record-editor-note" id="recordTripHelp">同次旅行填写同一标识。</p>
                                 <div class="record-editor-grid">
                                     <label>国家 / 地区 <span>必填</span><select name="country_code" required>
                                         ${countries.map(country => `<option value="${escapeHtml(country.code)}" ${country.code === 'CN' ? 'selected' : ''}>${escapeHtml(country.name_zh)} · ${escapeHtml(country.code)}</option>`).join('')}
                                     </select></label>
-                                    <label>国家显示名称 <span>选填</span><input name="country" maxlength="200" placeholder="默认使用目录名称"></label>
-                                    <label><span class="record-editor-field-name" data-editor-area>一级行政区</span> <span>选填</span><input name="admin_area" maxlength="200" placeholder="例如：江苏省"></label>
-                                    <label>行政区类型 <span>选填</span><input name="admin_area_type" maxlength="200" placeholder="例如：省、州"></label>
-                                    <label>城市 / 目的地 <span>必填</span><input name="locality" maxlength="200" required placeholder="例如：苏州市"></label>
-                                    <label>目的地类型 <span>选填</span><input name="locality_type" maxlength="200" placeholder="例如：城市、岛屿"></label>
+                                    <label>国家显示名称 <span>选填</span><input name="country" maxlength="200" list="recordCountryOptions" placeholder="默认使用目录名称"></label>
+                                    <label><span class="record-editor-field-name" data-editor-area>一级行政区</span> <span>选填</span><input name="admin_area" maxlength="200" list="recordAdminAreaOptions" placeholder="例如：江苏省"></label>
+                                    <label>行政区类型 <span>选填</span><input name="admin_area_type" maxlength="200" list="recordAdminAreaTypeOptions" placeholder="例如：省、州"></label>
+                                    <label>城市 / 目的地 <span>必填</span><input name="locality" maxlength="200" list="recordLocalityOptions" required placeholder="例如：苏州市"></label>
+                                    <label>目的地类型 <span>选填</span><input name="locality_type" maxlength="200" list="recordLocalityTypeOptions" placeholder="例如：城市、岛屿"></label>
                                 </div>
+                                <p class="record-editor-note record-editor-autofill" data-editor-autofill>填写国家、行政区或目的地后，将自动补全可可靠推断的空白项；也可从历史候选中选择。</p>
+                                <div data-editor-option-lists></div>
                             </div>
                         </section>
                         <section class="record-editor-section" aria-labelledby="recordBodyTitle">
@@ -126,12 +131,12 @@ export function createRecordEditor(onSaved) {
                         <summary><span>文件设置</span><span>正文路径与已有照片引用</span></summary>
                         <div class="record-editor-fields">
                             <label>正文文件路径 <span>选填 · 留空自动生成</span><input name="desc_md" maxlength="200" aria-describedby="recordPathHelp"></label>
-                            <p class="record-editor-note" id="recordPathHelp">留空将按日期自动生成。</p>
+                            <p class="record-editor-note" id="recordPathHelp">留空将自动生成：<output data-editor-path-preview></output></p>
                             <div class="record-editor-grid">
                                 <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="recordPhotoHelp"></label>
                                 <label>照片文件列表 <span>选填 · 每行一个文件名</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="recordPhotoHelp"></textarea></label>
                             </div>
-                            <p class="record-editor-note" id="recordPhotoHelp">仅填写项目内已有照片；上传照片无需设置。</p>
+                            <p class="record-editor-note" id="recordPhotoHelp">仅填写项目内已有照片；上传照片无需设置。新上传照片将保存到：<output data-editor-photo-path-preview></output></p>
                         </div>
                     </details>
                 </div>
@@ -152,8 +157,11 @@ export function createRecordEditor(onSaved) {
         dirty = false;
         uploads = [];
         bodyView = 'source';
+        userEditedAutofillFields.clear();
+        autoFilledValues.clear();
         updateCountry(true);
         updatePathHint();
+        updateAutofill();
         updateBodyView(bodyView);
     }
 
@@ -166,8 +174,61 @@ export function createRecordEditor(onSaved) {
 
     function updatePathHint() {
         const locality = field('locality').value || '目的地';
-        field('desc_md').placeholder = defaultMarkdownPath(field('date').value || 'YYYY-MM-DD', locality);
-        field('photo_folder').placeholder = `data/photos/${recordSlug(locality)}`;
+        const markdownPath = defaultMarkdownPath(field('date').value || 'YYYY-MM-DD', locality);
+        const photoPath = `data/photos/${recordSlug(locality)}`;
+        field('desc_md').placeholder = markdownPath;
+        field('photo_folder').placeholder = photoPath;
+        dialog.querySelector('[data-editor-path-preview]').textContent = markdownPath;
+        dialog.querySelector('[data-editor-photo-path-preview]').textContent = photoPath;
+        field('trip_id').placeholder = suggestedTripId(getDraft().input) || '同次旅行共用';
+    }
+
+    function updateAutofill() {
+        const input = getDraft().input;
+        const records = getRecords() || [];
+        const values = getRecordAutofill(input, countries, records);
+        const filled = [];
+        ['country', 'admin_area', 'admin_area_type', 'locality_type'].forEach(name => {
+            const previousAutoValue = autoFilledValues.get(name);
+            if (previousAutoValue && !values[name] && field(name).value === previousAutoValue && !userEditedAutofillFields.has(name)) {
+                field(name).value = '';
+                autoFilledValues.delete(name);
+            }
+        });
+        Object.entries(values).forEach(([name, value]) => {
+            const control = field(name);
+            const previousAutoValue = autoFilledValues.get(name);
+            const mayReplace = !control.value.trim() || control.value === previousAutoValue || control.value === value;
+            if (!value || userEditedAutofillFields.has(name) || !mayReplace) return;
+            if (control.value !== value) {
+                control.value = value;
+                filled.push(fieldLabel(name));
+            }
+            autoFilledValues.set(name, value);
+        });
+        updatePathHint();
+        renderOptionLists(getRecordOptions(getDraft().input, countries, records));
+        const hint = dialog.querySelector('[data-editor-autofill]');
+        hint.textContent = filled.length
+            ? `已自动补全：${filled.join('、')}。所有自动填写内容均可修改。`
+            : '会根据当前国家、行政区、目的地和历史记录补全可靠信息；所有内容均可修改。';
+    }
+
+    function renderOptionLists(options) {
+        const ids = {
+            country: 'recordCountryOptions',
+            admin_area: 'recordAdminAreaOptions',
+            admin_area_type: 'recordAdminAreaTypeOptions',
+            locality: 'recordLocalityOptions',
+            locality_type: 'recordLocalityTypeOptions',
+            trip_id: 'recordTripOptions'
+        };
+        dialog.querySelector('[data-editor-option-lists]').innerHTML = Object.entries(ids).map(([name, id]) => `
+            <datalist id="${id}">${(options[name] || []).map(value => `<option value="${escapeHtml(value)}"></option>`).join('')}</datalist>`).join('');
+    }
+
+    function fieldLabel(name) {
+        return ({ country: '国家显示名称', admin_area: '一级行政区', admin_area_type: '行政区类型', locality_type: '目的地类型' })[name] || name;
     }
 
     function updateBodyView(view) {
@@ -283,7 +344,12 @@ export function createRecordEditor(onSaved) {
         if (event.target.matches('[data-editor-source]')) syncMarkdown(event.target.value);
         if (event.target.closest('[data-editor-rich]')) syncPreview();
         if (!saved && RECORD_FIELDS.includes(event.target.name)) dirty = true;
-        if (event.target.name === 'date' || event.target.name === 'locality') updatePathHint();
+        if (['country', 'admin_area', 'admin_area_type', 'locality_type'].includes(event.target.name)) {
+            userEditedAutofillFields.add(event.target.name);
+            autoFilledValues.delete(event.target.name);
+        }
+        if (event.target.name === 'date' || event.target.name === 'locality' || event.target.name === 'admin_area') updatePathHint();
+        if (['country_code', 'admin_area', 'locality'].includes(event.target.name)) updateAutofill();
         if (event.target.name === 'title') updateBodyView(bodyView);
     });
     dialog.addEventListener('pointerdown', event => {
@@ -349,7 +415,16 @@ export function createRecordEditor(onSaved) {
         if (event.target.closest('[data-editor-import]')) dialog.querySelector('[data-editor-file]').click();
     });
     dialog.addEventListener('change', async event => {
-        if (event.target.name === 'country_code') updateCountry(true);
+        if (event.target.name === 'country_code') {
+            const countryField = field('country');
+            const previousAutoValue = autoFilledValues.get('country');
+            if (!userEditedAutofillFields.has('country') && (!countryField.value.trim() || countryField.value === previousAutoValue)) {
+                countryField.value = '';
+            }
+            autoFilledValues.delete('country');
+            updateCountry();
+            updateAutofill();
+        }
         if (event.target.matches('[data-editor-photos]')) {
             await addPhotos([...event.target.files]);
             event.target.value = '';
@@ -365,8 +440,14 @@ export function createRecordEditor(onSaved) {
             requestId = draft.requestId;
             uploads = readUploads(draft.uploads);
             dirty = true;
+            userEditedAutofillFields.clear();
+            autoFilledValues.clear();
+            for (const name of ['country', 'admin_area', 'admin_area_type', 'locality_type']) {
+                userEditedAutofillFields.add(name);
+            }
             updateCountry();
             updatePathHint();
+            updateAutofill();
             updateBodyView(bodyView);
             renderPhotos();
             dialog.querySelector('.record-editor-files').open = Boolean(draft.input.desc_md || draft.input.photo_folder || draft.input.photos.length);

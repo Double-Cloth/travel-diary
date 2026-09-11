@@ -86,7 +86,7 @@ async function initApp() {
         travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
         window.location.hash = '#ledger';
         syncRouteFromHash({ initial: true });
-    });
+    }, () => travelModel?.records || []);
     renderLoading();
 
     try {
