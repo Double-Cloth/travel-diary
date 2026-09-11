@@ -6,6 +6,8 @@ const dataJs = await readFile(new URL('../js/data.js', import.meta.url), 'utf8')
 const foundationCss = await readFile(new URL('../css/01-foundation.css', import.meta.url), 'utf8');
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const fontBuildScript = await readFile(new URL('../scripts/build-fonts.mjs', import.meta.url), 'utf8');
+const recordEditorJs = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
+const entrySheetCss = await readFile(new URL('../css/06-entry-sheet.css', import.meta.url), 'utf8');
 
 test('旅行日记正文并行加载且允许浏览器缓存', () => {
     assert.match(dataJs, /Promise\.all\(records\.map/);
@@ -36,4 +38,12 @@ test('字体命令默认全量构建并保留显式子集模式', () => {
 
 test('可选字体子集模式显式丢弃不需要的 meta 表', () => {
     assert.match(fontBuildScript, /--drop-tables\+=meta/);
+});
+
+test('多图预览不把 Base64 写入 DOM，并降低移动端重绘开销', () => {
+    assert.match(recordEditorJs, /URL\.createObjectURL\(file\)/);
+    assert.match(recordEditorJs, /loading="lazy" decoding="async"/);
+    assert.doesNotMatch(recordEditorJs, /<img src="data:image\/\$\{/);
+    assert.match(recordEditorJs, /existing = new Map/);
+    assert.match(entrySheetCss, /@media \(max-width: 540px\)[\s\S]*\.record-editor::backdrop \{ backdrop-filter: none; \}/);
 });

@@ -29,6 +29,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let bodyView = 'source';
     let uploads = [];
     let readingPhotos = false;
+    const photoPreviewUrls = new Map();
     let trigger;
     let autocompletePointer = null;
     let suppressAutocompleteClick = false;
@@ -45,6 +46,37 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             ? field(key).value.split(/\r?\n/).map(photo => photo.trim()).filter(Boolean)
             : field(key).value]))
     });
+
+    function photoMimeType(photo) {
+        return `image/${photo.extension === 'jpg' ? 'jpeg' : photo.extension}`;
+    }
+
+    function previewBlob(photo) {
+        const binary = atob(photo.data);
+        const bytes = new Uint8Array(binary.length);
+        for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+        return new Blob([bytes], { type: photoMimeType(photo) });
+    }
+
+    function ensurePhotoPreviewUrl(photo) {
+        if (!photoPreviewUrls.has(photo.id)) {
+            photoPreviewUrls.set(photo.id, URL.createObjectURL(previewBlob(photo)));
+        }
+        return photoPreviewUrls.get(photo.id);
+    }
+
+    function releasePhotoPreview(id) {
+        const url = photoPreviewUrls.get(id);
+        if (!url) return;
+        URL.revokeObjectURL(url);
+        photoPreviewUrls.delete(id);
+    }
+
+    function releasePhotoPreviews(keepIds = new Set()) {
+        for (const id of photoPreviewUrls.keys()) {
+            if (!keepIds.has(id)) releasePhotoPreview(id);
+        }
+    }
 
     async function detectWriter() {
         token = '';
@@ -67,6 +99,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function render() {
+        releasePhotoPreviews();
         requestId = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
         const today = new Date();
         const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
@@ -341,17 +374,55 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         syncMarkdown(previewToMarkdown(dialog.querySelector('[data-editor-rich]')));
     }
 
+    function createPhotoPreview(photo) {
+        const figure = document.createElement('figure');
+        figure.className = 'record-editor-photo';
+        figure.dataset.photoId = photo.id;
+        figure.innerHTML = `
+            <img loading="lazy" decoding="async">
+            <figcaption></figcaption>
+            <div>
+                <button type="button" data-photo-move data-direction="-1">←</button>
+                <button type="button" data-photo-move data-direction="1">→</button>
+                <button type="button" data-photo-remove>移除</button>
+            </div>`;
+        const image = figure.querySelector('img');
+        image.src = ensurePhotoPreviewUrl(photo);
+        return figure;
+    }
+
+    function updatePhotoPreview(figure, photo, index) {
+        const image = figure.querySelector('img');
+        const caption = figure.querySelector('figcaption');
+        const [previous, next] = figure.querySelectorAll('[data-photo-move]');
+        const remove = figure.querySelector('[data-photo-remove]');
+        image.alt = photo.name;
+        caption.textContent = photo.name;
+        previous.dataset.photoMove = String(index);
+        previous.disabled = index === 0 || saved;
+        previous.setAttribute('aria-label', `前移 ${photo.name}`);
+        next.dataset.photoMove = String(index);
+        next.disabled = index === uploads.length - 1 || saved;
+        next.setAttribute('aria-label', `后移 ${photo.name}`);
+        remove.dataset.photoRemove = String(index);
+        remove.disabled = saved;
+        remove.setAttribute('aria-label', `移除 ${photo.name}`);
+    }
+
     function renderPhotos() {
-        dialog.querySelector('[data-editor-photo-list]').innerHTML = uploads.map((photo, index) => `
-            <figure class="record-editor-photo">
-                <img src="data:image/${photo.extension === 'jpg' ? 'jpeg' : photo.extension};base64,${photo.data}" alt="${escapeHtml(photo.name)}">
-                <figcaption>${escapeHtml(photo.name)}</figcaption>
-                <div>
-                    <button type="button" data-photo-move="${index}" data-direction="-1" aria-label="前移 ${escapeHtml(photo.name)}" ${index === 0 || saved ? 'disabled' : ''}>←</button>
-                    <button type="button" data-photo-move="${index}" data-direction="1" aria-label="后移 ${escapeHtml(photo.name)}" ${index === uploads.length - 1 || saved ? 'disabled' : ''}>→</button>
-                    <button type="button" data-photo-remove="${index}" aria-label="移除 ${escapeHtml(photo.name)}" ${saved ? 'disabled' : ''}>移除</button>
-                </div>
-            </figure>`).join('');
+        const list = dialog.querySelector('[data-editor-photo-list]');
+        const existing = new Map([...list.children].map(item => [item.dataset.photoId, item]));
+        const activeIds = new Set(uploads.map(photo => photo.id));
+        uploads.forEach((photo, index) => {
+            const figure = existing.get(photo.id) || createPhotoPreview(photo);
+            updatePhotoPreview(figure, photo, index);
+            const current = list.children[index];
+            if (current !== figure) list.insertBefore(figure, current || null);
+        });
+        [...list.children].forEach(item => {
+            if (!activeIds.has(item.dataset.photoId)) item.remove();
+        });
+        releasePhotoPreviews(activeIds);
     }
 
     function updatePhotoStatus() {
@@ -364,6 +435,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const saveButton = dialog.querySelector('[data-editor-save]');
         saveButton.disabled = true;
         status('正在读取照片…');
+        const pendingPreviews = [];
         try {
             if (files.some(file => !file.size)) throw new Error('不能选择空图片文件。');
             const pending = [];
@@ -376,16 +448,25 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 });
                 const id = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
                 const photo = readUploads([{ id, name: file.name.slice(0, 200), data }])[0];
+                const previewUrl = URL.createObjectURL(file);
+                pendingPreviews.push([photo.id, previewUrl]);
                 const image = new Image();
-                image.src = `data:image/${photo.extension === 'jpg' ? 'jpeg' : photo.extension};base64,${data}`;
+                image.src = previewUrl;
                 await image.decode().catch(() => { throw new Error(`无法解码图片：${file.name}`); });
                 pending.push(photo);
             }
+            pendingPreviews.forEach(([id, url]) => photoPreviewUrls.set(id, url));
             uploads.push(...pending);
             dirty = true;
             renderPhotos();
             updatePhotoStatus();
-        } catch (error) { status(error.message); }
+        } catch (error) {
+            pendingPreviews.forEach(([id, url]) => {
+                if (photoPreviewUrls.get(id) === url) photoPreviewUrls.delete(id);
+                URL.revokeObjectURL(url);
+            });
+            status(error.message);
+        }
         finally { readingPhotos = false; saveButton.disabled = saved || !token; }
     }
 

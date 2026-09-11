@@ -567,7 +567,7 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 .record-editor-upload-zone small { color: var(--ink-muted); font-size: 12px; }
 .record-editor-photo-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 14px; }
 .record-editor-photo { min-width: 0; margin: 14px 0 0; padding: 8px; border: 1px solid var(--hairline); border-radius: 6px; background: var(--paper-50); box-shadow: 0 4px 8px rgba(80, 50, 22, 0.1); }
-.record-editor-photo img { display: block; width: 100%; height: 100px; object-fit: cover; border-radius: 3px; }
+.record-editor-photo img { display: block; width: 100%; height: 100px; object-fit: cover; border-radius: 3px; background: rgba(142, 102, 52, 0.1); }
 .record-editor-photo figcaption { margin: 8px 0; font-size: 12px; color: var(--ink-soft); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .record-editor-photo > div { display: flex; gap: 6px; }
 .record-editor-photo button { min-width: 30px; min-height: 32px; padding: 3px 6px; color: var(--ink-soft); border-radius: 3px; background: rgba(150, 112, 60, 0.12); cursor: pointer; }
@@ -660,6 +660,7 @@ dialog.record-password.entry-sheet {
 }
 
 @media (max-width: 540px) {
+    .record-editor::backdrop { backdrop-filter: none; }
     dialog.record-password.entry-sheet { width: calc(100% - 24px); }
     .record-password-card { padding: 28px 24px 26px; }
     .record-password .record-password-close { top: 14px; right: 14px; width: auto; padding: 7px 11px; }
