@@ -5,14 +5,14 @@ import { stat, readFile } from 'node:fs/promises';
 const dataJs = await readFile(new URL('../js/data.js', import.meta.url), 'utf8');
 const foundationCss = await readFile(new URL('../css/01-foundation.css', import.meta.url), 'utf8');
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-const subsetFontsScript = await readFile(new URL('../scripts/subset-fonts.mjs', import.meta.url), 'utf8');
+const fontBuildScript = await readFile(new URL('../scripts/build-fonts.mjs', import.meta.url), 'utf8');
 
 test('旅行日记正文并行加载且允许浏览器缓存', () => {
     assert.match(dataJs, /Promise\.all\(records\.map/);
     assert.doesNotMatch(dataJs, /cache:\s*['"]no-store['"]/);
 });
 
-test('首屏字体使用压缩后的本地 woff2 文件', async () => {
+test('页面使用完整构建的本地 WOFF2 字体', async () => {
     assert.doesNotMatch(foundationCss, /\.ttf["')]/);
     assert.match(foundationCss, /format\(["']woff2["']\)/);
 
@@ -21,16 +21,19 @@ test('首屏字体使用压缩后的本地 woff2 文件', async () => {
 
     for (const fontPath of fontPaths) {
         const fontStat = await stat(new URL(`../${fontPath}`, import.meta.url));
-        assert.ok(fontStat.size < 1024 * 1024, `${fontPath} should stay below 1MB`);
+        assert.ok(fontStat.size > 0, `${fontPath} 不能为空`);
     }
 });
 
-test('本地启动直接使用仓库内的字体子集', () => {
-    assert.equal(packageJson.scripts.fonts, 'node scripts/subset-fonts.mjs');
+test('字体命令默认全量构建并保留显式子集模式', () => {
+    assert.equal(packageJson.scripts.fonts, 'node scripts/build-fonts.mjs');
+    assert.equal(packageJson.scripts['fonts:subset'], 'node scripts/build-fonts.mjs --subset');
     assert.equal(packageJson.scripts.start, 'node js/server.js');
     assert.equal(packageJson.scripts.serve, 'node js/server.js');
+    assert.match(fontBuildScript, /if \(subsetMode\)[\s\S]*buildSubsets\(\);[\s\S]*else \{[\s\S]*buildFullFont/);
+    assert.match(fontBuildScript, /'ttLib\.woff2',[\s\S]*'compress'/);
 });
 
-test('字体子集脚本显式丢弃不需要的 meta 表', () => {
-    assert.match(subsetFontsScript, /--drop-tables\+=meta/);
+test('可选字体子集模式显式丢弃不需要的 meta 表', () => {
+    assert.match(fontBuildScript, /--drop-tables\+=meta/);
 });

@@ -10,7 +10,7 @@ npm run countries
 node js/server.js --port 8080 --network
 ```
 
-`npm start` 和 `npm test` 可以离线运行。`npm run fonts` 需要本机已有 `pyftsubset`；`npm run countries` 会访问固定版本的 Unicode CLDR。两者都是显式维护命令，不属于启动流程。
+`npm start` 和 `npm test` 可以离线运行。`npm run fonts` 需要本机已有带 WOFF2 支持的 `fonttools`；`npm run countries` 会访问固定版本的 Unicode CLDR。两者都是显式维护命令，不属于启动流程。字体命令默认全量构建；仅在明确需要按项目文本压缩体积时运行 `npm run fonts:subset`。
 
 ## 写入故障恢复
 
@@ -27,7 +27,7 @@ node js/server.js --port 8080 --network
 异常退出后的恢复步骤：
 
 1. 停止所有本项目服务器，备份 `data/`。
-2. 检查 `data/.travel-write.lock`、`.travel-write-*.tmp`、旅行索引、对应 Markdown 文件及自动创建的照片目录。
+2. 检查 `data/.travel-write.lock`、`.travel-write-*.tmp`、旅行索引、对应 Markdown 文件及按目的地创建或复用的照片目录。
 3. 对索引未引用的正文，核对后补充索引，或备份并移走文件后重试原草稿。未被索引引用的照片目录同样应先备份核对。临时索引仅在内容核验后用于恢复。
 4. 确认没有活动写入任务后移除遗留锁，重启服务器并核验记录。
 
@@ -65,7 +65,7 @@ node js/server.js --port 8080 --network
 
 ## 测试说明
 
-`tests/record-store.test.mjs` 在临时目录中验证完整字段写入、草稿版本兼容、自定义路径、照片上传、原始字节、自动目录回滚、照片引用、重复提交、并发冲突、来源限制和失败回滚。`tests/data.test.mjs` 验证正文预览与详情解析一致，`tests/markdown-editor.test.mjs` 覆盖可编辑预览序列化与图片输入校验。浏览器验收覆盖头部与窄屏旅行路径入口、正文视图切换、Markdown 导出、草稿导入及保存后重新加载。
+`tests/record-store.test.mjs` 在临时目录中验证完整字段写入、草稿版本兼容、自定义路径、照片上传、原始字节、自动目录回滚、照片引用、重复提交、并发冲突、来源限制和失败回滚。`tests/data.test.mjs` 验证正文预览与详情解析一致，`tests/markdown-editor.test.mjs` 覆盖可编辑预览序列化、图片输入校验和编辑器入口。浏览器验收覆盖头部与窄屏旅行路径入口、正文视图切换、草稿导入导出及保存后重新加载。
 
 
 `tests/data.test.mjs` 实际执行数据加载和 Markdown 解析，覆盖无效记录、照片附件过滤、响应中断重试、链接转义和行内代码保真。必需日期损坏时会明确指出记录序号；单篇正文加载失败不会阻塞其他记录，也不会被“有笔记”筛选误计。

@@ -63,20 +63,17 @@ async function saveRecord(root, payload) {
         const previous = await fs.readFile(indexFile, 'utf8');
         const records = JSON.parse(previous);
         if (!Array.isArray(records)) throw failure(409, '旅行索引不是数组，请先修复 data/travel_data.json。');
-        const existing = records.find(item => item.desc_md === record.desc_md || (typeof item.desc_md === 'string' && item.desc_md.endsWith(`-${payload.requestId}.md`)));
+        const existing = records.find(item => item.desc_md === record.desc_md);
         if (existing && JSON.stringify(existing) !== JSON.stringify(record)) {
             throw failure(409, '这份草稿已保存，但内容不同。请重新打开新增窗口创建另一条记录。');
         }
         const diaryDir = await checkedDirectory(root, ['data', 'travel-diary', record.date.slice(0, 4)], true);
         const diaryFile = path.join(diaryDir, path.basename(record.desc_md));
         if (uploads.length) {
-            let totalPhotoBytes = uploads.reduce((sum, photo) => sum + photo.size, 0);
             if (sourcePhotos.names.length) {
                 const sourceDir = await checkedDirectory(root, sourcePhotos.folder.split('/'));
                 for (const name of sourcePhotos.names) {
                     await checkedFile(path.join(sourceDir, name));
-                    totalPhotoBytes += (await fs.stat(path.join(sourceDir, name))).size;
-                    if (totalPhotoBytes > 30 * 1024 * 1024) throw failure(400, '已有照片和上传照片合计不能超过 30 MB。');
                     photoContents.push(await fs.readFile(path.join(sourceDir, name)));
                 }
             }
@@ -102,13 +99,17 @@ async function saveRecord(root, payload) {
         if (uploads.length) {
             const parent = await checkedDirectory(root, ['data', 'photos'], true);
             const photoDir = path.join(parent, path.basename(record.photo_folder));
-            try { await fs.mkdir(photoDir); }
-            catch (error) {
-                if (error.code === 'EEXIST') throw failure(409, '目标照片目录已存在，未覆盖。请保留草稿并检查目录。');
-                throw error;
+            try {
+                await fs.mkdir(photoDir);
+                createdPhotoDir = photoDir;
             }
-            createdPhotoDir = photoDir;
+            catch (error) {
+                if (error.code !== 'EEXIST') throw error;
+                await checkedDirectory(root, record.photo_folder.split('/'));
+            }
             for (let index = 0; index < record.photos.length; index += 1) {
+                if (index < sourcePhotos.names.length && sourcePhotos.folder === record.photo_folder
+                    && record.photos[index] === sourcePhotos.names[index]) continue;
                 const photoPath = path.join(photoDir, record.photos[index]);
                 const handle = await fs.open(photoPath, 'wx');
                 createdPhotos.push(photoPath);
@@ -185,20 +186,8 @@ function createRecordApi(root) {
             return;
         }
         try {
-            const { MAX_DRAFT_BYTES } = await import('./photo-uploads.mjs');
-            if (Number(req.headers['content-length']) > MAX_DRAFT_BYTES) {
-                send(413, { error: '包含照片的草稿不能超过 44 MB。' });
-                req.resume();
-                return;
-            }
-            let size = 0;
             const chunks = [];
             for await (const chunk of req) {
-                size += chunk.length;
-                if (size > MAX_DRAFT_BYTES) {
-                    send(413, { error: '包含照片的草稿不能超过 44 MB。' });
-                    return;
-                }
                 chunks.push(chunk);
             }
             let payload;

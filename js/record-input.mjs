@@ -1,5 +1,5 @@
 import { isValidDateString } from './analytics.mjs';
-import { readUploads, uploadFileName, copiedPhotoName } from './photo-uploads.mjs';
+import { readUploads, storedPhotoNames } from './photo-uploads.mjs';
 
 export const DRAFT_FORMAT = 'travel-diary-draft-v3';
 export const RECORD_FIELDS = ['date', 'country_code', 'country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'title', 'body', 'desc_md', 'photo_folder', 'photos'];
@@ -9,12 +9,19 @@ export function buildMarkdown(input) {
     return `# ${input.title.trim()}\n\n${input.body.trim().replace(/\r\n?/g, '\n')}\n`;
 }
 
-export function defaultMarkdownPath(date, requestId) {
-    return `data/travel-diary/${date.slice(0, 4)}/${date}-${requestId}.md`;
+export function recordSlug(locality) {
+    const slug = locality.normalize('NFKC').trim().toLocaleLowerCase('en-US')
+        .replace(/\s+/g, '-').replace(/[^\p{L}\p{N}._-]+/gu, '-').replace(/\.+/g, '-')
+        .replace(/^[._-]+|[._-]+$/g, '').slice(0, 120);
+    return slug && !/^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i.test(slug) ? slug : 'travel';
+}
+
+export function defaultMarkdownPath(date, locality) {
+    return `data/travel-diary/${date.slice(0, 4)}/${date}-${recordSlug(locality)}.md`;
 }
 
 function isSafeFileName(name) {
-    return /^[a-zA-Z0-9][a-zA-Z0-9._-]*$/.test(name) && !name.includes('..') && !name.endsWith('.')
+    return /^[\p{L}\p{N}][\p{L}\p{N}._-]*$/u.test(name) && !name.includes('..') && !name.endsWith('.')
         && !/^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(name);
 }
 
@@ -54,13 +61,14 @@ export function prepareRecord(value, countries) {
         if (/[\u0000-\u001f\u007f]/.test(input[key])) throw new Error('单行字段不能包含换行或控制字符。');
     }
     if (input.body.includes('\0')) throw new Error('正文不能包含空字符。');
-    const markdownPath = input.desc_md || defaultMarkdownPath(input.date, draft.requestId);
+    const slug = recordSlug(input.locality);
+    const markdownPath = input.desc_md || defaultMarkdownPath(input.date, input.locality);
     const expectedPrefix = `data/travel-diary/${input.date.slice(0, 4)}/${input.date}-`;
     if (!markdownPath.startsWith(expectedPrefix) || !markdownPath.endsWith('.md') || !isSafeFileName(markdownPath.slice(`data/travel-diary/${input.date.slice(0, 4)}/`.length))) {
-        throw new Error(`正文路径须为 ${expectedPrefix}名称.md，文件名仅使用英文字母、数字、连字符、下划线或点。`);
+        throw new Error(`正文路径须为 ${expectedPrefix}名称.md，文件名仅使用文字、数字、连字符、下划线或点。`);
     }
     if (input.photo_folder && (!input.photo_folder.startsWith('data/photos/') || !input.photo_folder.slice('data/photos/'.length).split('/').every(isSafeFileName))) {
-        throw new Error('照片目录须位于 data/photos/ 下，各级目录名仅使用英文字母、数字、连字符、下划线或点。');
+        throw new Error('照片目录须位于 data/photos/ 下，各级目录名仅使用文字、数字、连字符、下划线或点。');
     }
     if (input.photos.length && !input.photo_folder) throw new Error('填写照片列表时必须指定照片目录。');
     if (input.photos.some(photo => !isSafeFileName(photo))) throw new Error('照片列表每行填写一个文件名，不能包含子路径、特殊字符或空行。');
@@ -79,8 +87,8 @@ export function prepareRecord(value, countries) {
     };
     const uploads = readUploads(draft.uploads);
     if (uploads.length) {
-        record.photo_folder = `data/photos/${input.date}-${draft.requestId}`;
-        record.photos = [...input.photos.map(copiedPhotoName), ...uploads.map(uploadFileName)];
+        record.photo_folder = `data/photos/${slug}`;
+        record.photos = storedPhotoNames(input.photos, uploads);
     }
     return { record, markdown: buildMarkdown(input), uploads, sourcePhotos: { folder: input.photo_folder, names: input.photos } };
 }

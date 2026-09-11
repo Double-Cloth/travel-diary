@@ -1,7 +1,7 @@
 import { escapeHtml } from './utils.js';
 import { splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
-import { MAX_PHOTO_BYTES, MAX_TOTAL_PHOTO_BYTES, MAX_PHOTOS, MAX_DRAFT_BYTES, readUploads } from './photo-uploads.mjs';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft } from './record-input.mjs';
+import { readUploads } from './photo-uploads.mjs';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 
 export function createRecordEditor(onSaved) {
     const dialog = document.createElement('dialog');
@@ -45,10 +45,10 @@ export function createRecordEditor(onSaved) {
             const result = await response.json();
             if (!response.ok || result.service !== 'travel-diary-writer-v1' || !result.token) throw new Error();
             token = result.token;
-            hint.textContent = '本地保存 · 记录将写入项目文件，离线可用。';
+            hint.textContent = '本地模式 · 可直接保存到项目。';
             dialog.querySelector('[data-editor-save]').disabled = saved;
         } catch {
-            hint.textContent = '只读模式 · GitHub Pages 等静态站点无法写回仓库。可导出正文或草稿；草稿请在本机运行 npm start 后导入保存。';
+            hint.textContent = '只读模式 · 请导出草稿后在本机保存。';
         }
     }
 
@@ -58,7 +58,7 @@ export function createRecordEditor(onSaved) {
         const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
         dialog.innerHTML = `
             <header class="record-editor-heading">
-                <div><p class="journal-label">旅行手记</p><h2 id="recordEditorTitle">新增旅行记录</h2></div>
+                <div><p class="journal-label">旅行日记</p><h2 id="recordEditorTitle">新增旅行记录</h2></div>
                 <button class="paper-button" type="button" data-editor-close aria-label="关闭新增窗口，保留本页草稿">关闭</button>
             </header>
             <form>
@@ -72,7 +72,7 @@ export function createRecordEditor(onSaved) {
                                     <label>旅行日期 <span>必填</span><input name="date" type="date" value="${date}" required></label>
                                     <label>旅行标识 <span>选填</span><input name="trip_id" maxlength="200" placeholder="同次旅行共用" aria-describedby="recordTripHelp"></label>
                                 </div>
-                                <p class="record-editor-note" id="recordTripHelp">同次旅行使用相同标识，可合并行程与到访统计。</p>
+                                <p class="record-editor-note" id="recordTripHelp">同次旅行填写同一标识。</p>
                                 <div class="record-editor-grid">
                                     <label>国家 / 地区 <span>必填</span><select name="country_code" required>
                                         ${countries.map(country => `<option value="${escapeHtml(country.code)}" ${country.code === 'CN' ? 'selected' : ''}>${escapeHtml(country.name_zh)} · ${escapeHtml(country.code)}</option>`).join('')}
@@ -109,15 +109,15 @@ export function createRecordEditor(onSaved) {
                                 </div>
                                 <textarea name="body" hidden></textarea>
                             </div>
-                            <p class="record-editor-note" id="recordBodyHelp">源码与预览均可直接编辑，切换时自动同步。预览支持选中文字设置格式，粘贴内容以纯文本插入。</p>
+                            <p class="record-editor-note" id="recordBodyHelp">源码与预览会自动同步。</p>
                         </section>
                     </div>
                     <section class="record-editor-photos" aria-labelledby="recordPhotosTitle">
                         <h3 id="recordPhotosTitle"><span>03</span> 旅行照片</h3>
                         <div class="record-editor-upload-zone" data-editor-drop>
                             <button class="paper-button" type="button" data-editor-upload>＋ 上传照片</button>
-                            <p>选择或拖入图片，保存时自动创建照片文件夹。</p>
-                            <small>JPEG / PNG / GIF / WebP · 最多 20 张 · 单张 10 MB · 合计 30 MB</small>
+                            <p>选择或拖入图片。</p>
+                            <small>支持 JPEG / PNG / GIF / WebP</small>
                             <input type="file" data-editor-photos accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden aria-label="选择旅行照片">
                         </div>
                         <div class="record-editor-photo-list" data-editor-photo-list aria-label="待保存照片"></div>
@@ -126,12 +126,12 @@ export function createRecordEditor(onSaved) {
                         <summary><span>文件设置</span><span>正文路径与已有照片引用</span></summary>
                         <div class="record-editor-fields">
                             <label>正文文件路径 <span>选填 · 留空自动生成</span><input name="desc_md" maxlength="200" aria-describedby="recordPathHelp"></label>
-                            <p class="record-editor-note" id="recordPathHelp">路径按旅行日期归档，已有文件不会被覆盖。</p>
+                            <p class="record-editor-note" id="recordPathHelp">留空将按日期自动生成。</p>
                             <div class="record-editor-grid">
                                 <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="recordPhotoHelp"></label>
                                 <label>照片文件列表 <span>选填 · 每行一个文件名</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="recordPhotoHelp"></textarea></label>
                             </div>
-                            <p class="record-editor-note" id="recordPhotoHelp">仅用于引用项目内已有照片，无需为上传照片填写。存在上传照片时，已有照片会一并复制到自动生成的新目录。</p>
+                            <p class="record-editor-note" id="recordPhotoHelp">仅填写项目内已有照片；上传照片无需设置。</p>
                         </div>
                     </details>
                 </div>
@@ -141,12 +141,11 @@ export function createRecordEditor(onSaved) {
                         <div class="record-editor-exports">
                             <button class="paper-button" type="button" data-editor-import>导入草稿</button>
                             <button class="paper-button" type="button" data-editor-download>导出草稿</button>
-                            <button class="paper-button" type="button" data-editor-markdown>导出正文 .md</button>
                         </div>
                         <button class="brass-button" type="submit" data-editor-save disabled>保存旅行记录</button>
                         <input type="file" accept=".json,application/json" data-editor-file hidden aria-label="选择草稿文件">
                     </div>
-                    <p class="record-editor-note">草稿仅在当前页面保留。刷新或离开前，请保存或导出草稿。</p>
+                    <p class="record-editor-note">离开页面前请保存或导出草稿。</p>
                 </footer>
             </form>`;
         saved = false;
@@ -166,7 +165,9 @@ export function createRecordEditor(onSaved) {
     }
 
     function updatePathHint() {
-        field('desc_md').placeholder = defaultMarkdownPath(field('date').value || 'YYYY-MM-DD', requestId);
+        const locality = field('locality').value || '目的地';
+        field('desc_md').placeholder = defaultMarkdownPath(field('date').value || 'YYYY-MM-DD', locality);
+        field('photo_folder').placeholder = `data/photos/${recordSlug(locality)}`;
     }
 
     function updateBodyView(view) {
@@ -209,6 +210,10 @@ export function createRecordEditor(onSaved) {
             </figure>`).join('');
     }
 
+    function updatePhotoStatus() {
+        status(uploads.length ? `当前有 ${uploads.length} 张照片待保存，导出草稿时会一并包含。` : '');
+    }
+
     async function addPhotos(files) {
         if (busy || saved || readingPhotos || !files.length) return;
         readingPhotos = true;
@@ -216,9 +221,7 @@ export function createRecordEditor(onSaved) {
         saveButton.disabled = true;
         status('正在读取照片…');
         try {
-            if (uploads.length + files.length > MAX_PHOTOS) throw new Error('每条记录最多上传 20 张照片。');
-            if (files.some(file => file.size > MAX_PHOTO_BYTES || !file.size)) throw new Error('单张照片须大于 0 字节且不超过 10 MB。');
-            if (uploads.reduce((sum, photo) => sum + photo.size, 0) + files.reduce((sum, file) => sum + file.size, 0) > MAX_TOTAL_PHOTO_BYTES) throw new Error('照片总大小不能超过 30 MB。');
+            if (files.some(file => !file.size)) throw new Error('不能上传空图片文件。');
             const pending = [];
             for (const file of files) {
                 const data = await new Promise((resolve, reject) => {
@@ -237,7 +240,7 @@ export function createRecordEditor(onSaved) {
             uploads.push(...pending);
             dirty = true;
             renderPhotos();
-            status(`已添加 ${pending.length} 张照片。保存旅行记录时将写入项目；导出草稿会包含照片。`);
+            updatePhotoStatus();
         } catch (error) { status(error.message); }
         finally { readingPhotos = false; saveButton.disabled = saved || !token; }
     }
@@ -258,7 +261,11 @@ export function createRecordEditor(onSaved) {
         else document.querySelector('[data-action="add-record"]')?.focus();
     }
 
-    dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
+    dialog.addEventListener('cancel', event => {
+        if (event.target !== dialog) return;
+        event.preventDefault();
+        close();
+    });
     // 正文标签使用方向键切换；其他按键由原生 dialog 处理，避免触发背景日记快捷键。
     dialog.addEventListener('keydown', event => {
         const tab = event.target.closest('[data-editor-view]');
@@ -276,7 +283,7 @@ export function createRecordEditor(onSaved) {
         if (event.target.matches('[data-editor-source]')) syncMarkdown(event.target.value);
         if (event.target.closest('[data-editor-rich]')) syncPreview();
         if (!saved && RECORD_FIELDS.includes(event.target.name)) dirty = true;
-        if (event.target.name === 'date') updatePathHint();
+        if (event.target.name === 'date' || event.target.name === 'locality') updatePathHint();
         if (event.target.name === 'title') updateBodyView(bodyView);
     });
     dialog.addEventListener('pointerdown', event => {
@@ -316,7 +323,12 @@ export function createRecordEditor(onSaved) {
         if (event.target.closest('[data-editor-upload]') && !saved) dialog.querySelector('[data-editor-photos]').click();
         const remove = event.target.closest('[data-photo-remove]');
         const move = event.target.closest('[data-photo-move]');
-        if (remove && !saved) { uploads.splice(Number(remove.dataset.photoRemove), 1); dirty = true; renderPhotos(); }
+        if (remove && !saved) {
+            uploads.splice(Number(remove.dataset.photoRemove), 1);
+            dirty = true;
+            renderPhotos();
+            updatePhotoStatus();
+        }
         if (move && !saved) {
             const index = Number(move.dataset.photoMove);
             const next = index + Number(move.dataset.direction);
@@ -324,20 +336,15 @@ export function createRecordEditor(onSaved) {
                 [uploads[index], uploads[next]] = [uploads[next], uploads[index]];
                 dirty = true;
                 renderPhotos();
+                updatePhotoStatus();
             }
         }
         const view = event.target.closest('[data-editor-view]');
         if (view) updateBodyView(view.dataset.editorView);
         if (event.target.closest('[data-editor-download]')) {
-            download(JSON.stringify(getDraft(), null, 2) + '\n', `travel-diary-draft-${requestId}.json`, 'application/json');
-            status('已发起草稿下载。JSON 草稿包含全部字段，可在本地导入保存。');
-        }
-        if (event.target.closest('[data-editor-markdown]')) {
             const input = getDraft().input;
-            const name = (input.desc_md.trim() || defaultMarkdownPath(input.date || 'YYYY-MM-DD', requestId)).split('/').pop();
-            const fileName = name && /^[a-zA-Z0-9][a-zA-Z0-9._-]*\.md$/.test(name) ? name : `travel-diary-${requestId}.md`;
-            download(buildMarkdown(input), fileName, 'text/markdown;charset=utf-8');
-            status('已发起正文下载。Markdown 文件包含标题与正文；完整记录请导出 JSON 草稿。');
+            download(JSON.stringify(getDraft(), null, 2) + '\n', `travel-diary-draft-${input.date || '未填写日期'}-${recordSlug(input.locality || '目的地')}.json`, 'application/json');
+            status('已发起草稿下载。JSON 草稿包含全部字段，可在本地导入保存。');
         }
         if (event.target.closest('[data-editor-import]')) dialog.querySelector('[data-editor-file]').click();
     });
@@ -352,7 +359,6 @@ export function createRecordEditor(onSaved) {
         const file = event.target.files[0];
         if (!file) return;
         try {
-            if (file.size > MAX_DRAFT_BYTES) throw new Error('包含照片的草稿文件不能超过 44 MB。');
             const draft = readDraft(JSON.parse(await file.text()));
             if (dirty) throw new Error('当前存在未保存内容。请先保存，或导出草稿并刷新页面后再导入。');
             for (const key of RECORD_FIELDS) field(key).value = key === 'photos' ? draft.input.photos.join('\n') : draft.input[key];

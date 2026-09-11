@@ -58,15 +58,15 @@ test('样式引用的字体、图片和纹理全部存在于本地', async () =>
     assert.ok(localAssetCount > 0);
 });
 
-test('压缩字体随项目分发且不会再被忽略', async () => {
+test('完整 WOFF2 字体随项目分发且不会被忽略', async () => {
     const fontFiles = [
-        'LXGWWenKaiMono-Regular-subset.woff2',
-        'LXGWWenKaiMono-Medium-subset.woff2',
-        'SourceCodePro-Regular-subset.woff2',
-        'SourceCodePro-Bold-subset.woff2'
+        'LXGWWenKaiMono-Regular.woff2',
+        'LXGWWenKaiMono-Medium.woff2',
+        'SourceCodePro-Regular.woff2',
+        'SourceCodePro-Bold.woff2'
     ];
 
-    assert.doesNotMatch(gitignore, /assets\/fonts\/\*-subset\.woff2/);
+    assert.doesNotMatch(gitignore, /assets\/fonts\/\*\.woff2/);
 
     for (const fontFile of fontFiles) {
         await assertLocalFile(resolve(projectRoot, 'assets', 'fonts', fontFile), fontFile);

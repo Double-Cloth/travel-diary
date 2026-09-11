@@ -1,11 +1,5 @@
-export const MAX_PHOTO_BYTES = 10 * 1024 * 1024;
-export const MAX_TOTAL_PHOTO_BYTES = 30 * 1024 * 1024;
-export const MAX_PHOTOS = 20;
-export const MAX_DRAFT_BYTES = 44 * 1024 * 1024;
-
 export function readUploads(value = []) {
-    if (!Array.isArray(value) || value.length > MAX_PHOTOS) throw new Error('每条记录最多上传 20 张照片。');
-    let total = 0;
+    if (!Array.isArray(value)) throw new Error('上传照片格式无效。');
     const ids = new Set();
     return value.map(photo => {
         if (!photo || typeof photo.id !== 'string' || !/^[a-f0-9]{32}$/.test(photo.id) || ids.has(photo.id)
@@ -14,11 +8,8 @@ export function readUploads(value = []) {
         }
         ids.add(photo.id);
         const encoded = photo.data;
-        if (!encoded.length || encoded.length > Math.ceil(MAX_PHOTO_BYTES / 3) * 4 || encoded.length % 4
-            || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) throw new Error('照片内容无效，单张照片不能超过 10 MB。');
+        if (!encoded.length || encoded.length % 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) throw new Error('照片内容无效。');
         const size = encoded.length / 4 * 3 - (encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0);
-        total += size;
-        if (size > MAX_PHOTO_BYTES || total > MAX_TOTAL_PHOTO_BYTES) throw new Error('单张照片上限 10 MB，全部照片合计上限 30 MB。');
         let head;
         try { head = atob(encoded.slice(0, 32)); }
         catch { throw new Error('照片编码无效。'); }
@@ -31,10 +22,41 @@ export function readUploads(value = []) {
     });
 }
 
-export function uploadFileName(photo) {
-    return `photo-${photo.id}.${photo.extension}`;
+function safeStem(value, fallback) {
+    const stem = value.normalize('NFKC').replace(/\.[^.]*$/, '').trim()
+        .replace(/[^\p{L}\p{N}._-]+/gu, '-').replace(/^[._-]+|[._-]+$/g, '').slice(0, 160);
+    return stem && !/^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i.test(stem) ? stem : fallback;
 }
 
-export function copiedPhotoName(name, index) {
-    return `existing-${String(index + 1).padStart(3, '0')}-${name}`;
+export function storedPhotoNames(existingNames, uploads) {
+    const used = new Set();
+    const reserve = preferred => {
+        const dot = preferred.lastIndexOf('.');
+        const stem = dot > 0 ? preferred.slice(0, dot) : preferred;
+        const extension = dot > 0 ? preferred.slice(dot) : '';
+        let name = preferred;
+        let sequence = 2;
+        while (used.has(name.toLocaleLowerCase('en-US'))) {
+            name = `${stem}-${sequence}${extension}`;
+            sequence += 1;
+        }
+        used.add(name.toLocaleLowerCase('en-US'));
+        return name;
+    };
+    const allocate = (preferred, extension, fallback) => {
+        const stem = safeStem(preferred, fallback);
+        let suffix = '';
+        let sequence = 1;
+        let name;
+        do {
+            name = `${stem}${suffix}.${extension}`;
+            sequence += 1;
+            suffix = `-${sequence}`;
+        } while (used.has(name.toLocaleLowerCase('en-US')));
+        used.add(name.toLocaleLowerCase('en-US'));
+        return name;
+    };
+    const existing = existingNames.map(reserve);
+    const uploaded = uploads.map((photo, index) => allocate(photo.name, photo.extension, `photo-${String(existing.length + index + 1).padStart(3, '0')}`));
+    return [...existing, ...uploaded];
 }

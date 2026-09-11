@@ -1,9 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { loadBrowserModule } from './helpers/browser-modules.mjs';
-import { readUploads, MAX_PHOTOS } from '../js/photo-uploads.mjs';
+import { readUploads, storedPhotoNames } from '../js/photo-uploads.mjs';
+import { defaultMarkdownPath, recordSlug } from '../js/record-input.mjs';
 
 const { splitMarkdown, previewToMarkdown, previewHtml } = await loadBrowserModule(new URL('../js/markdown-editor.js', import.meta.url));
+const recordEditorSource = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
 const text = value => ({ nodeType: 3, nodeValue: value, textContent: value });
 const element = (tagName, children, attributes = {}) => ({
     nodeType: 1, tagName, childNodes: children,
@@ -44,11 +47,32 @@ test('预览编辑保留相对链接及行内代码中的反引号与反斜线',
     assert.match(html, /<code>a`b\\c<\/code>/);
 });
 
-test('照片验证拒绝格式伪装、重复标识及超出数量上限', () => {
+test('照片验证拒绝格式伪装与重复标识，但不限制上传数量或大小', () => {
     const photo = { id: 'a'.repeat(32), name: 'image.png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=' };
     assert.equal(readUploads([photo])[0].extension, 'png');
     assert.throws(() => readUploads([photo, photo]));
-    assert.throws(() => readUploads(Array(MAX_PHOTOS + 1).fill(photo)));
+    const manyPhotos = Array.from({ length: 25 }, (_, index) => ({ ...photo, id: index.toString(16).padStart(32, '0') }));
+    assert.equal(readUploads(manyPhotos).length, manyPhotos.length);
+    const largePhoto = { ...photo, id: 'b'.repeat(32), data: Buffer.concat([Buffer.from(photo.data, 'base64'), Buffer.alloc(11 * 1024 * 1024)]).toString('base64') };
+    assert.ok(readUploads([largePhoto])[0].size > 10 * 1024 * 1024);
     assert.throws(() => readUploads([{ ...photo, data: 'invalid!' }]));
     assert.throws(() => readUploads([{ ...photo, data: Buffer.from('<html>not a photo</html>').toString('base64') }]));
+});
+
+test('新增旅行记录不再提供正文导出或照片张数上限', () => {
+    assert.doesNotMatch(recordEditorSource, /data-editor-markdown|导出正文|MAX_PHOTOS|最多 20 张/);
+    assert.match(recordEditorSource, /源码与预览会自动同步。/);
+    assert.match(recordEditorSource, /支持 JPEG \/ PNG \/ GIF \/ WebP/);
+    assert.doesNotMatch(recordEditorSource, /10 MB|30 MB|44 MB|MAX_PHOTO_BYTES|MAX_TOTAL_PHOTO_BYTES|MAX_DRAFT_BYTES/);
+    assert.match(recordEditorSource, /event\.target !== dialog/);
+});
+
+test('自动文件路径使用日期与目的地，照片保留可读名称并为重名添加序号', () => {
+    assert.equal(recordSlug(' 苏州市 '), '苏州市');
+    assert.equal(defaultMarkdownPath('2026-09-11', '苏州市'), 'data/travel-diary/2026/2026-09-11-苏州市.md');
+    assert.deepEqual(storedPhotoNames(['河畔.jpg'], [
+        { name: '湖边.png', extension: 'png' },
+        { name: '湖边.JPG', extension: 'jpg' },
+        { name: '河畔.jpeg', extension: 'jpg' }
+    ]), ['河畔.jpg', '湖边.png', '湖边.jpg', '河畔-2.jpg']);
 });
