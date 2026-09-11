@@ -1,5 +1,6 @@
 import { isValidDateString } from './analytics.mjs';
 import { readUploads, storedPhotoNames } from './photo-uploads.mjs';
+import { isSafeAsciiFileName, pinyinSlug } from './slug.mjs';
 
 export const DRAFT_FORMAT = 'travel-diary-draft-v3';
 export const RECORD_FIELDS = ['date', 'country_code', 'country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'title', 'body', 'desc_md', 'photo_folder', 'photos'];
@@ -10,10 +11,7 @@ export function buildMarkdown(input) {
 }
 
 export function recordSlug(locality) {
-    const slug = locality.normalize('NFKC').trim().toLocaleLowerCase('en-US')
-        .replace(/\s+/g, '-').replace(/[^\p{L}\p{N}._-]+/gu, '-').replace(/\.+/g, '-')
-        .replace(/^[._-]+|[._-]+$/g, '').slice(0, 120);
-    return slug && !/^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i.test(slug) ? slug : 'travel';
+    return pinyinSlug(locality);
 }
 
 export function defaultMarkdownPath(date, locality) {
@@ -21,8 +19,7 @@ export function defaultMarkdownPath(date, locality) {
 }
 
 function isSafeFileName(name) {
-    return /^[\p{L}\p{N}][\p{L}\p{N}._-]*$/u.test(name) && !name.includes('..') && !name.endsWith('.')
-        && !/^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(name);
+    return isSafeAsciiFileName(name);
 }
 
 export function readDraft(value) {
@@ -65,10 +62,10 @@ export function prepareRecord(value, countries) {
     const markdownPath = input.desc_md || defaultMarkdownPath(input.date, input.locality);
     const expectedPrefix = `data/travel-diary/${input.date.slice(0, 4)}/${input.date}-`;
     if (!markdownPath.startsWith(expectedPrefix) || !markdownPath.endsWith('.md') || !isSafeFileName(markdownPath.slice(`data/travel-diary/${input.date.slice(0, 4)}/`.length))) {
-        throw new Error(`正文路径须为 ${expectedPrefix}名称.md，文件名仅使用文字、数字、连字符、下划线或点。`);
+        throw new Error(`正文路径须为 ${expectedPrefix}name.md，文件名仅使用 ASCII 字母、数字、连字符、下划线或点。`);
     }
     if (input.photo_folder && (!input.photo_folder.startsWith('data/photos/') || !input.photo_folder.slice('data/photos/'.length).split('/').every(isSafeFileName))) {
-        throw new Error('照片目录须位于 data/photos/ 下，各级目录名仅使用文字、数字、连字符、下划线或点。');
+        throw new Error('照片目录须位于 data/photos/ 下，各级目录名仅使用 ASCII 字母、数字、连字符、下划线或点。');
     }
     if (input.photos.length && !input.photo_folder) throw new Error('填写照片列表时必须指定照片目录。');
     if (input.photos.some(photo => !isSafeFileName(photo))) throw new Error('照片列表每行填写一个文件名，不能包含子路径、特殊字符或空行。');
@@ -80,7 +77,7 @@ export function prepareRecord(value, countries) {
         ...(input.admin_area_type ? { admin_area_type: input.admin_area_type } : {}),
         locality: input.locality,
         ...(input.locality_type ? { locality_type: input.locality_type } : {}),
-        ...(input.trip_id ? { trip_id: input.trip_id } : {}),
+        ...(input.trip_id ? { trip_id: pinyinSlug(input.trip_id, 'trip') } : {}),
         desc_md: markdownPath,
         photo_folder: input.photo_folder,
         photos: input.photos

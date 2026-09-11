@@ -44,6 +44,34 @@
     letter-spacing: 0.08em;
 }
 
+.archive-data-transfer > p {
+    margin: 0 0 12px;
+    color: var(--ink-muted);
+    font-size: 12px;
+    line-height: 1.65;
+}
+
+.archive-data-transfer > div {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.archive-data-transfer .paper-button {
+    width: 100%;
+    padding-inline: 8px;
+    font-size: 12px;
+}
+
+.archive-data-transfer .archive-data-status {
+    min-height: 1.5em;
+    margin: 10px 0 0;
+    color: var(--stamp);
+    overflow-wrap: anywhere;
+}
+
+.archive-data-transfer .archive-data-status:empty { display: none; }
+
 .overview-location-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;

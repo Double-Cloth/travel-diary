@@ -20,13 +20,17 @@ index.html
        ├─ js/record-editor.js
        │    ├─ js/record-input.mjs
        │    ├─ js/record-suggestions.mjs
+       │    ├─ js/draft-archive.mjs
        │    └─ js/data.js
+       ├─ js/data-transfer.js
+       ├─ js/zip-archive.mjs
+       ├─ js/slug.mjs
        ├─ js/location.mjs
        ├─ js/analytics.mjs
        └─ js/utils.js
 ```
 
-本地运行时，`js/server.js` 提供静态文件服务和正确的 MIME 类型，并将 `/api/travel-records` 交给零依赖的 `js/record-store.js`，用于本机新增记录。GitHub Pages 仍只发布静态文件，不具备写入端点。
+本地运行时，`js/server.js` 提供静态文件服务和正确的 MIME 类型，并将 `/api/travel-records` 与 `/api/travel-data` 交给零安装依赖的本地数据服务，分别用于新增记录及整个 `data/` 的 ZIP 导入导出。GitHub Pages 仍只发布静态文件，不具备写入端点。
 
 ## 个人内容与通用资源
 
@@ -86,6 +90,11 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 - `js/app.js`：页面状态、路由、渲染、事件绑定和筛选逻辑。
 - `js/data.js`：数据读取、Markdown 解析和基础安全过滤。
 - `js/record-editor.js`：原生 `dialog` 新增表单、能力检测、全部元数据字段、正文视图、草稿导入导出与提交状态。
+- `js/draft-archive.mjs`：ZIP 草稿元数据与独立图片文件的打包、读取和旧草稿衔接。
+- `js/data-transfer.js`：个人主页全部数据导入导出的浏览器交互。
+- `js/data-archive.js`：服务端 `data/` 归档、完整性校验、原子替换和统一数据锁。
+- `js/zip-archive.mjs`：浏览器与 Node.js 共用的无依赖 ZIP 存储格式读写和 CRC32 校验。
+- `js/slug.mjs`：中文地点、旅行标识和文件名的离线拼音规范化。
 - `js/record-input.mjs`：浏览器与 Node.js 共用的草稿字段校验、记录与 Markdown 生成。
 - `js/record-suggestions.mjs`：根据国家目录、已填地点和历史记录生成关联候选、可靠的空白字段补全值及旅行标识建议。
 - `js/record-store.js`：本机写入端点、请求来源校验、图片文件写入、写入锁、索引替换和失败回滚。
@@ -106,13 +115,15 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 
 服务端仅允许回环地址连接、localhost / 回环 Host 和同源 Origin（如提供）；写入接口不设置跨域许可，`--network` 的其他设备访问仍只读。表单从非本机站点打开时直接提供只读草稿流程，不向第三方站点发送写入请求。
 
-写入使用 `data/.travel-write.lock` 独占锁，重新读取当前索引后，独占创建 Markdown 文件，写入并同步临时索引，最后用 `rename` 替换索引。目录和文件拒绝符号链接 / junction；失败时清理本次创建的正文、照片、空照片目录和临时索引。上传图片写入以目的地命名的照片目录，并在索引提交前完成文件写入和同步；重试时比对照片字节。重复提交以正文路径、元数据和 Markdown 内容比对实现去重，默认正文路径使用日期和目的地。自定义正文路径仍遵守年份目录和日期前缀规范，照片引用仅允许项目内的普通文件。锁可防止多个本项目服务器同时写入，替换前也检查手工修改，但不能与任意外部编辑器建立跨进程事务；保存期间应避免手工编辑索引。
+写入和全量数据导入导出共用项目根目录的 `.travel-data.lock` 独占锁。新增记录会重新读取当前索引，独占创建 Markdown 文件，写入并同步临时索引，最后用 `rename` 替换索引。目录和文件拒绝符号链接 / junction；失败时清理本次创建的正文、照片、空照片目录和临时索引。上传图片写入以目的地拼音命名的照片目录，并在索引提交前完成文件写入和同步；重试时比对照片字节。重复提交以正文路径、元数据和 Markdown 内容比对实现去重，默认正文路径使用日期和目的地拼音。自定义正文路径仍遵守年份目录、日期前缀及 ASCII 文件名规范，照片引用仅允许项目内的普通文件。
 
 Markdown 与 JSON 的写入不构成跨文件事务，进程强制终止或断电可能留下锁、孤立 Markdown 或临时索引，恢复步骤见维护指南。确认写入成功后，页面重新从磁盘读取旅行数据并派生统计；读取失败与写入失败分别提示。
 
-上传请求继续采用 JSON，不引入 multipart 解析依赖。`photo-uploads.mjs` 按文件签名识别 JPEG、PNG、GIF 和 WebP，拒绝 SVG、HTML 等格式；持久化名称以经过安全处理的原始文件名为基础，重名时追加递增序号。
+上传请求继续采用 JSON，不引入 multipart 解析依赖。`photo-uploads.mjs` 按文件签名识别 JPEG、PNG、GIF 和 WebP，拒绝 SVG、HTML 等格式；持久化名称由原始文件名转换为拼音，重名时追加递增序号。拼音转换运行文件随仓库分发，许可见根目录 `THIRD_PARTY_NOTICES.md`。
 
-正文预览复用 `js/data.js` 导出的 `parseMarkdown()`，与日记详情使用相同的 HTML 转义和链接过滤规则。源码编辑和预览编辑由 `markdown-editor.js` 负责标题拆分与受限 DOM 序列化；粘贴只接受纯文本。文件写入使用 `buildMarkdown()` 生成正文。草稿 JSON 包含全部表单字段，上传照片以包含标识、原始名称和 Base64 数据的 `uploads` 数组保存在 v3 草稿中；写入后，旅行索引仅保留照片目录和有序文件名。
+正文预览复用 `js/data.js` 导出的 `parseMarkdown()`，与日记详情使用相同的 HTML 转义和链接过滤规则。源码编辑和预览编辑由 `markdown-editor.js` 负责标题拆分、语法高亮与受限 DOM 序列化；粘贴只接受纯文本。文件写入使用 `buildMarkdown()` 生成正文。新草稿导出为 ZIP，`draft.json` 仅保存字段和照片文件引用，实际图片放在 `photos/`；导入后在内存中恢复为现有写入负载。旧版 v1 至 v3 JSON 草稿继续兼容。
+
+全量数据导出遍历普通文件并把 `data/` 作为 ZIP 根目录；导入拒绝目录穿越、链接语义和索引缺失引用，在项目内临时目录写完后通过 `rename` 替换。失败时保留原目录并清理临时内容。
 
 ## 拆分原则
 

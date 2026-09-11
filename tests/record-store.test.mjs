@@ -87,6 +87,7 @@ test('字段校验支持闰年、空行政区和草稿往返，拒绝无效日�
     const value = draft('a', { date: '2024-02-29', country_code: 'SG', admin_area: '', body: '' });
     assert.deepEqual(readDraft(JSON.parse(JSON.stringify(value))), value);
     assert.equal(prepareRecord(value, countries).record.admin_area, '');
+    assert.equal(prepareRecord(draft('a', { trip_id: '2026-09-江苏省' }), countries).record.trip_id, '2026-09-jiangsu');
     for (const input of [{ date: '2025-02-29' }, { country_code: 'ZZ' }, { title: ' ' }, { locality: '' }, { title: '标题\n注入' }, { body: '文'.repeat(100001) }]) {
         assert.throws(() => prepareRecord(draft('a', input), countries));
     }
@@ -136,8 +137,8 @@ test('上传照片自动建目录并写入原始字节，草稿重试校验照�
     const response = await post(value);
     assert.equal(response.status, 201);
     const record = (await response.json()).record;
-    assert.equal(record.photo_folder, 'data/photos/苏州市-1');
-    assert.deepEqual(record.photos, ['湖边.png']);
+    assert.equal(record.photo_folder, 'data/photos/suzhoushi-1');
+    assert.deepEqual(record.photos, ['hubian.png']);
     const bytes = await fs.readFile(path.join(root, record.photo_folder, record.photos[0]));
     assert.deepEqual(bytes, Buffer.from(png, 'base64'));
     assert.equal((await post(value)).status, 200);

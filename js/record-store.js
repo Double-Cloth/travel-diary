@@ -1,6 +1,7 @@
 const fs = require('fs/promises');
 const path = require('path');
 const { randomBytes } = require('crypto');
+const { acquireDataLock, exportDataArchive, importDataArchive } = require('./data-archive.js');
 
 function failure(status, message) {
     return Object.assign(new Error(message), { status });
@@ -46,14 +47,7 @@ async function saveRecord(root, payload) {
     const photoContents = [];
     const dataDir = await checkedDirectory(root, ['data']);
     const indexFile = path.join(dataDir, 'travel_data.json');
-    const lockFile = path.join(dataDir, '.travel-write.lock');
-    let lock;
-    try {
-        lock = await fs.open(lockFile, 'wx');
-    } catch (error) {
-        if (error.code === 'EEXIST') throw failure(409, '另一条记录正在保存，请稍后重试；若服务器曾异常退出，请按维护文档检查写入锁。');
-        throw error;
-    }
+    const releaseLock = await acquireDataLock(root);
     let temporaryFile;
     let createdMarkdown;
     let createdPhotoDir;
@@ -154,8 +148,7 @@ async function saveRecord(root, payload) {
         if (createdMarkdown) await fs.unlink(createdMarkdown).catch(() => {});
         for (const photo of createdPhotos) await fs.unlink(photo).catch(() => {});
         if (createdPhotoDir) await fs.rmdir(createdPhotoDir).catch(() => {});
-        await lock.close();
-        await fs.unlink(lockFile);
+        await releaseLock();
     }
 }
 
@@ -167,14 +160,45 @@ function createRecordApi(root) {
             res.end(JSON.stringify(value));
         };
         const host = req.headers.host || '';
+        const requestPath = req.url.split('?')[0];
         const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
         const validHost = [`localhost:${req.socket.localPort}`, `127.0.0.1:${req.socket.localPort}`, `[::1]:${req.socket.localPort}`].includes(host);
         if (!local || !validHost || (req.headers.origin && req.headers.origin !== `http://${host}`)) {
             send(403, { error: '仅允许通过本机 localhost 页面保存记录；局域网访问为只读。' });
             return;
         }
-        if (req.method === 'GET') {
+        if (requestPath === '/api/travel-records' && req.method === 'GET') {
             send(200, { service: 'travel-diary-writer-v1', token });
+            return;
+        }
+        if (requestPath === '/api/travel-data') {
+            if (req.headers['x-travel-token'] !== token) {
+                send(403, { error: '数据操作凭据无效，请刷新页面后重试。' });
+                return;
+            }
+            try {
+                if (req.method === 'GET') {
+                    const archive = await exportDataArchive(root);
+                    res.writeHead(200, {
+                        'Content-Type': 'application/zip',
+                        'Content-Length': archive.length,
+                        'Content-Disposition': 'attachment; filename="travel-diary-data.zip"',
+                        'Cache-Control': 'no-store'
+                    });
+                    res.end(archive);
+                    return;
+                }
+                if (req.method === 'POST' && req.headers['content-type'] === 'application/zip') {
+                    const chunks = [];
+                    for await (const chunk of req) chunks.push(chunk);
+                    const result = await importDataArchive(root, Buffer.concat(chunks));
+                    send(200, { imported: true, ...result });
+                    return;
+                }
+                send(405, { error: '数据备份仅支持 ZIP 导入与导出。' });
+            } catch (error) {
+                send(error.status || 500, { error: error.status ? error.message : '全部数据操作失败，请检查目录权限、磁盘空间和备份文件。' });
+            }
             return;
         }
         if (req.method !== 'POST') {

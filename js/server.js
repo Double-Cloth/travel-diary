@@ -171,7 +171,7 @@ function createHandler(rootDir) {
   rootDir = fs.realpathSync(rootDir);
   const recordApi = createRecordApi(rootDir);
   return async (req, res) => {
-    if (req.url.split('?')[0] === '/api/travel-records') {
+    if (['/api/travel-records', '/api/travel-data'].includes(req.url.split('?')[0])) {
       await recordApi(req, res);
       return;
     }

@@ -455,6 +455,42 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 .record-editor-tabs button:hover { background: rgba(255, 251, 235, 0.75); }
 .record-editor-format { margin: auto 5px auto auto; color: var(--ink-muted); font: 11px var(--font-code); }
 .record-editor-workbench textarea { margin: 0; height: 320px; min-height: 320px; padding: 16px; border: 0; border-radius: 0; font-size: 15px; }
+.record-editor-source-layer { position: relative; height: 320px; background: rgba(255, 251, 235, 0.5); }
+.record-editor-source-layer pre,
+.record-editor-source-layer textarea {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 16px;
+    overflow: auto;
+    border: 0;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    word-break: normal;
+    font: 14px/1.8 var(--font-code), var(--font-serif);
+    tab-size: 4;
+}
+.record-editor-source-layer pre { overflow: hidden; pointer-events: none; color: var(--ink); background: transparent; }
+.record-editor-source-layer pre code { font: inherit; }
+.record-editor-source-layer textarea {
+    z-index: 1;
+    resize: none;
+    color: transparent;
+    caret-color: var(--ink);
+    background: transparent;
+    -webkit-text-fill-color: transparent;
+}
+.record-editor-source-layer textarea::selection { background: rgba(143, 53, 39, 0.2); }
+.record-editor-source-layer textarea:focus { outline: 2px solid rgba(143, 53, 39, 0.42); outline-offset: -2px; }
+.record-editor-source-layer .md-marker,
+.record-editor-source-layer .md-fence { color: #9a342d; font-weight: 700; }
+.record-editor-source-layer .md-heading { color: #71372e; font-weight: 700; }
+.record-editor-source-layer .md-emphasis { color: #9a5a16; }
+.record-editor-source-layer .md-link { color: #276174; text-decoration: underline; text-decoration-thickness: 1px; }
+.record-editor-source-layer .md-code { color: #355b39; background: rgba(60, 103, 65, 0.08); }
+.record-editor-source-layer .md-meta { color: var(--ink-muted); }
 .record-editor [hidden] { display: none; }
 .record-editor-preview { height: 278px; min-height: 278px; overflow: auto; padding: 16px; background: rgba(255, 251, 235, 0.5); overflow-wrap: anywhere; outline: none; }
 .record-editor-preview > h1:first-child { margin-top: 0; font-size: 22px; }

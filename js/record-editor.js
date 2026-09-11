@@ -1,8 +1,9 @@
 import { escapeHtml } from './utils.js';
-import { splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
+import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
 import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs';
+import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
 
 export function createRecordEditor(onSaved, getRecords = () => []) {
     const dialog = document.createElement('dialog');
@@ -75,7 +76,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                     <label>旅行日期 <span>必填</span><input name="date" type="date" value="${date}" required></label>
                                     <label>旅行标识 <span>选填</span><input name="trip_id" maxlength="200" list="recordTripOptions" placeholder="同次旅行共用" aria-describedby="recordTripHelp"></label>
                                 </div>
-                                <p class="record-editor-note" id="recordTripHelp">同次旅行填写同一标识。</p>
+                                <p class="record-editor-note" id="recordTripHelp">同次旅行填写同一标识；保存时统一转换为小写拼音。</p>
                                 <div class="record-editor-grid">
                                     <label>国家 / 地区 <span>必填</span><select name="country_code" required>
                                         ${countries.map(country => `<option value="${escapeHtml(country.code)}" ${country.code === 'CN' ? 'selected' : ''}>${escapeHtml(country.name_zh)} · ${escapeHtml(country.code)}</option>`).join('')}
@@ -100,7 +101,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                     <span class="record-editor-format">Markdown</span>
                                 </div>
                                 <div id="recordPanelSource" role="tabpanel" aria-labelledby="recordTabSource" data-editor-panel="source">
-                                    <textarea data-editor-source maxlength="100210" rows="10" aria-label="Markdown 源码" aria-describedby="recordBodyHelp" spellcheck="false"></textarea>
+                                    <div class="record-editor-source-layer">
+                                        <pre data-editor-highlight aria-hidden="true"><code></code></pre>
+                                        <textarea data-editor-source maxlength="100210" rows="10" aria-label="Markdown 源码" aria-describedby="recordBodyHelp" spellcheck="false"></textarea>
+                                    </div>
                                 </div>
                                 <div id="recordPanelPreview" role="tabpanel" aria-labelledby="recordTabPreview" data-editor-panel="preview" hidden>
                                     <div class="record-editor-formatting" role="toolbar" aria-label="预览格式">
@@ -114,7 +118,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                 </div>
                                 <textarea name="body" hidden></textarea>
                             </div>
-                            <p class="record-editor-note" id="recordBodyHelp">源码与预览会自动同步。</p>
+                            <p class="record-editor-note" id="recordBodyHelp">源码支持 Markdown 语法高亮，并与预览自动同步。</p>
                         </section>
                     </div>
                     <section class="record-editor-photos" aria-labelledby="recordPhotosTitle">
@@ -131,12 +135,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <summary><span>文件设置</span><span>正文路径与已有照片引用</span></summary>
                         <div class="record-editor-fields">
                             <label>正文文件路径 <span>选填 · 留空自动生成</span><input name="desc_md" maxlength="200" aria-describedby="recordPathHelp"></label>
-                            <p class="record-editor-note" id="recordPathHelp">留空将自动生成：<output data-editor-path-preview></output></p>
+                            <p class="record-editor-note" id="recordPathHelp">留空将按目的地拼音自动生成：<output data-editor-path-preview></output></p>
                             <div class="record-editor-grid">
                                 <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="recordPhotoHelp"></label>
                                 <label>照片文件列表 <span>选填 · 每行一个文件名</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="recordPhotoHelp"></textarea></label>
                             </div>
-                            <p class="record-editor-note" id="recordPhotoHelp">仅填写项目内已有照片；上传照片无需设置。新上传照片将保存到：<output data-editor-photo-path-preview></output></p>
+                            <p class="record-editor-note" id="recordPhotoHelp">仅填写项目内已有照片；上传照片无需设置。新上传照片会使用拼音文件名并保存到：<output data-editor-photo-path-preview></output></p>
                         </div>
                     </details>
                 </div>
@@ -148,7 +152,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <button class="paper-button" type="button" data-editor-download>导出草稿</button>
                         </div>
                         <button class="brass-button" type="submit" data-editor-save disabled>保存旅行记录</button>
-                        <input type="file" accept=".json,application/json" data-editor-file hidden aria-label="选择草稿文件">
+                        <input type="file" accept=".zip,.json,application/zip,application/json" data-editor-file hidden aria-label="选择草稿 ZIP 或旧版 JSON 文件">
                     </div>
                     <p class="record-editor-note">离开页面前请保存或导出草稿。</p>
                 </footer>
@@ -238,7 +242,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (view === 'preview') {
             dialog.querySelector('[data-editor-rich]').innerHTML = previewHtml(markdown, input.title);
         }
-        if (view === 'source') dialog.querySelector('[data-editor-source]').value = markdown;
+        if (view === 'source') {
+            dialog.querySelector('[data-editor-source]').value = markdown;
+            updateMarkdownHighlight(markdown);
+        }
         dialog.querySelectorAll('[data-editor-view]').forEach(button => {
             const active = button.dataset.editorView === view;
             button.setAttribute('aria-selected', String(active));
@@ -251,7 +258,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const input = splitMarkdown(source, field('title').value);
         field('title').value = input.title;
         field('body').value = input.body;
+        updateMarkdownHighlight(source);
         dirty = true;
+    }
+
+    function updateMarkdownHighlight(source) {
+        dialog.querySelector('[data-editor-highlight] code').innerHTML = `${highlightMarkdown(source)}\n`;
     }
 
     function syncPreview() {
@@ -272,7 +284,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function updatePhotoStatus() {
-        status(uploads.length ? `当前有 ${uploads.length} 张照片待保存，导出草稿时会一并包含。` : '');
+        status(uploads.length ? `当前有 ${uploads.length} 张照片待保存，导出 ZIP 草稿时会作为独立文件一并包含。` : '');
     }
 
     async function addPhotos(files) {
@@ -352,6 +364,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (['country_code', 'admin_area', 'locality'].includes(event.target.name)) updateAutofill();
         if (event.target.name === 'title') updateBodyView(bodyView);
     });
+    dialog.addEventListener('scroll', event => {
+        if (!event.target.matches('[data-editor-source]')) return;
+        const highlight = dialog.querySelector('[data-editor-highlight]');
+        highlight.scrollTop = event.target.scrollTop;
+        highlight.scrollLeft = event.target.scrollLeft;
+    }, true);
     dialog.addEventListener('pointerdown', event => {
         if (event.target.closest('[data-format]')) event.preventDefault();
     });
@@ -409,8 +427,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (view) updateBodyView(view.dataset.editorView);
         if (event.target.closest('[data-editor-download]')) {
             const input = getDraft().input;
-            download(JSON.stringify(getDraft(), null, 2) + '\n', `travel-diary-draft-${input.date || '未填写日期'}-${recordSlug(input.locality || '目的地')}.json`, 'application/json');
-            status('已发起草稿下载。JSON 草稿包含全部字段，可在本地导入保存。');
+            download(createDraftArchive(getDraft()), `travel-diary-draft-${input.date || 'undated'}-${recordSlug(input.locality || 'destination')}.zip`, 'application/zip');
+            status('已发起 ZIP 草稿下载；照片作为独立文件保存，draft.json 不包含 Base64 图片。');
         }
         if (event.target.closest('[data-editor-import]')) dialog.querySelector('[data-editor-file]').click();
     });
@@ -434,7 +452,9 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const file = event.target.files[0];
         if (!file) return;
         try {
-            const draft = readDraft(JSON.parse(await file.text()));
+            const draft = file.name.toLocaleLowerCase('en-US').endsWith('.zip')
+                ? readDraftArchive(await file.arrayBuffer())
+                : readDraft(JSON.parse(await file.text()));
             if (dirty) throw new Error('当前存在未保存内容。请先保存，或导出草稿并刷新页面后再导入。');
             for (const key of RECORD_FIELDS) field(key).value = key === 'photos' ? draft.input.photos.join('\n') : draft.input[key];
             requestId = draft.requestId;

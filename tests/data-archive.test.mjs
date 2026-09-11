@@ -1,0 +1,45 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { createRequire } from 'node:module';
+import { createZip, readZip } from '../js/zip-archive.mjs';
+
+const require = createRequire(import.meta.url);
+const { exportDataArchive, importDataArchive } = require('../js/data-archive.js');
+
+test('全部数据 ZIP 保留 data 目录结构并可原子恢复', async t => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-archive-'));
+    t.after(async () => fs.rm(root, { recursive: true, force: true }));
+    await fs.mkdir(path.join(root, 'data/travel-diary/2026'), { recursive: true });
+    await fs.mkdir(path.join(root, 'data/photos/suzhou'), { recursive: true });
+    const record = { date: '2026-09-11', desc_md: 'data/travel-diary/2026/2026-09-11-suzhou.md', photo_folder: 'data/photos/suzhou', photos: ['lake.png'] };
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify([record]));
+    await fs.writeFile(path.join(root, record.desc_md), '# 苏州\n');
+    await fs.writeFile(path.join(root, record.photo_folder, record.photos[0]), Buffer.from([1, 2, 3]));
+
+    const archive = await exportDataArchive(root);
+    assert.deepEqual(readZip(archive).map(entry => entry.name).sort(), [
+        'data/photos/suzhou/lake.png',
+        'data/travel-diary/2026/2026-09-11-suzhou.md',
+        'data/travel_data.json'
+    ]);
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
+    const result = await importDataArchive(root, archive);
+    assert.equal(result.files, 3);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
+    assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, record.photos[0])), Buffer.from([1, 2, 3]));
+    assert.equal((await fs.readdir(root)).some(name => name.startsWith('.travel-data-')), false);
+});
+
+test('全部数据导入拒绝越界目录与缺失正文的索引', async t => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-archive-invalid-'));
+    t.after(async () => fs.rm(root, { recursive: true, force: true }));
+    await fs.mkdir(path.join(root, 'data'));
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
+    await assert.rejects(importDataArchive(root, createZip([{ name: 'other/file.txt', data: 'x' }])), /只能包含 data/);
+    const record = [{ desc_md: 'data/travel-diary/2026/missing.md', photos: [] }];
+    await assert.rejects(importDataArchive(root, createZip([{ name: 'data/travel_data.json', data: JSON.stringify(record) }])), /缺少正文文件/);
+    assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]');
+});

@@ -49,7 +49,7 @@ test('候选项按当前国家和行政区过滤，旅行标识保持为用户�
 });
 
 test('旅行标识建议使用年月和已填地点', () => {
-    assert.equal(suggestedTripId({ date: '2026-09-11', admin_area: '江苏省', locality: '苏州市' }), '2026-09-江苏省');
-    assert.equal(suggestedTripId({ date: '2026-09-11', locality: '涠洲岛' }), '2026-09-涠洲岛');
+    assert.equal(suggestedTripId({ date: '2026-09-11', admin_area: '江苏省', locality: '苏州市' }), '2026-09-jiangsu');
+    assert.equal(suggestedTripId({ date: '2026-09-11', locality: '涠洲岛' }), '2026-09-weizhoudao');
     assert.equal(suggestedTripId({ date: '', locality: '苏州市' }), '');
 });

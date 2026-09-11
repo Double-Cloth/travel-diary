@@ -1,3 +1,5 @@
+import { pinyinSlug } from './slug.mjs';
+
 export function readUploads(value = []) {
     if (!Array.isArray(value)) throw new Error('上传照片格式无效。');
     const ids = new Set();
@@ -23,9 +25,7 @@ export function readUploads(value = []) {
 }
 
 function safeStem(value, fallback) {
-    const stem = value.normalize('NFKC').replace(/\.[^.]*$/, '').trim()
-        .replace(/[^\p{L}\p{N}._-]+/gu, '-').replace(/^[._-]+|[._-]+$/g, '').slice(0, 160);
-    return stem && !/^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i.test(stem) ? stem : fallback;
+    return pinyinSlug(value.replace(/\.[^.]*$/, ''), fallback, { keepPlaceSuffix: true }).slice(0, 160);
 }
 
 export function storedPhotoNames(existingNames, uploads) {

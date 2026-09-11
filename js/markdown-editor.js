@@ -14,6 +14,39 @@ export function previewHtml(markdown, title) {
     return `<h1>${escapeHtml(title)}</h1>${parsed.bodyHtml || '<p><br></p>'}`;
 }
 
+function highlightedInline(source) {
+    const token = /(`(?:\\.|[^`\n])+`|\[[^\]\n]*\]\([^\n)]*\)|\*\*[^*\n]+\*\*|__[^_\n]+__|~~[^~\n]+~~|==[^=\n]+==|\*[^*\n]+\*|_[^_\n]+_)/g;
+    let output = '';
+    let offset = 0;
+    for (const match of source.matchAll(token)) {
+        output += escapeHtml(source.slice(offset, match.index));
+        const value = match[0];
+        const kind = value.startsWith('`') ? 'code' : value.startsWith('[') ? 'link' : 'emphasis';
+        output += `<span class="md-${kind}">${escapeHtml(value)}</span>`;
+        offset = match.index + value.length;
+    }
+    return output + escapeHtml(source.slice(offset));
+}
+
+export function highlightMarkdown(source) {
+    let inFence = false;
+    return source.replace(/\r\n?/g, '\n').split('\n').map(line => {
+        const fence = line.match(/^(\s*)(```+|~~~+)(.*)$/);
+        if (fence) {
+            inFence = !inFence;
+            return `${escapeHtml(fence[1])}<span class="md-fence">${escapeHtml(fence[2])}</span><span class="md-meta">${escapeHtml(fence[3])}</span>`;
+        }
+        if (inFence) return `<span class="md-code">${escapeHtml(line)}</span>`;
+        const heading = line.match(/^(\s{0,3})(#{1,6})(\s+)(.*)$/);
+        if (heading) return `${escapeHtml(heading[1])}<span class="md-marker">${heading[2]}</span>${escapeHtml(heading[3])}<span class="md-heading">${highlightedInline(heading[4])}</span>`;
+        const quote = line.match(/^(\s*)(>+)(\s?)(.*)$/);
+        if (quote) return `${escapeHtml(quote[1])}<span class="md-marker">${quote[2]}</span>${escapeHtml(quote[3])}${highlightedInline(quote[4])}`;
+        const list = line.match(/^(\s*)([-+*]|\d+\.)(\s+)(.*)$/);
+        if (list) return `${escapeHtml(list[1])}<span class="md-marker">${escapeHtml(list[2])}</span>${escapeHtml(list[3])}${highlightedInline(list[4])}`;
+        return highlightedInline(line);
+    }).join('\n');
+}
+
 function escapeMarkdown(text) {
     return text.replace(/\\/g, '\\\\').replace(/([*~^=`\[\]])/g, '\\$1').replace(/(^|\n)([#-])/g, '$1\\$2');
 }

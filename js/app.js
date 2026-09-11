@@ -1,5 +1,6 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
 import { createRecordEditor } from './record-editor.js';
+import { createDataTransfer } from './data-transfer.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { getRouteMapRandomCount } from './route-map.mjs';
@@ -54,6 +55,7 @@ const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
 
 const refs = {};
 let openRecordEditor;
+let dataTransfer;
 let travelModel = null;
 let activeRoute = null;
 let pageTurnTimer = null;
@@ -87,6 +89,10 @@ async function initApp() {
         window.location.hash = '#ledger';
         syncRouteFromHash({ initial: true });
     }, () => travelModel?.records || []);
+    dataTransfer = createDataTransfer(async () => {
+        travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
+        syncRouteFromHash({ initial: true });
+    });
     renderLoading();
 
     try {
@@ -1007,6 +1013,15 @@ function renderArchive(params = {}) {
                     ${renderRepeatLocationInsights(travelModel.repeatLocations)}
                 </div>
             </section>
+            <section class="archive-overview-block archive-data-transfer" aria-labelledby="archiveDataTitle">
+                <h3 id="archiveDataTitle">数据备份</h3>
+                <p>导出会将整个 <code>data/</code> 目录打包为 ZIP；导入会在校验后完整替换当前数据。</p>
+                <div>
+                    <button class="paper-button" type="button" data-action="export-all-data">导出全部数据</button>
+                    <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
+                </div>
+                <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
+            </section>
     `, 'dossier-page context-panel');
 }
 
@@ -1892,6 +1907,16 @@ function renderWithPageTurn(renderFn, options = {}) {
 }
 
 function handleDocumentClick(event) {
+    if (event.target.closest('[data-action="export-all-data"]')) {
+        event.preventDefault();
+        void dataTransfer.exportAll();
+        return;
+    }
+    if (event.target.closest('[data-action="import-all-data"]')) {
+        event.preventDefault();
+        dataTransfer.chooseImport();
+        return;
+    }
     if (event.target.closest('[data-action="add-record"]')) {
         event.preventDefault();
         closeMobileContextPanel();
