@@ -3,7 +3,7 @@
     src: url("../assets/fonts/LXGWWenKaiMono-Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
-    font-display: swap;
+    font-display: block;
 }
 
 @font-face {
@@ -11,7 +11,7 @@
     src: url("../assets/fonts/LXGWWenKaiMono-Medium.woff2") format("woff2");
     font-weight: 700;
     font-style: normal;
-    font-display: swap;
+    font-display: block;
 }
 
 @font-face {
@@ -19,7 +19,7 @@
     src: url("../assets/fonts/SourceCodePro-Regular.woff2") format("woff2");
     font-weight: 400;
     font-style: normal;
-    font-display: swap;
+    font-display: block;
 }
 
 @font-face {
@@ -27,7 +27,7 @@
     src: url("../assets/fonts/SourceCodePro-Bold.woff2") format("woff2");
     font-weight: 700;
     font-style: normal;
-    font-display: swap;
+    font-display: block;
 }
 
 :root {
@@ -87,6 +87,8 @@ html,
 body {
     width: 100%;
     min-height: 100%;
+    font-family: var(--font-serif);
+    font-synthesis: none;
 }
 
 html {
@@ -111,7 +113,6 @@ body {
     background-blend-mode: screen, multiply, normal, normal, normal, overlay, normal;
     background-position: center, center, center, center, center, center, center;
     background-size: 100% 100%, 100% 100%, 100% 100%, 100% 100%, cover, auto, auto;
-    font-family: var(--font-serif);
 }
 
 body::before,

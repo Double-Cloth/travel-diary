@@ -27,6 +27,13 @@ test('页面使用完整构建的本地 WOFF2 字体', async () => {
     }
 });
 
+test('页面根节点只继承本地字体且加载时不显示系统回退字体', () => {
+    assert.match(foundationCss, /html,\s*body\s*{[\s\S]*font-family:\s*var\(--font-serif\);/);
+    assert.match(foundationCss, /html,\s*body\s*{[\s\S]*font-synthesis:\s*none;/);
+    assert.equal((foundationCss.match(/font-display:\s*block/g) || []).length, 4);
+    assert.doesNotMatch(foundationCss, /font-display:\s*swap/);
+});
+
 test('字体命令默认全量构建并保留显式子集模式', () => {
     assert.equal(packageJson.scripts.fonts, 'node scripts/build-fonts.mjs');
     assert.equal(packageJson.scripts['fonts:subset'], 'node scripts/build-fonts.mjs --subset');
