@@ -798,6 +798,10 @@
     gap: 9px;
 }
 
+.index-filter-section:last-child {
+    padding-bottom: 10px;
+}
+
 .index-filter-section h3,
 .archive-overview-block h3 {
     margin: 0;
