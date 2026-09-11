@@ -136,20 +136,39 @@
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    transition: color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+    transition: color 0.12s ease, background 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
 }
 
 .custom-select-menu > [role="option"]:hover,
-.custom-select-menu > [role="option"].is-active,
-.custom-select-menu > [role="option"][aria-selected="true"],
-.record-editor-autocomplete-menu > [role="option"]:hover,
-.record-editor-autocomplete-menu > [role="option"].is-active {
-    color: var(--stamp);
-    background: rgba(143, 53, 39, 0.1);
+.record-editor-autocomplete-menu > [role="option"]:hover {
+    color: var(--ink);
+    background: rgba(183, 138, 69, 0.17);
+    box-shadow: inset 3px 0 0 rgba(183, 138, 69, 0.46);
+    transform: translateX(1px);
 }
 
-.custom-select-menu > [role="option"].is-active,
-.record-editor-autocomplete-menu > [role="option"].is-active { transform: translateX(2px); }
+.custom-select-menu > [role="option"][aria-selected="true"],
+.record-editor-autocomplete-menu > [role="option"][aria-selected="true"] {
+    color: var(--stamp);
+    background: rgba(143, 53, 39, 0.11);
+    box-shadow: inset 3px 0 0 rgba(143, 53, 39, 0.62);
+    font-weight: 700;
+}
+
+.custom-select-menu > [role="option"].is-active:not([aria-selected="true"]),
+.record-editor-autocomplete-menu > [role="option"].is-active:not([aria-selected="true"]) {
+    color: var(--stamp);
+    background: rgba(143, 53, 39, 0.07);
+    box-shadow: inset 3px 0 0 rgba(143, 53, 39, 0.34);
+    outline: 1px dashed rgba(143, 53, 39, 0.42);
+    outline-offset: -1px;
+    transform: translateX(2px);
+}
+
+.custom-select-menu > [role="option"].is-active[aria-selected="true"],
+.record-editor-autocomplete-menu > [role="option"].is-active[aria-selected="true"] {
+    transform: translateX(2px);
+}
 
 .record-editor-autocomplete-menu > [role="option"][hidden] { display: none; }
 
