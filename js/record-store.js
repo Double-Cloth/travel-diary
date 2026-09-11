@@ -173,12 +173,12 @@ function createRecordApi(root) {
             return;
         }
         if (requestPath === '/api/travel-data') {
-            if (req.method !== 'GET' && req.headers['x-travel-token'] !== token) {
+            if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['x-travel-token'] !== token) {
                 send(403, { error: '数据操作凭据无效，请刷新页面后重试。' });
                 return;
             }
             try {
-                if (req.method === 'GET') {
+                if (req.method === 'GET' || req.method === 'HEAD') {
                     const archive = await exportDataArchive(root);
                     const today = new Date().toISOString().slice(0, 10);
                     res.writeHead(200, {
@@ -187,7 +187,7 @@ function createRecordApi(root) {
                         'Content-Disposition': `attachment; filename="travel-diary-data-${today}.zip"`,
                         'Cache-Control': 'no-store'
                     });
-                    res.end(archive);
+                    res.end(req.method === 'HEAD' ? undefined : archive);
                     return;
                 }
                 if (req.method === 'POST' && req.headers['content-type'] === 'application/zip') {

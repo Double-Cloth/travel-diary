@@ -41,6 +41,13 @@ test('本地数据 API 使用令牌导出并重新导入整个 data 目录', asy
     const archive = new Uint8Array(await exported.arrayBuffer());
     assert.equal(readZip(archive).some(entry => entry.name === record.desc_md), true);
 
+    const probe = await fetch(`${base}/api/travel-data`, { method: 'HEAD' });
+    assert.equal(probe.status, 200);
+    assert.match(probe.headers.get('content-type'), /application\/zip/);
+    assert.match(probe.headers.get('content-disposition'), /travel-diary-data-\d{4}-\d{2}-\d{2}\.zip/);
+    assert.equal(Number(probe.headers.get('content-length')), archive.length);
+    assert.equal((await probe.arrayBuffer()).byteLength, 0);
+
     const directDownload = await fetch(`${base}/api/travel-data`);
     assert.equal(directDownload.status, 200);
     assert.match(directDownload.headers.get('content-disposition'), /travel-diary-data-\d{4}-\d{2}-\d{2}\.zip/);
