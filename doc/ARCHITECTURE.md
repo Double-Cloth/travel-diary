@@ -22,6 +22,7 @@ index.html
        │    ├─ js/record-suggestions.mjs
        │    ├─ js/draft-archive.mjs
        │    └─ js/data.js
+       ├─ js/record-password.js
        ├─ js/data-transfer.js
        ├─ js/zip-archive.mjs
        ├─ js/slug.mjs
@@ -34,7 +35,7 @@ index.html
 
 ## 个人内容与通用资源
 
-- `data/`：个人旅行元数据、日记正文、旅行照片及 `profile/` 中的头像。不同使用者复用项目时，在此替换自己的内容。
+- `data/`：个人旅行元数据、日记正文、旅行照片、`profile/` 中的头像及 `password.json` 新增记录密码。不同使用者复用项目时，在此替换自己的内容。
 - `assets/`：通用国家目录（`catalogs/countries.json`）、字体、页面背景和纹理。
 - `index.html`、`js/`、`css/`：共享的页面结构与功能实现；`scripts/`、`tests/`、`doc/` 分别负责维护工具、验证和使用说明。
 
@@ -90,6 +91,7 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 - `js/app.js`：页面状态、路由、渲染、事件绑定和筛选逻辑。
 - `js/data.js`：数据读取、Markdown 解析和基础安全过滤。
 - `js/record-editor.js`：原生 `dialog` 新增表单、能力检测、全部元数据字段、正文视图、草稿导入导出与提交状态。
+- `js/record-password.js`：新增记录入口的原生 `dialog` 密码验证、自定义数字键盘、实体键盘输入及密码配置读取。
 - `js/draft-archive.mjs`：ZIP 草稿元数据与独立图片文件的打包、读取和旧草稿衔接。
 - `js/data-transfer.js`：个人主页全部数据导入导出的浏览器交互。
 - `js/data-archive.js`：服务端 `data/` 归档、完整性校验、原子替换和统一数据锁。
@@ -109,7 +111,9 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 
 ## 新增记录的数据流
 
-头部和旅行路径页入口打开同一个原生 `dialog`。表单复用本地国家目录和当前内存中的旅行记录：`record-suggestions.mjs` 先按已填国家与行政区过滤 `datalist` 候选，再以历史精确匹配或明确名称后缀补全空白地点字段。补全状态与用户手工编辑状态分开记录，依赖项变化时可以更新旧的自动值，但不会覆盖已手工修改的内容；`trip_id` 只展示建议，由用户确认分组语义。
+头部和旅行路径页入口先打开同一个密码验证 `dialog`。`record-password.js` 每次从 `data/password.json` 读取 6 位数字配置，接受自定义数字键盘或实体键盘输入；匹配后才调用记录编辑器。密码配置属于随站点发布的前端访问门槛，不代替服务端认证。
+
+验证通过后打开记录编辑器 `dialog`。表单复用本地国家目录和当前内存中的旅行记录：`record-suggestions.mjs` 先按已填国家与行政区过滤 `datalist` 候选，再以历史精确匹配或明确名称后缀补全空白地点字段。补全状态与用户手工编辑状态分开记录，依赖项变化时可以更新旧的自动值，但不会覆盖已手工修改的内容；`trip_id` 只展示建议，由用户确认分组语义。
 
 `GET /api/travel-records` 返回服务标识和进程内写入令牌，前端确认后才启用保存。`POST` 使用 JSON 与 `X-Travel-Token` 提交 v3 草稿，服务端校验字段、国家代码、正文路径及照片引用。`record-input.mjs` 兼容读取 v1 和 v2 草稿，将新增可选字段补齐为空值。
 

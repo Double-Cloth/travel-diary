@@ -1,5 +1,6 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
 import { createRecordEditor } from './record-editor.js?v=20260911-select-touch-v2';
+import { createRecordPasswordGate } from './record-password.js?v=20260911-record-password';
 import { createDataTransfer } from './data-transfer.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
@@ -85,11 +86,12 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initApp() {
     cacheRefs();
     bindGlobalEvents();
-    openRecordEditor = createRecordEditor(async () => {
+    const openEditor = createRecordEditor(async () => {
         travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
         window.location.hash = '#ledger';
         syncRouteFromHash({ initial: true });
     }, () => travelModel?.records || []);
+    openRecordEditor = createRecordPasswordGate(openEditor);
     dataTransfer = createDataTransfer(async () => {
         travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
         syncRouteFromHash({ initial: true });
