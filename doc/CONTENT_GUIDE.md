@@ -69,10 +69,10 @@ data/travel-diary/YYYY/YYYY-MM-DD-pinyin.md
 
 个人主页右侧「数据备份」提供以下操作：
 
-- 「导出全部数据」生成 `travel-diary-data-YYYY-MM-DD.zip`。本机 `npm start` 页面由服务器遍历整个 `data/` 目录；GitHub Pages 等静态页面由浏览器打包旅行索引、索引引用的 Markdown 与照片以及头像。
+- 「导出全部数据」生成 `travel-diary-data-YYYY-MM-DD.zip`。本机 `npm start` 页面由服务器在点击时遍历整个 `data/` 目录；GitHub Pages 在每次部署时预生成整个 `data/` 的 ZIP。两种方式都使用真实 HTTP 下载地址，兼容接管浏览器下载的外部工具。
 - 「导入全部数据」只接受本应用导出的 ZIP。服务器先校验压缩包路径、旅行索引及其引用的正文和照片，再用临时目录原子替换当前 `data/`。
 
-导出在静态托管环境同样可用；导入会写入项目文件，因此仅支持本机 `npm start` 的 localhost 页面。导入会完整替换当前个人数据，操作前应先导出一份当前备份。导入失败不会修改现有 `data/`；空目录不写入 ZIP，但不影响应用数据。ZIP 使用标准 UTF-8 文件名和无加密存储格式。
+GitHub Pages 的导出内容对应当前已部署版本；通用静态服务器需要先运行 `npm run data:archive` 并把 `dist/travel-diary-data.zip` 作为站点根目录的 `travel-diary-data.zip` 发布。导入会写入项目文件，因此仅支持本机 `npm start` 的 localhost 页面。导入会完整替换当前个人数据，操作前应先导出一份当前备份。导入失败不会修改现有 `data/`；空目录不写入 ZIP，但不影响应用数据。ZIP 使用标准 UTF-8 文件名和无加密存储格式。
 
 「文件设置」中的照片目录和列表用于引用项目中已经存在的文件，照片目录限定在 `data/photos/` 下。存在新上传照片时，已有照片会按需复制到目的地目录并排在上传照片之前，原文件保持不变；若来源就是该目的地目录则直接复用。仅引用已有照片时不创建新目录。
 

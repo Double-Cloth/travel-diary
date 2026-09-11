@@ -160,7 +160,8 @@ function createRecordApi(root) {
             res.end(JSON.stringify(value));
         };
         const host = req.headers.host || '';
-        const requestPath = req.url.split('?')[0];
+        const requestUrl = new URL(req.url, 'http://localhost');
+        const requestPath = requestUrl.pathname;
         const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
         const validHost = [`localhost:${req.socket.localPort}`, `127.0.0.1:${req.socket.localPort}`, `[::1]:${req.socket.localPort}`].includes(host);
         if (!local || !validHost || (req.headers.origin && req.headers.origin !== `http://${host}`)) {
@@ -172,17 +173,18 @@ function createRecordApi(root) {
             return;
         }
         if (requestPath === '/api/travel-data') {
-            if (req.headers['x-travel-token'] !== token) {
+            if (req.method !== 'GET' && req.headers['x-travel-token'] !== token) {
                 send(403, { error: '数据操作凭据无效，请刷新页面后重试。' });
                 return;
             }
             try {
                 if (req.method === 'GET') {
                     const archive = await exportDataArchive(root);
+                    const today = new Date().toISOString().slice(0, 10);
                     res.writeHead(200, {
                         'Content-Type': 'application/zip',
                         'Content-Length': archive.length,
-                        'Content-Disposition': 'attachment; filename="travel-diary-data.zip"',
+                        'Content-Disposition': `attachment; filename="travel-diary-data-${today}.zip"`,
                         'Cache-Control': 'no-store'
                     });
                     res.end(archive);

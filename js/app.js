@@ -1015,9 +1015,9 @@ function renderArchive(params = {}) {
             </section>
             <section class="archive-overview-block archive-data-transfer" aria-labelledby="archiveDataTitle">
                 <h3 id="archiveDataTitle">数据备份</h3>
-                <p>静态页面也可将旅行索引引用的 <code>data/</code> 文件打包为 ZIP；完整导入仅支持本机页面。</p>
+                <p>导出使用可由下载工具直接访问的 ZIP 文件；完整导入仅支持本机页面。</p>
                 <div>
-                    <button class="paper-button" type="button" data-action="export-all-data">导出全部数据</button>
+                    <a class="paper-button" href="${escapeHtml(dataTransfer.getExportHref())}" download="travel-diary-data-${getTodayDate()}.zip" data-action="export-all-data">导出全部数据</a>
                     <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
                 </div>
                 <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
@@ -1908,8 +1908,7 @@ function renderWithPageTurn(renderFn, options = {}) {
 
 function handleDocumentClick(event) {
     if (event.target.closest('[data-action="export-all-data"]')) {
-        event.preventDefault();
-        void dataTransfer.exportAll();
+        dataTransfer.noteExportStarted();
         return;
     }
     if (event.target.closest('[data-action="import-all-data"]')) {

@@ -81,6 +81,7 @@ jobs:
       - name: Prepare static site
         run: |
           mkdir -p _site
+          node scripts/build-data-backup.js _site/travel-diary-data.zip
           cp index.html _site/
           cp -R assets css data doc js _site/
           find _site/assets/fonts -name '*.ttf' -delete

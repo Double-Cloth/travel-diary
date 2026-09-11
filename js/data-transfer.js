@@ -1,17 +1,3 @@
-import { createBrowserDataArchive } from './browser-data-archive.mjs';
-
-function downloadBlob(blob, name) {
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = name;
-    link.hidden = true;
-    document.body.append(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 60000);
-}
-
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
     if (output) output.textContent = message;
@@ -30,6 +16,12 @@ export function createDataTransfer(onImported) {
         return ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
     }
 
+    function getExportHref() {
+        const url = new URL(isLocalWriterHost() ? 'api/travel-data' : 'travel-diary-data.zip', window.location.href);
+        if (!isLocalWriterHost()) url.searchParams.set('v', Date.now().toString());
+        return url.href;
+    }
+
     async function localToken() {
         if (!isLocalWriterHost()) {
             throw new Error('全部数据只能在本机 npm start 页面导入或导出。');
@@ -40,37 +32,8 @@ export function createDataTransfer(onImported) {
         return result.token;
     }
 
-    async function exportAll() {
-        if (busy) return;
-        busy = true;
-        setStatus('正在打包 data 目录…');
-        try {
-            let archive;
-            if (isLocalWriterHost()) {
-                try {
-                    const token = await localToken();
-                    const response = await fetch(new URL('api/travel-data', window.location.href), {
-                        headers: { 'X-Travel-Token': token }, cache: 'no-store'
-                    });
-                    if (!response.ok) {
-                        const result = await response.json().catch(() => ({}));
-                        throw new Error(result.error || '本地数据服务导出失败。');
-                    }
-                    archive = await response.blob();
-                } catch {
-                    archive = new Blob([await createBrowserDataArchive(window.location.href)], { type: 'application/zip' });
-                }
-            } else {
-                archive = new Blob([await createBrowserDataArchive(window.location.href)], { type: 'application/zip' });
-            }
-            const today = new Date().toISOString().slice(0, 10);
-            downloadBlob(archive, `travel-diary-data-${today}.zip`);
-            setStatus('已发起全部数据 ZIP 下载。');
-        } catch (error) {
-            setStatus(error.message);
-        } finally {
-            busy = false;
-        }
+    function noteExportStarted() {
+        setStatus('已发起全部数据 ZIP 下载。');
     }
 
     function chooseImport() {
@@ -108,5 +71,5 @@ export function createDataTransfer(onImported) {
         }
     });
 
-    return { exportAll, chooseImport };
+    return { chooseImport, getExportHref, noteExportStarted };
 }

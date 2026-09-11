@@ -6,6 +6,7 @@
   "type": "commonjs",
   "scripts": {
     "countries": "node scripts/update-countries.mjs",
+    "data:archive": "node scripts/build-data-backup.js",
     "fonts": "node scripts/build-fonts.mjs",
     "fonts:subset": "node scripts/build-fonts.mjs --subset",
     "start": "node js/server.js",

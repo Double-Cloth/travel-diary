@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 
 const indexHtml = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const appJs = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
+const dataTransferJs = await readFile(new URL('../js/data-transfer.js', import.meta.url), 'utf8');
 const photoViewerTransformJs = await readFile(new URL('../js/photo-viewer-transform.mjs', import.meta.url), 'utf8');
 const serverJs = await readFile(new URL('../js/server.js', import.meta.url), 'utf8');
 const journalEntryCss = await readFile(new URL('../css/journal.css', import.meta.url), 'utf8');
@@ -146,6 +147,13 @@ test('本地服务器以 JavaScript MIME 类型提供 mjs 模块', () => {
 
 test('切换纸页内容时重置左右页滚动位置', () => {
     assert.match(appJs, /function setPages[\s\S]+refs\.leftPage\.scrollTop = 0;[\s\S]+refs\.rightPage\.scrollTop = 0;/);
+});
+
+test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => {
+    assert.match(appJs, /<a class="paper-button"[^>]+data-action="export-all-data"/);
+    assert.match(dataTransferJs, /api\/travel-data/);
+    assert.match(dataTransferJs, /travel-diary-data\.zip/);
+    assert.doesNotMatch(dataTransferJs, /createObjectURL|new Blob|\.exportAll\(/);
 });
 
 test('打开并退出日记时恢复路线档案滚动位置', () => {

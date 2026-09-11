@@ -8,6 +8,7 @@ import { createZip, readZip } from '../js/zip-archive.mjs';
 
 const require = createRequire(import.meta.url);
 const { exportDataArchive, importDataArchive } = require('../js/data-archive.js');
+const { writeDataBackup } = require('../scripts/build-data-backup.js');
 
 test('全部数据 ZIP 保留 data 目录结构并可原子恢复', async t => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-archive-'));
@@ -42,4 +43,18 @@ test('全部数据导入拒绝越界目录与缺失正文的索引', async t => 
     const record = [{ desc_md: 'data/travel-diary/2026/missing.md', photos: [] }];
     await assert.rejects(importDataArchive(root, createZip([{ name: 'data/travel_data.json', data: JSON.stringify(record) }])), /缺少正文文件/);
     assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]');
+});
+
+test('静态站点生成可直接通过 HTTP 下载的数据备份文件', async t => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-static-backup-'));
+    t.after(async () => fs.rm(root, { recursive: true, force: true }));
+    await fs.mkdir(path.join(root, 'data'));
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
+    const outputFile = path.join(root, '_site/travel-diary-data.zip');
+
+    const result = await writeDataBackup(root, outputFile);
+    const archive = await fs.readFile(outputFile);
+    assert.equal(result.bytes, archive.length);
+    assert.equal(archive.length > 0, true);
+    assert.deepEqual(readZip(archive).map(entry => entry.name), ['data/travel_data.json']);
 });

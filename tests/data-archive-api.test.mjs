@@ -35,12 +35,17 @@ after(async () => {
 });
 
 test('本地数据 API 使用令牌导出并重新导入整个 data 目录', async () => {
-    assert.equal((await fetch(`${base}/api/travel-data`)).status, 403);
-    const exported = await fetch(`${base}/api/travel-data`, { headers: { 'X-Travel-Token': token } });
+    const exported = await fetch(`${base}/api/travel-data`);
     assert.equal(exported.status, 200);
     assert.match(exported.headers.get('content-type'), /application\/zip/);
     const archive = new Uint8Array(await exported.arrayBuffer());
     assert.equal(readZip(archive).some(entry => entry.name === record.desc_md), true);
+
+    const directDownload = await fetch(`${base}/api/travel-data`);
+    assert.equal(directDownload.status, 200);
+    assert.match(directDownload.headers.get('content-disposition'), /travel-diary-data-\d{4}-\d{2}-\d{2}\.zip/);
+    assert.equal(Number(directDownload.headers.get('content-length')) > 0, true);
+    assert.equal(readZip(new Uint8Array(await directDownload.arrayBuffer())).some(entry => entry.name === record.desc_md), true);
 
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
     const imported = await fetch(`${base}/api/travel-data`, {
