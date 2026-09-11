@@ -1,12 +1,12 @@
 import { pinyinSlug } from './slug.mjs';
 
 export function readUploads(value = []) {
-    if (!Array.isArray(value)) throw new Error('上传照片格式无效。');
+    if (!Array.isArray(value)) throw new Error('所选照片数据无效。');
     const ids = new Set();
     return value.map(photo => {
         if (!photo || typeof photo.id !== 'string' || !/^[a-f0-9]{32}$/.test(photo.id) || ids.has(photo.id)
             || typeof photo.name !== 'string' || photo.name.length > 200 || typeof photo.data !== 'string') {
-            throw new Error('上传照片的标识、名称或内容无效。');
+            throw new Error('照片标识、文件名或内容无效。');
         }
         ids.add(photo.id);
         const encoded = photo.data;

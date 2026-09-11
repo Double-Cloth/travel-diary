@@ -85,7 +85,7 @@ async function saveRecord(root, payload) {
                 for (let index = 0; index < record.photos.length; index += 1) {
                     const photoPath = path.join(photoDir, record.photos[index]);
                     await checkedFile(photoPath);
-                    if (!(await fs.readFile(photoPath)).equals(photoContents[index])) throw failure(409, '已保存照片与本次上传内容不同，未覆盖现有文件。');
+                    if (!(await fs.readFile(photoPath)).equals(photoContents[index])) throw failure(409, '已保存照片与本次所选内容不同，未覆盖现有文件。');
                 }
             }
             return { record, alreadySaved: true };

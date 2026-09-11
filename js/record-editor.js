@@ -50,7 +50,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         token = '';
         dialog.querySelector('[data-editor-save]').disabled = true;
         const hint = dialog.querySelector('[data-editor-mode]');
-        hint.textContent = '正在检查保存服务…';
+        hint.textContent = '正在连接本地保存服务…';
         try {
             if (!['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) throw new Error();
             const response = await fetch(new URL('api/travel-records', window.location.href), {
@@ -59,10 +59,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             const result = await response.json();
             if (!response.ok || result.service !== 'travel-diary-writer-v1' || !result.token) throw new Error();
             token = result.token;
-            hint.textContent = '本地模式 · 可直接保存到项目。';
+            hint.textContent = '本地保存可用 · 保存后写入项目文件。';
             dialog.querySelector('[data-editor-save]').disabled = saved;
         } catch {
-            hint.textContent = '只读模式 · 请导出草稿后在本机重新导入。';
+            hint.textContent = '当前为只读模式 · 可先导出草稿，再回到本机导入并保存。';
         }
     }
 
@@ -73,7 +73,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         dialog.innerHTML = `
             <header class="record-editor-heading">
                 <div><p class="journal-label">旅行日记</p><h2 id="recordEditorTitle">新增旅行记录</h2></div>
-                <button class="paper-button" type="button" data-editor-close aria-label="关闭新增窗口，保留本页草稿">关闭</button>
+                <button class="paper-button" type="button" data-editor-close aria-label="关闭编辑器并保留本页草稿">关闭</button>
             </header>
             <form>
                 <div class="record-editor-scroll">
@@ -84,26 +84,26 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <div class="record-editor-fields">
                                 <div class="record-editor-grid">
                                     <label>旅行日期 <span>必填</span><input name="date" type="date" value="${date}" required></label>
-                                    <label>旅行标识 <span>选填</span><span class="record-editor-autocomplete"><input name="trip_id" maxlength="200" data-editor-autocomplete="trip_id" placeholder="同次旅行共用" aria-describedby="recordTripHelp" aria-autocomplete="list" aria-controls="recordTripOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordTripOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label>旅行标识 <span>选填</span><span class="record-editor-autocomplete"><input name="trip_id" maxlength="200" data-editor-autocomplete="trip_id" placeholder="同一旅行使用相同标识" aria-describedby="recordTripHelp" aria-autocomplete="list" aria-controls="recordTripOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordTripOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                 </div>
-                                <p class="record-editor-note" id="recordTripHelp">同次旅行请填写同一标识。</p>
+                                <p class="record-editor-note" id="recordTripHelp">同一旅行有多篇日记时，请填写相同标识。</p>
                                 <div class="record-editor-grid">
                                     <label>国家 / 地区 <span>必填</span><span class="custom-select"><select name="country_code" data-custom-select aria-label="国家 / 地区" required>
                                         ${countries.map(country => `<option value="${escapeHtml(country.code)}" ${country.code === 'CN' ? 'selected' : ''}>${escapeHtml(country.code)} · ${escapeHtml(country.name_zh)}</option>`).join('')}
                                     </select></span></label>
-                                    <label>国家显示名称 <span>选填</span><span class="record-editor-autocomplete"><input name="country" maxlength="200" data-editor-autocomplete="country" placeholder="默认使用目录名称" aria-autocomplete="list" aria-controls="recordCountryOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordCountryOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label>国家显示名称 <span>选填</span><span class="record-editor-autocomplete"><input name="country" maxlength="200" data-editor-autocomplete="country" placeholder="留空使用目录名称" aria-autocomplete="list" aria-controls="recordCountryOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordCountryOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                     <label><span class="record-editor-field-name" data-editor-area>一级行政区</span> <span>选填</span><span class="record-editor-autocomplete"><input name="admin_area" maxlength="200" data-editor-autocomplete="admin_area" placeholder="例如：江苏省" aria-autocomplete="list" aria-controls="recordAdminAreaOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordAdminAreaOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                     <label>行政区类型 <span>选填</span><span class="record-editor-autocomplete"><input name="admin_area_type" maxlength="200" data-editor-autocomplete="admin_area_type" placeholder="例如：省、州" aria-autocomplete="list" aria-controls="recordAdminAreaTypeOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordAdminAreaTypeOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                     <label>城市 / 目的地 <span>必填</span><span class="record-editor-autocomplete"><input name="locality" maxlength="200" data-editor-autocomplete="locality" required placeholder="例如：苏州市" aria-autocomplete="list" aria-controls="recordLocalityOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordLocalityOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                     <label>目的地类型 <span>选填</span><span class="record-editor-autocomplete"><input name="locality_type" maxlength="200" data-editor-autocomplete="locality_type" placeholder="例如：城市、岛屿" aria-autocomplete="list" aria-controls="recordLocalityTypeOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordLocalityTypeOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                 </div>
-                                <p class="record-editor-note record-editor-autofill" data-editor-autofill>填写国家、行政区或目的地后，将自动补全可可靠推断的空白项；也可从历史候选中选择。</p>
+                                <p class="record-editor-note record-editor-autofill" data-editor-autofill>会结合地点和历史记录补全空白项，内容仍可修改。</p>
                                 <div data-editor-option-lists hidden></div>
                             </div>
                         </section>
                         <section class="record-editor-section" aria-labelledby="recordBodyTitle">
                             <h3 id="recordBodyTitle"><span>02</span> 旅行正文</h3>
-                            <label>日记标题 <span>必填</span><input name="title" maxlength="200" required placeholder="为这段旅途起个名字"></label>
+                            <label>日记标题 <span>必填</span><input name="title" maxlength="200" required placeholder="写下这篇日记的标题"></label>
                             <div class="record-editor-workbench">
                                 <div class="record-editor-tabs" role="tablist" aria-label="正文视图">
                                     <button type="button" role="tab" id="recordTabSource" aria-controls="recordPanelSource" aria-selected="true" data-editor-view="source">源码</button>
@@ -133,22 +133,22 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                     <section class="record-editor-photos" aria-labelledby="recordPhotosTitle">
                         <h3 id="recordPhotosTitle"><span>03</span> 旅行照片</h3>
                         <div class="record-editor-upload-zone" data-editor-drop>
-                            <button class="paper-button" type="button" data-editor-upload>＋ 上传照片</button>
-                            <p>选择或拖入图片。</p>
+                            <button class="paper-button" type="button" data-editor-upload>＋ 选择照片</button>
+                            <p>也可将照片拖到这里</p>
                             <small>支持 JPEG / PNG / GIF / WebP</small>
                             <input type="file" data-editor-photos accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden aria-label="选择旅行照片">
                         </div>
                         <div class="record-editor-photo-list" data-editor-photo-list aria-label="待保存照片"></div>
                     </section>
                     <details class="record-editor-files">
-                        <summary><span>文件设置</span><span>正文路径与已有照片引用</span></summary>
+                        <summary><span>文件设置</span><span>按需设置正文路径或引用已有照片</span></summary>
                         <div class="record-editor-fields">
-                            <label>正文文件路径 <span>选填 · 留空自动生成</span><input name="desc_md" maxlength="200"></label>
+                            <label>正文路径 <span>选填 · 留空自动生成</span><input name="desc_md" maxlength="200"></label>
                             <div class="record-editor-grid record-editor-files-grid">
                                 <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="recordPhotoHelp"></label>
-                                <label>照片文件列表 <span>选填 · 每行一个文件名</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="recordPhotoHelp"></textarea></label>
+                                <label>已有照片文件名 <span>选填 · 每行一个</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="recordPhotoHelp"></textarea></label>
                             </div>
-                            <p class="record-editor-note" id="recordPhotoHelp">仅填写项目内已有照片；新上传的照片无需设置。新照片会保存到：<output data-editor-photo-path-preview></output></p>
+                            <p class="record-editor-note" id="recordPhotoHelp">这里仅填写项目内已有照片；刚选择的照片会自动保存到：<output data-editor-photo-path-preview></output></p>
                         </div>
                     </details>
                 </div>
@@ -162,7 +162,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <button class="brass-button" type="submit" data-editor-save disabled>保存旅行记录</button>
                         <input type="file" accept=".zip,.json,application/zip,application/json" data-editor-file hidden aria-label="选择草稿 ZIP 或旧版 JSON 文件">
                     </div>
-                    <p class="record-editor-note">离开页面前请保存或导出草稿。</p>
+                    <p class="record-editor-note">草稿仅保留在本页，刷新或离开前请保存或导出。</p>
                 </footer>
             </form>`;
         saved = false;
@@ -181,7 +181,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     function updateCountry(fillName = false) {
         const country = countries.find(item => item.code === field('country_code').value);
         dialog.querySelector('[data-editor-area]').textContent = country?.admin_area_label || '一级行政区';
-        field('country').placeholder = country?.name_zh || '默认使用目录名称';
+        field('country').placeholder = country?.name_zh ? `留空使用${country.name_zh}` : '留空使用目录名称';
         if (fillName) field('country').value = country?.name_zh || '';
     }
 
@@ -192,7 +192,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         field('desc_md').placeholder = markdownPath;
         field('photo_folder').placeholder = photoPath;
         dialog.querySelector('[data-editor-photo-path-preview]').textContent = photoPath;
-        field('trip_id').placeholder = suggestedTripId(getDraft().input) || '同次旅行共用';
+        field('trip_id').placeholder = suggestedTripId(getDraft().input) || '同一旅行使用相同标识';
     }
 
     function updateAutofill() {
@@ -222,8 +222,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         renderOptionLists(getRecordOptions(getDraft().input, countries, records));
         const hint = dialog.querySelector('[data-editor-autofill]');
         hint.textContent = filled.length
-            ? `已自动补全：${filled.join('、')}。所有自动填写内容均可修改。`
-            : '会根据当前国家、行政区、目的地和历史记录补全可靠信息；所有内容均可自行修改。';
+            ? `已补全：${filled.join('、')}。如有需要可直接修改。`
+            : '会结合地点和历史记录补全空白项，内容仍可修改。';
     }
 
     function renderOptionLists(options) {
@@ -355,7 +355,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function updatePhotoStatus() {
-        status(uploads.length ? `当前有 ${uploads.length} 张照片待保存，导出 ZIP 草稿时会作为独立文件一并包含。` : '');
+        status(uploads.length ? `已选择 ${uploads.length} 张照片，保存记录或导出草稿时会一并处理。` : '');
     }
 
     async function addPhotos(files) {
@@ -365,7 +365,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         saveButton.disabled = true;
         status('正在读取照片…');
         try {
-            if (files.some(file => !file.size)) throw new Error('不能上传空图片文件。');
+            if (files.some(file => !file.size)) throw new Error('不能选择空图片文件。');
             const pending = [];
             for (const file of files) {
                 const data = await new Promise((resolve, reject) => {
@@ -559,7 +559,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (event.target.closest('[data-editor-download]')) {
             const input = getDraft().input;
             download(createDraftArchive(getDraft()), `travel-diary-draft-${input.date || 'undated'}-${recordSlug(input.locality || 'destination')}.zip`, 'application/zip');
-            status('已发起 ZIP 草稿下载；照片作为独立文件保存，draft.json 不包含 Base64 图片。');
+            status('草稿已开始下载，所选照片已一并打包。');
         }
         if (event.target.closest('[data-editor-import]')) dialog.querySelector('[data-editor-file]').click();
     });
@@ -586,7 +586,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             const draft = file.name.toLocaleLowerCase('en-US').endsWith('.zip')
                 ? readDraftArchive(await file.arrayBuffer())
                 : readDraft(JSON.parse(await file.text()));
-            if (dirty) throw new Error('当前存在未保存内容。请先保存，或导出草稿并刷新页面后再导入。');
+            if (dirty) throw new Error('当前有未保存内容，无法直接导入。请先保存；如需替换，请导出草稿并刷新页面后再导入。');
             for (const key of RECORD_FIELDS) field(key).value = key === 'photos' ? draft.input.photos.join('\n') : draft.input[key];
             requestId = draft.requestId;
             uploads = readUploads(draft.uploads);
@@ -602,7 +602,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             updateBodyView(bodyView);
             renderPhotos();
             dialog.querySelector('.record-editor-files').open = Boolean(draft.input.desc_md || draft.input.photo_folder || draft.input.photos.length);
-            status('草稿已导入，尚未保存。请核对内容后保存旅行记录。');
+            status('草稿已导入，请核对内容后保存。');
         } catch (error) {
             status(error instanceof SyntaxError ? '文件不是有效的 JSON 草稿。' : error.message);
         } finally {
@@ -626,14 +626,14 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 body: JSON.stringify(draft), signal: AbortSignal.timeout(60000)
             });
             const result = await response.json();
-            if (!response.ok || !result.saved) throw new Error(result.error || '服务器未确认保存成功。');
+            if (!response.ok || !result.saved) throw new Error(result.error || '未收到服务器的成功响应。');
             saved = true;
             dirty = false;
-            status(`已保存到项目文件：${result.record.desc_md}，旅行索引已更新。`);
+            status(`已保存并更新旅行索引：${result.record.desc_md}`);
             try { await onSaved(result.record); }
-            catch { status(`文件已保存：${result.record.desc_md}。页面加载失败，请刷新后查看。`); }
+            catch { status(`记录已保存：${result.record.desc_md}。页面数据刷新失败，请手动刷新后查看。`); }
         } catch (error) {
-            status(`未能确认保存成功：${error.message} 草稿仍保留，可导出或重试。`);
+            status(`保存结果未确认：${error.message} 草稿仍在本页，可导出或重试。`);
         } finally {
             busy = false;
             dialog.querySelectorAll('[name]').forEach(control => { control.disabled = saved; });

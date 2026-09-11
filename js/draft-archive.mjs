@@ -50,7 +50,7 @@ export function readDraftArchive(value) {
     try { metadata = JSON.parse(decoder.decode(metadataBytes)); }
     catch { throw new Error('draft.json 不是有效的 JSON 文件。'); }
     if (!metadata || metadata.format !== DRAFT_ARCHIVE_FORMAT || !Array.isArray(metadata.uploads)) {
-        throw new Error('请选择从新增旅行记录窗口导出的 ZIP 草稿。');
+        throw new Error('请选择由本应用导出的 ZIP 草稿。');
     }
     const usedFiles = new Set(['draft.json']);
     const uploads = metadata.uploads.map(photo => {
@@ -66,4 +66,3 @@ export function readDraftArchive(value) {
     if (files.size !== usedFiles.size) throw new Error('草稿压缩包包含未在清单中声明的文件。');
     return readDraft({ format: DRAFT_FORMAT, requestId: metadata.requestId, input: metadata.input, uploads });
 }
-

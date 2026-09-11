@@ -2,14 +2,15 @@
 
 ## 目录分类
 
-`data/` 集中保存每位使用者自己的内容，`assets/` 保存可供不同使用者复用的通用资源。头像属于个人内容；个人档案页的背景图属于页面设计素材。
+`data/` 保存会因使用者而变化的个人内容，`assets/` 保存可复用的通用资源。判断标准看用途而不是格式：头像属于个人内容，个人主页背景则属于页面设计资源。
 
 ```text
 data/
-├── profile/                # 头像、个人资料图
-├── photos/                 # 旅行照片
-├── travel-diary/            # 按年份存放的个人日记
-└── travel_data.json         # 个人旅行记录元数据
+├── profile/                 # 头像、个人资料图
+├── photos/                  # 旅行照片
+├── travel-diary/            # 按年份存放的 Markdown 日记
+├── password.json            # 编辑与数据导出的访问密码
+└── travel_data.json         # 旅行记录索引
 
 assets/
 ├── catalogs/               # 通用参考目录，如 countries.json
@@ -25,6 +26,7 @@ assets/
 | 路径 | 用途 |
 | --- | --- |
 | `assets/catalogs/countries.json` | 通用国家/地区目录，由 `npm run countries` 更新。 |
+| `data/password.json` | 新增记录与全部数据导出共用的访问密码配置。 |
 | `assets/fonts/LXGWWenKaiMono-Regular.ttf` | 正文字体常规字重。 |
 | `assets/fonts/LXGWWenKaiMono-Medium.ttf` | 正文字体加粗字重。 |
 | `assets/fonts/SourceCodePro-Regular.ttf` | 代码和档案编号常规字重。 |
@@ -40,7 +42,7 @@ assets/
 
 ## 命名规则
 
-- 使用小写英文、数字和连字符。
+- 通用资产使用小写英文、数字和连字符；自动生成的日记与照片路径也遵循这一规则。
 - 文件名包含用途，例如 `body-background-*`、`left-page-*`、`profile-*`。
 - 同类资产放在同一子目录，不把页面主视觉直接堆在 `assets/images/` 根目录。
 - 新增纹理前先确认是否能复用 `paper-grain.png`。
@@ -62,4 +64,4 @@ assets/
 rg -n "file-name.ext" .
 ```
 
-如果只出现在历史计划或说明文档中，但不再被 `index.html`、`css/*.css`、`js/*.js` 或数据文件引用，可以删除或在文档中说明为历史记录。
+如果文件只出现在说明文档中，且不再被 `index.html`、`css/`、`js/` 或 `data/` 引用，可以删除；删除后同步更新相关文档和测试。

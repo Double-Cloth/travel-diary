@@ -4,7 +4,7 @@ let passwordGateSequence = 0;
 export function readRecordPassword(config) {
     const password = typeof config === 'string' ? config : config?.password;
     if (typeof password !== 'string' || !/^\d{6}$/.test(password)) {
-        throw new Error('新增记录密码配置无效，密码必须是 6 位数字。');
+        throw new Error('访问密码配置无效，密码必须是 6 位数字。');
     }
     return password;
 }
@@ -12,10 +12,10 @@ export function readRecordPassword(config) {
 export function createPasswordGate(onVerified, options = {}) {
     const titleId = `passwordGateTitle${passwordGateSequence += 1}`;
     const copy = {
-        title: options.title || '输入访问密码',
-        description: options.description || '请输入 6 位数字密码，以继续当前操作。',
-        verifying: options.verifying || '验证通过，正在继续…',
-        actionError: options.actionError || '验证后的操作失败，请重试。'
+        title: options.title || '访问验证',
+        description: options.description || '输入 6 位数字密码后继续。',
+        verifying: options.verifying || '验证成功，正在继续…',
+        actionError: options.actionError || '操作未完成，请重试。'
     };
     const dialog = document.createElement('dialog');
     dialog.className = 'record-password entry-sheet';
@@ -149,14 +149,14 @@ export function createPasswordGate(onVerified, options = {}) {
                 cache: 'no-store',
                 signal: AbortSignal.timeout(4000)
             });
-            if (!response.ok) throw new Error('无法读取新增记录密码。');
+            if (!response.ok) throw new Error('无法读取访问密码。');
             expectedPassword = readRecordPassword(await response.json());
             status('');
             setControlsDisabled(false);
             dialog.querySelector('[data-password-key]')?.focus();
         } catch (error) {
             expectedPassword = '';
-            status(error?.message || '新增记录密码读取失败，请刷新后重试。');
+            status(error?.message || '访问密码读取失败，请刷新后重试。');
         } finally {
             loading = false;
         }

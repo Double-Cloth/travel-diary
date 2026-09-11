@@ -24,7 +24,7 @@ export function createDataTransfer(onImported) {
 
     async function localToken() {
         if (!isLocalWriterHost()) {
-            throw new Error('全部数据只能在本机 npm start 页面导入或导出。');
+            throw new Error('请在本机通过 npm start 打开页面后再操作。');
         }
         const response = await fetch(new URL('api/travel-records', window.location.href), { cache: 'no-store' });
         const result = await response.json();
@@ -33,7 +33,7 @@ export function createDataTransfer(onImported) {
     }
 
     function noteExportStarted() {
-        setStatus('已发起全部数据 ZIP 下载。');
+        setStatus('全部数据备份已开始下载。');
     }
 
     function exportAll(downloadName = 'travel-diary-data.zip') {
@@ -50,7 +50,7 @@ export function createDataTransfer(onImported) {
     function chooseImport() {
         if (busy) return;
         if (!isLocalWriterHost()) {
-            setStatus('全部数据导入只支持本机 npm start 页面；静态页面可以导出备份。');
+            setStatus('导入仅支持本机 npm start 页面；当前页面仍可导出备份。');
             return;
         }
         input.click();
@@ -60,9 +60,9 @@ export function createDataTransfer(onImported) {
         const file = input.files[0];
         input.value = '';
         if (!file || busy) return;
-        if (!window.confirm('导入将完整替换当前 data 目录。请确认已导出当前数据备份后再继续。')) return;
+        if (!window.confirm('导入后，当前全部旅行数据将被替换。请确认已备份现有数据。')) return;
         busy = true;
-        setStatus('正在校验并导入全部数据…');
+        setStatus('正在校验备份并导入数据…');
         try {
             const token = await localToken();
             const response = await fetch(new URL('api/travel-data', window.location.href), {
@@ -74,7 +74,7 @@ export function createDataTransfer(onImported) {
             const result = await response.json();
             if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
             await onImported();
-            setStatus(`已导入 ${result.files} 个文件，页面数据已刷新。`);
+            setStatus(`已导入 ${result.files} 个文件，并刷新页面数据。`);
         } catch (error) {
             setStatus(error.message);
         } finally {

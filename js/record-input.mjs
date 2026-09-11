@@ -24,7 +24,7 @@ function isSafeFileName(name) {
 
 export function readDraft(value) {
     if (!value || ![DRAFT_FORMAT, 'travel-diary-draft-v2', 'travel-diary-draft-v1'].includes(value.format) || !value.input || typeof value.input !== 'object' || Array.isArray(value.input)) {
-        throw new Error('请选择从新增旅行记录窗口下载的草稿 JSON 文件。');
+        throw new Error('请选择由本应用导出的草稿 JSON 文件。');
     }
     if (typeof value.requestId !== 'string' || !/^[a-f0-9]{32}$/.test(value.requestId)) throw new Error('草稿标识无效。');
     const input = {};

@@ -1,10 +1,10 @@
 # 文档索引
 
-本目录提供功能使用、数据规范、系统架构及维护说明。项目简介和启动方式见根目录 `README.md`。
+项目简介与启动方式见根目录 [README.md](../README.md)。其余文档按使用场景划分：
 
-## 文档列表
-
-- [ARCHITECTURE.md](ARCHITECTURE.md)：运行时架构、路由、模块职责和数据流。
-- [CONTENT_GUIDE.md](CONTENT_GUIDE.md)：记录编辑器、Markdown 高亮、ZIP 草稿、全部数据备份、字段规范和照片配置。
-- [ASSET_MANAGEMENT.md](ASSET_MANAGEMENT.md)：个人内容与通用资源的目录边界，以及图片、字体、纹理和国家目录的引用规则。
-- [MAINTENANCE.md](MAINTENANCE.md)：测试、引用检查、清理原则和发布前检查清单。
+| 需要做什么 | 对应文档 |
+| --- | --- |
+| 新增记录、维护字段、日记与照片，或导入导出数据 | [内容维护指南](CONTENT_GUIDE.md) |
+| 理解运行架构、路由、数据流与模块边界 | [架构说明](ARCHITECTURE.md) |
+| 新增、替换或清理图片、字体、纹理与目录资源 | [资产管理规范](ASSET_MANAGEMENT.md) |
+| 运行测试、排查故障、更新目录或发布站点 | [维护与发布指南](MAINTENANCE.md) |

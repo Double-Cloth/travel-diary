@@ -2,7 +2,7 @@
 
 ## 运行架构
 
-Travel Diary 是无构建步骤的静态前端项目。浏览器加载 `index.html`，再加载样式入口 `css/journal.css` 和唯一应用入口 `js/app.js`。`journal.css` 只维护 `@import` 顺序，实际样式按职责拆分到同级 CSS 分片。
+Travel Diary 采用“静态前端 + 本机数据服务”架构。浏览与筛选不需要构建步骤或后端；通过 `npm start` 运行时，Node.js 服务额外提供受限的本机写入和数据备份接口。浏览器只加载一个样式入口 `css/journal.css` 和一个应用入口 `js/app.js`。
 
 ```text
 index.html
@@ -13,15 +13,18 @@ index.html
   │    ├─ css/04-ledger.css
   │    ├─ css/05-archive-place.css
   │    ├─ css/06-entry-sheet.css
-  │    └─ css/07-responsive.css
+  │    ├─ css/07-responsive.css
+  │    └─ css/08-custom-select.css
   └─ js/app.js
        ├─ js/data.js
        │    └─ js/utils.js
        ├─ js/record-editor.js
        │    ├─ js/record-input.mjs
        │    ├─ js/record-suggestions.mjs
+       │    ├─ js/markdown-editor.js
+       │    ├─ js/photo-uploads.mjs
        │    ├─ js/draft-archive.mjs
-       │    └─ js/data.js
+       │    └─ js/custom-select.js
        ├─ js/record-password.js
        ├─ js/data-transfer.js
        ├─ js/zip-archive.mjs
@@ -35,7 +38,7 @@ index.html
 
 ## 个人内容与通用资源
 
-- `data/`：个人旅行元数据、日记正文、旅行照片、`profile/` 中的头像及 `password.json` 新增记录密码。不同使用者复用项目时，在此替换自己的内容。
+- `data/`：旅行索引、日记正文、照片、头像及 `password.json` 访问密码。不同使用者复用项目时，在此替换自己的内容。
 - `assets/`：通用国家目录（`catalogs/countries.json`）、字体、页面背景和纹理。
 - `index.html`、`js/`、`css/`：共享的页面结构与功能实现；`scripts/`、`tests/`、`doc/` 分别负责维护工具、验证和使用说明。
 
@@ -88,6 +91,7 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 - `css/05-archive-place.css`：个人档案、地点详情、行李牌和地点关闭按钮。
 - `css/06-entry-sheet.css`：日记弹层、Markdown 内容、照片袖套和翻页动画。
 - `css/07-responsive.css`：断点适配和 `prefers-reduced-motion` 降级。
+- `css/08-custom-select.css`：原生选择框增强后的触发器、菜单、选项及窄屏交互样式。
 - `js/app.js`：页面状态、路由、渲染、事件绑定和筛选逻辑。
 - `js/data.js`：数据读取、Markdown 解析和基础安全过滤。
 - `js/record-editor.js`：原生 `dialog` 新增表单、能力检测、全部元数据字段、正文视图、草稿导入导出与提交状态。
@@ -111,9 +115,9 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 
 ## 密码门禁与新增记录的数据流
 
-头部、旅行路径页的新增入口及个人主页的全部数据导出共用密码验证组件。`record-password.js` 为每项操作创建对应的 `dialog`，每次从 `data/password.json` 读取 6 位数字配置，接受自定义数字键盘或实体键盘输入；匹配后才调用记录编辑器或发起 HTTP ZIP 下载。密码配置属于随站点发布的前端访问门槛，不代替服务端认证。
+头部、旅行路径页的新增入口及个人主页的全部数据导出共用密码验证组件。`record-password.js` 为每项操作创建对应的 `dialog`，每次从 `data/password.json` 读取 6 位数字配置，接受屏幕数字键盘或实体键盘输入；匹配后才打开记录编辑器或发起 HTTP ZIP 下载。密码配置会随站点发布，只是前端访问门槛，不代替服务端认证。
 
-验证通过后打开记录编辑器 `dialog`。表单复用本地国家目录和当前内存中的旅行记录：`record-suggestions.mjs` 先按已填国家与行政区过滤 `datalist` 候选，再以历史精确匹配或明确名称后缀补全空白地点字段。补全状态与用户手工编辑状态分开记录，依赖项变化时可以更新旧的自动值，但不会覆盖已手工修改的内容；`trip_id` 只展示建议，由用户确认分组语义。
+验证通过后打开记录编辑器 `dialog`。表单复用国家目录和当前内存中的旅行记录：`record-suggestions.mjs` 先按国家与行政区收窄自定义候选菜单，再通过历史精确匹配或明确名称后缀补全空白地点字段。自动值与用户手工值分开记录，依赖项变化时可以更新旧的自动值，但不会覆盖手工修改；`trip_id` 只提供建议，由用户确认分组语义。
 
 `GET /api/travel-records` 返回服务标识和进程内写入令牌，前端确认后才启用保存。`POST` 使用 JSON 与 `X-Travel-Token` 提交 v3 草稿，服务端校验字段、国家代码、正文路径及照片引用。`record-input.mjs` 兼容读取 v1 和 v2 草稿，将新增可选字段补齐为空值。
 
