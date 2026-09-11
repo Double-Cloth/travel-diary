@@ -56,8 +56,9 @@ function renderCustomSelect(wrapper) {
         option.setAttribute('role', 'option');
         option.setAttribute('aria-selected', String(nativeOption.selected));
         option.textContent = nativeOption.textContent;
-        option.addEventListener('pointerdown', event => {
+        option.addEventListener('click', event => {
             event.preventDefault();
+            event.stopPropagation();
             selectCustomOption(wrapper, option);
         });
         menu.append(option);

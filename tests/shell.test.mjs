@@ -4,8 +4,10 @@ import { readFile } from 'node:fs/promises';
 
 const indexHtml = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const appJs = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
+const customSelectJs = await readFile(new URL('../js/custom-select.js', import.meta.url), 'utf8');
 const dataTransferJs = await readFile(new URL('../js/data-transfer.js', import.meta.url), 'utf8');
 const photoViewerTransformJs = await readFile(new URL('../js/photo-viewer-transform.mjs', import.meta.url), 'utf8');
+const recordEditorJs = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
 const serverJs = await readFile(new URL('../js/server.js', import.meta.url), 'utf8');
 const journalEntryCss = await readFile(new URL('../css/journal.css', import.meta.url), 'utf8');
 const cssPartFiles = [
@@ -15,7 +17,8 @@ const cssPartFiles = [
     '04-ledger.css',
     '05-archive-place.css',
     '06-entry-sheet.css',
-    '07-responsive.css'
+    '07-responsive.css',
+    '08-custom-select.css'
 ];
 const cssPartContents = [];
 
@@ -147,6 +150,15 @@ test('本地服务器以 JavaScript MIME 类型提供 mjs 模块', () => {
 
 test('切换纸页内容时重置左右页滚动位置', () => {
     assert.match(appJs, /function setPages[\s\S]+refs\.leftPage\.scrollTop = 0;[\s\S]+refs\.rightPage\.scrollTop = 0;/);
+});
+
+test('自定义下拉框在点击而非按下时选择，保留移动端滑动能力', () => {
+    assert.match(customSelectJs, /option\.addEventListener\('click', event => \{\s*event\.preventDefault\(\);\s*event\.stopPropagation\(\);\s*selectCustomOption\(wrapper, option\);/);
+    assert.doesNotMatch(customSelectJs, /option\.addEventListener\('pointerdown'/);
+    assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?closest\('\[data-autocomplete-value\]'\)[\s\S]*?selectAutocompleteOption/);
+    assert.doesNotMatch(recordEditorJs, /dialog\.addEventListener\('pointerdown', event => \{\s*const option = event\.target\.closest\('\[data-autocomplete-value\]'\)/);
+    assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
+    assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
 });
 
 test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => {

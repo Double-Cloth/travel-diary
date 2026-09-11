@@ -276,8 +276,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (!option) return;
         input.value = option.dataset.autocompleteValue || option.textContent;
         input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.focus({ preventScroll: true });
         closeAutocomplete(input);
-        input.focus();
     }
 
     function moveAutocompleteSelection(input, direction) {
@@ -461,12 +461,6 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         highlight.scrollLeft = event.target.scrollLeft;
     }, true);
     dialog.addEventListener('pointerdown', event => {
-        const option = event.target.closest('[data-autocomplete-value]');
-        if (option) {
-            event.preventDefault();
-            selectAutocompleteOption(option.closest('.record-editor-autocomplete').querySelector('[data-editor-autocomplete]'), option);
-            return;
-        }
         if (event.target.closest('[data-format]')) event.preventDefault();
     });
     dialog.addEventListener('paste', event => {
@@ -493,6 +487,15 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     dialog.addEventListener('click', event => {
         if (event.target.closest('[data-editor-close]')) close();
         if (busy || readingPhotos) return;
+        const autocompleteOption = event.target.closest('[data-autocomplete-value]');
+        if (autocompleteOption) {
+            event.preventDefault();
+            selectAutocompleteOption(
+                autocompleteOption.closest('.record-editor-autocomplete').querySelector('[data-editor-autocomplete]'),
+                autocompleteOption
+            );
+            return;
+        }
         if (event.target.closest('[data-editor-rich] a')) event.preventDefault();
         const format = event.target.closest('[data-format]');
         if (format && !saved) {

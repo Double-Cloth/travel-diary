@@ -62,7 +62,8 @@
     white-space: nowrap;
 }
 
-.custom-select-chevron {
+.custom-select-chevron,
+.record-editor-autocomplete-chevron {
     position: absolute;
     top: 50%;
     right: 14px;
@@ -75,20 +76,24 @@
     transition: transform 0.16s ease, border-color 0.16s ease;
 }
 
-.custom-select.is-open .custom-select-chevron {
+.custom-select.is-open .custom-select-chevron,
+.record-editor-autocomplete.is-open .record-editor-autocomplete-chevron {
     border-color: var(--stamp);
     transform: translateY(-20%) rotate(225deg);
 }
 
-.custom-select-menu {
+.custom-select-menu,
+.record-editor-autocomplete-menu {
     position: absolute;
     inset: calc(100% + 8px) 0 auto;
     z-index: 40;
     display: grid;
-    min-width: min(260px, calc(100vw - 48px));
+    width: 100%;
+    min-width: min(320px, calc(100vw - 48px));
     max-width: calc(100vw - 48px);
     max-height: 272px;
     overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 8px;
     border: 1px solid rgba(91, 60, 30, 0.2);
     border-radius: 10px 16px 16px 10px;
@@ -102,14 +107,21 @@
         0 4px 7px rgba(60, 36, 16, 0.1);
     scrollbar-color: rgba(117, 73, 40, 0.58) transparent;
     scrollbar-width: thin;
+    touch-action: pan-y;
+    -webkit-overflow-scrolling: touch;
 }
 
-.custom-select-menu[hidden] { display: none; }
-.custom-select-menu::-webkit-scrollbar { width: 8px; }
-.custom-select-menu::-webkit-scrollbar-track { background: transparent; }
-.custom-select-menu::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: rgba(117, 73, 40, 0.56); background-clip: padding-box; }
+.custom-select-menu[hidden],
+.record-editor-autocomplete-menu[hidden] { display: none; }
+.custom-select-menu::-webkit-scrollbar,
+.record-editor-autocomplete-menu::-webkit-scrollbar { width: 8px; }
+.custom-select-menu::-webkit-scrollbar-track,
+.record-editor-autocomplete-menu::-webkit-scrollbar-track { background: transparent; }
+.custom-select-menu::-webkit-scrollbar-thumb,
+.record-editor-autocomplete-menu::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: rgba(117, 73, 40, 0.56); background-clip: padding-box; }
 
-.custom-select-menu > [role="option"] {
+.custom-select-menu > [role="option"],
+.record-editor-autocomplete-menu > [role="option"] {
     display: flex;
     align-items: center;
     min-height: 38px;
@@ -118,6 +130,9 @@
     color: var(--ink);
     font: 13px/1.35 var(--font-code), var(--font-serif);
     cursor: pointer;
+    touch-action: pan-y;
+    user-select: none;
+    -webkit-user-select: none;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -126,12 +141,17 @@
 
 .custom-select-menu > [role="option"]:hover,
 .custom-select-menu > [role="option"].is-active,
-.custom-select-menu > [role="option"][aria-selected="true"] {
+.custom-select-menu > [role="option"][aria-selected="true"],
+.record-editor-autocomplete-menu > [role="option"]:hover,
+.record-editor-autocomplete-menu > [role="option"].is-active {
     color: var(--stamp);
     background: rgba(143, 53, 39, 0.1);
 }
 
-.custom-select-menu > [role="option"].is-active { transform: translateX(2px); }
+.custom-select-menu > [role="option"].is-active,
+.record-editor-autocomplete-menu > [role="option"].is-active { transform: translateX(2px); }
+
+.record-editor-autocomplete-menu > [role="option"][hidden] { display: none; }
 
 .record-editor .custom-select {
     margin-top: 7px;
@@ -141,8 +161,11 @@
 
 .record-editor .custom-select-trigger {
     min-height: 42px;
+    padding: 10px 40px 10px 10px;
     border-color: var(--hairline);
+    border-radius: 5px;
     background: rgba(255, 251, 235, 0.5);
+    box-shadow: none;
 }
 
 .record-editor .custom-select-trigger:hover,
@@ -150,6 +173,7 @@
 .record-editor .custom-select.is-open .custom-select-trigger {
     border-color: rgba(143, 91, 42, 0.52);
     background: rgba(255, 251, 235, 0.78);
+    box-shadow: 0 0 0 3px rgba(183, 138, 69, 0.15);
 }
 
 .index-filter-field .custom-select-trigger {
@@ -159,13 +183,15 @@
 }
 
 @media (max-width: 540px) {
-    .custom-select-menu {
+    .custom-select-menu,
+    .record-editor-autocomplete-menu {
         width: calc(100vw - 80px);
         min-width: 0;
         max-width: none;
     }
 
     .record-editor-grid > label:nth-child(even) .custom-select-menu,
+    .record-editor-grid > label:nth-child(even) .record-editor-autocomplete-menu,
     .index-filter-field:nth-child(even) .custom-select-menu {
         right: 0;
         left: auto;
