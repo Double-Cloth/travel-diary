@@ -4,6 +4,7 @@ import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
+import { enhanceCustomSelects } from './custom-select.js';
 
 export function createRecordEditor(onSaved, getRecords = () => []) {
     const dialog = document.createElement('dialog');
@@ -74,21 +75,21 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <div class="record-editor-fields">
                                 <div class="record-editor-grid">
                                     <label>旅行日期 <span>必填</span><input name="date" type="date" value="${date}" required></label>
-                                    <label>旅行标识 <span>选填</span><input name="trip_id" maxlength="200" list="recordTripOptions" placeholder="同次旅行共用" aria-describedby="recordTripHelp"></label>
+                                    <label>旅行标识 <span>选填</span><span class="record-editor-autocomplete"><input name="trip_id" maxlength="200" data-editor-autocomplete="trip_id" placeholder="同次旅行共用" aria-describedby="recordTripHelp" aria-autocomplete="list" aria-controls="recordTripOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordTripOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                 </div>
                                 <p class="record-editor-note" id="recordTripHelp">同次旅行填写同一标识；保存时统一转换为小写拼音。</p>
                                 <div class="record-editor-grid">
-                                    <label>国家 / 地区 <span>必填</span><select name="country_code" required>
-                                        ${countries.map(country => `<option value="${escapeHtml(country.code)}" ${country.code === 'CN' ? 'selected' : ''}>${escapeHtml(country.name_zh)} · ${escapeHtml(country.code)}</option>`).join('')}
-                                    </select></label>
-                                    <label>国家显示名称 <span>选填</span><input name="country" maxlength="200" list="recordCountryOptions" placeholder="默认使用目录名称"></label>
-                                    <label><span class="record-editor-field-name" data-editor-area>一级行政区</span> <span>选填</span><input name="admin_area" maxlength="200" list="recordAdminAreaOptions" placeholder="例如：江苏省"></label>
-                                    <label>行政区类型 <span>选填</span><input name="admin_area_type" maxlength="200" list="recordAdminAreaTypeOptions" placeholder="例如：省、州"></label>
-                                    <label>城市 / 目的地 <span>必填</span><input name="locality" maxlength="200" list="recordLocalityOptions" required placeholder="例如：苏州市"></label>
-                                    <label>目的地类型 <span>选填</span><input name="locality_type" maxlength="200" list="recordLocalityTypeOptions" placeholder="例如：城市、岛屿"></label>
+                                    <label>国家 / 地区 <span>必填</span><span class="custom-select"><select name="country_code" data-custom-select aria-label="国家 / 地区" required>
+                                        ${countries.map(country => `<option value="${escapeHtml(country.code)}" ${country.code === 'CN' ? 'selected' : ''}>${escapeHtml(country.code)} · ${escapeHtml(country.name_zh)}</option>`).join('')}
+                                    </select></span></label>
+                                    <label>国家显示名称 <span>选填</span><span class="record-editor-autocomplete"><input name="country" maxlength="200" data-editor-autocomplete="country" placeholder="默认使用目录名称" aria-autocomplete="list" aria-controls="recordCountryOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordCountryOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label><span class="record-editor-field-name" data-editor-area>一级行政区</span> <span>选填</span><span class="record-editor-autocomplete"><input name="admin_area" maxlength="200" data-editor-autocomplete="admin_area" placeholder="例如：江苏省" aria-autocomplete="list" aria-controls="recordAdminAreaOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordAdminAreaOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label>行政区类型 <span>选填</span><span class="record-editor-autocomplete"><input name="admin_area_type" maxlength="200" data-editor-autocomplete="admin_area_type" placeholder="例如：省、州" aria-autocomplete="list" aria-controls="recordAdminAreaTypeOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordAdminAreaTypeOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label>城市 / 目的地 <span>必填</span><span class="record-editor-autocomplete"><input name="locality" maxlength="200" data-editor-autocomplete="locality" required placeholder="例如：苏州市" aria-autocomplete="list" aria-controls="recordLocalityOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordLocalityOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label>目的地类型 <span>选填</span><span class="record-editor-autocomplete"><input name="locality_type" maxlength="200" data-editor-autocomplete="locality_type" placeholder="例如：城市、岛屿" aria-autocomplete="list" aria-controls="recordLocalityTypeOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordLocalityTypeOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                 </div>
                                 <p class="record-editor-note record-editor-autofill" data-editor-autofill>填写国家、行政区或目的地后，将自动补全可可靠推断的空白项；也可从历史候选中选择。</p>
-                                <div data-editor-option-lists></div>
+                                <div data-editor-option-lists hidden></div>
                             </div>
                         </section>
                         <section class="record-editor-section" aria-labelledby="recordBodyTitle">
@@ -163,6 +164,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         bodyView = 'source';
         userEditedAutofillFields.clear();
         autoFilledValues.clear();
+        enhanceCustomSelects(dialog);
         updateCountry(true);
         updatePathHint();
         updateAutofill();
@@ -219,16 +221,79 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function renderOptionLists(options) {
-        const ids = {
-            country: 'recordCountryOptions',
-            admin_area: 'recordAdminAreaOptions',
-            admin_area_type: 'recordAdminAreaTypeOptions',
-            locality: 'recordLocalityOptions',
-            locality_type: 'recordLocalityTypeOptions',
-            trip_id: 'recordTripOptions'
-        };
-        dialog.querySelector('[data-editor-option-lists]').innerHTML = Object.entries(ids).map(([name, id]) => `
-            <datalist id="${id}">${(options[name] || []).map(value => `<option value="${escapeHtml(value)}"></option>`).join('')}</datalist>`).join('');
+        dialog.querySelectorAll('[data-editor-autocomplete]').forEach(input => {
+            const menu = input.closest('.record-editor-autocomplete')?.querySelector('[data-editor-autocomplete-menu]');
+            if (!menu) return;
+            menu.innerHTML = (options[input.dataset.editorAutocomplete] || []).map((value, index) => `
+                <span id="${menu.id}-option-${index}" role="option" data-autocomplete-value="${escapeHtml(value)}">${escapeHtml(value)}</span>`).join('');
+            menu.hidden = true;
+            input.setAttribute('aria-expanded', 'false');
+            input.removeAttribute('aria-activedescendant');
+        });
+    }
+
+    function autocompleteOptions(input) {
+        const menu = input.closest('.record-editor-autocomplete')?.querySelector('[data-editor-autocomplete-menu]');
+        return menu ? [...menu.querySelectorAll('[role="option"]')].filter(option => !option.hidden) : [];
+    }
+
+    function closeAutocomplete(input) {
+        const wrapper = input?.closest('.record-editor-autocomplete');
+        const menu = wrapper?.querySelector('[data-editor-autocomplete-menu]');
+        if (!wrapper || !menu) return;
+        wrapper.classList.remove('is-open');
+        menu.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+        input.removeAttribute('aria-activedescendant');
+        menu.querySelectorAll('.is-active').forEach(option => option.classList.remove('is-active'));
+    }
+
+    function closeOtherAutocompletes(current) {
+        dialog.querySelectorAll('[data-editor-autocomplete]').forEach(input => {
+            if (input !== current) closeAutocomplete(input);
+        });
+    }
+
+    function showAutocomplete(input) {
+        const menu = input.closest('.record-editor-autocomplete')?.querySelector('[data-editor-autocomplete-menu]');
+        if (!menu) return;
+        const query = input.value.trim().toLocaleLowerCase();
+        const options = [...menu.querySelectorAll('[role="option"]')];
+        options.forEach(option => {
+            option.hidden = Boolean(query) && !option.textContent.toLocaleLowerCase().includes(query);
+            option.classList.remove('is-active');
+        });
+        const visible = options.filter(option => !option.hidden);
+        if (!visible.length) {
+            closeAutocomplete(input);
+            return;
+        }
+        closeOtherAutocompletes(input);
+        menu.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
+        input.removeAttribute('aria-activedescendant');
+        input.closest('.record-editor-autocomplete').classList.add('is-open');
+    }
+
+    function selectAutocompleteOption(input, option) {
+        if (!option) return;
+        input.value = option.dataset.autocompleteValue || option.textContent;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        closeAutocomplete(input);
+        input.focus();
+    }
+
+    function moveAutocompleteSelection(input, direction) {
+        showAutocomplete(input);
+        const options = autocompleteOptions(input);
+        if (!options.length) return;
+        const current = options.findIndex(option => option.classList.contains('is-active'));
+        const next = (current + direction + options.length) % options.length;
+        options.forEach(option => option.classList.remove('is-active'));
+        const option = options[next];
+        option.classList.add('is-active');
+        input.setAttribute('aria-activedescendant', option.id);
+        option.scrollIntoView({ block: 'nearest' });
     }
 
     function fieldLabel(name) {
@@ -352,6 +417,34 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         }
         event.stopPropagation();
     });
+    dialog.addEventListener('focusin', event => {
+        if (event.target.matches('[data-editor-autocomplete]')) showAutocomplete(event.target);
+    });
+    dialog.addEventListener('focusout', event => {
+        if (!event.target.matches('[data-editor-autocomplete]')) return;
+        window.setTimeout(() => {
+            if (!event.target.closest('.record-editor-autocomplete')?.contains(document.activeElement)) closeAutocomplete(event.target);
+        }, 0);
+    });
+    dialog.addEventListener('keydown', event => {
+        const input = event.target.closest('[data-editor-autocomplete]');
+        if (!input) return;
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            moveAutocompleteSelection(input, 1);
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            moveAutocompleteSelection(input, -1);
+        } else if (event.key === 'Enter' && input.getAttribute('aria-expanded') === 'true') {
+            const option = autocompleteOptions(input).find(item => item.classList.contains('is-active')) || autocompleteOptions(input)[0];
+            if (option) {
+                event.preventDefault();
+                selectAutocompleteOption(input, option);
+            }
+        } else if (event.key === 'Escape') {
+            closeAutocomplete(input);
+        }
+    });
     dialog.addEventListener('input', event => {
         if (event.target.matches('[data-editor-source]')) syncMarkdown(event.target.value);
         if (event.target.closest('[data-editor-rich]')) syncPreview();
@@ -371,6 +464,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         highlight.scrollLeft = event.target.scrollLeft;
     }, true);
     dialog.addEventListener('pointerdown', event => {
+        const option = event.target.closest('[data-autocomplete-value]');
+        if (option) {
+            event.preventDefault();
+            selectAutocompleteOption(option.closest('.record-editor-autocomplete').querySelector('[data-editor-autocomplete]'), option);
+            return;
+        }
         if (event.target.closest('[data-format]')) event.preventDefault();
     });
     dialog.addEventListener('paste', event => {

@@ -3,6 +3,7 @@ import { createRecordEditor } from './record-editor.js';
 import { createDataTransfer } from './data-transfer.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
+import { enhanceCustomSelects } from './custom-select.js';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
@@ -517,6 +518,7 @@ function buildLedgerFilterOptions(records) {
         const country = countryMap.get(record.countryKey) || {
             value: record.countryKey,
             label: record.country,
+            countryCode: record.countryCode,
             count: 0,
             latestDate: ''
         };
@@ -858,7 +860,10 @@ function renderLedgerFilterWorkbench(params) {
     ];
     const countryOptions = [
         { value: 'all', label: '全部国家 / 地区' },
-        ...travelModel.filterOptions.countries.map(item => ({ value: item.value, label: `${item.label} · ${item.count}` }))
+        ...travelModel.filterOptions.countries.map(item => ({
+            value: item.value,
+            label: `${item.countryCode || item.value} · ${item.label} · ${item.count}`
+        }))
     ];
     const scopedAdminAreaOptions = [
         { value: 'all', label: `全部${adminAreaLabel}` },
@@ -936,9 +941,9 @@ function renderLedgerResetAction(params) {
 function renderLedgerSelect(label, key, options, activeValue, visuallyHiddenLabel = false) {
     const id = `ledgerFilter${key[0].toUpperCase()}${key.slice(1)}`;
     return `
-        <label class="index-filter-field" for="${id}">
+        <label class="index-filter-field" for="${id}Button">
             <span class="field-label${visuallyHiddenLabel ? ' sr-only' : ''}">${escapeHtml(label)}</span>
-            <select id="${id}" data-ledger-filter="${escapeHtml(key)}">
+            <select id="${id}" aria-label="${escapeHtml(label)}" data-custom-select data-ledger-filter="${escapeHtml(key)}">
                 ${options.map(option => `<option value="${escapeHtml(option.value)}"${activeValue === option.value ? ' selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}
             </select>
         </label>
@@ -1015,7 +1020,6 @@ function renderArchive(params = {}) {
             </section>
             <section class="archive-overview-block archive-data-transfer" aria-labelledby="archiveDataTitle">
                 <h3 id="archiveDataTitle">数据备份</h3>
-                <p>导出使用可由下载工具直接访问的 ZIP 文件；完整导入仅支持本机页面。</p>
                 <div>
                     <a class="paper-button" href="${escapeHtml(dataTransfer.getExportHref())}" download="travel-diary-data-${getTodayDate()}.zip" data-action="export-all-data">导出全部数据</a>
                     <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
@@ -2403,6 +2407,8 @@ function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
     refs.leftPage.innerHTML = leftHtml;
     refs.rightPage.className = ['paper-page', 'paper-page-right', rightPageMode].filter(Boolean).join(' ');
     refs.rightPage.innerHTML = rightHtml;
+    enhanceCustomSelects(refs.leftPage);
+    enhanceCustomSelects(refs.rightPage);
     isMobileContextPanelOpen = keepContextPanelOpen;
     refs.leftPage.scrollTop = 0;
     refs.rightPage.scrollTop = 0;

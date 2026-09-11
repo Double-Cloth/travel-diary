@@ -1,0 +1,173 @@
+.custom-select {
+    position: relative;
+    display: block;
+    min-width: 0;
+}
+
+.custom-select-native {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    min-width: 1px !important;
+    min-height: 1px !important;
+    margin: -1px !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    clip: rect(0 0 0 0) !important;
+}
+
+.custom-select-trigger {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+    width: 100%;
+    min-height: 42px;
+    padding: 10px 38px 10px 12px;
+    border: 1px solid rgba(78, 51, 27, 0.24);
+    border-radius: 7px;
+    color: var(--ink);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.48), rgba(232, 208, 164, 0.22)),
+        rgba(255, 246, 222, 0.64);
+    box-shadow: inset 0 1px 3px rgba(58, 34, 15, 0.08);
+    font: inherit;
+    line-height: 1.3;
+    text-align: left;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.16s ease, box-shadow 0.16s ease, background 0.16s ease;
+}
+
+.custom-select-trigger:hover,
+.custom-select-trigger:focus-visible,
+.custom-select.is-open .custom-select-trigger {
+    border-color: rgba(143, 91, 42, 0.48);
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.56), rgba(232, 208, 164, 0.26)),
+        rgba(255, 248, 229, 0.76);
+    box-shadow: inset 0 1px 3px rgba(58, 34, 15, 0.08), 0 0 0 3px rgba(183, 138, 69, 0.16);
+}
+
+.custom-select-trigger > [data-custom-select-label] {
+    min-width: 0;
+    overflow: hidden;
+    color: inherit;
+    font: inherit;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.custom-select-chevron {
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    width: 8px;
+    height: 8px;
+    border-right: 2px solid rgba(88, 56, 28, 0.78);
+    border-bottom: 2px solid rgba(88, 56, 28, 0.78);
+    pointer-events: none;
+    transform: translateY(-65%) rotate(45deg);
+    transition: transform 0.16s ease, border-color 0.16s ease;
+}
+
+.custom-select.is-open .custom-select-chevron {
+    border-color: var(--stamp);
+    transform: translateY(-20%) rotate(225deg);
+}
+
+.custom-select-menu {
+    position: absolute;
+    inset: calc(100% + 8px) 0 auto;
+    z-index: 40;
+    display: grid;
+    min-width: min(260px, calc(100vw - 48px));
+    max-width: calc(100vw - 48px);
+    max-height: 272px;
+    overflow-y: auto;
+    padding: 8px;
+    border: 1px solid rgba(91, 60, 30, 0.2);
+    border-radius: 10px 16px 16px 10px;
+    color: var(--ink);
+    background:
+        linear-gradient(180deg, rgba(255, 253, 242, 0.98), rgba(249, 239, 210, 0.98)),
+        url("../assets/textures/paper-grain.png");
+    box-shadow:
+        0 2px 0 rgba(255, 255, 255, 0.72) inset,
+        0 14px 24px rgba(60, 36, 16, 0.2),
+        0 4px 7px rgba(60, 36, 16, 0.1);
+    scrollbar-color: rgba(117, 73, 40, 0.58) transparent;
+    scrollbar-width: thin;
+}
+
+.custom-select-menu[hidden] { display: none; }
+.custom-select-menu::-webkit-scrollbar { width: 8px; }
+.custom-select-menu::-webkit-scrollbar-track { background: transparent; }
+.custom-select-menu::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: rgba(117, 73, 40, 0.56); background-clip: padding-box; }
+
+.custom-select-menu > [role="option"] {
+    display: flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 8px 12px;
+    border-radius: 7px;
+    color: var(--ink);
+    font: 13px/1.35 var(--font-code), var(--font-serif);
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: color 0.12s ease, background 0.12s ease, transform 0.12s ease;
+}
+
+.custom-select-menu > [role="option"]:hover,
+.custom-select-menu > [role="option"].is-active,
+.custom-select-menu > [role="option"][aria-selected="true"] {
+    color: var(--stamp);
+    background: rgba(143, 53, 39, 0.1);
+}
+
+.custom-select-menu > [role="option"].is-active { transform: translateX(2px); }
+
+.record-editor .custom-select {
+    margin-top: 7px;
+    color: inherit;
+    font-size: inherit;
+}
+
+.record-editor .custom-select-trigger {
+    min-height: 42px;
+    border-color: var(--hairline);
+    background: rgba(255, 251, 235, 0.5);
+}
+
+.record-editor .custom-select-trigger:hover,
+.record-editor .custom-select-trigger:focus-visible,
+.record-editor .custom-select.is-open .custom-select-trigger {
+    border-color: rgba(143, 91, 42, 0.52);
+    background: rgba(255, 251, 235, 0.78);
+}
+
+.index-filter-field .custom-select-trigger {
+    min-height: 38px;
+    padding: 8px 34px 8px 10px;
+    font: 12px/1.3 var(--font-code);
+}
+
+@media (max-width: 540px) {
+    .custom-select-menu {
+        width: calc(100vw - 80px);
+        min-width: 0;
+        max-width: none;
+    }
+
+    .record-editor-grid > label:nth-child(even) .custom-select-menu,
+    .index-filter-field:nth-child(even) .custom-select-menu {
+        right: 0;
+        left: auto;
+    }
+}
