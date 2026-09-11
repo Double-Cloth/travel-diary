@@ -133,8 +133,13 @@ function enhanceCustomSelect(select) {
     menu.addEventListener('pointerdown', event => {
         if (!event.target.closest('[data-custom-select-option]')) return;
         suppressOptionClick = false;
+        if (event.pointerType === 'mouse') {
+            event.preventDefault();
+            optionPointer = null;
+            return;
+        }
         optionPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
-    }, { passive: true });
+    });
     menu.addEventListener('pointermove', event => {
         if (!optionPointer || event.pointerId !== optionPointer.id) return;
         if (pointerMoved(optionPointer, event)) suppressOptionClick = true;

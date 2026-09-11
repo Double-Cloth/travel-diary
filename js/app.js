@@ -1,10 +1,10 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260911-copy-refresh';
+import { createRecordEditor } from './record-editor.js?v=20260911-select-pointer-v3';
 import { createPasswordGate } from './record-password.js?v=20260911-copy-refresh';
 import { createDataTransfer } from './data-transfer.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
-import { enhanceCustomSelects } from './custom-select.js?v=20260911-select-touch-v2';
+import { enhanceCustomSelects } from './custom-select.js?v=20260911-select-pointer-v3';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {

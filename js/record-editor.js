@@ -4,7 +4,7 @@ import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
-import { enhanceCustomSelects } from './custom-select.js?v=20260911-select-touch-v2';
+import { enhanceCustomSelects } from './custom-select.js?v=20260911-select-pointer-v3';
 
 const POINTER_MOVE_TOLERANCE = 8;
 
@@ -472,6 +472,11 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     dialog.addEventListener('pointerdown', event => {
         if (event.target.closest('[data-autocomplete-value]')) {
             suppressAutocompleteClick = false;
+            if (event.pointerType === 'mouse') {
+                event.preventDefault();
+                autocompletePointer = null;
+                return;
+            }
             autocompletePointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
             return;
         }
