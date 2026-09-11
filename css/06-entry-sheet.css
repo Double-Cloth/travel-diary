@@ -593,6 +593,9 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
     .record-editor-exports { gap: 6px; }
     .record-editor-exports button { flex: 1; padding: 8px 4px; font-size: 12px; }
     .record-editor-files summary > span:last-child { display: block; margin: 6px 0 0 28px; }
+    .record-editor-files-grid { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+    .record-editor-files input:not([type="file"]),
+    .record-editor-files textarea { font-size: 16px; }
     .record-editor-grid { gap: 14px 10px; }
 }
 

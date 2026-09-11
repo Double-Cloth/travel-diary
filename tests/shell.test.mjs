@@ -371,6 +371,12 @@ test('移动端照片查看器工具栏可换行且关闭按钮不继承横向�
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-close\s*{[\s\S]*top: 8px;[\s\S]*right: 8px;[\s\S]*height: 36px;[\s\S]*padding: 0;/);
 });
 
+test('文件设置在常见手机宽度下改为单列并保持可读字号', () => {
+    assert.match(recordEditorJs, /class="record-editor-grid record-editor-files-grid"/);
+    assert.match(journalCss, /@media \(max-width: 540px\)[\s\S]*\.record-editor-files-grid\s*{[\s\S]*grid-template-columns: minmax\(0, 1fr\);[\s\S]*gap: 16px;/);
+    assert.match(journalCss, /@media \(max-width: 540px\)[\s\S]*\.record-editor-files input:not\(\[type="file"\]\),[\s\S]*\.record-editor-files textarea\s*{[\s\S]*font-size: 16px;/);
+});
+
 test('照片初始居中适配舞台且平移不会完全移出屏幕', () => {
     assert.match(appJs, /function fitPhotoToStage/);
     assert.match(appJs, /function getInitialPhotoScale/);

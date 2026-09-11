@@ -144,7 +144,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <summary><span>文件设置</span><span>正文路径与已有照片引用</span></summary>
                         <div class="record-editor-fields">
                             <label>正文文件路径 <span>选填 · 留空自动生成</span><input name="desc_md" maxlength="200"></label>
-                            <div class="record-editor-grid">
+                            <div class="record-editor-grid record-editor-files-grid">
                                 <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="recordPhotoHelp"></label>
                                 <label>照片文件列表 <span>选填 · 每行一个文件名</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="recordPhotoHelp"></textarea></label>
                             </div>
