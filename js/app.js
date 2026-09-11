@@ -4,7 +4,7 @@ import { createPasswordGate } from './record-password.js?v=20260911-copy-refresh
 import { createDataTransfer } from './data-transfer.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
-import { enhanceCustomSelects } from './custom-select.js?v=20260911-select-pointer-v3';
+import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
@@ -958,7 +958,7 @@ function renderLedgerResetAction(params) {
 function renderLedgerSelect(label, key, options, activeValue, visuallyHiddenLabel = false) {
     const id = `ledgerFilter${key[0].toUpperCase()}${key.slice(1)}`;
     return `
-        <label class="index-filter-field" for="${id}Button">
+        <label class="index-filter-field${visuallyHiddenLabel ? ' index-sort-field' : ''}" for="${id}Button">
             <span class="field-label${visuallyHiddenLabel ? ' sr-only' : ''}">${escapeHtml(label)}</span>
             <select id="${id}" aria-label="${escapeHtml(label)}" data-custom-select data-ledger-filter="${escapeHtml(key)}">
                 ${options.map(option => `<option value="${escapeHtml(option.value)}"${activeValue === option.value ? ' selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}

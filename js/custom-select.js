@@ -16,11 +16,39 @@ function closeCustomSelect(wrapper) {
     const trigger = wrapper.querySelector('[data-custom-select-trigger]');
     const menu = wrapper.querySelector('[data-custom-select-menu]');
     if (!trigger || !menu) return;
-    wrapper.classList.remove('is-open');
+    wrapper.classList.remove('is-open', 'is-open-upward');
     trigger.setAttribute('aria-expanded', 'false');
     menu.hidden = true;
     getOptions(wrapper).forEach(option => option.classList.remove('is-active'));
     trigger.removeAttribute('aria-activedescendant');
+}
+
+function getCustomSelectBoundary(wrapper) {
+    let boundary = wrapper.parentElement;
+    while (boundary && boundary !== document.body) {
+        const overflowY = window.getComputedStyle(boundary).overflowY;
+        if (['auto', 'scroll', 'hidden', 'clip'].includes(overflowY)) return boundary;
+        boundary = boundary.parentElement;
+    }
+    return document.documentElement;
+}
+
+function updateCustomSelectPlacement(wrapper) {
+    const trigger = wrapper.querySelector('[data-custom-select-trigger]');
+    const menu = wrapper.querySelector('[data-custom-select-menu]');
+    if (!trigger || !menu) return;
+
+    const boundary = getCustomSelectBoundary(wrapper);
+    const triggerRect = trigger.getBoundingClientRect();
+    const menuRect = menu.getBoundingClientRect();
+    const boundaryRect = boundary === document.documentElement
+        ? { top: 0, bottom: window.innerHeight }
+        : boundary.getBoundingClientRect();
+    const gap = 8;
+    const spaceBelow = boundaryRect.bottom - triggerRect.bottom - gap;
+    const spaceAbove = triggerRect.top - boundaryRect.top - gap;
+
+    wrapper.classList.toggle('is-open-upward', menuRect.height > spaceBelow && spaceAbove > spaceBelow);
 }
 
 function closeOtherCustomSelects(current) {
@@ -37,6 +65,7 @@ function openCustomSelect(wrapper, activeIndex = -1) {
     closeOtherCustomSelects(wrapper);
     wrapper.classList.add('is-open');
     menu.hidden = false;
+    updateCustomSelectPlacement(wrapper);
     trigger.setAttribute('aria-expanded', 'true');
     const selected = activeIndex >= 0 ? activeIndex : options.findIndex(option => option.getAttribute('aria-selected') === 'true');
     options.forEach(option => option.classList.remove('is-active'));

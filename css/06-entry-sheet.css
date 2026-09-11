@@ -687,6 +687,10 @@ dialog.record-password.entry-sheet {
     .record-editor-grid { gap: 14px 10px; }
 }
 
+@media (max-width: 760px) {
+    .record-editor-footer > .record-editor-note { display: none; }
+}
+
 @media (max-width: 360px) {
     .record-editor-grid { grid-template-columns: minmax(0, 1fr); }
     .record-editor-format { display: none; }

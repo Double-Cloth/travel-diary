@@ -4,7 +4,7 @@ import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
-import { enhanceCustomSelects } from './custom-select.js?v=20260911-select-pointer-v3';
+import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';
 
 const POINTER_MOVE_TOLERANCE = 8;
 

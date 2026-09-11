@@ -64,9 +64,9 @@ test('索引夹层包含完整且唯一的高级筛选工作台', () => {
     assert.doesNotMatch(appJs, /当前筛选|当前排序|切到最早优先|切回最新优先/);
 });
 
-test('索引夹层重置筛选固定在筛选项之前', () => {
+test('索引夹层重置筛选位于筛选项之前且随内容滚动', () => {
     assert.match(appJs, /renderLedgerSnapshot\(snapshot, resultLabel\)\}\s+\$\{renderLedgerResetAction\(ledgerParams\)\}\s+\$\{renderLedgerFilterWorkbench\(ledgerParams\)\}/);
-    assert.match(journalCss, /\.index-reset-anchor\s*{[^}]*position: sticky;[^}]*top: 0;/);
+    assert.doesNotMatch(journalCss, /\.index-reset-anchor\s*{[^}]*position:\s*sticky;/);
     assert.match(journalCss, /\.index-reset-anchor\s*{[^}]*background: transparent;/);
     assert.doesNotMatch(journalCss, /\.index-reset-anchor\s*{[^}]*linear-gradient/);
 });
@@ -117,6 +117,10 @@ test('移动端首页回形针为标题区域预留安全留白', () => {
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.cover-record \.record-paperclip\s*{[\s\S]*left: 13px;/);
 });
 
+test('移动端编辑器隐藏草稿暂存提示', () => {
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*?\.record-editor-footer > \.record-editor-note\s*{\s*display: none;/);
+});
+
 test('随机路线图按视口尺寸限制票据数量', () => {
     assert.match(appJs, /import \{ getRouteMapRandomCount \} from '\.\/route-map\.mjs';/);
     assert.match(appJs, /function getRouteMapAvailableWidth\(\)/);
@@ -163,10 +167,20 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260911-photo-preview/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260912-select-placement-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260911-photo-preview/);
-    assert.match(appJs, /\.\/custom-select\.js\?v=20260911-select-pointer-v3/);
-    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260911-select-pointer-v3/);
+    assert.match(appJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
+    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
+});
+
+test('自定义下拉框靠近底部时向上展开并保留原有底部留白', () => {
+    assert.match(customSelectJs, /function getCustomSelectBoundary\(wrapper\)[\s\S]*?overflowY[\s\S]*?return boundary;/);
+    assert.match(customSelectJs, /menu\.hidden = false;\s*updateCustomSelectPlacement\(wrapper\);/);
+    assert.match(journalCss, /.custom-select\.is-open-upward \.custom-select-menu\s*\{\s*inset: auto 0 calc\(100% \+ 8px\);\s*\}/);
+    assert.match(journalCss, /\.custom-select\.is-open-upward \.custom-select-chevron\s*\{\s*transform: translateY\(-65%\) rotate\(45deg\);\s*\}/);
+    assert.match(appJs, /class="index-filter-field\$\{visuallyHiddenLabel \? ' index-sort-field' : ''\}"/);
+    assert.match(journalCss, /\.index-sort-field \.custom-select-chevron\s*\{\s*transform: translateY\(-20%\) rotate\(225deg\);\s*\}/);
+    assert.doesNotMatch(journalCss, /\.index-filter-section:last-child\s*\{\s*padding-bottom:/);
 });
 
 test('新增记录入口先通过 6 位数字密码验证', () => {
