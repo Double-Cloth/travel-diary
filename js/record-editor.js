@@ -77,7 +77,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                     <label>旅行日期 <span>必填</span><input name="date" type="date" value="${date}" required></label>
                                     <label>旅行标识 <span>选填</span><span class="record-editor-autocomplete"><input name="trip_id" maxlength="200" data-editor-autocomplete="trip_id" placeholder="同次旅行共用" aria-describedby="recordTripHelp" aria-autocomplete="list" aria-controls="recordTripOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordTripOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                 </div>
-                                <p class="record-editor-note" id="recordTripHelp">同次旅行填写同一标识；保存时统一转换为小写拼音。</p>
+                                <p class="record-editor-note" id="recordTripHelp">同次旅行填写同一标识。</p>
                                 <div class="record-editor-grid">
                                     <label>国家 / 地区 <span>必填</span><span class="custom-select"><select name="country_code" data-custom-select aria-label="国家 / 地区" required>
                                         ${countries.map(country => `<option value="${escapeHtml(country.code)}" ${country.code === 'CN' ? 'selected' : ''}>${escapeHtml(country.code)} · ${escapeHtml(country.name_zh)}</option>`).join('')}
@@ -119,7 +119,6 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                 </div>
                                 <textarea name="body" hidden></textarea>
                             </div>
-                            <p class="record-editor-note" id="recordBodyHelp">源码支持 Markdown 语法高亮，并与预览自动同步。</p>
                         </section>
                     </div>
                     <section class="record-editor-photos" aria-labelledby="recordPhotosTitle">
@@ -135,8 +134,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                     <details class="record-editor-files">
                         <summary><span>文件设置</span><span>正文路径与已有照片引用</span></summary>
                         <div class="record-editor-fields">
-                            <label>正文文件路径 <span>选填 · 留空自动生成</span><input name="desc_md" maxlength="200" aria-describedby="recordPathHelp"></label>
-                            <p class="record-editor-note" id="recordPathHelp">留空将按目的地拼音自动生成：<output data-editor-path-preview></output></p>
+                            <label>正文文件路径 <span>选填 · 留空自动生成</span><input name="desc_md" maxlength="200"></label>
                             <div class="record-editor-grid">
                                 <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="recordPhotoHelp"></label>
                                 <label>照片文件列表 <span>选填 · 每行一个文件名</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="recordPhotoHelp"></textarea></label>
@@ -184,7 +182,6 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const photoPath = `data/photos/${recordSlug(locality)}`;
         field('desc_md').placeholder = markdownPath;
         field('photo_folder').placeholder = photoPath;
-        dialog.querySelector('[data-editor-path-preview]').textContent = markdownPath;
         dialog.querySelector('[data-editor-photo-path-preview]').textContent = photoPath;
         field('trip_id').placeholder = suggestedTripId(getDraft().input) || '同次旅行共用';
     }

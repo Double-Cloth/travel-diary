@@ -63,7 +63,6 @@ test('照片验证拒绝格式伪装与重复标识，但不限制上传数量�
 
 test('新增旅行记录不再提供正文导出或照片张数上限', () => {
     assert.doesNotMatch(recordEditorSource, /data-editor-markdown|导出正文|MAX_PHOTOS|最多 20 张/);
-    assert.match(recordEditorSource, /源码支持 Markdown 语法高亮，并与预览自动同步。/);
     assert.match(recordEditorSource, /支持 JPEG \/ PNG \/ GIF \/ WebP/);
     assert.doesNotMatch(recordEditorSource, /10 MB|30 MB|44 MB|MAX_PHOTO_BYTES|MAX_TOTAL_PHOTO_BYTES|MAX_DRAFT_BYTES/);
     assert.match(recordEditorSource, /event\.target !== dialog/);
