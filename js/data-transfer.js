@@ -1,10 +1,15 @@
+import { createBrowserDataArchive } from './browser-data-archive.mjs';
+
 function downloadBlob(blob, name) {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = name;
+    link.hidden = true;
+    document.body.append(link);
     link.click();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 
 function setStatus(message) {
@@ -21,8 +26,12 @@ export function createDataTransfer(onImported) {
     document.body.append(input);
     let busy = false;
 
+    function isLocalWriterHost() {
+        return ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+    }
+
     async function localToken() {
-        if (!['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
+        if (!isLocalWriterHost()) {
             throw new Error('全部数据只能在本机 npm start 页面导入或导出。');
         }
         const response = await fetch(new URL('api/travel-records', window.location.href), { cache: 'no-store' });
@@ -36,16 +45,26 @@ export function createDataTransfer(onImported) {
         busy = true;
         setStatus('正在打包 data 目录…');
         try {
-            const token = await localToken();
-            const response = await fetch(new URL('api/travel-data', window.location.href), {
-                headers: { 'X-Travel-Token': token }, cache: 'no-store'
-            });
-            if (!response.ok) {
-                const result = await response.json().catch(() => ({}));
-                throw new Error(result.error || '全部数据导出失败。');
+            let archive;
+            if (isLocalWriterHost()) {
+                try {
+                    const token = await localToken();
+                    const response = await fetch(new URL('api/travel-data', window.location.href), {
+                        headers: { 'X-Travel-Token': token }, cache: 'no-store'
+                    });
+                    if (!response.ok) {
+                        const result = await response.json().catch(() => ({}));
+                        throw new Error(result.error || '本地数据服务导出失败。');
+                    }
+                    archive = await response.blob();
+                } catch {
+                    archive = new Blob([await createBrowserDataArchive(window.location.href)], { type: 'application/zip' });
+                }
+            } else {
+                archive = new Blob([await createBrowserDataArchive(window.location.href)], { type: 'application/zip' });
             }
             const today = new Date().toISOString().slice(0, 10);
-            downloadBlob(await response.blob(), `travel-diary-data-${today}.zip`);
+            downloadBlob(archive, `travel-diary-data-${today}.zip`);
             setStatus('已发起全部数据 ZIP 下载。');
         } catch (error) {
             setStatus(error.message);
@@ -56,6 +75,10 @@ export function createDataTransfer(onImported) {
 
     function chooseImport() {
         if (busy) return;
+        if (!isLocalWriterHost()) {
+            setStatus('全部数据导入只支持本机 npm start 页面；静态页面可以导出备份。');
+            return;
+        }
         input.click();
     }
 

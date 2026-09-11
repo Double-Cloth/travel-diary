@@ -1015,7 +1015,7 @@ function renderArchive(params = {}) {
             </section>
             <section class="archive-overview-block archive-data-transfer" aria-labelledby="archiveDataTitle">
                 <h3 id="archiveDataTitle">数据备份</h3>
-                <p>导出会将整个 <code>data/</code> 目录打包为 ZIP；导入会在校验后完整替换当前数据。</p>
+                <p>静态页面也可将旅行索引引用的 <code>data/</code> 文件打包为 ZIP；完整导入仅支持本机页面。</p>
                 <div>
                     <button class="paper-button" type="button" data-action="export-all-data">导出全部数据</button>
                     <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
