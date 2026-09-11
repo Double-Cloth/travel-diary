@@ -181,7 +181,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                 <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="recordPhotoHelp"></label>
                                 <label>已有照片文件名 <span>选填 · 每行一个</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="recordPhotoHelp"></textarea></label>
                             </div>
-                            <p class="record-editor-note" id="recordPhotoHelp">这里仅填写项目内已有照片；刚选择的照片会自动保存到：<output data-editor-photo-path-preview></output></p>
+                            <p class="record-editor-note" id="recordPhotoHelp">这里仅填写项目内已有的照片；新添加的照片会自动保存到：<output data-editor-photo-path-preview></output></p>
                         </div>
                     </details>
                 </div>
