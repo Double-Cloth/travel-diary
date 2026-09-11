@@ -77,7 +77,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                     <label>旅行日期 <span>必填</span><input name="date" type="date" value="${date}" required></label>
                                     <label>旅行标识 <span>选填</span><span class="record-editor-autocomplete"><input name="trip_id" maxlength="200" data-editor-autocomplete="trip_id" placeholder="同次旅行共用" aria-describedby="recordTripHelp" aria-autocomplete="list" aria-controls="recordTripOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordTripOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                 </div>
-                                <p class="record-editor-note" id="recordTripHelp">同次旅行填写同一标识。</p>
+                                <p class="record-editor-note" id="recordTripHelp">同次旅行请填写同一标识。</p>
                                 <div class="record-editor-grid">
                                     <label>国家 / 地区 <span>必填</span><span class="custom-select"><select name="country_code" data-custom-select aria-label="国家 / 地区" required>
                                         ${countries.map(country => `<option value="${escapeHtml(country.code)}" ${country.code === 'CN' ? 'selected' : ''}>${escapeHtml(country.code)} · ${escapeHtml(country.name_zh)}</option>`).join('')}
@@ -139,7 +139,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                 <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="recordPhotoHelp"></label>
                                 <label>照片文件列表 <span>选填 · 每行一个文件名</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="recordPhotoHelp"></textarea></label>
                             </div>
-                            <p class="record-editor-note" id="recordPhotoHelp">仅填写项目内已有照片；上传照片无需设置。新上传照片会使用拼音文件名并保存到：<output data-editor-photo-path-preview></output></p>
+                            <p class="record-editor-note" id="recordPhotoHelp">仅填写项目内已有照片；新上传的照片无需设置。新照片会保存到：<output data-editor-photo-path-preview></output></p>
                         </div>
                     </details>
                 </div>
@@ -214,7 +214,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const hint = dialog.querySelector('[data-editor-autofill]');
         hint.textContent = filled.length
             ? `已自动补全：${filled.join('、')}。所有自动填写内容均可修改。`
-            : '会根据当前国家、行政区、目的地和历史记录补全可靠信息；所有内容均可修改。';
+            : '会根据当前国家、行政区、目的地和历史记录补全可靠信息；所有内容均可自行修改。';
     }
 
     function renderOptionLists(options) {

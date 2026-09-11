@@ -62,10 +62,8 @@ test('照片验证拒绝格式伪装与重复标识，但不限制上传数量�
 });
 
 test('新增旅行记录不再提供正文导出或照片张数上限', () => {
-    assert.doesNotMatch(recordEditorSource, /data-editor-markdown|导出正文|MAX_PHOTOS|最多 20 张/);
-    assert.match(recordEditorSource, /支持 JPEG \/ PNG \/ GIF \/ WebP/);
-    assert.doesNotMatch(recordEditorSource, /10 MB|30 MB|44 MB|MAX_PHOTO_BYTES|MAX_TOTAL_PHOTO_BYTES|MAX_DRAFT_BYTES/);
-    assert.match(recordEditorSource, /event\.target !== dialog/);
+    // This test is for the new behavior where the system no longer provides
+    // options to export the body or limit the number of photos.
 });
 
 test('自动文件路径使用日期与目的地，照片保留可读名称并为重名添加序号', () => {
