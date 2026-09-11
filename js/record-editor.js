@@ -51,7 +51,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             hint.textContent = '本地模式 · 可直接保存到项目。';
             dialog.querySelector('[data-editor-save]').disabled = saved;
         } catch {
-            hint.textContent = '只读模式 · 请导出草稿后在本机保存。';
+            hint.textContent = '只读模式 · 请导出草稿后在本机重新导入。';
         }
     }
 
