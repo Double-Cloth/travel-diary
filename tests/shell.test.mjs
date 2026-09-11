@@ -153,12 +153,17 @@ test('切换纸页内容时重置左右页滚动位置', () => {
 });
 
 test('自定义下拉框在点击而非按下时选择，保留移动端滑动能力', () => {
-    assert.match(customSelectJs, /option\.addEventListener\('click', event => \{\s*event\.preventDefault\(\);\s*event\.stopPropagation\(\);\s*selectCustomOption\(wrapper, option\);/);
-    assert.doesNotMatch(customSelectJs, /option\.addEventListener\('pointerdown'/);
-    assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?closest\('\[data-autocomplete-value\]'\)[\s\S]*?selectAutocompleteOption/);
-    assert.doesNotMatch(recordEditorJs, /dialog\.addEventListener\('pointerdown', event => \{\s*const option = event\.target\.closest\('\[data-autocomplete-value\]'\)/);
+    assert.match(customSelectJs, /menu\.addEventListener\('pointermove',[\s\S]*?pointerMoved\(optionPointer, event\)[\s\S]*?suppressOptionClick = true/);
+    assert.match(customSelectJs, /menu\.addEventListener\('pointercancel',[\s\S]*?suppressOptionClick = true/);
+    assert.match(customSelectJs, /menu\.addEventListener\('click',[\s\S]*?if \(suppressOptionClick\)[\s\S]*?return;[\s\S]*?selectCustomOption\(wrapper, option\)/);
+    assert.match(recordEditorJs, /dialog\.addEventListener\('pointermove',[\s\S]*?pointerMoved\(autocompletePointer, event\)[\s\S]*?suppressAutocompleteClick = true/);
+    assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260911-select-touch-v2/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260911-select-touch-v2/);
+    assert.match(appJs, /\.\/custom-select\.js\?v=20260911-select-touch-v2/);
+    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260911-select-touch-v2/);
 });
 
 test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => {

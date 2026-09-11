@@ -1,5 +1,11 @@
 let customSelectId = 0;
 let documentEventsBound = false;
+const POINTER_MOVE_TOLERANCE = 8;
+
+function pointerMoved(start, event) {
+    return Math.abs(event.clientX - start.x) > POINTER_MOVE_TOLERANCE
+        || Math.abs(event.clientY - start.y) > POINTER_MOVE_TOLERANCE;
+}
 
 function getOptions(wrapper) {
     return [...wrapper.querySelectorAll('[data-custom-select-option]')];
@@ -56,11 +62,6 @@ function renderCustomSelect(wrapper) {
         option.setAttribute('role', 'option');
         option.setAttribute('aria-selected', String(nativeOption.selected));
         option.textContent = nativeOption.textContent;
-        option.addEventListener('click', event => {
-            event.preventDefault();
-            event.stopPropagation();
-            selectCustomOption(wrapper, option);
-        });
         menu.append(option);
     });
     triggerLabel.textContent = select.options[select.selectedIndex]?.textContent || '';
@@ -126,6 +127,39 @@ function enhanceCustomSelect(select) {
     menu.setAttribute('role', 'listbox');
     menu.hidden = true;
     wrapper.append(menu);
+
+    let optionPointer = null;
+    let suppressOptionClick = false;
+    menu.addEventListener('pointerdown', event => {
+        if (!event.target.closest('[data-custom-select-option]')) return;
+        suppressOptionClick = false;
+        optionPointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+    }, { passive: true });
+    menu.addEventListener('pointermove', event => {
+        if (!optionPointer || event.pointerId !== optionPointer.id) return;
+        if (pointerMoved(optionPointer, event)) suppressOptionClick = true;
+    }, { passive: true });
+    menu.addEventListener('pointerup', event => {
+        if (!optionPointer || event.pointerId !== optionPointer.id) return;
+        if (pointerMoved(optionPointer, event)) suppressOptionClick = true;
+        optionPointer = null;
+    }, { passive: true });
+    menu.addEventListener('pointercancel', event => {
+        if (!optionPointer || event.pointerId !== optionPointer.id) return;
+        suppressOptionClick = true;
+        optionPointer = null;
+    }, { passive: true });
+    menu.addEventListener('click', event => {
+        const option = event.target.closest('[data-custom-select-option]');
+        if (!option) return;
+        event.preventDefault();
+        event.stopPropagation();
+        if (suppressOptionClick) {
+            suppressOptionClick = false;
+            return;
+        }
+        selectCustomOption(wrapper, option);
+    });
 
     const label = select.closest('label');
     if (label?.htmlFor === select.id) label.htmlFor = trigger.id;

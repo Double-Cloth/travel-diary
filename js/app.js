@@ -1,9 +1,9 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js';
+import { createRecordEditor } from './record-editor.js?v=20260911-select-touch-v2';
 import { createDataTransfer } from './data-transfer.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
-import { enhanceCustomSelects } from './custom-select.js';
+import { enhanceCustomSelects } from './custom-select.js?v=20260911-select-touch-v2';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {

@@ -4,7 +4,14 @@ import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
-import { enhanceCustomSelects } from './custom-select.js';
+import { enhanceCustomSelects } from './custom-select.js?v=20260911-select-touch-v2';
+
+const POINTER_MOVE_TOLERANCE = 8;
+
+function pointerMoved(start, event) {
+    return Math.abs(event.clientX - start.x) > POINTER_MOVE_TOLERANCE
+        || Math.abs(event.clientY - start.y) > POINTER_MOVE_TOLERANCE;
+}
 
 export function createRecordEditor(onSaved, getRecords = () => []) {
     const dialog = document.createElement('dialog');
@@ -23,6 +30,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let uploads = [];
     let readingPhotos = false;
     let trigger;
+    let autocompletePointer = null;
+    let suppressAutocompleteClick = false;
     const userEditedAutofillFields = new Set();
     const autoFilledValues = new Map();
 
@@ -461,8 +470,27 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         highlight.scrollLeft = event.target.scrollLeft;
     }, true);
     dialog.addEventListener('pointerdown', event => {
+        if (event.target.closest('[data-autocomplete-value]')) {
+            suppressAutocompleteClick = false;
+            autocompletePointer = { id: event.pointerId, x: event.clientX, y: event.clientY };
+            return;
+        }
         if (event.target.closest('[data-format]')) event.preventDefault();
     });
+    dialog.addEventListener('pointermove', event => {
+        if (!autocompletePointer || event.pointerId !== autocompletePointer.id) return;
+        if (pointerMoved(autocompletePointer, event)) suppressAutocompleteClick = true;
+    }, { passive: true });
+    dialog.addEventListener('pointerup', event => {
+        if (!autocompletePointer || event.pointerId !== autocompletePointer.id) return;
+        if (pointerMoved(autocompletePointer, event)) suppressAutocompleteClick = true;
+        autocompletePointer = null;
+    }, { passive: true });
+    dialog.addEventListener('pointercancel', event => {
+        if (!autocompletePointer || event.pointerId !== autocompletePointer.id) return;
+        suppressAutocompleteClick = true;
+        autocompletePointer = null;
+    }, { passive: true });
     dialog.addEventListener('paste', event => {
         if (!event.target.closest('[data-editor-rich]') || saved || busy) return;
         event.preventDefault();
@@ -490,6 +518,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const autocompleteOption = event.target.closest('[data-autocomplete-value]');
         if (autocompleteOption) {
             event.preventDefault();
+            if (suppressAutocompleteClick) {
+                suppressAutocompleteClick = false;
+                return;
+            }
             selectAutocompleteOption(
                 autocompleteOption.closest('.record-editor-autocomplete').querySelector('[data-editor-autocomplete]'),
                 autocompleteOption
