@@ -1,6 +1,6 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
 import { createRecordEditor } from './record-editor.js?v=20260911-select-touch-v2';
-import { createRecordPasswordGate } from './record-password.js?v=20260911-record-password';
+import { createPasswordGate } from './record-password.js?v=20260911-export-password';
 import { createDataTransfer } from './data-transfer.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
@@ -57,6 +57,7 @@ const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
 
 const refs = {};
 let openRecordEditor;
+let openDataExport;
 let dataTransfer;
 let travelModel = null;
 let activeRoute = null;
@@ -91,11 +92,24 @@ async function initApp() {
         window.location.hash = '#ledger';
         syncRouteFromHash({ initial: true });
     }, () => travelModel?.records || []);
-    openRecordEditor = createRecordPasswordGate(openEditor);
+    openRecordEditor = createPasswordGate(openEditor, {
+        description: '请输入 6 位数字密码，以新增旅行记录。',
+        verifying: '验证通过，正在打开旅行记录编辑器…',
+        actionError: '旅行记录编辑器打开失败，请重试。'
+    });
     dataTransfer = createDataTransfer(async () => {
         travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
         syncRouteFromHash({ initial: true });
     });
+    openDataExport = createPasswordGate(
+        () => dataTransfer.exportAll(`travel-diary-data-${getTodayDate()}.zip`),
+        {
+            title: '验证后导出数据',
+            description: '请输入 6 位数字密码，以导出全部旅行数据。',
+            verifying: '验证通过，正在准备数据下载…',
+            actionError: '全部数据导出失败，请重试。'
+        }
+    );
     renderLoading();
 
     try {
@@ -1023,7 +1037,7 @@ function renderArchive(params = {}) {
             <section class="archive-overview-block archive-data-transfer" aria-labelledby="archiveDataTitle">
                 <h3 id="archiveDataTitle">数据备份</h3>
                 <div>
-                    <a class="paper-button" href="${escapeHtml(dataTransfer.getExportHref())}" download="travel-diary-data-${getTodayDate()}.zip" data-action="export-all-data">导出全部数据</a>
+                    <button class="paper-button" type="button" data-action="export-all-data">导出全部数据</button>
                     <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
                 </div>
                 <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
@@ -1914,7 +1928,8 @@ function renderWithPageTurn(renderFn, options = {}) {
 
 function handleDocumentClick(event) {
     if (event.target.closest('[data-action="export-all-data"]')) {
-        dataTransfer.noteExportStarted();
+        event.preventDefault();
+        void openDataExport().catch(error => window.alert(error.message));
         return;
     }
     if (event.target.closest('[data-action="import-all-data"]')) {

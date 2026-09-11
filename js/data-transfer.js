@@ -36,6 +36,17 @@ export function createDataTransfer(onImported) {
         setStatus('已发起全部数据 ZIP 下载。');
     }
 
+    function exportAll(downloadName = 'travel-diary-data.zip') {
+        const link = document.createElement('a');
+        link.href = getExportHref();
+        link.download = downloadName;
+        link.hidden = true;
+        document.body.append(link);
+        link.click();
+        link.remove();
+        noteExportStarted();
+    }
+
     function chooseImport() {
         if (busy) return;
         if (!isLocalWriterHost()) {
@@ -71,5 +82,5 @@ export function createDataTransfer(onImported) {
         }
     });
 
-    return { chooseImport, getExportHref, noteExportStarted };
+    return { chooseImport, exportAll, getExportHref, noteExportStarted };
 }

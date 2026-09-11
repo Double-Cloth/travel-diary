@@ -71,7 +71,7 @@ data/travel-diary/YYYY/YYYY-MM-DD-pinyin.md
 
 个人主页右侧「数据备份」提供以下操作：
 
-- 「导出全部数据」生成 `travel-diary-data-YYYY-MM-DD.zip`。本机 `npm start` 页面由服务器在点击时遍历整个 `data/` 目录；GitHub Pages 在每次部署时预生成整个 `data/` 的 ZIP。两种方式都使用真实 HTTP 下载地址；本机接口同时支持无写入的 `HEAD` 探测，兼容接管浏览器下载的外部工具。
+- 「导出全部数据」先使用与新增记录相同的 6 位密码和数字键盘完成验证，再生成 `travel-diary-data-YYYY-MM-DD.zip`。本机 `npm start` 页面由服务器在点击时遍历整个 `data/` 目录；GitHub Pages 在每次部署时预生成整个 `data/` 的 ZIP。两种方式都使用真实 HTTP 下载地址；本机接口同时支持无写入的 `HEAD` 探测，兼容接管浏览器下载的外部工具。
 - 「导入全部数据」只接受本应用导出的 ZIP。服务器先校验压缩包路径、旅行索引及其引用的正文和照片，再用临时目录原子替换当前 `data/`。
 
 GitHub Pages 的导出内容对应当前已部署版本；通用静态服务器需要先运行 `npm run data:archive` 并把 `dist/travel-diary-data.zip` 作为站点根目录的 `travel-diary-data.zip` 发布。导入会写入项目文件，因此仅支持本机 `npm start` 的 localhost 页面。导入会完整替换当前个人数据，操作前应先导出一份当前备份。导入失败不会修改现有 `data/`；空目录不写入 ZIP，但不影响应用数据。ZIP 使用标准 UTF-8 文件名和无加密存储格式。

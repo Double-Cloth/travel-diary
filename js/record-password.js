@@ -1,4 +1,5 @@
 const PASSWORD_LENGTH = 6;
+let passwordGateSequence = 0;
 
 export function readRecordPassword(config) {
     const password = typeof config === 'string' ? config : config?.password;
@@ -8,10 +9,17 @@ export function readRecordPassword(config) {
     return password;
 }
 
-export function createRecordPasswordGate(openEditor) {
+export function createPasswordGate(onVerified, options = {}) {
+    const titleId = `passwordGateTitle${passwordGateSequence += 1}`;
+    const copy = {
+        title: options.title || '输入访问密码',
+        description: options.description || '请输入 6 位数字密码，以继续当前操作。',
+        verifying: options.verifying || '验证通过，正在继续…',
+        actionError: options.actionError || '验证后的操作失败，请重试。'
+    };
     const dialog = document.createElement('dialog');
     dialog.className = 'record-password entry-sheet';
-    dialog.setAttribute('aria-labelledby', 'recordPasswordTitle');
+    dialog.setAttribute('aria-labelledby', titleId);
     dialog.innerHTML = `
         <div class="record-password-card">
             <button class="paper-button record-password-close" type="button" data-password-close aria-label="关闭密码窗口">关闭</button>
@@ -22,9 +30,8 @@ export function createRecordPasswordGate(openEditor) {
                     <path d="M16 19v4"></path>
                 </svg>
             </div>
-            <p class="journal-label">私人档案 · ACCESS</p>
-            <h2 id="recordPasswordTitle">输入访问密码</h2>
-            <p class="record-password-note">请输入 6 位数字密码，以新增旅行记录。</p>
+            <h2 id="${titleId}"></h2>
+            <p class="record-password-note" data-password-note></p>
             <div class="record-password-digits" data-password-digits role="status" aria-live="polite" aria-label="尚未输入密码">
                 ${Array.from({ length: PASSWORD_LENGTH }, (_, index) => `<span data-password-digit="${index}" aria-hidden="true"></span>`).join('')}
             </div>
@@ -39,6 +46,8 @@ export function createRecordPasswordGate(openEditor) {
             </div>
         </div>`;
     document.body.append(dialog);
+    dialog.querySelector(`#${titleId}`).textContent = copy.title;
+    dialog.querySelector('[data-password-note]').textContent = copy.description;
 
     let enteredPassword = '';
     let expectedPassword = '';
@@ -97,16 +106,16 @@ export function createRecordPasswordGate(openEditor) {
         }
         verifying = true;
         setControlsDisabled(true);
-        status('验证通过，正在打开旅行记录编辑器…');
+        status(copy.verifying);
         dialog.close();
         expectedPassword = '';
         enteredPassword = '';
         updateDigits();
         restoreTriggerFocus();
         try {
-            await openEditor();
+            await onVerified();
         } catch (error) {
-            window.alert(error?.message || '旅行记录编辑器打开失败，请重试。');
+            window.alert(error?.message || copy.actionError);
         } finally {
             verifying = false;
             setControlsDisabled(false);

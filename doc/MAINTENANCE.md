@@ -68,7 +68,7 @@ node js/server.js --port 8080 --network
 
 ## 测试说明
 
-`tests/record-store.test.mjs` 在临时目录中验证完整字段写入、草稿版本兼容、自定义路径、照片上传、原始字节、自动目录回滚、照片引用、重复提交、并发冲突、来源限制和失败回滚。`tests/record-password.test.mjs` 验证新增记录密码配置必须是 6 位数字字符串。`tests/data-archive.test.mjs` 验证整个 `data/` 的 ZIP 往返、完整性校验、静态站点备份文件生成及失败不改动原数据。`tests/record-suggestions.test.mjs` 验证历史地点匹配、字段名兼容、名称后缀推断、关联候选过滤和拼音旅行标识建议。`tests/data.test.mjs` 验证正文预览与详情解析一致，`tests/markdown-editor.test.mjs` 覆盖语法高亮、可编辑预览序列化、图片输入校验和照片独立存储的 ZIP 草稿往返。浏览器验收覆盖新增入口、密码数字键盘与错误提示、正确密码进入编辑器、正文视图、草稿导入导出及个人主页全部数据备份入口。
+`tests/record-store.test.mjs` 在临时目录中验证完整字段写入、草稿版本兼容、自定义路径、照片上传、原始字节、自动目录回滚、照片引用、重复提交、并发冲突、来源限制和失败回滚。`tests/record-password.test.mjs` 验证新增记录与全部数据导出共用的密码配置必须是 6 位数字字符串。`tests/data-archive.test.mjs` 验证整个 `data/` 的 ZIP 往返、完整性校验、静态站点备份文件生成及失败不改动原数据。`tests/record-suggestions.test.mjs` 验证历史地点匹配、字段名兼容、名称后缀推断、关联候选过滤和拼音旅行标识建议。`tests/data.test.mjs` 验证正文预览与详情解析一致，`tests/markdown-editor.test.mjs` 覆盖语法高亮、可编辑预览序列化、图片输入校验和照片独立存储的 ZIP 草稿往返。浏览器验收覆盖新增入口、全部数据导出入口、密码数字键盘与错误提示、正确密码继续操作、正文视图、草稿导入导出及个人主页全部数据备份入口。
 
 
 `tests/data.test.mjs` 实际执行数据加载和 Markdown 解析，覆盖无效记录、照片附件过滤、响应中断重试、链接转义和行内代码保真。必需日期损坏时会明确指出记录序号；单篇正文加载失败不会阻塞其他记录，也不会被“有笔记”筛选误计。

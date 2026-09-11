@@ -161,15 +161,15 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260911-record-password/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260911-export-password/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260911-select-touch-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260911-select-touch-v2/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260911-select-touch-v2/);
 });
 
 test('新增记录入口先通过 6 位数字密码验证', () => {
-    assert.match(appJs, /import \{ createRecordPasswordGate \} from '\.\/record-password\.js\?v=20260911-record-password';/);
-    assert.match(appJs, /openRecordEditor = createRecordPasswordGate\(openEditor\);/);
+    assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260911-export-password';/);
+    assert.match(appJs, /openRecordEditor = createPasswordGate\(openEditor,/);
     assert.match(recordPasswordJs, /new URL\('data\/password\.json', window\.location\.href\)/);
     assert.match(recordPasswordJs, /\^\\d\{6\}\$/);
     for (const key of ['data-password-key', 'data-password-clear', 'data-password-delete']) {
@@ -180,9 +180,13 @@ test('新增记录入口先通过 6 位数字密码验证', () => {
 });
 
 test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => {
-    assert.match(appJs, /<a class="paper-button"[^>]+data-action="export-all-data"/);
+    assert.match(appJs, /<button class="paper-button" type="button" data-action="export-all-data"/);
+    assert.match(appJs, /openDataExport = createPasswordGate/);
+    assert.match(appJs, /dataTransfer\.exportAll\(`travel-diary-data-\$\{getTodayDate\(\)\}\.zip`\)/);
+    assert.match(appJs, /data-action="export-all-data"[^}]+event\.preventDefault\(\);[^}]+openDataExport\(\)/s);
     assert.match(dataTransferJs, /api\/travel-data/);
     assert.match(dataTransferJs, /travel-diary-data\.zip/);
+    assert.match(dataTransferJs, /function exportAll\([^)]*\)[\s\S]+link\.href = getExportHref\(\);[\s\S]+link\.click\(\);/);
     assert.doesNotMatch(dataTransferJs, /createObjectURL|new Blob|\.exportAll\(/);
 });
 
