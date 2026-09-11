@@ -32,7 +32,8 @@
 
 :root {
     --font-serif: "Diary Kai";
-    --font-code: "Archive Code";
+    /* 保留代码风格的拉丁字符，同时为中文提供明确的本地字体回退。 */
+    --font-code: "Archive Code", "Diary Kai";
 
     --desk-950: #150b06;
     --desk-900: #22110a;

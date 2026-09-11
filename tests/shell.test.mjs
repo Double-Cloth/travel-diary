@@ -284,7 +284,7 @@ test('移动端夹层遮罩不使用全屏模糊', () => {
 
 test('旅行档案仅使用项目本地字体族', () => {
     assert.match(journalCss, /--font-serif:\s*"Diary Kai";/);
-    assert.match(journalCss, /--font-code:\s*"Archive Code";/);
+    assert.match(journalCss, /--font-code:\s*"Archive Code",\s*"Diary Kai";/);
     assert.match(journalCss, /\.journal-label\s*{[\s\S]*font-family:\s*var\(--font-serif\);/);
     assert.doesNotMatch(journalCss, /STKaiti|KaiTi|Courier New|Roboto|Google Sans|Segoe UI|Arial|JetBrains Mono|ui-monospace|SFMono-Regular|Menlo|Consolas/);
 });
