@@ -188,8 +188,18 @@ function ensureImportedPassword(entries, password) {
     if (passwordEntry) {
         const config = parseJsonFile(passwordEntry.data, 'data/password.json');
         const configuredPassword = typeof config === 'string' ? config : config?.password;
+        if (configuredPassword === '') {
+            if (!password) {
+                throw failure(428, '备份中的访问密码为空，请设置 6 位数字密码后继续导入。', 'IMPORT_PASSWORD_REQUIRED');
+            }
+            if (typeof password !== 'string' || !/^\d{6}$/.test(password)) {
+                throw failure(400, '新访问密码必须是 6 位数字。');
+            }
+            passwordEntry.data = Buffer.from(`${JSON.stringify({ password }, null, 2)}\n`);
+            return true;
+        }
         if (typeof configuredPassword !== 'string' || !/^\d{6}$/.test(configuredPassword)) {
-            throw failure(400, '备份中的 data/password.json 无效，密码必须是 6 位数字。');
+            throw failure(400, '备份中的密码格式不支持，密码必须是 6 位数字。');
         }
         return false;
     }

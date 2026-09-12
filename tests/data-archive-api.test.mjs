@@ -94,6 +94,52 @@ test('本地数据 API 在备份无密码时返回设置要求并接受新密码
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/password.json'), 'utf8')), { password: '654321' });
 });
 
+test('本地数据 API 在备份密码为空字符串时返回重置要求并接受新密码', async () => {
+    await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
+    const archive = createZip([
+        { name: 'data/travel_data.json', data: '[]' },
+        { name: 'data/password.json', data: '{"password":""}' }
+    ]);
+    const response = await fetch(`${base}/api/travel-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, 'X-Travel-Current-Password': '123456', Origin: base },
+        body: archive
+    });
+    assert.equal(response.status, 428);
+    assert.equal((await response.json()).code, 'IMPORT_PASSWORD_REQUIRED');
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/password.json'), 'utf8')), { password: '123456' });
+
+    const imported = await fetch(`${base}/api/travel-data`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/zip',
+            'X-Travel-Token': token,
+            'X-Travel-Current-Password': '123456',
+            'X-Travel-Import-Password': '654321',
+            Origin: base
+        },
+        body: archive
+    });
+    assert.equal(imported.status, 200);
+    assert.equal((await imported.json()).passwordCreated, true);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/password.json'), 'utf8')), { password: '654321' });
+    await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
+});
+
+test('本地数据 API 对非空非法备份密码提示格式不支持', async () => {
+    const archive = createZip([
+        { name: 'data/travel_data.json', data: '[]' },
+        { name: 'data/password.json', data: '{"password":"abc"}' }
+    ]);
+    const response = await fetch(`${base}/api/travel-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, 'X-Travel-Current-Password': '123456', Origin: base },
+        body: archive
+    });
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /密码格式不支持/);
+});
+
 test('本地数据 API 拒绝缺失或错误的当前密码', async () => {
     const archive = createZip([
         { name: 'data/travel_data.json', data: '[]' },

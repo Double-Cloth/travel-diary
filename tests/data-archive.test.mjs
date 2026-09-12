@@ -67,6 +67,30 @@ test('全部数据导入在备份无密码时要求设置密码并写入配置',
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/password.json'), 'utf8')), { password: '654321' });
 });
 
+test('全部数据导入在备份密码为空字符串时要求重置并替换配置', async t => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-archive-empty-password-'));
+    t.after(async () => fs.rm(root, { recursive: true, force: true }));
+    await fs.mkdir(path.join(root, 'data'));
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
+    await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
+
+    for (const passwordConfig of ['{"password":""}', '""']) {
+        const archive = createZip([
+            { name: 'data/travel_data.json', data: '[]' },
+            { name: 'data/password.json', data: passwordConfig }
+        ]);
+        await assert.rejects(
+            importDataArchive(root, archive, { currentPassword: '123456' }),
+            error => error.status === 428 && error.code === 'IMPORT_PASSWORD_REQUIRED'
+        );
+
+        const result = await importDataArchive(root, archive, { currentPassword: '123456', password: '654321' });
+        assert.deepEqual(result, { files: 2, passwordCreated: true });
+        assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/password.json'), 'utf8')), { password: '654321' });
+        await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
+    }
+});
+
 test('全部数据导入拒绝无效记录字段、密码配置与大小写冲突路径', async t => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-archive-validation-'));
     t.after(async () => fs.rm(root, { recursive: true, force: true }));
@@ -84,7 +108,12 @@ test('全部数据导入拒绝无效记录字段、密码配置与大小写冲�
     await assert.rejects(importDataArchive(root, createZip([
         { name: 'data/travel_data.json', data: '[]' },
         { name: 'data/password.json', data: '{"password":"abc"}' }
-    ]), { currentPassword: '123456' }), /密码必须是 6 位数字/);
+    ]), { currentPassword: '123456' }), /密码格式不支持，密码必须是 6 位数字/);
+
+    await assert.rejects(importDataArchive(root, createZip([
+        { name: 'data/travel_data.json', data: '[]' },
+        { name: 'data/password.json', data: '{"password":"12345"}' }
+    ]), { currentPassword: '123456' }), /密码格式不支持，密码必须是 6 位数字/);
 
     await assert.rejects(importDataArchive(root, createZip([
         { name: 'data/travel_data.json', data: '[]' },
