@@ -799,7 +799,11 @@
 }
 
 .index-filter-section > .field-label {
-    margin: 0 0 -2px;
+    margin: 7px 0 -2px;
+}
+
+.index-filter-section > h3 + .field-label {
+    margin-top: 0;
 }
 
 .index-filter-section h3,
