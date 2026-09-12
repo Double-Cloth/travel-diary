@@ -23,6 +23,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let countries = [];
     let chinaLocations = {};
     let token = '';
+    let writerMethods = new Set();
     let requestId = '';
     let busy = false;
     let dirty = false;
@@ -161,6 +162,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
 
     async function detectWriter() {
         token = '';
+        writerMethods = new Set();
         dialog.querySelector('[data-editor-save]').disabled = true;
         const hint = dialog.querySelector('[data-editor-mode]');
         hint.textContent = '正在连接本地保存服务…';
@@ -171,6 +173,11 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             });
             const result = await response.json();
             if (!response.ok || result.service !== 'travel-diary-writer-v1' || !result.token) throw new Error();
+            writerMethods = new Set(Array.isArray(result.methods) ? result.methods : ['POST']);
+            if (editingRecord && !writerMethods.has('PUT')) {
+                hint.textContent = '本地保存服务版本过旧 · 请重新运行 npm start 后再修改记录。';
+                return;
+            }
             token = result.token;
             hint.textContent = '本地保存可用 · 保存后写入项目文件。';
             dialog.querySelector('[data-editor-save]').disabled = saved;
@@ -803,6 +810,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     dialog.addEventListener('submit', async event => {
         event.preventDefault();
         if (busy || saved || readingPhotos || !token) return;
+        if (editingRecord && !writerMethods.has('PUT')) {
+            status('本地保存服务版本过旧，请重新运行 npm start 后再修改记录。');
+            return;
+        }
         const draft = getDraft();
         try { prepareRecord(draft, countries); }
         catch (error) { status(error.message); return; }

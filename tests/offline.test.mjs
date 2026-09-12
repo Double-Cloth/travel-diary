@@ -77,6 +77,8 @@ test('运行时数据请求只根据当前本地页面解析', () => {
     assert.match(dataJs, /new URL\('data\/travel_data\.json', window\.location\.href\)/);
     assert.match(dataJs, /new URL\('assets\/catalogs\/countries\.json', window\.location\.href\)/);
     assert.match(dataJs, /new URL\(markdownPath, window\.location\.href\)/);
+    assert.match(dataJs, /export async function loadTravelData\(cacheKey = ''\)/);
+    assert.match(dataJs, /resolvedUrl\.searchParams\.set\('refresh', cacheKey\)/);
     assert.doesNotMatch(dataJs, /https?:\/\//);
 });
 

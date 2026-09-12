@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260912-markdown-path-autofill';
+import { createRecordEditor } from './record-editor.js?v=20260912-edit-save-caret-v1';
 import { createPasswordGate } from './record-password.js?v=20260912-import-password';
 import { createDataTransfer } from './data-transfer.js?v=20260912-import-success';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260912-record-delete-dialog';
@@ -87,12 +87,20 @@ document.addEventListener('DOMContentLoaded', () => {
     void initApp();
 });
 
+function getRefreshKey() {
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+async function refreshTravelModel(cacheKey = '') {
+    travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData(cacheKey), cacheKey));
+}
+
 async function initApp() {
     cacheRefs();
     bindGlobalEvents();
     const recordDeleteDialog = createRecordDeleteDialog();
     const openEditor = createRecordEditor(async (savedRecord, context = {}) => {
-        travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
+        await refreshTravelModel(getRefreshKey());
         if (context.mode === 'edit') {
             const updatedRecord = travelModel.records.find(record => record.desc_md === savedRecord.desc_md);
             window.location.hash = updatedRecord
@@ -143,7 +151,7 @@ async function initApp() {
     };
     refs.confirmDeleteRecord = record => recordDeleteDialog.confirm(record);
     dataTransfer = createDataTransfer(async () => {
-        travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
+        await refreshTravelModel(getRefreshKey());
         syncRouteFromHash({ initial: true });
     });
     openDataExport = createPasswordGate(
@@ -1473,7 +1481,7 @@ async function deleteTravelRecord(record) {
     });
     const result = await response.json();
     if (!response.ok || !result.deleted) throw new Error(result.error || '未收到服务器的删除确认。');
-    travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
+    await refreshTravelModel(getRefreshKey());
     closeEntrySheet();
     window.location.hash = lastReadingHash || '#ledger';
     syncRouteFromHash({ initial: true });

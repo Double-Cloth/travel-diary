@@ -509,6 +509,10 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
     overflow-wrap: break-word;
     word-break: normal;
     font: 14px/1.8 var(--font-code), var(--font-serif);
+    font-weight: 400;
+    font-synthesis: none;
+    scrollbar-width: thin;
+    scrollbar-gutter: stable;
     tab-size: 4;
 }
 .record-editor-source-layer pre { overflow: hidden; pointer-events: none; color: var(--ink); background: transparent; }
@@ -524,8 +528,8 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 .record-editor-source-layer textarea::selection { background: rgba(143, 53, 39, 0.2); }
 .record-editor-source-layer textarea:focus { outline: 2px solid rgba(143, 53, 39, 0.42); outline-offset: -2px; }
 .record-editor-source-layer .md-marker,
-.record-editor-source-layer .md-fence { color: #9a342d; font-weight: 700; }
-.record-editor-source-layer .md-heading { color: #71372e; font-weight: 700; }
+.record-editor-source-layer .md-fence { color: #9a342d; }
+.record-editor-source-layer .md-heading { color: #71372e; }
 .record-editor-source-layer .md-emphasis { color: #9a5a16; }
 .record-editor-source-layer .md-link { color: #276174; text-decoration: underline; text-decoration-thickness: 1px; }
 .record-editor-source-layer .md-code { color: #355b39; background: rgba(60, 103, 65, 0.08); }

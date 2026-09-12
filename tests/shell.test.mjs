@@ -174,8 +174,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260912-record-api-capabilities/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260912-markdown-path-autofill/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260912-edit-save-caret-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260912-edit-save-caret-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260912-edit-save-caret-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
 });
@@ -219,12 +220,19 @@ test('日记详情提供经过密码验证的修改与删除入口', () => {
     assert.match(recordDeleteDialogJs, /确认删除/);
     assert.doesNotMatch(recordDeleteDialogJs, /window\.(?:alert|confirm)\(/);
     assert.match(recordEditorJs, /method: editingRecord \? 'PUT' : 'POST'/);
+    assert.match(recordEditorJs, /editingRecord && !writerMethods\.has\('PUT'\)/);
+    assert.match(recordEditorJs, /本地保存服务版本过旧，请重新运行 npm start 后再修改记录。/);
     assert.match(recordEditorJs, /getRecordInput\(record\)/);
     assert.match(recordStoreJs, /if \(req\.method === 'PUT'\)/);
     assert.match(recordStoreJs, /if \(req\.method === 'DELETE'\)/);
     assert.match(journalCss, /\.sheet-record-actions\s*{/);
     assert.match(journalCss, /dialog\.record-delete-dialog\.entry-sheet/);
     assert.match(journalCss, /\.record-delete-dialog-actions\s*{/);
+});
+
+test('Markdown 源码高亮层与输入层使用相同字形和滚动槽', () => {
+    assert.match(journalCss, /\.record-editor-source-layer pre,\s*\.record-editor-source-layer textarea\s*{[\s\S]*font-weight: 400;[\s\S]*font-synthesis: none;[\s\S]*scrollbar-width: thin;[\s\S]*scrollbar-gutter: stable;/);
+    assert.doesNotMatch(journalCss, /\.record-editor-source-layer \.md-(?:marker|fence|heading)[^{]*\{[^}]*font-weight:\s*700/);
 });
 
 test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => {

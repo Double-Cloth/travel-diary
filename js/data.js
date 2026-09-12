@@ -6,8 +6,10 @@ import {
     normalizeTravelLocation
 } from './location.mjs';
 
-export async function loadTravelData() {
-    const dataPath = new URL('data/travel_data.json', window.location.href).href;
+export async function loadTravelData(cacheKey = '') {
+    const dataUrl = new URL('data/travel_data.json', window.location.href);
+    if (cacheKey) dataUrl.searchParams.set('refresh', cacheKey);
+    const dataPath = dataUrl.href;
     const countryCatalogPath = new URL('assets/catalogs/countries.json', window.location.href).href;
     const [response, countryCatalogResponse] = await Promise.all([
         fetch(dataPath),
@@ -49,10 +51,10 @@ export async function loadTravelData() {
     });
 }
 
-export async function loadTravelRecords(records) {
+export async function loadTravelRecords(records, cacheKey = '') {
     return Promise.all(records.map(async (record) => {
         try {
-            const markdown = await fetchMarkdown(record.desc_md);
+            const markdown = await fetchMarkdown(record.desc_md, cacheKey);
             const parsedMarkdown = parseMarkdown(markdown, record);
 
             return {
@@ -79,12 +81,14 @@ export async function loadTravelRecords(records) {
     }));
 }
 
-async function fetchMarkdown(markdownPath) {
+async function fetchMarkdown(markdownPath, cacheKey = '') {
     if (!markdownPath) {
         return '';
     }
 
-    const resolvedPath = new URL(markdownPath, window.location.href).href;
+    const resolvedUrl = new URL(markdownPath, window.location.href);
+    if (cacheKey) resolvedUrl.searchParams.set('refresh', cacheKey);
+    const resolvedPath = resolvedUrl.href;
 
     try {
         const response = await fetch(resolvedPath);
