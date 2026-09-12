@@ -98,8 +98,8 @@ test('索引夹层分段按钮具备拟物化层次', () => {
     assert.match(journalCss, /0 7px 0 rgba\(121, 84, 43/);
 });
 
-test('记录特征标签将额外间距留在上方而非按钮一侧', () => {
-    assert.match(journalCss, /\.index-filter-section > \.field-label\s*{\s*margin:\s*7px 0 0;/);
+test('记录特征标签的上边距略大于下边距', () => {
+    assert.match(journalCss, /\.index-filter-section > \.field-label\s*{\s*margin:\s*0 0 -2px;/);
 });
 
 test('记录卡片回形针具备前后遮挡关系', () => {
