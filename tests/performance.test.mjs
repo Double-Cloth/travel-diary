@@ -48,9 +48,13 @@ test('可选字体子集模式显式丢弃不需要的 meta 表', () => {
 });
 
 test('多图预览不把 Base64 写入 DOM，并降低移动端重绘开销', () => {
-    assert.match(recordEditorJs, /URL\.createObjectURL\(file\)/);
-    assert.match(recordEditorJs, /loading="lazy" decoding="async"/);
+    assert.match(recordEditorJs, /createImageBitmap\(file,\s*\{[\s\S]*resizeWidth:\s*PHOTO_PREVIEW_WIDTH,[\s\S]*resizeQuality:\s*'medium'/);
+    assert.match(recordEditorJs, /const cropWidth = sourceRatio > previewRatio/);
+    assert.match(recordEditorJs, /canvas\.toBlob\(resolve, 'image\/jpeg'/);
+    assert.match(recordEditorJs, /loading="lazy" decoding="async" width="\$\{PHOTO_PREVIEW_WIDTH\}" height="\$\{PHOTO_PREVIEW_HEIGHT\}"/);
     assert.doesNotMatch(recordEditorJs, /<img src="data:image\/\$\{/);
+    assert.doesNotMatch(recordEditorJs, /const previewUrl = URL\.createObjectURL\(file\);\s*pendingPreviews/);
     assert.match(recordEditorJs, /existing = new Map/);
     assert.match(entrySheetCss, /@media \(max-width: 540px\)[\s\S]*\.record-editor::backdrop \{ backdrop-filter: none; \}/);
+    assert.match(entrySheetCss, /@media \(hover: none\) and \(pointer: coarse\)[\s\S]*\.record-editor::backdrop\s*\{[\s\S]*backdrop-filter: none;/);
 });

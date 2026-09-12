@@ -696,6 +696,13 @@ dialog.data-import-confirm.entry-sheet {
     .record-editor-section + .record-editor-section { padding: 20px 0 0; border-left: 0; border-top: 1px dashed var(--hairline); }
 }
 
+@media (hover: none) and (pointer: coarse) {
+    .record-editor::backdrop {
+        -webkit-backdrop-filter: none;
+        backdrop-filter: none;
+    }
+}
+
 @media (max-width: 540px) {
     .record-editor::backdrop { backdrop-filter: none; }
     dialog.record-password.entry-sheet,

@@ -7,6 +7,8 @@ import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
 import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';
 
 const POINTER_MOVE_TOLERANCE = 8;
+const PHOTO_PREVIEW_WIDTH = 320;
+const PHOTO_PREVIEW_HEIGHT = 200;
 
 function pointerMoved(start, event) {
     return Math.abs(event.clientX - start.x) > POINTER_MOVE_TOLERANCE
@@ -64,6 +66,64 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             photoPreviewUrls.set(photo.id, URL.createObjectURL(previewBlob(photo)));
         }
         return photoPreviewUrls.get(photo.id);
+    }
+
+    async function createPhotoPreviewUrl(file) {
+        let source;
+        let releaseSource = () => {};
+        if (typeof createImageBitmap === 'function') {
+            try {
+                source = await createImageBitmap(file, {
+                    resizeWidth: PHOTO_PREVIEW_WIDTH,
+                    resizeQuality: 'medium'
+                });
+                releaseSource = () => source.close();
+            } catch {
+                // Safari 的部分版本暴露了 createImageBitmap，但无法解码所有图片格式。
+            }
+        }
+        if (!source) {
+            const sourceUrl = URL.createObjectURL(file);
+            const image = new Image();
+            image.src = sourceUrl;
+            try { await image.decode(); }
+            catch {
+                URL.revokeObjectURL(sourceUrl);
+                throw new Error(`无法解码图片：${file.name}`);
+            }
+            source = image;
+            releaseSource = () => URL.revokeObjectURL(sourceUrl);
+        }
+
+        try {
+            const canvas = document.createElement('canvas');
+            canvas.width = PHOTO_PREVIEW_WIDTH;
+            canvas.height = PHOTO_PREVIEW_HEIGHT;
+            const context = canvas.getContext('2d', { alpha: false });
+            if (!context) throw new Error(`无法生成图片预览：${file.name}`);
+            context.fillStyle = '#f3e4bd';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            const sourceRatio = source.width / source.height;
+            const previewRatio = canvas.width / canvas.height;
+            const cropWidth = sourceRatio > previewRatio ? source.height * previewRatio : source.width;
+            const cropHeight = sourceRatio > previewRatio ? source.height : source.width / previewRatio;
+            context.drawImage(
+                source,
+                (source.width - cropWidth) / 2,
+                (source.height - cropHeight) / 2,
+                cropWidth,
+                cropHeight,
+                0,
+                0,
+                canvas.width,
+                canvas.height
+            );
+            const preview = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+            if (!preview) throw new Error(`无法生成图片预览：${file.name}`);
+            return URL.createObjectURL(preview);
+        } finally {
+            releaseSource();
+        }
     }
 
     function releasePhotoPreview(id) {
@@ -386,7 +446,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         figure.className = 'record-editor-photo';
         figure.dataset.photoId = photo.id;
         figure.innerHTML = `
-            <img loading="lazy" decoding="async">
+            <img loading="lazy" decoding="async" width="${PHOTO_PREVIEW_WIDTH}" height="${PHOTO_PREVIEW_HEIGHT}">
             <figcaption></figcaption>
             <div>
                 <button type="button" data-photo-move data-direction="-1">←</button>
@@ -447,19 +507,20 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             if (files.some(file => !file.size)) throw new Error('不能选择空图片文件。');
             const pending = [];
             for (const file of files) {
+                let previewUrl;
+                try { previewUrl = await createPhotoPreviewUrl(file); }
+                catch (error) {
+                    throw new Error(error.message.startsWith('无法') ? error.message : `无法解码图片：${file.name}`);
+                }
+                const id = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
+                pendingPreviews.push([id, previewUrl]);
                 const data = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(String(reader.result).split(',')[1]);
                     reader.onerror = () => reject(new Error('照片读取失败，请重新选择。'));
                     reader.readAsDataURL(file);
                 });
-                const id = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
                 const photo = readUploads([{ id, name: file.name.slice(0, 200), data }])[0];
-                const previewUrl = URL.createObjectURL(file);
-                pendingPreviews.push([photo.id, previewUrl]);
-                const image = new Image();
-                image.src = previewUrl;
-                await image.decode().catch(() => { throw new Error(`无法解码图片：${file.name}`); });
                 pending.push(photo);
             }
             pendingPreviews.forEach(([id, url]) => photoPreviewUrls.set(id, url));
