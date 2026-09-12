@@ -194,6 +194,7 @@ function createRecordApi(root) {
                     const chunks = [];
                     for await (const chunk of req) chunks.push(chunk);
                     const result = await importDataArchive(root, Buffer.concat(chunks), {
+                        currentPassword: req.headers['x-travel-current-password'],
                         password: req.headers['x-travel-import-password']
                     });
                     send(200, { imported: true, ...result });

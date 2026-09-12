@@ -58,7 +58,7 @@ test('本地数据 API 使用令牌导出并重新导入整个 data 目录', asy
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
     const imported = await fetch(`${base}/api/travel-data`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Origin: base },
+        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, 'X-Travel-Current-Password': '123456', Origin: base },
         body: archive
     });
     assert.equal(imported.status, 200);
@@ -72,7 +72,7 @@ test('本地数据 API 在备份无密码时返回设置要求并接受新密码
     ]);
     const missingPassword = await fetch(`${base}/api/travel-data`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Origin: base },
+        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, 'X-Travel-Current-Password': '123456', Origin: base },
         body: archive
     });
     assert.equal(missingPassword.status, 428);
@@ -83,6 +83,7 @@ test('本地数据 API 在备份无密码时返回设置要求并接受新密码
         headers: {
             'Content-Type': 'application/zip',
             'X-Travel-Token': token,
+            'X-Travel-Current-Password': '123456',
             'X-Travel-Import-Password': '654321',
             Origin: base
         },
@@ -91,4 +92,25 @@ test('本地数据 API 在备份无密码时返回设置要求并接受新密码
     assert.equal(imported.status, 200);
     assert.equal((await imported.json()).passwordCreated, true);
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/password.json'), 'utf8')), { password: '654321' });
+});
+
+test('本地数据 API 拒绝缺失或错误的当前密码', async () => {
+    const archive = createZip([
+        { name: 'data/travel_data.json', data: '[]' },
+        { name: 'data/password.json', data: '{"password":"123456"}' }
+    ]);
+    for (const currentPassword of ['', '000000']) {
+        const response = await fetch(`${base}/api/travel-data`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/zip',
+                'X-Travel-Token': token,
+                ...(currentPassword ? { 'X-Travel-Current-Password': currentPassword } : {}),
+                Origin: base
+            },
+            body: archive
+        });
+        assert.equal(response.status, 403);
+        assert.equal((await response.json()).code, 'CURRENT_PASSWORD_INVALID');
+    }
 });

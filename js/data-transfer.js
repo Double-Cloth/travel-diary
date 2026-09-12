@@ -1,4 +1,4 @@
-import { createPasswordSetup } from './record-password.js?v=20260912-import-password';
+import { createPasswordGate, createPasswordSetup } from './record-password.js?v=20260912-import-password';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -42,6 +42,7 @@ export function createDataTransfer(onImported) {
     });
     let busy = false;
     let importTrigger;
+    let currentImportPassword = '';
     let confirmationResolver;
 
     function isLocalWriterHost() {
@@ -79,14 +80,27 @@ export function createDataTransfer(onImported) {
         noteExportStarted();
     }
 
+    function chooseImportWithPassword(password) {
+        if (busy) return;
+        currentImportPassword = password;
+        importTrigger = document.activeElement;
+        input.click();
+    }
+
+    const requestImportAuthorization = createPasswordGate(chooseImportWithPassword, {
+        title: '导入数据验证',
+        description: '输入当前数据的 6 位密码后选择备份。',
+        verifying: '验证成功，正在选择备份…',
+        actionError: '无法开始导入，请重试。'
+    });
+
     function chooseImport() {
         if (busy) return;
         if (!isLocalWriterHost()) {
             setStatus('导入仅支持本机 npm start 页面；当前页面仍可导出备份。');
             return;
         }
-        importTrigger = document.activeElement;
-        input.click();
+        void requestImportAuthorization();
     }
 
     function restoreImportFocus() {
@@ -113,8 +127,12 @@ export function createDataTransfer(onImported) {
         });
     }
 
-    async function uploadArchive(file, token, password = '') {
-        const headers = { 'Content-Type': 'application/zip', 'X-Travel-Token': token };
+    async function uploadArchive(file, token, currentPassword, password = '') {
+        const headers = {
+            'Content-Type': 'application/zip',
+            'X-Travel-Token': token,
+            'X-Travel-Current-Password': currentPassword
+        };
         if (password) headers['X-Travel-Import-Password'] = password;
         const response = await fetch(new URL('api/travel-data', window.location.href), {
             method: 'POST',
@@ -145,13 +163,15 @@ export function createDataTransfer(onImported) {
     input.addEventListener('change', async () => {
         const file = input.files[0];
         input.value = '';
+        const currentPassword = currentImportPassword;
+        currentImportPassword = '';
         if (!file || busy) return;
         if (!await confirmImport(file)) return;
         busy = true;
         setStatus('正在校验备份并导入数据…');
         try {
             const token = await localToken();
-            let { response, result } = await uploadArchive(file, token);
+            let { response, result } = await uploadArchive(file, token, currentPassword);
             if (!response.ok && result.code === 'IMPORT_PASSWORD_REQUIRED') {
                 setStatus('备份校验通过，但其中没有访问密码，请先设置密码。');
                 const password = await requestImportPassword();
@@ -160,7 +180,7 @@ export function createDataTransfer(onImported) {
                     return;
                 }
                 setStatus('正在设置密码并导入已校验的备份…');
-                ({ response, result } = await uploadArchive(file, token, password));
+                ({ response, result } = await uploadArchive(file, token, currentPassword, password));
             }
             if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
             await onImported();

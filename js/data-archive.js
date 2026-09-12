@@ -99,6 +99,29 @@ async function exportDataArchive(root) {
     }
 }
 
+async function verifyCurrentPassword(root, password) {
+    const passwordFile = path.join(root, 'data/password.json');
+    let stat;
+    let config;
+    try {
+        stat = await fs.lstat(passwordFile);
+        if (stat.isSymbolicLink() || !stat.isFile()) {
+            throw failure(403, '当前访问密码配置必须是普通文件。');
+        }
+        config = parseJsonFile(await fs.readFile(passwordFile), '当前 data/password.json');
+    } catch (error) {
+        if (error.status) throw error;
+        throw failure(409, '当前访问密码配置不存在或无法读取，请先修复 data/password.json。');
+    }
+    const configuredPassword = typeof config === 'string' ? config : config?.password;
+    if (typeof configuredPassword !== 'string' || !/^\d{6}$/.test(configuredPassword)) {
+        throw failure(409, '当前访问密码配置无效，密码必须是 6 位数字。');
+    }
+    if (password !== configuredPassword) {
+        throw failure(403, '当前访问密码不正确，未导入任何数据。', 'CURRENT_PASSWORD_INVALID');
+    }
+}
+
 function validateImportedRecords(entries) {
     const files = new Map(entries.map(entry => [entry.name, entry.data]));
     const index = files.get('data/travel_data.json');
@@ -195,6 +218,7 @@ async function importDataArchive(root, archive, options = {}) {
     const backupData = path.join(root, `.travel-data-backup-${id}`);
     let movedCurrent = false;
     try {
+        await verifyCurrentPassword(root, options.currentPassword);
         const { readZip } = await import('./zip-archive.mjs');
         let entries;
         try { entries = readZip(archive); }

@@ -108,6 +108,7 @@ export function createPasswordGate(onVerified, options = {}) {
             showError();
             return;
         }
+        const verifiedPassword = enteredPassword;
         verifying = true;
         setControlsDisabled(true);
         status(copy.verifying);
@@ -117,7 +118,7 @@ export function createPasswordGate(onVerified, options = {}) {
         updateDigits();
         restoreTriggerFocus();
         try {
-            await onVerified();
+            await onVerified(verifiedPassword);
         } catch (error) {
             window.alert(error?.message || copy.actionError);
         } finally {

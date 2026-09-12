@@ -29,7 +29,7 @@ test('全部数据 ZIP 保留 data 目录结构并可原子恢复', async t => {
         'data/travel_data.json'
     ]);
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
-    const result = await importDataArchive(root, archive);
+    const result = await importDataArchive(root, archive, { currentPassword: '123456' });
     assert.equal(result.files, 4);
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
     assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, record.photos[0])), Buffer.from([1, 2, 3]));
@@ -41,9 +41,10 @@ test('全部数据导入拒绝越界目录与缺失正文的索引', async t => 
     t.after(async () => fs.rm(root, { recursive: true, force: true }));
     await fs.mkdir(path.join(root, 'data'));
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
-    await assert.rejects(importDataArchive(root, createZip([{ name: 'other/file.txt', data: 'x' }])), /只能包含 data/);
+    await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
+    await assert.rejects(importDataArchive(root, createZip([{ name: 'other/file.txt', data: 'x' }]), { currentPassword: '123456' }), /只能包含 data/);
     const record = [{ date: '2026-09-11', country: '中国', country_code: 'CN', admin_area: '江苏省', locality: '苏州市', desc_md: 'data/travel-diary/2026/2026-09-11-missing.md', photo_folder: '', photos: [] }];
-    await assert.rejects(importDataArchive(root, createZip([{ name: 'data/travel_data.json', data: JSON.stringify(record) }])), /缺少正文文件/);
+    await assert.rejects(importDataArchive(root, createZip([{ name: 'data/travel_data.json', data: JSON.stringify(record) }]), { currentPassword: '123456' }), /缺少正文文件/);
     assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]');
 });
 
@@ -52,15 +53,16 @@ test('全部数据导入在备份无密码时要求设置密码并写入配置',
     t.after(async () => fs.rm(root, { recursive: true, force: true }));
     await fs.mkdir(path.join(root, 'data'));
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
+    await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
     const archive = createZip([{ name: 'data/travel_data.json', data: '[]' }]);
 
     await assert.rejects(
-        importDataArchive(root, archive),
+        importDataArchive(root, archive, { currentPassword: '123456' }),
         error => error.status === 428 && error.code === 'IMPORT_PASSWORD_REQUIRED'
     );
     assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]');
 
-    const result = await importDataArchive(root, archive, { password: '654321' });
+    const result = await importDataArchive(root, archive, { currentPassword: '123456', password: '654321' });
     assert.deepEqual(result, { files: 2, passwordCreated: true });
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/password.json'), 'utf8')), { password: '654321' });
 });
@@ -70,24 +72,45 @@ test('全部数据导入拒绝无效记录字段、密码配置与大小写冲�
     t.after(async () => fs.rm(root, { recursive: true, force: true }));
     await fs.mkdir(path.join(root, 'data'));
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
+    await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
 
     const invalidRecord = [{ date: '2026-02-30', country: '中国', country_code: 'cn', admin_area: '', locality: '苏州市', desc_md: 'data/travel-diary/2026/2026-02-30-suzhou.md', photo_folder: '', photos: [] }];
     await assert.rejects(importDataArchive(root, createZip([
         { name: 'data/travel_data.json', data: JSON.stringify(invalidRecord) },
         { name: 'data/travel-diary/2026/2026-02-30-suzhou.md', data: '# 苏州' },
         { name: 'data/password.json', data: '{"password":"123456"}' }
-    ])), /date 必须是有效/);
+    ]), { currentPassword: '123456' }), /date 必须是有效/);
 
     await assert.rejects(importDataArchive(root, createZip([
         { name: 'data/travel_data.json', data: '[]' },
         { name: 'data/password.json', data: '{"password":"abc"}' }
-    ])), /密码必须是 6 位数字/);
+    ]), { currentPassword: '123456' }), /密码必须是 6 位数字/);
 
     await assert.rejects(importDataArchive(root, createZip([
         { name: 'data/travel_data.json', data: '[]' },
         { name: 'data/password.json', data: '{"password":"123456"}' },
         { name: 'data/PASSWORD.json', data: '{}' }
-    ])), /仅大小写不同的重复路径/);
+    ]), { currentPassword: '123456' }), /仅大小写不同的重复路径/);
+});
+
+test('全部数据导入必须使用当前数据密码授权', async t => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-archive-current-password-'));
+    t.after(async () => fs.rm(root, { recursive: true, force: true }));
+    await fs.mkdir(path.join(root, 'data'));
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
+    await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
+    const archive = createZip([
+        { name: 'data/travel_data.json', data: '[]' },
+        { name: 'data/password.json', data: '{"password":"654321"}' }
+    ]);
+
+    for (const currentPassword of [undefined, '000000']) {
+        await assert.rejects(
+            importDataArchive(root, archive, { currentPassword }),
+            error => error.status === 403 && error.code === 'CURRENT_PASSWORD_INVALID'
+        );
+    }
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/password.json'), 'utf8')), { password: '123456' });
 });
 
 test('静态站点生成可直接通过 HTTP 下载的数据备份文件', async t => {

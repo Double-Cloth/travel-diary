@@ -224,13 +224,20 @@ test('全部数据导入使用站内确认对话框而不是浏览器 confirm', 
 });
 
 test('全部数据导入在备份缺少密码时要求两次设置 6 位密码', () => {
-    assert.match(dataTransferJs, /import \{ createPasswordSetup \} from '\.\/record-password\.js\?v=20260912-import-password';/);
+    assert.match(dataTransferJs, /import \{[^}]*createPasswordSetup[^}]*\} from '\.\/record-password\.js\?v=20260912-import-password';/);
     assert.match(dataTransferJs, /result\.code === 'IMPORT_PASSWORD_REQUIRED'/);
     assert.match(dataTransferJs, /await requestImportPassword\(\)/);
     assert.match(dataTransferJs, /X-Travel-Import-Password/);
     assert.match(recordPasswordJs, /export function createPasswordSetup/);
     assert.match(recordPasswordJs, /两次输入不一致，请重新设置。/);
     assert.match(recordPasswordJs, /enteredPassword !== firstPassword/);
+});
+
+test('全部数据导入先校验当前密码并提交服务端复核', () => {
+    assert.match(dataTransferJs, /createPasswordGate\(chooseImportWithPassword/);
+    assert.match(dataTransferJs, /输入当前数据的 6 位密码后选择备份。/);
+    assert.match(dataTransferJs, /X-Travel-Current-Password/);
+    assert.match(recordPasswordJs, /onVerified\(verifiedPassword\)/);
 });
 
 test('打开并退出日记时恢复路线档案滚动位置', () => {
