@@ -105,7 +105,7 @@ data/travel_data.json ────────────────→ getRec
 - `js/app.js`：页面状态、路由、渲染、事件绑定和筛选逻辑。
 - `js/data.js`：数据读取、Markdown 解析和基础安全过滤。
 - `js/record-editor.js`：原生 `dialog` 新增表单、能力检测、全部元数据字段、正文视图、草稿导入导出与提交状态。
-- `js/record-password.js`：新增记录与全部数据导出共用的原生 `dialog` 密码验证、自定义数字键盘、实体键盘输入及密码配置读取。
+- `js/record-password.js`：新增记录与全部数据导出共用的原生 `dialog` 密码验证，以及缺失导入密码时的两次输入设置流程；统一支持自定义数字键盘和实体键盘输入。
 - `js/draft-archive.mjs`：ZIP 草稿元数据与独立图片文件的打包、读取和旧草稿衔接。
 - `js/data-transfer.js`：个人主页全部数据导入导出的浏览器交互。
 - `js/data-archive.js`：服务端 `data/` 归档、完整性校验、原子替换和统一数据锁。
@@ -142,7 +142,7 @@ Markdown 与 JSON 的写入不构成跨文件事务，进程强制终止或断�
 
 正文预览复用 `js/data.js` 导出的 `parseMarkdown()`，与日记详情使用相同的 HTML 转义和链接过滤规则。源码编辑和预览编辑由 `markdown-editor.js` 负责标题拆分、语法高亮与受限 DOM 序列化；粘贴只接受纯文本。文件写入使用 `buildMarkdown()` 生成正文。新草稿导出为 ZIP，`draft.json` 仅保存字段和照片文件引用，实际图片放在 `photos/`；导入后在内存中恢复为现有写入负载。旧版 v1 至 v3 JSON 草稿继续兼容。
 
-本地全量数据导出遍历普通文件并把 `data/` 作为 ZIP 根目录，通过仅允许本机访问的 HTTP 下载地址返回。GitHub Pages 部署阶段调用 `scripts/build-data-backup.js` 生成同结构静态 ZIP，避免浏览器 Blob 地址被外部下载工具接管后得到空文件。导入拒绝目录穿越、链接语义和索引缺失引用，在项目内临时目录写完后通过 `rename` 替换。失败时保留原目录并清理临时内容。
+本地全量数据导出遍历普通文件并把 `data/` 作为 ZIP 根目录，通过仅允许本机访问的 HTTP 下载地址返回。GitHub Pages 部署阶段调用 `scripts/build-data-backup.js` 生成同结构静态 ZIP，避免浏览器 Blob 地址被外部下载工具接管后得到空文件。导入在替换前校验 ZIP 路径与跨平台大小写冲突、索引 JSON、记录字段和日期、正文路径与 UTF-8 内容、照片引用及密码配置；备份缺少密码时，服务端以 `IMPORT_PASSWORD_REQUIRED` 响应要求前端完成两次 6 位数字输入，再把配置补入暂存数据。所有文件写入项目内临时目录后才通过 `rename` 替换，任何校验失败、取消设置或写入失败都会保留原目录并清理临时内容。
 
 ## 拆分原则
 

@@ -6,18 +6,19 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHandler } from '../js/server.js';
-import { readZip } from '../js/zip-archive.mjs';
+import { createZip, readZip } from '../js/zip-archive.mjs';
 
 let root;
 let server;
 let base;
 let token;
-const record = { date: '2026-09-11', desc_md: 'data/travel-diary/2026/2026-09-11-suzhou.md', photo_folder: '', photos: [] };
+const record = { date: '2026-09-11', country: '中国', country_code: 'CN', admin_area: '江苏省', locality: '苏州市', desc_md: 'data/travel-diary/2026/2026-09-11-suzhou.md', photo_folder: '', photos: [] };
 
 before(async () => {
     root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-archive-api-'));
     await fs.mkdir(path.join(root, 'data/travel-diary/2026'), { recursive: true });
     await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify([record]));
+    await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
     await fs.writeFile(path.join(root, record.desc_md), '# 苏州\n');
     server = http.createServer(createHandler(root));
     server.listen(0, '127.0.0.1');
@@ -63,4 +64,31 @@ test('本地数据 API 使用令牌导出并重新导入整个 data 目录', asy
     assert.equal(imported.status, 200);
     assert.equal((await imported.json()).imported, true);
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
+});
+
+test('本地数据 API 在备份无密码时返回设置要求并接受新密码', async () => {
+    const archive = createZip([
+        { name: 'data/travel_data.json', data: '[]' }
+    ]);
+    const missingPassword = await fetch(`${base}/api/travel-data`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Origin: base },
+        body: archive
+    });
+    assert.equal(missingPassword.status, 428);
+    assert.equal((await missingPassword.json()).code, 'IMPORT_PASSWORD_REQUIRED');
+
+    const imported = await fetch(`${base}/api/travel-data`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/zip',
+            'X-Travel-Token': token,
+            'X-Travel-Import-Password': '654321',
+            Origin: base
+        },
+        body: archive
+    });
+    assert.equal(imported.status, 200);
+    assert.equal((await imported.json()).passwordCreated, true);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/password.json'), 'utf8')), { password: '654321' });
 });

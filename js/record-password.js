@@ -1,26 +1,8 @@
 const PASSWORD_LENGTH = 6;
 let passwordGateSequence = 0;
 
-export function readRecordPassword(config) {
-    const password = typeof config === 'string' ? config : config?.password;
-    if (typeof password !== 'string' || !/^\d{6}$/.test(password)) {
-        throw new Error('访问密码配置无效，密码必须是 6 位数字。');
-    }
-    return password;
-}
-
-export function createPasswordGate(onVerified, options = {}) {
-    const titleId = `passwordGateTitle${passwordGateSequence += 1}`;
-    const copy = {
-        title: options.title || '访问验证',
-        description: options.description || '输入 6 位数字密码后继续。',
-        verifying: options.verifying || '验证成功，正在继续…',
-        actionError: options.actionError || '操作未完成，请重试。'
-    };
-    const dialog = document.createElement('dialog');
-    dialog.className = 'record-password entry-sheet';
-    dialog.setAttribute('aria-labelledby', titleId);
-    dialog.innerHTML = `
+function passwordKeypadMarkup(titleId) {
+    return `
         <div class="record-password-card">
             <button class="paper-button record-password-close" type="button" data-password-close aria-label="关闭密码窗口">关闭</button>
             <div class="record-password-seal" aria-hidden="true">
@@ -45,6 +27,28 @@ export function createPasswordGate(onVerified, options = {}) {
                 </button>
             </div>
         </div>`;
+}
+
+export function readRecordPassword(config) {
+    const password = typeof config === 'string' ? config : config?.password;
+    if (typeof password !== 'string' || !/^\d{6}$/.test(password)) {
+        throw new Error('访问密码配置无效，密码必须是 6 位数字。');
+    }
+    return password;
+}
+
+export function createPasswordGate(onVerified, options = {}) {
+    const titleId = `passwordGateTitle${passwordGateSequence += 1}`;
+    const copy = {
+        title: options.title || '访问验证',
+        description: options.description || '输入 6 位数字密码后继续。',
+        verifying: options.verifying || '验证成功，正在继续…',
+        actionError: options.actionError || '操作未完成，请重试。'
+    };
+    const dialog = document.createElement('dialog');
+    dialog.className = 'record-password entry-sheet';
+    dialog.setAttribute('aria-labelledby', titleId);
+    dialog.innerHTML = passwordKeypadMarkup(titleId);
     document.body.append(dialog);
     dialog.querySelector(`#${titleId}`).textContent = copy.title;
     dialog.querySelector('[data-password-note]').textContent = copy.description;
@@ -195,5 +199,139 @@ export function createPasswordGate(onVerified, options = {}) {
         reset();
         dialog.showModal();
         await loadPassword();
+    };
+}
+
+export function createPasswordSetup(options = {}) {
+    const titleId = `passwordGateTitle${passwordGateSequence += 1}`;
+    const copy = {
+        title: options.title || '设置访问密码',
+        description: options.description || '备份中未包含访问密码，请设置 6 位数字密码。',
+        confirmation: options.confirmation || '请再次输入相同密码以确认。'
+    };
+    const dialog = document.createElement('dialog');
+    dialog.className = 'record-password entry-sheet';
+    dialog.setAttribute('aria-labelledby', titleId);
+    dialog.innerHTML = passwordKeypadMarkup(titleId);
+    document.body.append(dialog);
+    dialog.querySelector(`#${titleId}`).textContent = copy.title;
+    dialog.querySelector('[data-password-note]').textContent = copy.description;
+
+    let enteredPassword = '';
+    let firstPassword = '';
+    let resolver;
+    let trigger;
+
+    const status = message => { dialog.querySelector('[data-password-status]').textContent = message; };
+
+    function updateDigits() {
+        dialog.querySelectorAll('[data-password-digit]').forEach((slot, index) => {
+            slot.classList.toggle('is-filled', index < enteredPassword.length);
+        });
+        dialog.querySelector('[data-password-digits]').setAttribute(
+            'aria-label',
+            enteredPassword.length ? `已输入 ${enteredPassword.length} 位密码` : '尚未输入密码'
+        );
+    }
+
+    function reset(message = '') {
+        enteredPassword = '';
+        dialog.classList.remove('record-password-error');
+        status(message);
+        updateDigits();
+    }
+
+    function restoreTriggerFocus() {
+        if (trigger?.isConnected) trigger.focus();
+        else document.querySelector('[data-action="import-all-data"]')?.focus();
+    }
+
+    function finish(password = null) {
+        if (!resolver) return;
+        const resolve = resolver;
+        resolver = null;
+        dialog.close();
+        firstPassword = '';
+        reset();
+        restoreTriggerFocus();
+        resolve(password);
+    }
+
+    function showMismatch() {
+        firstPassword = '';
+        reset('两次输入不一致，请重新设置。');
+        dialog.querySelector('[data-password-note]').textContent = copy.description;
+        dialog.classList.remove('record-password-error');
+        requestAnimationFrame(() => dialog.classList.add('record-password-error'));
+    }
+
+    function submit() {
+        if (enteredPassword.length !== PASSWORD_LENGTH) return;
+        if (!firstPassword) {
+            firstPassword = enteredPassword;
+            dialog.querySelector('[data-password-note]').textContent = copy.confirmation;
+            reset();
+            return;
+        }
+        if (enteredPassword !== firstPassword) {
+            showMismatch();
+            return;
+        }
+        finish(enteredPassword);
+    }
+
+    function enterDigit(digit) {
+        if (enteredPassword.length >= PASSWORD_LENGTH) return;
+        dialog.classList.remove('record-password-error');
+        status('');
+        enteredPassword += digit;
+        updateDigits();
+        if (enteredPassword.length === PASSWORD_LENGTH) submit();
+    }
+
+    function deleteDigit() {
+        if (!enteredPassword.length) return;
+        dialog.classList.remove('record-password-error');
+        status('');
+        enteredPassword = enteredPassword.slice(0, -1);
+        updateDigits();
+    }
+
+    dialog.addEventListener('cancel', event => {
+        event.preventDefault();
+        finish();
+    });
+
+    dialog.addEventListener('click', event => {
+        const digitButton = event.target.closest('[data-password-key]');
+        if (digitButton) enterDigit(digitButton.dataset.passwordKey);
+        if (event.target.closest('[data-password-delete]')) deleteDigit();
+        if (event.target.closest('[data-password-clear]')) reset();
+        if (event.target.closest('[data-password-close]')) finish();
+    });
+
+    dialog.addEventListener('keydown', event => {
+        if (/^\d$/.test(event.key)) {
+            event.preventDefault();
+            enterDigit(event.key);
+        } else if (event.key === 'Backspace' || event.key === 'Delete') {
+            event.preventDefault();
+            deleteDigit();
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            submit();
+        }
+        event.stopPropagation();
+    });
+
+    return () => {
+        if (dialog.open || resolver) return Promise.resolve(null);
+        trigger = document.activeElement;
+        firstPassword = '';
+        dialog.querySelector('[data-password-note]').textContent = copy.description;
+        reset();
+        dialog.showModal();
+        dialog.querySelector('[data-password-key]')?.focus();
+        return new Promise(resolve => { resolver = resolve; });
     };
 }

@@ -172,7 +172,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260912-cn-locations-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260912-import-validation/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260912-cn-locations-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
@@ -189,7 +189,7 @@ test('自定义下拉框靠近底部时向上展开并保留原有底部留白',
 });
 
 test('新增记录入口先通过 6 位数字密码验证', () => {
-    assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260911-copy-refresh';/);
+    assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260912-import-password';/);
     assert.match(appJs, /openRecordEditor = createPasswordGate\(openEditor,/);
     assert.match(recordPasswordJs, /new URL\('data\/password\.json', window\.location\.href\)/);
     assert.match(recordPasswordJs, /\^\\d\{6\}\$/);
@@ -221,6 +221,16 @@ test('全部数据导入使用站内确认对话框而不是浏览器 confirm', 
     assert.match(dataTransferJs, /await confirmImport\(file\)/);
     assert.match(journalCss, /dialog\.data-import-confirm\.entry-sheet/);
     assert.match(journalCss, /\.data-import-confirm-actions\s*{/);
+});
+
+test('全部数据导入在备份缺少密码时要求两次设置 6 位密码', () => {
+    assert.match(dataTransferJs, /import \{ createPasswordSetup \} from '\.\/record-password\.js\?v=20260912-import-password';/);
+    assert.match(dataTransferJs, /result\.code === 'IMPORT_PASSWORD_REQUIRED'/);
+    assert.match(dataTransferJs, /await requestImportPassword\(\)/);
+    assert.match(dataTransferJs, /X-Travel-Import-Password/);
+    assert.match(recordPasswordJs, /export function createPasswordSetup/);
+    assert.match(recordPasswordJs, /两次输入不一致，请重新设置。/);
+    assert.match(recordPasswordJs, /enteredPassword !== firstPassword/);
 });
 
 test('打开并退出日记时恢复路线档案滚动位置', () => {

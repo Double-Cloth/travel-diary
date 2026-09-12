@@ -1,3 +1,5 @@
+import { createPasswordSetup } from './record-password.js?v=20260912-import-password';
+
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
     if (output) output.textContent = message;
@@ -33,6 +35,11 @@ export function createDataTransfer(onImported) {
             </div>
         </div>`;
     document.body.append(dialog);
+    const requestImportPassword = createPasswordSetup({
+        title: '设置导入密码',
+        description: '备份中未包含访问密码，请设置新的 6 位数字密码。',
+        confirmation: '请再次输入相同密码；导入完成后将使用此密码。'
+    });
     let busy = false;
     let importTrigger;
     let confirmationResolver;
@@ -106,6 +113,21 @@ export function createDataTransfer(onImported) {
         });
     }
 
+    async function uploadArchive(file, token, password = '') {
+        const headers = { 'Content-Type': 'application/zip', 'X-Travel-Token': token };
+        if (password) headers['X-Travel-Import-Password'] = password;
+        const response = await fetch(new URL('api/travel-data', window.location.href), {
+            method: 'POST',
+            headers,
+            body: file,
+            signal: AbortSignal.timeout(120000)
+        });
+        let result;
+        try { result = await response.json(); }
+        catch { throw new Error('全部数据导入返回了无法识别的结果。'); }
+        return { response, result };
+    }
+
     dialog.addEventListener('cancel', event => {
         event.preventDefault();
         finishConfirmation(false);
@@ -129,16 +151,20 @@ export function createDataTransfer(onImported) {
         setStatus('正在校验备份并导入数据…');
         try {
             const token = await localToken();
-            const response = await fetch(new URL('api/travel-data', window.location.href), {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token },
-                body: file,
-                signal: AbortSignal.timeout(120000)
-            });
-            const result = await response.json();
+            let { response, result } = await uploadArchive(file, token);
+            if (!response.ok && result.code === 'IMPORT_PASSWORD_REQUIRED') {
+                setStatus('备份校验通过，但其中没有访问密码，请先设置密码。');
+                const password = await requestImportPassword();
+                if (!password) {
+                    setStatus('已取消导入，当前数据未修改。');
+                    return;
+                }
+                setStatus('正在设置密码并导入已校验的备份…');
+                ({ response, result } = await uploadArchive(file, token, password));
+            }
             if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
             await onImported();
-            setStatus(`已导入 ${result.files} 个文件，并刷新页面数据。`);
+            setStatus(`已导入 ${result.files} 个文件${result.passwordCreated ? '并设置访问密码' : ''}，并刷新页面数据。`);
         } catch (error) {
             setStatus(error.message);
         } finally {

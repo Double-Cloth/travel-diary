@@ -193,13 +193,18 @@ function createRecordApi(root) {
                 if (req.method === 'POST' && req.headers['content-type'] === 'application/zip') {
                     const chunks = [];
                     for await (const chunk of req) chunks.push(chunk);
-                    const result = await importDataArchive(root, Buffer.concat(chunks));
+                    const result = await importDataArchive(root, Buffer.concat(chunks), {
+                        password: req.headers['x-travel-import-password']
+                    });
                     send(200, { imported: true, ...result });
                     return;
                 }
                 send(405, { error: '数据备份仅支持 ZIP 导入与导出。' });
             } catch (error) {
-                send(error.status || 500, { error: error.status ? error.message : '全部数据操作失败，请检查目录权限、磁盘空间和备份文件。' });
+                send(error.status || 500, {
+                    error: error.status ? error.message : '全部数据操作失败，请检查目录权限、磁盘空间和备份文件。',
+                    ...(error.code ? { code: error.code } : {})
+                });
             }
             return;
         }
