@@ -35,6 +35,26 @@ export function createDataTransfer(onImported) {
             </div>
         </div>`;
     document.body.append(dialog);
+    const successDialog = document.createElement('dialog');
+    successDialog.className = 'data-import-success entry-sheet';
+    successDialog.setAttribute('aria-labelledby', 'dataImportSuccessTitle');
+    successDialog.setAttribute('aria-describedby', 'dataImportSuccessDescription');
+    successDialog.innerHTML = `
+        <div class="data-import-success-card">
+            <div class="data-import-success-seal" aria-hidden="true">
+                <svg viewBox="0 0 32 32" focusable="false">
+                    <circle cx="16" cy="16" r="12"></circle>
+                    <path d="m9.5 16.5 4.2 4.2 8.8-9.4"></path>
+                </svg>
+            </div>
+            <p class="journal-label">全部数据导入</p>
+            <h2 id="dataImportSuccessTitle">导入成功</h2>
+            <p class="data-import-success-note" id="dataImportSuccessDescription">全部旅行数据已更新。</p>
+            <div class="data-import-success-actions">
+                <button class="paper-button data-import-success-close" type="button" data-import-success-close>完成</button>
+            </div>
+        </div>`;
+    document.body.append(successDialog);
     const requestImportPassword = createPasswordSetup({
         title: '设置导入密码',
         description: '备份中未包含访问密码，请设置新的 6 位数字密码。',
@@ -108,6 +128,18 @@ export function createDataTransfer(onImported) {
         else document.querySelector('[data-action="import-all-data"]')?.focus();
     }
 
+    function closeImportSuccess() {
+        if (!successDialog.open) return;
+        successDialog.close();
+        restoreImportFocus();
+    }
+
+    function showImportSuccess() {
+        if (successDialog.open) return;
+        successDialog.showModal();
+        successDialog.querySelector('[data-import-success-close]').focus();
+    }
+
     function finishConfirmation(confirmed) {
         if (!confirmationResolver) return;
         const resolve = confirmationResolver;
@@ -160,6 +192,19 @@ export function createDataTransfer(onImported) {
         event.stopPropagation();
     });
 
+    successDialog.addEventListener('cancel', event => {
+        event.preventDefault();
+        closeImportSuccess();
+    });
+
+    successDialog.addEventListener('click', event => {
+        if (event.target.closest('[data-import-success-close]')) closeImportSuccess();
+    });
+
+    successDialog.addEventListener('keydown', event => {
+        event.stopPropagation();
+    });
+
     input.addEventListener('click', event => {
         event.stopPropagation();
     });
@@ -188,7 +233,8 @@ export function createDataTransfer(onImported) {
             }
             if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
             await onImported();
-            setStatus(`已导入 ${result.files} 个文件${result.passwordCreated ? '并设置访问密码' : ''}，并刷新页面数据。`);
+            setStatus('');
+            showImportSuccess();
         } catch (error) {
             setStatus(error.message);
         } finally {

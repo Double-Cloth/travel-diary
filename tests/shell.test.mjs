@@ -172,7 +172,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260912-mobile-context-dialog/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260912-import-success/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260912-mobile-photo-stability/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
@@ -223,6 +223,17 @@ test('全部数据导入使用站内确认对话框而不是浏览器 confirm', 
     assert.match(journalCss, /\.data-import-confirm-actions\s*{/);
 });
 
+test('全部数据导入成功后使用站内结果弹窗而不是状态文字', () => {
+    assert.match(dataTransferJs, /successDialog\.className = 'data-import-success entry-sheet'/);
+    assert.match(dataTransferJs, /<h2 id="dataImportSuccessTitle">导入成功<\/h2>/);
+    assert.match(dataTransferJs, /await onImported\(\);\s*setStatus\(''\);\s*showImportSuccess\(\);/);
+    assert.match(dataTransferJs, /successDialog\.showModal\(\)/);
+    assert.match(dataTransferJs, /data-import-success-close/);
+    assert.doesNotMatch(dataTransferJs, /已导入 \$\{result\.files\} 个文件/);
+    assert.match(journalCss, /dialog\.data-import-success\.entry-sheet/);
+    assert.match(journalCss, /\.data-import-success-seal\s*{/);
+    assert.match(journalCss, /\.data-import-success-actions\s*{/);
+});
 test('全部数据导入在备份缺少密码时要求两次设置 6 位密码', () => {
     assert.match(dataTransferJs, /import \{[^}]*createPasswordSetup[^}]*\} from '\.\/record-password\.js\?v=20260912-import-password';/);
     assert.match(dataTransferJs, /result\.code === 'IMPORT_PASSWORD_REQUIRED'/);

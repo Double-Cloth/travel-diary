@@ -1,7 +1,7 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
 import { createRecordEditor } from './record-editor.js?v=20260912-mobile-photo-stability';
 import { createPasswordGate } from './record-password.js?v=20260912-import-password';
-import { createDataTransfer } from './data-transfer.js?v=20260912-mobile-context-dialog';
+import { createDataTransfer } from './data-transfer.js?v=20260912-import-success';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';

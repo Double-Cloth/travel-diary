@@ -576,7 +576,8 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 .record-editor-photo button:disabled { opacity: 0.35; cursor: default; }
 
 dialog.record-password.entry-sheet,
-dialog.data-import-confirm.entry-sheet {
+dialog.data-import-confirm.entry-sheet,
+dialog.data-import-success.entry-sheet {
     width: min(420px, calc(100% - 32px));
     max-height: calc(100dvh - 32px);
     margin: auto;
@@ -584,7 +585,8 @@ dialog.data-import-confirm.entry-sheet {
     overflow: auto;
 }
 .record-password::backdrop,
-.data-import-confirm::backdrop { background: rgba(17, 9, 4, 0.72); backdrop-filter: blur(5px); }
+.data-import-confirm::backdrop,
+.data-import-success::backdrop { background: rgba(17, 9, 4, 0.72); backdrop-filter: blur(5px); }
 .record-password-card { position: relative; padding: 32px 38px 36px; text-align: center; }
 .record-password-close { position: absolute; top: 18px; right: 18px; width: auto; padding: 7px 11px; font-size: 12px; }
 .record-password-seal {
@@ -684,6 +686,27 @@ dialog.data-import-confirm.entry-sheet {
 .data-import-confirm-actions .paper-button { min-width: 0; padding-inline: 12px; }
 .data-import-confirm-actions .data-import-confirm-submit { color: var(--paper-50); border-color: rgba(91, 27, 20, 0.52); background: linear-gradient(180deg, #a84a39, #76271e); }
 .data-import-confirm-actions .data-import-confirm-submit:hover { border-color: rgba(91, 27, 20, 0.72); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -3px 8px rgba(58, 13, 9, 0.22), 0 12px 20px rgba(52, 31, 14, 0.2); }
+.data-import-success-card { padding: 32px 38px 36px; text-align: center; }
+.data-import-success-seal {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    margin: 2px auto 18px;
+    border: 2px solid rgba(56, 69, 43, 0.74);
+    border-radius: 50%;
+    color: var(--green);
+    background: rgba(56, 69, 43, 0.07);
+    box-shadow: inset 0 0 0 4px rgba(56, 69, 43, 0.07);
+    transform: rotate(3deg);
+}
+.data-import-success-seal svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.data-import-success .journal-label { margin: 0 auto 8px; }
+.data-import-success h2 { margin: 0; color: var(--ink); font-size: 27px; line-height: 1.25; }
+.data-import-success-note { margin: 10px 0 22px; color: var(--ink-soft); font-size: 14px; line-height: 1.8; }
+.data-import-success-actions { display: grid; }
+.data-import-success-actions .data-import-success-close { color: var(--paper-50); border-color: rgba(45, 56, 34, 0.56); background: linear-gradient(180deg, #596747, #35422b); }
+.data-import-success-actions .data-import-success-close:hover { border-color: rgba(45, 56, 34, 0.78); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -3px 8px rgba(25, 34, 18, 0.2), 0 12px 20px rgba(52, 31, 14, 0.2); }
 
 @keyframes passwordShake {
     0%, 100% { transform: translateX(0); }
@@ -706,7 +729,8 @@ dialog.data-import-confirm.entry-sheet {
 @media (max-width: 540px) {
     .record-editor::backdrop { backdrop-filter: none; }
     dialog.record-password.entry-sheet,
-    dialog.data-import-confirm.entry-sheet { width: calc(100% - 24px); }
+    dialog.data-import-confirm.entry-sheet,
+    dialog.data-import-success.entry-sheet { width: calc(100% - 24px); }
     .record-password-card { padding: 28px 24px 26px; }
     .record-password .record-password-close { top: 14px; right: 14px; width: auto; padding: 7px 11px; }
     .record-password-seal { width: 52px; height: 52px; margin-bottom: 14px; }
@@ -714,6 +738,9 @@ dialog.data-import-confirm.entry-sheet {
     .record-password-note { margin-bottom: 16px; }
     .record-password-keypad button { height: 52px; }
     .data-import-confirm-card { padding: 28px 24px 26px; }
+    .data-import-success-card { padding: 28px 24px 26px; }
+    .data-import-success-seal { width: 52px; height: 52px; margin-bottom: 14px; }
+    .data-import-success h2 { font-size: 24px; }
     .data-import-confirm-seal { width: 52px; height: 52px; margin-bottom: 14px; }
     .data-import-confirm h2 { font-size: 24px; }
     .record-editor-heading { padding: 16px; }
