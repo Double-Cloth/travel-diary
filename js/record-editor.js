@@ -29,6 +29,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let saved = false;
     let initialized = false;
     let opening = false;
+    let editingRecord = null;
+    let autoManagedMarkdownPath = '';
     let bodyView = 'source';
     let uploads = [];
     let readingPhotos = false;
@@ -49,6 +51,25 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             ? field(key).value.split(/\r?\n/).map(photo => photo.trim()).filter(Boolean)
             : field(key).value]))
     });
+
+    function getRecordInput(record) {
+        const markdown = splitMarkdown(record.descMarkdown || '', record.title || record.descTitle || '');
+        return {
+            date: record.date || '',
+            country_code: record.country_code || record.countryCode || '',
+            country: record.country || '',
+            admin_area: record.admin_area || record.adminArea || '',
+            admin_area_type: record.admin_area_type || record.adminAreaType || '',
+            locality: record.locality || '',
+            locality_type: record.locality_type || record.localityType || '',
+            trip_id: record.trip_id || '',
+            title: markdown.title || record.title || '',
+            body: markdown.body || '',
+            desc_md: record.desc_md || '',
+            photo_folder: record.photo_folder || '',
+            photos: Array.isArray(record.photos) ? [...record.photos] : []
+        };
+    }
 
     function photoMimeType(photo) {
         return `image/${photo.extension === 'jpg' ? 'jpeg' : photo.extension}`;
@@ -159,14 +180,16 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         }
     }
 
-    function render() {
+    function render(record = null) {
         releasePhotoPreviews();
+        editingRecord = record;
         requestId = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
         const today = new Date();
         const date = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+        const editing = Boolean(record);
         dialog.innerHTML = `
             <header class="record-editor-heading">
-                <div><p class="journal-label">旅行日记</p><h2 id="recordEditorTitle">新增旅行记录</h2></div>
+                <div><p class="journal-label">旅行日记</p><h2 id="recordEditorTitle">${editing ? '修改旅行记录' : '新增旅行记录'}</h2></div>
                 <button class="paper-button" type="button" data-editor-close aria-label="关闭编辑器并保留本页草稿">关闭</button>
             </header>
             <form>
@@ -253,7 +276,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <button class="paper-button" type="button" data-editor-import>导入草稿</button>
                             <button class="paper-button" type="button" data-editor-download>导出草稿</button>
                         </div>
-                        <button class="brass-button" type="submit" data-editor-save disabled>保存旅行记录</button>
+                        <button class="brass-button" type="submit" data-editor-save disabled>${editing ? '保存修改' : '保存旅行记录'}</button>
                         <input type="file" accept=".zip,.json,application/zip,application/json" data-editor-file hidden aria-label="选择草稿 ZIP 或旧版 JSON 文件">
                     </div>
                     <p class="record-editor-note">草稿仅保留在本页，刷新或离开前请保存或导出。</p>
@@ -265,8 +288,22 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         bodyView = 'source';
         userEditedAutofillFields.clear();
         autoFilledValues.clear();
+        const initialInput = editing ? getRecordInput(record) : { date };
+        for (const key of RECORD_FIELDS) {
+            const value = initialInput[key] ?? (key === 'photos' ? [] : '');
+            field(key).value = key === 'photos' ? value.join('\n') : value;
+        }
+        autoManagedMarkdownPath = editing && initialInput.desc_md === defaultMarkdownPath(initialInput.date, initialInput.locality)
+            ? initialInput.desc_md
+            : '';
+        if (editing) {
+            for (const name of ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id']) {
+                userEditedAutofillFields.add(name);
+            }
+            dialog.querySelector('.record-editor-files').open = Boolean(initialInput.desc_md || initialInput.photo_folder || initialInput.photos.length);
+        }
         enhanceCustomSelects(dialog);
-        updateCountry(true);
+        updateCountry(!editing);
         updatePathHint();
         updateAutofill();
         updateBodyView(bodyView);
@@ -283,6 +320,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const locality = field('locality').value || '目的地';
         const markdownPath = defaultMarkdownPath(field('date').value || 'YYYY-MM-DD', locality);
         const photoPath = `data/photos/${recordSlug(locality)}`;
+        if (autoManagedMarkdownPath && field('desc_md').value === autoManagedMarkdownPath) {
+            field('desc_md').value = markdownPath;
+            autoManagedMarkdownPath = markdownPath;
+        }
         field('desc_md').placeholder = markdownPath;
         field('photo_folder').placeholder = photoPath;
         dialog.querySelector('[data-editor-photo-path-preview]').textContent = photoPath;
@@ -604,6 +645,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (event.target.matches('[data-editor-source]')) syncMarkdown(event.target.value);
         if (event.target.closest('[data-editor-rich]')) syncPreview();
         if (!saved && RECORD_FIELDS.includes(event.target.name)) dirty = true;
+        if (event.target.name === 'desc_md' && event.isTrusted) autoManagedMarkdownPath = '';
         if (['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id'].includes(event.target.name)) {
             userEditedAutofillFields.add(event.target.name);
             autoFilledValues.delete(event.target.name);
@@ -775,15 +817,16 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         status('正在保存旅行记录…');
         try {
             const response = await fetch(new URL('api/travel-records', window.location.href), {
-                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token },
-                body: JSON.stringify(draft), signal: AbortSignal.timeout(60000)
+                method: editingRecord ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token },
+                body: JSON.stringify(editingRecord ? { originalDescMd: editingRecord.desc_md, draft } : draft),
+                signal: AbortSignal.timeout(60000)
             });
             const result = await response.json();
             if (!response.ok || !result.saved) throw new Error(result.error || '未收到服务器的成功响应。');
             saved = true;
             dirty = false;
-            status(`已保存并更新旅行索引：${result.record.desc_md}`);
-            try { await onSaved(result.record); }
+            status(`${editingRecord ? '修改' : '记录'}已保存并更新旅行索引：${result.record.desc_md}`);
+            try { await onSaved(result.record, { mode: editingRecord ? 'edit' : 'create', originalRecord: editingRecord }); }
             catch { status(`记录已保存：${result.record.desc_md}。页面数据刷新失败，请手动刷新后查看。`); }
         } catch (error) {
             status(`保存结果未确认：${error.message} 草稿仍在本页，可导出或重试。`);
@@ -806,12 +849,18 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         event.returnValue = '';
     });
 
-    return async () => {
+    return async (record = null) => {
         if (dialog.open || opening) return;
         opening = true;
         try {
+            if (record?.descLoadFailed) throw new Error('这篇日记的正文加载失败，暂时不能安全修改。请修复正文文件后重试。');
             trigger = document.activeElement;
-            if (!initialized || saved) {
+            const requestedRecordKey = record?.desc_md || '';
+            const currentRecordKey = editingRecord?.desc_md || '';
+            if (initialized && !saved && dirty && requestedRecordKey !== currentRecordKey) {
+                throw new Error('编辑器中还有未保存内容。请先保存或导出草稿，再打开另一条记录。');
+            }
+            if (!initialized || saved || requestedRecordKey !== currentRecordKey) {
                 if (!countries.length) {
                     const [countryResponse, chinaLocationResponse] = await Promise.all([
                         fetch(new URL('assets/catalogs/countries.json', window.location.href)),
@@ -821,7 +870,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                     countries = (await countryResponse.json()).countries;
                     chinaLocations = await chinaLocationResponse.json();
                 }
-                render();
+                render(record);
                 initialized = true;
             }
             dialog.showModal();

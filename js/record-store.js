@@ -34,6 +34,91 @@ async function writeSynced(file, content) {
     }
 }
 
+async function resolveMarkdownFile(root, markdownPath, createDirectory = false) {
+    const { isSafeAsciiFileName } = await import('./slug.mjs');
+    const match = typeof markdownPath === 'string'
+        ? markdownPath.match(/^data\/travel-diary\/(\d{4})\/([^/]+\.md)$/)
+        : null;
+    if (!match || !isSafeAsciiFileName(match[2])) throw failure(400, '旅行正文路径无效。');
+    const directory = await checkedDirectory(root, ['data', 'travel-diary', match[1]], createDirectory);
+    return path.join(directory, match[2]);
+}
+
+async function replaceIndex(dataDir, indexFile, previous, records) {
+    let temporaryFile = path.join(dataDir, `.travel-write-${randomBytes(16).toString('hex')}.tmp`);
+    try {
+        await writeSynced(temporaryFile, JSON.stringify(records, null, 2) + '\n');
+        await checkedFile(indexFile);
+        if (await fs.readFile(indexFile, 'utf8') !== previous) throw failure(409, '旅行索引在保存期间被修改，请重试。');
+        await fs.rename(temporaryFile, indexFile);
+        temporaryFile = null;
+    } finally {
+        if (temporaryFile) await fs.unlink(temporaryFile).catch(() => {});
+    }
+}
+
+async function stageRecordPhotos(root, record, uploads, sourcePhotos) {
+    const createdPhotos = [];
+    let createdPhotoDir;
+    const rollback = async () => {
+        for (const photo of createdPhotos) await fs.unlink(photo).catch(() => {});
+        if (createdPhotoDir) await fs.rmdir(createdPhotoDir).catch(() => {});
+    };
+
+    if (!uploads.length) {
+        if (!record.photos.length) return { rollback };
+        try {
+            const photoDir = await checkedDirectory(root, record.photo_folder.split('/'));
+            for (const photo of record.photos) await checkedFile(path.join(photoDir, photo));
+        } catch (error) {
+            if (error.status) throw error;
+            throw failure(400, '照片目录或文件不存在、不可读。请先将照片放入项目对应目录，再保存记录。');
+        }
+        return { rollback };
+    }
+
+    const photoContents = [];
+    if (sourcePhotos.names.length) {
+        const sourceDir = await checkedDirectory(root, sourcePhotos.folder.split('/'));
+        for (const name of sourcePhotos.names) {
+            await checkedFile(path.join(sourceDir, name));
+            photoContents.push(await fs.readFile(path.join(sourceDir, name)));
+        }
+    }
+    for (const photo of uploads) {
+        const buffer = Buffer.from(photo.data, 'base64');
+        if (buffer.toString('base64') !== photo.data) throw failure(400, '照片编码无效。');
+        photoContents.push(buffer);
+    }
+
+    const parent = await checkedDirectory(root, ['data', 'photos'], true);
+    const photoDir = path.join(parent, path.basename(record.photo_folder));
+    try {
+        await fs.mkdir(photoDir);
+        createdPhotoDir = photoDir;
+    } catch (error) {
+        if (error.code !== 'EEXIST') throw error;
+        await checkedDirectory(root, record.photo_folder.split('/'));
+    }
+
+    try {
+        for (let index = 0; index < record.photos.length; index += 1) {
+            if (index < sourcePhotos.names.length && sourcePhotos.folder === record.photo_folder
+                && record.photos[index] === sourcePhotos.names[index]) continue;
+            const photoPath = path.join(photoDir, record.photos[index]);
+            const handle = await fs.open(photoPath, 'wx');
+            createdPhotos.push(photoPath);
+            try { await handle.writeFile(photoContents[index]); await handle.sync(); }
+            finally { await handle.close(); }
+        }
+        return { rollback };
+    } catch (error) {
+        await rollback();
+        if (error.code === 'EEXIST') throw failure(409, '目标照片文件已存在，未覆盖。请调整照片文件名后重试。');
+        throw error;
+    }
+}
+
 async function saveRecord(root, payload) {
     const { prepareRecord } = await import('./record-input.mjs');
     const catalog = JSON.parse(await fs.readFile(path.join(root, 'assets/catalogs/countries.json'), 'utf8'));
@@ -152,6 +237,149 @@ async function saveRecord(root, payload) {
     }
 }
 
+async function updateRecord(root, payload) {
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)
+        || typeof payload.originalDescMd !== 'string' || payload.originalDescMd.length > 200) {
+        throw failure(400, '缺少要修改的旅行记录标识。');
+    }
+    const { prepareRecord } = await import('./record-input.mjs');
+    const catalog = JSON.parse(await fs.readFile(path.join(root, 'assets/catalogs/countries.json'), 'utf8'));
+    let prepared;
+    try {
+        prepared = prepareRecord(payload.draft, catalog.countries);
+    } catch (error) {
+        throw failure(400, error.message);
+    }
+
+    const { record, markdown, uploads, sourcePhotos } = prepared;
+    const dataDir = await checkedDirectory(root, ['data']);
+    const indexFile = path.join(dataDir, 'travel_data.json');
+    const releaseLock = await acquireDataLock(root);
+    let photoStage;
+    let temporaryMarkdown;
+    let backupMarkdown;
+    let createdMarkdown;
+    let oldDiaryFile;
+    let newDiaryFile;
+    let committed = false;
+    try {
+        await checkedFile(indexFile);
+        const previous = await fs.readFile(indexFile, 'utf8');
+        const records = JSON.parse(previous);
+        if (!Array.isArray(records)) throw failure(409, '旅行索引不是数组，请先修复 data/travel_data.json。');
+        const matches = records.map((item, index) => ({ item, index }))
+            .filter(({ item }) => item && item.desc_md === payload.originalDescMd);
+        if (matches.length !== 1) throw failure(409, matches.length ? '记录标识不唯一，无法安全修改。' : '原旅行记录已不存在，请刷新页面后重试。');
+
+        const { item: existing, index } = matches[0];
+        const conflicting = records.some((item, itemIndex) => itemIndex !== index && item?.desc_md === record.desc_md);
+        if (conflicting) throw failure(409, '目标正文路径已被另一条旅行记录使用。');
+        const recordFields = new Set([
+            'date', 'country', 'country_code', 'admin_area', 'admin_area_type', 'locality',
+            'locality_type', 'trip_id', 'desc_md', 'photo_folder', 'photos'
+        ]);
+        const preserved = Object.fromEntries(Object.entries(existing).filter(([key]) => !recordFields.has(key)));
+        const updatedRecord = { ...preserved, ...record };
+        oldDiaryFile = await resolveMarkdownFile(root, payload.originalDescMd);
+        newDiaryFile = await resolveMarkdownFile(root, record.desc_md, true);
+        await checkedFile(oldDiaryFile);
+        const oldMarkdown = await fs.readFile(oldDiaryFile, 'utf8');
+        if (JSON.stringify(existing) === JSON.stringify(updatedRecord) && oldMarkdown === markdown && !uploads.length) {
+            return { record: updatedRecord, alreadySaved: true };
+        }
+
+        photoStage = await stageRecordPhotos(root, record, uploads, sourcePhotos);
+        if (newDiaryFile === oldDiaryFile) {
+            if (oldMarkdown !== markdown) {
+                temporaryMarkdown = path.join(path.dirname(newDiaryFile), `.travel-edit-${randomBytes(16).toString('hex')}.tmp`);
+                backupMarkdown = path.join(path.dirname(oldDiaryFile), `.travel-edit-${randomBytes(16).toString('hex')}.bak`);
+                await writeSynced(temporaryMarkdown, markdown);
+                await fs.rename(oldDiaryFile, backupMarkdown);
+                try {
+                    await fs.rename(temporaryMarkdown, newDiaryFile);
+                    temporaryMarkdown = null;
+                } catch (error) {
+                    await fs.rename(backupMarkdown, oldDiaryFile).catch(() => {});
+                    backupMarkdown = null;
+                    throw error;
+                }
+            }
+        } else {
+            try {
+                await writeSynced(newDiaryFile, markdown);
+                createdMarkdown = newDiaryFile;
+            } catch (error) {
+                if (error.code === 'EEXIST') throw failure(409, '目标日记文件已存在，未覆盖。请调整正文路径后重试。');
+                throw error;
+            }
+        }
+
+        const nextRecords = [...records];
+        nextRecords[index] = updatedRecord;
+        await replaceIndex(dataDir, indexFile, previous, nextRecords);
+        committed = true;
+        if (backupMarkdown) await fs.unlink(backupMarkdown).catch(() => {});
+        backupMarkdown = null;
+        if (oldDiaryFile !== newDiaryFile) await fs.unlink(oldDiaryFile).catch(() => {});
+        createdMarkdown = null;
+        return { record: updatedRecord, alreadySaved: false };
+    } finally {
+        if (!committed) {
+            if (temporaryMarkdown) await fs.unlink(temporaryMarkdown).catch(() => {});
+            if (backupMarkdown) {
+                await fs.unlink(oldDiaryFile).catch(() => {});
+                await fs.rename(backupMarkdown, oldDiaryFile).catch(() => {});
+            }
+            if (createdMarkdown) await fs.unlink(createdMarkdown).catch(() => {});
+            if (photoStage) await photoStage.rollback();
+        }
+        await releaseLock();
+    }
+}
+
+async function deleteRecord(root, payload) {
+    const markdownPath = payload && typeof payload === 'object' && !Array.isArray(payload)
+        ? payload.desc_md
+        : '';
+    if (typeof markdownPath !== 'string' || !markdownPath || markdownPath.length > 200) {
+        throw failure(400, '缺少要删除的旅行记录标识。');
+    }
+
+    const dataDir = await checkedDirectory(root, ['data']);
+    const indexFile = path.join(dataDir, 'travel_data.json');
+    const releaseLock = await acquireDataLock(root);
+    let diaryFile;
+    let backupMarkdown;
+    let committed = false;
+    try {
+        await checkedFile(indexFile);
+        const previous = await fs.readFile(indexFile, 'utf8');
+        const records = JSON.parse(previous);
+        if (!Array.isArray(records)) throw failure(409, '旅行索引不是数组，请先修复 data/travel_data.json。');
+        const matches = records.map((item, index) => ({ item, index }))
+            .filter(({ item }) => item && item.desc_md === markdownPath);
+        if (matches.length !== 1) throw failure(409, matches.length ? '记录标识不唯一，无法安全删除。' : '旅行记录已不存在，请刷新页面后重试。');
+
+        const { item: deletedRecord, index } = matches[0];
+        diaryFile = await resolveMarkdownFile(root, markdownPath);
+        try {
+            await checkedFile(diaryFile);
+            backupMarkdown = path.join(path.dirname(diaryFile), `.travel-delete-${randomBytes(16).toString('hex')}.bak`);
+            await fs.rename(diaryFile, backupMarkdown);
+        } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+        }
+        await replaceIndex(dataDir, indexFile, previous, records.filter((_, itemIndex) => itemIndex !== index));
+        committed = true;
+        if (backupMarkdown) await fs.unlink(backupMarkdown).catch(() => {});
+        backupMarkdown = null;
+        return { record: deletedRecord };
+    } finally {
+        if (!committed && backupMarkdown) await fs.rename(backupMarkdown, diaryFile).catch(() => {});
+        await releaseLock();
+    }
+}
+
 function createRecordApi(root) {
     const token = randomBytes(32).toString('hex');
     return async (req, res) => {
@@ -209,7 +437,7 @@ function createRecordApi(root) {
             }
             return;
         }
-        if (req.method !== 'POST') {
+        if (!['POST', 'PUT', 'DELETE'].includes(req.method)) {
             send(405, { error: '不支持该请求方法。' });
             return;
         }
@@ -225,6 +453,16 @@ function createRecordApi(root) {
             let payload;
             try { payload = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
             catch { throw failure(400, '草稿 JSON 格式无效。'); }
+            if (req.method === 'PUT') {
+                const result = await updateRecord(root, payload);
+                send(200, { saved: true, updated: true, ...result });
+                return;
+            }
+            if (req.method === 'DELETE') {
+                const result = await deleteRecord(root, payload);
+                send(200, { deleted: true, ...result });
+                return;
+            }
             const result = await saveRecord(root, payload);
             send(result.alreadySaved ? 200 : 201, { saved: true, ...result });
         } catch (error) {

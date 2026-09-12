@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260912-mobile-photo-stability';
+import { createRecordEditor } from './record-editor.js?v=20260912-record-management';
 import { createPasswordGate } from './record-password.js?v=20260912-import-password';
 import { createDataTransfer } from './data-transfer.js?v=20260912-import-success';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
@@ -57,6 +57,8 @@ const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
 
 const refs = {};
 let openRecordEditor;
+let openEditRecord;
+let openDeleteRecord;
 let openDataExport;
 let dataTransfer;
 let travelModel = null;
@@ -87,9 +89,16 @@ document.addEventListener('DOMContentLoaded', () => {
 async function initApp() {
     cacheRefs();
     bindGlobalEvents();
-    const openEditor = createRecordEditor(async () => {
+    const openEditor = createRecordEditor(async (savedRecord, context = {}) => {
         travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
-        window.location.hash = '#ledger';
+        if (context.mode === 'edit') {
+            const updatedRecord = travelModel.records.find(record => record.desc_md === savedRecord.desc_md);
+            window.location.hash = updatedRecord
+                ? serializeRoute({ name: 'entry', params: { id: updatedRecord.id } })
+                : (lastReadingHash || '#ledger');
+        } else {
+            window.location.hash = '#ledger';
+        }
         syncRouteFromHash({ initial: true });
     }, () => travelModel?.records || []);
     openRecordEditor = createPasswordGate(openEditor, {
@@ -98,6 +107,33 @@ async function initApp() {
         verifying: '验证成功，正在打开编辑器…',
         actionError: '无法打开编辑器，请重试。'
     });
+    let pendingEditRecord = null;
+    openEditRecord = createPasswordGate(() => openEditor(pendingEditRecord), {
+        title: '修改记录验证',
+        description: '输入 6 位数字密码后修改这条旅行记录。',
+        verifying: '验证成功，正在打开编辑器…',
+        actionError: '无法打开修改窗口，请重试。'
+    });
+    let pendingDeleteRecord = null;
+    openDeleteRecord = createPasswordGate(async () => {
+        const record = pendingDeleteRecord;
+        pendingDeleteRecord = null;
+        if (!record) throw new Error('要删除的旅行记录已失效，请重新打开后再试。');
+        await deleteTravelRecord(record);
+    }, {
+        title: '删除记录验证',
+        description: '输入 6 位数字密码后永久删除这条记录。',
+        verifying: '验证成功，正在删除记录…',
+        actionError: '删除记录失败，请重试。'
+    });
+    refs.openEditRecord = record => {
+        pendingEditRecord = record;
+        return openEditRecord();
+    };
+    refs.openDeleteRecord = record => {
+        pendingDeleteRecord = record;
+        return openDeleteRecord();
+    };
     dataTransfer = createDataTransfer(async () => {
         travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
         syncRouteFromHash({ initial: true });
@@ -1326,6 +1362,10 @@ function openEntrySheet(record) {
                     ${renderTripGroupHint(record)}
                 </div>
                 <h1 id="entrySheetTitle">${escapeHtml(record.title)}</h1>
+                <div class="sheet-record-actions" aria-label="记录管理">
+                    <button class="paper-button" type="button" data-action="edit-record" data-record-id="${escapeHtml(record.id)}">修改记录</button>
+                    <button class="paper-button sheet-delete-button" type="button" data-action="delete-record" data-record-id="${escapeHtml(record.id)}">删除记录</button>
+                </div>
                 <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
                 ${renderPhotoSleeve(record, {
                     previewRows: ENTRY_PHOTO_PREVIEW_ROWS,
@@ -1402,6 +1442,31 @@ function closeEntrySheet(options = {}) {
     if (options.restoreFocus && lastEntryFocusId) {
         restoreFocus(lastEntryFocusId);
     }
+}
+
+async function deleteTravelRecord(record) {
+    if (!['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
+        throw new Error('删除功能仅可通过本机 localhost 页面使用。');
+    }
+    const endpoint = new URL('api/travel-records', window.location.href);
+    const serviceResponse = await fetch(endpoint, { cache: 'no-store', signal: AbortSignal.timeout(4000) });
+    const service = await serviceResponse.json();
+    if (!serviceResponse.ok || service.service !== 'travel-diary-writer-v1' || !service.token) {
+        throw new Error(service.error || '无法连接本地保存服务。');
+    }
+    const response = await fetch(endpoint, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json', 'X-Travel-Token': service.token },
+        body: JSON.stringify({ desc_md: record.desc_md }),
+        signal: AbortSignal.timeout(60000)
+    });
+    const result = await response.json();
+    if (!response.ok || !result.deleted) throw new Error(result.error || '未收到服务器的删除确认。');
+    travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData()));
+    closeEntrySheet();
+    window.location.hash = lastReadingHash || '#ledger';
+    syncRouteFromHash({ initial: true });
+    window.alert(`已删除旅行记录“${record.title}”。相关照片文件已保留。`);
 }
 
 function openPhotoViewer(photos, index = 0) {
@@ -1942,6 +2007,22 @@ function handleDocumentClick(event) {
         event.preventDefault();
         closeMobileContextPanel();
         void openRecordEditor().catch(error => window.alert(error.message));
+        return;
+    }
+    const editRecord = event.target.closest('[data-action="edit-record"]');
+    if (editRecord) {
+        event.preventDefault();
+        const record = travelModel?.recordsById.get(editRecord.dataset.recordId);
+        if (record) void refs.openEditRecord(record).catch(error => window.alert(error.message));
+        return;
+    }
+    const deleteRecord = event.target.closest('[data-action="delete-record"]');
+    if (deleteRecord) {
+        event.preventDefault();
+        const record = travelModel?.recordsById.get(deleteRecord.dataset.recordId);
+        if (record && window.confirm(`确定删除旅行记录“${record.title}”吗？\n\n旅行索引和 Markdown 正文将被删除，照片文件会保留。此操作无法撤销。`)) {
+            void refs.openDeleteRecord(record).catch(error => window.alert(error.message));
+        }
         return;
     }
     const closeContextPanel = event.target.closest('[data-action="close-context-panel"]');

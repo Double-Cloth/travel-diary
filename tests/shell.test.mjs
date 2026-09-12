@@ -9,6 +9,7 @@ const dataTransferJs = await readFile(new URL('../js/data-transfer.js', import.m
 const photoViewerTransformJs = await readFile(new URL('../js/photo-viewer-transform.mjs', import.meta.url), 'utf8');
 const recordEditorJs = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
 const recordPasswordJs = await readFile(new URL('../js/record-password.js', import.meta.url), 'utf8');
+const recordStoreJs = await readFile(new URL('../js/record-store.js', import.meta.url), 'utf8');
 const serverJs = await readFile(new URL('../js/server.js', import.meta.url), 'utf8');
 const journalEntryCss = await readFile(new URL('../css/journal.css', import.meta.url), 'utf8');
 const cssPartFiles = [
@@ -172,8 +173,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260912-import-success/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260912-mobile-photo-stability/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260912-record-management/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260912-record-management/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
 });
@@ -198,6 +199,19 @@ test('新增记录入口先通过 6 位数字密码验证', () => {
     }
     assert.match(journalCss, /\.record-password-keypad\s*{/);
     assert.match(journalCss, /\.record-password-digits\s*{/);
+});
+
+test('日记详情提供经过密码验证的修改与删除入口', () => {
+    assert.match(appJs, /data-action="edit-record"/);
+    assert.match(appJs, /data-action="delete-record"/);
+    assert.match(appJs, /openEditRecord = createPasswordGate/);
+    assert.match(appJs, /openDeleteRecord = createPasswordGate/);
+    assert.match(appJs, /window\.confirm\(`确定删除旅行记录/);
+    assert.match(recordEditorJs, /method: editingRecord \? 'PUT' : 'POST'/);
+    assert.match(recordEditorJs, /getRecordInput\(record\)/);
+    assert.match(recordStoreJs, /if \(req\.method === 'PUT'\)/);
+    assert.match(recordStoreJs, /if \(req\.method === 'DELETE'\)/);
+    assert.match(journalCss, /\.sheet-record-actions\s*{/);
 });
 
 test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => {
@@ -234,6 +248,7 @@ test('全部数据导入成功后使用站内结果弹窗而不是状态文字',
     assert.match(journalCss, /\.data-import-success-seal\s*{/);
     assert.match(journalCss, /\.data-import-success-actions\s*{/);
 });
+
 test('全部数据导入在备份缺少密码时要求两次设置 6 位密码', () => {
     assert.match(dataTransferJs, /import \{[^}]*createPasswordSetup[^}]*\} from '\.\/record-password\.js\?v=20260912-import-password';/);
     assert.match(dataTransferJs, /result\.code === 'IMPORT_PASSWORD_REQUIRED'/);

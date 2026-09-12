@@ -81,6 +81,26 @@
     line-height: 1.18;
 }
 
+.sheet-record-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin: -8px 0 22px;
+}
+
+.sheet-record-actions .paper-button {
+    width: auto;
+    min-height: 38px;
+    padding: 7px 13px;
+    font-size: 13px;
+}
+
+.sheet-record-actions .sheet-delete-button {
+    color: #7b261e;
+    border-color: rgba(123, 38, 30, 0.34);
+    background: linear-gradient(180deg, rgba(255, 247, 225, 0.92), rgba(206, 151, 107, 0.72));
+}
+
 .markdown-content {
     color: var(--ink-soft);
     font-size: 18px;
@@ -686,6 +706,7 @@ dialog.data-import-success.entry-sheet {
 .data-import-confirm-actions .paper-button { min-width: 0; padding-inline: 12px; }
 .data-import-confirm-actions .data-import-confirm-submit { color: var(--paper-50); border-color: rgba(91, 27, 20, 0.52); background: linear-gradient(180deg, #a84a39, #76271e); }
 .data-import-confirm-actions .data-import-confirm-submit:hover { border-color: rgba(91, 27, 20, 0.72); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -3px 8px rgba(58, 13, 9, 0.22), 0 12px 20px rgba(52, 31, 14, 0.2); }
+
 .data-import-success-card { padding: 32px 38px 36px; text-align: center; }
 .data-import-success-seal {
     display: grid;
@@ -738,11 +759,11 @@ dialog.data-import-success.entry-sheet {
     .record-password-note { margin-bottom: 16px; }
     .record-password-keypad button { height: 52px; }
     .data-import-confirm-card { padding: 28px 24px 26px; }
+    .data-import-confirm-seal { width: 52px; height: 52px; margin-bottom: 14px; }
+    .data-import-confirm h2 { font-size: 24px; }
     .data-import-success-card { padding: 28px 24px 26px; }
     .data-import-success-seal { width: 52px; height: 52px; margin-bottom: 14px; }
     .data-import-success h2 { font-size: 24px; }
-    .data-import-confirm-seal { width: 52px; height: 52px; margin-bottom: 14px; }
-    .data-import-confirm h2 { font-size: 24px; }
     .record-editor-heading { padding: 16px; }
     .record-editor-heading > div { gap: 6px; }
     .record-editor-heading .journal-label { display: none; }

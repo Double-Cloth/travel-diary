@@ -82,6 +82,14 @@ const readIndex = async () => JSON.parse(await fs.readFile(path.join(root, 'data
 const post = (value, headers = {}) => fetch(`${base}/api/travel-records`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Origin: base, ...headers }, body: JSON.stringify(value)
 });
+const put = (originalDescMd, value, headers = {}) => fetch(`${base}/api/travel-records`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Origin: base, ...headers },
+    body: JSON.stringify({ originalDescMd, draft: value })
+});
+const remove = (descMd, headers = {}) => fetch(`${base}/api/travel-records`, {
+    method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Origin: base, ...headers },
+    body: JSON.stringify({ desc_md: descMd })
+});
 
 test('字段校验支持闰年、空行政区和草稿往返，拒绝无效日期、国家与超长正文', () => {
     const value = draft('a', { date: '2024-02-29', country_code: 'SG', admin_area: '', body: '' });
@@ -112,6 +120,40 @@ test('保存真正写入 JSON 与 Markdown，保留旧数据，重试不重复�
     assert.equal((await readIndex()).length, previousCount + 1);
 });
 
+test('修改记录会替换索引与 Markdown，支持移动正文路径且不会重复新增', async () => {
+    const createdResponse = await post(draft('9'));
+    assert.equal(createdResponse.status, 201);
+    const created = (await createdResponse.json()).record;
+    const previousCount = (await readIndex()).length;
+    const editedDraft = draft('7', {
+        date: '2026-09-12',
+        locality: '无锡市',
+        title: '修改后的标题',
+        body: '新的旅行正文。'
+    });
+    const response = await put(created.desc_md, editedDraft);
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(result.updated, true);
+    assert.equal(result.record.desc_md, 'data/travel-diary/2026/2026-09-12-wuxi.md');
+    assert.equal((await readIndex()).length, previousCount);
+    assert.equal((await readIndex()).some(record => record.desc_md === created.desc_md), false);
+    assert.equal(await fs.readFile(path.join(root, result.record.desc_md), 'utf8'), '# 修改后的标题\n\n新的旅行正文。\n');
+    await assert.rejects(fs.stat(path.join(root, created.desc_md)), { code: 'ENOENT' });
+});
+
+test('删除记录会同步移除索引与 Markdown，并拒绝重复删除', async () => {
+    const created = (await (await post(draft('8'))).json()).record;
+    const previousCount = (await readIndex()).length;
+    const response = await remove(created.desc_md);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).deleted, true);
+    assert.equal((await readIndex()).length, previousCount - 1);
+    assert.equal((await readIndex()).some(record => record.desc_md === created.desc_md), false);
+    await assert.rejects(fs.stat(path.join(root, created.desc_md)), { code: 'ENOENT' });
+    assert.equal((await remove(created.desc_md)).status, 409);
+});
+
 test('写入端点拒绝跨源请求、伪造 Host、缺失令牌及不合法数据', async () => {
     const before = await readIndex();
     assert.equal((await post(draft('b'), { Origin: 'https://example.com' })).status, 403);
@@ -124,6 +166,8 @@ test('写入端点拒绝跨源请求、伪造 Host、缺失令牌及不合法数
     });
     assert.equal(forgedHostStatus, 403);
     assert.equal((await post(draft('b'), { 'X-Travel-Token': '' })).status, 403);
+    assert.equal((await put('missing.md', draft('b'), { 'X-Travel-Token': '' })).status, 403);
+    assert.equal((await remove('missing.md', { 'X-Travel-Token': '' })).status, 403);
     assert.equal((await post(draft('b'), { 'Content-Type': 'text/plain' })).status, 403);
     assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Origin: 'https://example.com' } })).status, 403);
     assert.equal((await post(draft('b', { date: '2026-02-30' }))).status, 400);
