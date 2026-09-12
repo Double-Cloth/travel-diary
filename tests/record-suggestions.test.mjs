@@ -53,6 +53,13 @@ test('中国新目的地从行政区目录自动补全省份，支持省略市�
     assert.equal(getRecordAutofill({ country_code: 'CN', locality: '建水县' }, countries, [], chinaLocations).admin_area, '云南省');
 });
 
+test('中国行政区反向补全目的地且不随机选择城市，其他国家不反向补全', () => {
+    assert.equal(getRecordAutofill({ country_code: 'CN', admin_area: '江苏省' }, countries, records).locality, '苏州市');
+    assert.equal(getRecordAutofill({ country_code: 'CN', admin_area: '北京市' }, countries, [], chinaLocations).locality, '北京市');
+    assert.equal(getRecordAutofill({ country_code: 'CN', admin_area: '湖南省' }, countries, [], chinaLocations).locality, '湖南省');
+    assert.equal(getRecordAutofill({ country_code: 'JP', admin_area: '东京都' }, countries, records, chinaLocations).locality, undefined);
+});
+
 test('中国跨省重名区县不强行补全，且其他国家不使用中国目录', () => {
     assert.deepEqual(getRecordAutofill({ country_code: 'CN', locality: '朝阳区' }, countries, [], chinaLocations), {
         country: '中国'
@@ -87,7 +94,7 @@ test('旅行标识建议使用完整日期和目的地', () => {
 });
 
 test('旅行标识随日期和可靠地点自动补全', () => {
-    assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN', admin_area: '江苏省' }, countries, records).trip_id, '2026-09-11-jiangsu');
+    assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN', admin_area: '江苏省' }, countries, records).trip_id, '2026-09-11-suzhou');
     assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN', locality: '苏州市' }, countries, records).trip_id, '2026-09-11-suzhou');
     assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN' }, countries, records).trip_id, undefined);
 });

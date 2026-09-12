@@ -2,7 +2,7 @@ import { escapeHtml } from './utils.js';
 import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
 import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
-import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260912-markdown-path-autofill';
+import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
 import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';
 import { confirmFeedback } from './feedback-dialog.js';
@@ -221,7 +221,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                     <label>城市 / 目的地 <span>必填</span><span class="record-editor-autocomplete"><input name="locality" maxlength="200" data-editor-autocomplete="locality" required placeholder="例如：苏州市" aria-autocomplete="list" aria-controls="recordLocalityOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordLocalityOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                     <label>目的地类型 <span>选填</span><span class="record-editor-autocomplete"><input name="locality_type" maxlength="200" data-editor-autocomplete="locality_type" placeholder="例如：城市、岛屿" aria-autocomplete="list" aria-controls="recordLocalityTypeOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordLocalityTypeOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                 </div>
-                                <p class="record-editor-note record-editor-autofill" data-editor-autofill>会结合地点和历史记录补全空白项，内容仍可修改。</p>
+                                <p class="record-editor-note record-editor-autofill" data-editor-autofill>中国填写行政区或目的地后会互相补全，内容仍可修改。</p>
                                 <div data-editor-option-lists hidden></div>
                             </div>
                         </section>
@@ -296,13 +296,13 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         bodyView = 'source';
         userEditedAutofillFields.clear();
         autoFilledValues.clear();
-        const initialInput = editing ? getRecordInput(record) : { date };
+        const initialInput = editing ? getRecordInput(record) : { date, country_code: 'CN' };
         for (const key of RECORD_FIELDS) {
             const value = initialInput[key] ?? (key === 'photos' ? [] : '');
             field(key).value = key === 'photos' ? value.join('\n') : value;
         }
         if (editing) {
-            for (const name of ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id']) {
+            for (const name of ['country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id']) {
                 userEditedAutofillFields.add(name);
             }
             if (initialInput.desc_md === defaultMarkdownPath(initialInput.date, initialInput.locality)) {
@@ -450,7 +450,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function fieldLabel(name) {
-        return ({ country: '国家显示名称', admin_area: '一级行政区', admin_area_type: '行政区类型', locality_type: '目的地类型', trip_id: '旅行标识', desc_md: '正文路径' })[name] || name;
+        return ({ country: '国家显示名称', admin_area: '一级行政区', admin_area_type: '行政区类型', locality: '城市 / 目的地', locality_type: '目的地类型', trip_id: '旅行标识', desc_md: '正文路径' })[name] || name;
     }
 
     function updateBodyView(view) {
@@ -682,7 +682,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (event.target.matches('[data-editor-source]')) syncMarkdown(event.target.value);
         if (event.target.closest('[data-editor-rich]')) syncPreview();
         if (!saved && RECORD_FIELDS.includes(event.target.name)) dirty = true;
-        if (['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id', 'desc_md'].includes(event.target.name)) {
+        if (['country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'desc_md'].includes(event.target.name)) {
             userEditedAutofillFields.add(event.target.name);
             autoFilledValues.delete(event.target.name);
         }
@@ -828,7 +828,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             dirty = true;
             userEditedAutofillFields.clear();
             autoFilledValues.clear();
-            for (const name of ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id', 'desc_md']) {
+            for (const name of ['country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'desc_md']) {
                 userEditedAutofillFields.add(name);
             }
             updateCountry();
@@ -900,12 +900,21 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         try {
             if (record?.descLoadFailed) throw new Error('这篇日记的正文加载失败，暂时不能安全修改。请修复正文文件后重试。');
             trigger = document.activeElement;
-            const requestedRecordKey = record?.desc_md || '';
-            const currentRecordKey = editingRecord?.desc_md || '';
-            if (initialized && !saved && dirty && requestedRecordKey !== currentRecordKey) {
-                throw new Error('编辑器中还有未保存内容。请先保存或导出草稿，再打开另一条记录。');
+            const requestedRecordKey = record ? `record:${record.desc_md || record.id || ''}` : 'new';
+            const currentRecordKey = editingRecord ? `record:${editingRecord.desc_md || editingRecord.id || ''}` : 'new';
+            const replacingNewDraft = !record && !editingRecord;
+            let shouldRender = !initialized || saved || requestedRecordKey !== currentRecordKey;
+            if (initialized && !saved && dirty && (requestedRecordKey !== currentRecordKey || replacingNewDraft)) {
+                const confirmed = await confirmFeedback('编辑器中还有未保存内容。请先保存或导出草稿，再打开另一条记录。', {
+                    label: '编辑器',
+                    title: '编辑器中有未保存内容',
+                    cancelLabel: '取消',
+                    confirmLabel: '立即清空编辑器'
+                });
+                if (!confirmed) return;
+                shouldRender = true;
             }
-            if (!initialized || saved || requestedRecordKey !== currentRecordKey) {
+            if (shouldRender) {
                 if (!countries.length) {
                     const [countryResponse, chinaLocationResponse] = await Promise.all([
                         fetch(new URL('assets/catalogs/countries.json', window.location.href)),

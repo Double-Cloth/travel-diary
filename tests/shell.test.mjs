@@ -8,6 +8,7 @@ const customSelectJs = await readFile(new URL('../js/custom-select.js', import.m
 const dataTransferJs = await readFile(new URL('../js/data-transfer.js', import.meta.url), 'utf8');
 const photoViewerTransformJs = await readFile(new URL('../js/photo-viewer-transform.mjs', import.meta.url), 'utf8');
 const recordEditorJs = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
+const recordSuggestionsJs = await readFile(new URL('../js/record-suggestions.mjs', import.meta.url), 'utf8');
 const recordDeleteDialogJs = await readFile(new URL('../js/record-delete-dialog.js', import.meta.url), 'utf8');
 const recordPasswordJs = await readFile(new URL('../js/record-password.js', import.meta.url), 'utf8');
 const feedbackDialogJs = await readFile(new URL('../js/feedback-dialog.js', import.meta.url), 'utf8');
@@ -175,9 +176,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260912-edit-save-caret-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260913-editor-location-v1/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260912-edit-save-caret-v1/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260912-edit-save-caret-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260913-editor-location-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
 });
@@ -202,6 +203,24 @@ test('新增记录入口先通过 6 位数字密码验证', () => {
     }
     assert.match(journalCss, /\.record-password-keypad\s*{/);
     assert.match(journalCss, /\.record-password-digits\s*{/);
+});
+
+test('新增记录默认使用中国并允许中国地点双向补全', () => {
+    assert.match(recordEditorJs, /const initialInput = editing \? getRecordInput\(record\) : \{ date, country_code: 'CN' \};/);
+    assert.match(recordEditorJs, /country\.code === 'CN' \? 'selected'/);
+    assert.match(recordEditorJs, /\['country', 'admin_area', 'admin_area_type', 'locality', 'locality_type'/);
+    assert.match(recordSuggestionsJs, /const isChina = countryCode === 'CN';/);
+    assert.match(recordSuggestionsJs, /findChinaLocality\(resolvedAdminArea, records, chinaLocations\)/);
+    assert.match(recordSuggestionsJs, /const resolvedAdminArea = adminArea \|\| \(isChina \?/);
+    assert.match(recordSuggestionsJs, /const resolvedLocality = locality \|\| \(isChina \?/);
+});
+
+test('切换记录前的未保存提示支持取消或立即清空编辑器', () => {
+    assert.match(recordEditorJs, /编辑器中还有未保存内容。请先保存或导出草稿，再打开另一条记录。/);
+    assert.match(recordEditorJs, /cancelLabel: '取消'/);
+    assert.match(recordEditorJs, /confirmLabel: '立即清空编辑器'/);
+    assert.match(recordEditorJs, /if \(!confirmed\) return;/);
+    assert.match(journalCss, /\.feedback-dialog-confirmation \.feedback-dialog-actions \.feedback-dialog-confirm\s*\{[\s\S]*#a84a39/);
 });
 
 test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () => {

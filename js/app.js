@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260912-edit-save-caret-v1';
+import { createRecordEditor } from './record-editor.js?v=20260913-editor-location-v1';
 import { createPasswordGate } from './record-password.js?v=20260912-import-password';
 import { createDataTransfer } from './data-transfer.js?v=20260912-import-success';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260912-record-delete-dialog';
