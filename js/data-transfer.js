@@ -160,6 +160,10 @@ export function createDataTransfer(onImported) {
         event.stopPropagation();
     });
 
+    input.addEventListener('click', event => {
+        event.stopPropagation();
+    });
+
     input.addEventListener('change', async () => {
         const file = input.files[0];
         input.value = '';

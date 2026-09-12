@@ -7,7 +7,7 @@ globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
     renderWithPageTurn, scheduleSearchRouteUpdate, syncRouteFromHash,
-    applySearchRouteUpdate, syncPhotoSleevePreviewRows };
+    applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget };
 export function setTestState(values) {
     if (values.spread) refs.spread = values.spread;
     if (values.route) activeRoute = values.route;
@@ -84,6 +84,16 @@ test('外部路由变化取消搜索定时器并忽略离开页面后的搜索�
     app.setTestState({ route: { name: 'cover', params: {} } });
     assert.doesNotThrow(() => app.applySearchRouteUpdate({ id: 'ledgerSearch', value: '苏州' }));
     delete globalThis.window;
+});
+
+test('移动端足迹摘要不会把数据操作弹窗中的点击当作外部点击', () => {
+    const contextPanelTarget = { closest: selector => selector.includes('.paper-page-right.context-panel') ? {} : null };
+    const dialogTarget = { closest: selector => selector.includes('dialog') ? {} : null };
+    const outsideTarget = { closest: () => null };
+
+    assert.equal(app.isMobileContextPanelDismissTarget(contextPanelTarget), false);
+    assert.equal(app.isMobileContextPanelDismissTarget(dialogTarget), false);
+    assert.equal(app.isMobileContextPanelDismissTarget(outsideTarget), true);
 });
 
 test('照片预览同步时释放已移除节点并保留仍连接的节点', () => {

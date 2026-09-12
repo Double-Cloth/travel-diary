@@ -1,7 +1,7 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
 import { createRecordEditor } from './record-editor.js?v=20260912-mobile-photo-stability';
 import { createPasswordGate } from './record-password.js?v=20260912-import-password';
-import { createDataTransfer } from './data-transfer.js?v=20260912-import-validation';
+import { createDataTransfer } from './data-transfer.js?v=20260912-mobile-context-dialog';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';
@@ -1958,7 +1958,7 @@ function handleDocumentClick(event) {
         return;
     }
 
-    if (isMobileContextPanelOpen && refs.rightPage?.classList.contains('context-panel') && !event.target.closest('.paper-page-right.context-panel')) {
+    if (isMobileContextPanelOpen && refs.rightPage?.classList.contains('context-panel') && isMobileContextPanelDismissTarget(event.target)) {
         closeMobileContextPanel();
         return;
     }
@@ -2308,6 +2308,10 @@ function updateChapterTabs(routeName) {
         link.classList.toggle('chapter-tab-active', isActive);
         link.setAttribute('aria-current', isActive ? 'page' : 'false');
     });
+}
+
+function isMobileContextPanelDismissTarget(target) {
+    return !target.closest('.paper-page-right.context-panel, dialog');
 }
 
 function openMobileContextPanel() {

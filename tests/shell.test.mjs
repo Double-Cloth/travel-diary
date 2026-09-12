@@ -172,7 +172,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260912-mobile-photo-stability/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260912-mobile-context-dialog/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260912-mobile-photo-stability/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
@@ -278,6 +278,12 @@ test('关闭移动端夹层前先把焦点移出即将隐藏的右页', () => {
     assert.match(appJs, /function restoreFocusBeforeHidingContextPanel\(\)/);
     assert.match(appJs, /refs\.rightPage\.contains\(document\.activeElement\)/);
     assert.match(appJs, /refs\.rightPage\.toggleAttribute\('inert', !isOpen\);/);
+});
+
+test('移动端夹层忽略导入导出弹窗内冒泡的点击', () => {
+    assert.match(appJs, /function isMobileContextPanelDismissTarget\(target\)\s*{[\s\S]*target\.closest\('\.paper-page-right\.context-panel, dialog'\)/);
+    assert.match(appJs, /isMobileContextPanelOpen[\s\S]*isMobileContextPanelDismissTarget\(event\.target\)/);
+    assert.match(dataTransferJs, /input\.addEventListener\('click', event => \{\s*event\.stopPropagation\(\);\s*\}\);/);
 });
 
 test('移动端夹层自身保留纵向触摸滚动能力', () => {
