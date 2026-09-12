@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260912-record-management';
+import { createRecordEditor } from './record-editor.js?v=20260912-markdown-path-autofill';
 import { createPasswordGate } from './record-password.js?v=20260912-import-password';
 import { createDataTransfer } from './data-transfer.js?v=20260912-import-success';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260912-record-delete-dialog';
@@ -103,7 +103,7 @@ async function initApp() {
         }
         syncRouteFromHash({ initial: true });
     }, () => travelModel?.records || []);
-    openRecordEditor = createPasswordGate(openEditor, {
+    openRecordEditor = createPasswordGate(() => openEditor(), {
         title: '新增记录验证',
         description: '输入 6 位数字密码后继续。',
         verifying: '验证成功，正在打开编辑器…',

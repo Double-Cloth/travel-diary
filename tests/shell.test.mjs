@@ -174,8 +174,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260912-record-delete-dialog/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260912-record-management/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260912-markdown-path-autofill/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260912-markdown-path-autofill/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
 });
@@ -192,7 +192,7 @@ test('自定义下拉框靠近底部时向上展开并保留原有底部留白',
 
 test('新增记录入口先通过 6 位数字密码验证', () => {
     assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260912-import-password';/);
-    assert.match(appJs, /openRecordEditor = createPasswordGate\(openEditor,/);
+    assert.match(appJs, /openRecordEditor = createPasswordGate\(\(\) => openEditor\(\),/);
     assert.match(recordPasswordJs, /new URL\('data\/password\.json', window\.location\.href\)/);
     assert.match(recordPasswordJs, /\^\\d\{6\}\$/);
     for (const key of ['data-password-key', 'data-password-clear', 'data-password-delete']) {
