@@ -235,7 +235,7 @@ test('全部数据导入在备份缺少密码时要求两次设置 6 位密码',
 
 test('全部数据导入先校验当前密码并提交服务端复核', () => {
     assert.match(dataTransferJs, /createPasswordGate\(chooseImportWithPassword/);
-    assert.match(dataTransferJs, /输入当前数据的 6 位密码后选择备份。/);
+    assert.match(dataTransferJs, /输入当前数据的 6 位密码后选择要导入的备份/);
     assert.match(dataTransferJs, /X-Travel-Current-Password/);
     assert.match(recordPasswordJs, /onVerified\(verifiedPassword\)/);
 });

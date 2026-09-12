@@ -89,7 +89,7 @@ export function createDataTransfer(onImported) {
 
     const requestImportAuthorization = createPasswordGate(chooseImportWithPassword, {
         title: '导入数据验证',
-        description: '输入当前数据的 6 位密码后选择备份。',
+        description: '输入当前数据的 6 位密码后选择要导入的备份',
         verifying: '验证成功，正在选择备份…',
         actionError: '无法开始导入，请重试。'
     });
