@@ -211,6 +211,18 @@ test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => 
     assert.doesNotMatch(dataTransferJs, /createObjectURL|new Blob|\.exportAll\(/);
 });
 
+test('全部数据导入使用站内确认对话框而不是浏览器 confirm', () => {
+    assert.doesNotMatch(dataTransferJs, /window\.confirm|\bconfirm\(/);
+    assert.match(dataTransferJs, /dialog\.className = 'data-import-confirm entry-sheet'/);
+    assert.match(dataTransferJs, /dialog\.showModal\(\)/);
+    assert.match(dataTransferJs, /导入后，当前全部旅行数据将被替换。请确认已备份现有数据。/);
+    assert.match(dataTransferJs, /data-import-cancel/);
+    assert.match(dataTransferJs, /data-import-confirm/);
+    assert.match(dataTransferJs, /await confirmImport\(file\)/);
+    assert.match(journalCss, /dialog\.data-import-confirm\.entry-sheet/);
+    assert.match(journalCss, /\.data-import-confirm-actions\s*{/);
+});
+
 test('打开并退出日记时恢复路线档案滚动位置', () => {
     assert.match(appJs, /function rememberReadingContext\(focusId = ''\)[\s\S]*left: refs\.leftPage\?\.scrollTop \|\| 0,[\s\S]*right: refs\.rightPage\?\.scrollTop \|\| 0,[\s\S]*windowY: window\.scrollY/);
     assert.match(appJs, /function renderEntryRoute[\s\S]*restoreReadingScrollPosition\(\);[\s\S]*openEntrySheet\(record\);/);
