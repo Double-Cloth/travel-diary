@@ -1,6 +1,7 @@
 import { recordSlug } from './record-input.mjs';
 
-const AUTOFILL_FIELDS = ['country', 'admin_area', 'admin_area_type', 'locality_type'];
+const AUTOFILL_FIELDS = ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id'];
+const RECENT_TRIP_LIMIT = 5;
 
 export function getRecordAutofill(input = {}, countries = [], records = []) {
     const countryCode = clean(input.country_code).toUpperCase();
@@ -24,7 +25,8 @@ export function getRecordAutofill(input = {}, countries = [], records = []) {
         admin_area_type: recordValue(exactLocation, 'admin_area_type')
             || mostFrequentValue(records.filter(record => sameCountry(record, countryCode) && sameText(recordValue(record, 'admin_area'), resolvedAdminArea)), 'admin_area_type')
             || inferAdminAreaType(resolvedAdminArea, countryCode),
-        locality_type: recordValue(exactLocation, 'locality_type') || inferLocalityType(locality)
+        locality_type: recordValue(exactLocation, 'locality_type') || inferLocalityType(locality),
+        trip_id: suggestedTripId({ ...input, admin_area: resolvedAdminArea })
     };
 
     return Object.fromEntries(AUTOFILL_FIELDS.filter(key => values[key]).map(key => [key, values[key]]));
@@ -45,7 +47,7 @@ export function getRecordOptions(input = {}, countries = [], records = []) {
         admin_area_type: rankedValues(adminArea ? areaRecords : countryRecords, 'admin_area_type'),
         locality: rankedValues(areaRecords, 'locality'),
         locality_type: rankedValues(locality ? localityRecords : areaRecords, 'locality_type'),
-        trip_id: rankedValues(areaRecords, 'trip_id')
+        trip_id: recentTripIds(records)
     };
 }
 
@@ -112,6 +114,21 @@ function rankedValues(records, field) {
 
 function mostFrequentValue(records, field) {
     return rankedValues(records, field)[0] || '';
+}
+
+function recentTripIds(records) {
+    const seen = new Set();
+    return records
+        .map((record, order) => ({ record, order }))
+        .sort((a, b) => compareRecent(a.record, b.record) || a.order - b.order)
+        .map(({ record }) => recordValue(record, 'trip_id'))
+        .filter(value => {
+            const key = value.toLocaleLowerCase();
+            if (!value || seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        })
+        .slice(0, RECENT_TRIP_LIMIT);
 }
 
 function uniqueValues(values) {

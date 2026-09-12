@@ -117,9 +117,9 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <div class="record-editor-fields">
                                 <div class="record-editor-grid">
                                     <label>旅行日期 <span>必填</span><input name="date" type="date" value="${date}" required></label>
-                                    <label>旅行标识 <span>选填</span><span class="record-editor-autocomplete"><input name="trip_id" maxlength="200" data-editor-autocomplete="trip_id" placeholder="同一旅行使用相同标识" aria-describedby="recordTripHelp" aria-autocomplete="list" aria-controls="recordTripOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordTripOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label>旅行标识 <span>选填</span><span class="record-editor-autocomplete"><input name="trip_id" maxlength="200" data-editor-autocomplete="trip_id" placeholder="填写地点后自动生成" aria-describedby="recordTripHelp" aria-autocomplete="list" aria-controls="recordTripOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordTripOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                 </div>
-                                <p class="record-editor-note" id="recordTripHelp">同一旅行有多篇日记时，请填写相同标识。</p>
+                                <p class="record-editor-note" id="recordTripHelp">根据日期与地点自动生成；同一旅行可从下拉选择最近 5 次已有行程。</p>
                                 <div class="record-editor-grid">
                                     <label>国家 / 地区 <span>必填</span><span class="custom-select"><select name="country_code" data-custom-select aria-label="国家 / 地区" required>
                                         ${countries.map(country => `<option value="${escapeHtml(country.code)}" ${country.code === 'CN' ? 'selected' : ''}>${escapeHtml(country.code)} · ${escapeHtml(country.name_zh)}</option>`).join('')}
@@ -225,7 +225,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         field('desc_md').placeholder = markdownPath;
         field('photo_folder').placeholder = photoPath;
         dialog.querySelector('[data-editor-photo-path-preview]').textContent = photoPath;
-        field('trip_id').placeholder = suggestedTripId(getDraft().input) || '同一旅行使用相同标识';
+        field('trip_id').placeholder = suggestedTripId(getDraft().input) || '填写地点后自动生成';
     }
 
     function updateAutofill() {
@@ -233,7 +233,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const records = getRecords() || [];
         const values = getRecordAutofill(input, countries, records);
         const filled = [];
-        ['country', 'admin_area', 'admin_area_type', 'locality_type'].forEach(name => {
+        ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id'].forEach(name => {
             const previousAutoValue = autoFilledValues.get(name);
             if (previousAutoValue && !values[name] && field(name).value === previousAutoValue && !userEditedAutofillFields.has(name)) {
                 field(name).value = '';
@@ -296,7 +296,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     function showAutocomplete(input) {
         const menu = input.closest('.record-editor-autocomplete')?.querySelector('[data-editor-autocomplete-menu]');
         if (!menu) return;
-        const query = input.value.trim().toLocaleLowerCase();
+        const query = input.name === 'trip_id' ? '' : input.value.trim().toLocaleLowerCase();
         const options = [...menu.querySelectorAll('[role="option"]')];
         options.forEach(option => {
             option.hidden = Boolean(query) && !option.textContent.toLocaleLowerCase().includes(query);
@@ -336,7 +336,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function fieldLabel(name) {
-        return ({ country: '国家显示名称', admin_area: '一级行政区', admin_area_type: '行政区类型', locality_type: '目的地类型' })[name] || name;
+        return ({ country: '国家显示名称', admin_area: '一级行政区', admin_area_type: '行政区类型', locality_type: '目的地类型', trip_id: '旅行标识' })[name] || name;
     }
 
     function updateBodyView(view) {
@@ -536,12 +536,11 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (event.target.matches('[data-editor-source]')) syncMarkdown(event.target.value);
         if (event.target.closest('[data-editor-rich]')) syncPreview();
         if (!saved && RECORD_FIELDS.includes(event.target.name)) dirty = true;
-        if (['country', 'admin_area', 'admin_area_type', 'locality_type'].includes(event.target.name)) {
+        if (['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id'].includes(event.target.name)) {
             userEditedAutofillFields.add(event.target.name);
             autoFilledValues.delete(event.target.name);
         }
-        if (event.target.name === 'date' || event.target.name === 'locality' || event.target.name === 'admin_area') updatePathHint();
-        if (['country_code', 'admin_area', 'locality'].includes(event.target.name)) updateAutofill();
+        if (['country_code', 'date', 'admin_area', 'locality'].includes(event.target.name)) updateAutofill();
         if (event.target.name === 'title') updateBodyView(bodyView);
     });
     dialog.addEventListener('scroll', event => {
@@ -679,7 +678,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             dirty = true;
             userEditedAutofillFields.clear();
             autoFilledValues.clear();
-            for (const name of ['country', 'admin_area', 'admin_area_type', 'locality_type']) {
+            for (const name of ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id']) {
                 userEditedAutofillFields.add(name);
             }
             updateCountry();

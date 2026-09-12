@@ -40,16 +40,35 @@ test('同一国家内的同名目的地跨行政区时不自动选择最近一�
     });
 });
 
-test('候选项按当前国家和行政区过滤，旅行标识保持为用户选择', () => {
+test('地点候选按当前国家和行政区过滤', () => {
     const options = getRecordOptions({ country_code: 'CN', admin_area: '江苏省' }, countries, records);
     assert.deepEqual(options.locality, ['苏州市']);
     assert.deepEqual(options.trip_id, ['2026-07-jiangsu', '2024-11-jiangsu']);
     assert.ok(options.country.includes('中华人民共和国'));
-    assert.equal(getRecordAutofill({ country_code: 'CN', admin_area: '江苏省' }, countries, records).trip_id, undefined);
 });
 
 test('旅行标识建议使用年月和已填地点', () => {
     assert.equal(suggestedTripId({ date: '2026-09-11', admin_area: '江苏省', locality: '苏州市' }), '2026-09-jiangsu');
     assert.equal(suggestedTripId({ date: '2026-09-11', locality: '涠洲岛' }), '2026-09-weizhoudao');
     assert.equal(suggestedTripId({ date: '', locality: '苏州市' }), '');
+});
+
+test('旅行标识随日期和可靠地点自动补全', () => {
+    assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN', admin_area: '江苏省' }, countries, records).trip_id, '2026-09-jiangsu');
+    assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN', locality: '苏州市' }, countries, records).trip_id, '2026-09-jiangsu');
+    assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN' }, countries, records).trip_id, undefined);
+});
+
+test('旅行标识候选列出最近五个不重复的已有行程', () => {
+    const recentRecords = [
+        { date: '2026-09-10', country_code: 'CN', admin_area: '湖南省', trip_id: 'trip-a' },
+        { date: '2026-09-09', country_code: 'JP', admin_area: '东京都', trip_id: 'trip-b' },
+        { date: '2026-09-08', country_code: 'CN', admin_area: '湖南省', trip_id: 'trip-a' },
+        { date: '2026-09-07', country_code: 'CN', admin_area: '云南省', trip_id: 'trip-c' },
+        { date: '2026-09-06', country_code: 'CN', admin_area: '山东省', trip_id: 'trip-d' },
+        { date: '2026-09-05', country_code: 'CN', admin_area: '陕西省', trip_id: 'trip-e' },
+        { date: '2026-09-04', country_code: 'CN', admin_area: '浙江省', trip_id: 'trip-f' }
+    ];
+    const options = getRecordOptions({ country_code: 'CN', admin_area: '江苏省' }, countries, [...records, ...recentRecords]);
+    assert.deepEqual(options.trip_id, ['trip-a', 'trip-b', 'trip-c', 'trip-d', 'trip-e']);
 });

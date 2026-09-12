@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260911-photo-preview';
+import { createRecordEditor } from './record-editor.js?v=20260912-trip-autofill-v1';
 import { createPasswordGate } from './record-password.js?v=20260911-copy-refresh';
 import { createDataTransfer } from './data-transfer.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
