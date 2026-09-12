@@ -47,15 +47,16 @@ test('地点候选按当前国家和行政区过滤', () => {
     assert.ok(options.country.includes('中华人民共和国'));
 });
 
-test('旅行标识建议使用年月和已填地点', () => {
-    assert.equal(suggestedTripId({ date: '2026-09-11', admin_area: '江苏省', locality: '苏州市' }), '2026-09-jiangsu');
-    assert.equal(suggestedTripId({ date: '2026-09-11', locality: '涠洲岛' }), '2026-09-weizhoudao');
+test('旅行标识建议使用完整日期和目的地', () => {
+    assert.equal(suggestedTripId({ date: '2026-09-11', admin_area: '江苏省', locality: '苏州市' }), '2026-09-11-suzhou');
+    assert.equal(suggestedTripId({ date: '2026-09-11', locality: '涠洲岛' }), '2026-09-11-weizhoudao');
+    assert.equal(suggestedTripId({ date: '2026-09-11', admin_area: '江苏省' }), '2026-09-11-jiangsu');
     assert.equal(suggestedTripId({ date: '', locality: '苏州市' }), '');
 });
 
 test('旅行标识随日期和可靠地点自动补全', () => {
-    assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN', admin_area: '江苏省' }, countries, records).trip_id, '2026-09-jiangsu');
-    assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN', locality: '苏州市' }, countries, records).trip_id, '2026-09-jiangsu');
+    assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN', admin_area: '江苏省' }, countries, records).trip_id, '2026-09-11-jiangsu');
+    assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN', locality: '苏州市' }, countries, records).trip_id, '2026-09-11-suzhou');
     assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN' }, countries, records).trip_id, undefined);
 });
 

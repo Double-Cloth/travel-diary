@@ -53,9 +53,9 @@ export function getRecordOptions(input = {}, countries = [], records = []) {
 
 export function suggestedTripId(input = {}) {
     const date = clean(input.date);
-    const place = clean(input.admin_area) || clean(input.locality);
+    const place = clean(input.locality) || clean(input.admin_area);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !place) return '';
-    return `${date.slice(0, 7)}-${recordSlug(place)}`;
+    return `${date}-${recordSlug(place)}`;
 }
 
 function recordValue(record, field) {

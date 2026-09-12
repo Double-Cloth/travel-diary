@@ -2,7 +2,7 @@ import { escapeHtml } from './utils.js';
 import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
 import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
-import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs';
+import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260912-trip-id-v2';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
 import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';
 
