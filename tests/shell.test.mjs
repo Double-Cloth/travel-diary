@@ -174,7 +174,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260912-markdown-path-autofill/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260912-record-api-capabilities/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260912-markdown-path-autofill/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
@@ -211,6 +211,8 @@ test('日记详情提供经过密码验证的修改与删除入口', () => {
     assert.match(appJs, /refs\.confirmDeleteRecord\(record\)\.then\(confirmed/);
     assert.doesNotMatch(appJs, /window\.confirm\(`确定删除旅行记录/);
     assert.doesNotMatch(appJs, /window\.alert\(`已删除旅行记录/);
+    assert.match(appJs, /service\.methods\.includes\('DELETE'\)/);
+    assert.match(appJs, /本地保存服务版本过旧，请重新运行 npm start 后再删除记录。/);
     assert.match(recordDeleteDialogJs, /dialog\.className = 'record-delete-dialog entry-sheet'/);
     assert.match(recordDeleteDialogJs, /dialog\.showModal\(\)/);
     assert.match(recordDeleteDialogJs, /暂不删除/);

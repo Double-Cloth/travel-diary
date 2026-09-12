@@ -1462,6 +1462,9 @@ async function deleteTravelRecord(record) {
     if (!serviceResponse.ok || service.service !== 'travel-diary-writer-v1' || !service.token) {
         throw new Error(service.error || '无法连接本地保存服务。');
     }
+    if (!Array.isArray(service.methods) || !service.methods.includes('DELETE')) {
+        throw new Error('本地保存服务版本过旧，请重新运行 npm start 后再删除记录。');
+    }
     const response = await fetch(endpoint, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', 'X-Travel-Token': service.token },

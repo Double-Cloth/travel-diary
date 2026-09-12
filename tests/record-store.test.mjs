@@ -91,6 +91,12 @@ const remove = (descMd, headers = {}) => fetch(`${base}/api/travel-records`, {
     body: JSON.stringify({ desc_md: descMd })
 });
 
+test('写入服务声明支持新增、修改与删除方法', async () => {
+    const response = await fetch(`${base}/api/travel-records`);
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).methods, ['POST', 'PUT', 'DELETE']);
+});
+
 test('字段校验支持闰年、空行政区和草稿往返，拒绝无效日期、国家与超长正文', () => {
     const value = draft('a', { date: '2024-02-29', country_code: 'SG', admin_area: '', body: '' });
     assert.deepEqual(readDraft(JSON.parse(JSON.stringify(value))), value);

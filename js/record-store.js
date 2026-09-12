@@ -397,7 +397,7 @@ function createRecordApi(root) {
             return;
         }
         if (requestPath === '/api/travel-records' && req.method === 'GET') {
-            send(200, { service: 'travel-diary-writer-v1', token });
+            send(200, { service: 'travel-diary-writer-v1', token, methods: ['POST', 'PUT', 'DELETE'] });
             return;
         }
         if (requestPath === '/api/travel-data') {
