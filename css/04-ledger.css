@@ -798,6 +798,10 @@
     gap: 9px;
 }
 
+.index-filter-section > .field-label {
+    margin: 7px 0 0;
+}
+
 .index-filter-section h3,
 .archive-overview-block h3 {
     margin: 0;
