@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from '../js/record-suggestions.mjs';
+
+const chinaLocations = JSON.parse(await readFile(new URL('../assets/catalogs/china-locations.json', import.meta.url), 'utf8'));
 
 const countries = [
     { code: 'CN', name_zh: '中国', aliases: ['中华人民共和国'] },
@@ -40,11 +43,40 @@ test('同一国家内的同名目的地跨行政区时不自动选择最近一�
     });
 });
 
+test('中国新目的地从行政区目录自动补全省份，支持省略市县后缀', () => {
+    assert.deepEqual(getRecordAutofill({ country_code: 'CN', locality: '衡阳' }, countries, [], chinaLocations), {
+        country: '中国',
+        admin_area: '湖南省',
+        admin_area_type: '省'
+    });
+    assert.equal(getRecordAutofill({ country_code: 'CN', locality: '大理市' }, countries, [], chinaLocations).admin_area, '云南省');
+    assert.equal(getRecordAutofill({ country_code: 'CN', locality: '建水县' }, countries, [], chinaLocations).admin_area, '云南省');
+});
+
+test('中国跨省重名区县不强行补全，且其他国家不使用中国目录', () => {
+    assert.deepEqual(getRecordAutofill({ country_code: 'CN', locality: '朝阳区' }, countries, [], chinaLocations), {
+        country: '中国'
+    });
+    assert.deepEqual(getRecordAutofill({ country_code: 'JP', locality: '衡阳市' }, countries, [], chinaLocations), {
+        country: '日本',
+        locality_type: '城市'
+    });
+});
+
 test('地点候选按当前国家和行政区过滤', () => {
     const options = getRecordOptions({ country_code: 'CN', admin_area: '江苏省' }, countries, records);
     assert.deepEqual(options.locality, ['苏州市']);
     assert.deepEqual(options.trip_id, ['2026-07-jiangsu', '2024-11-jiangsu']);
     assert.ok(options.country.includes('中华人民共和国'));
+});
+
+test('中国省市候选在历史数据之后补充行政区目录', () => {
+    const options = getRecordOptions({ country_code: 'CN', admin_area: '湖南省' }, countries, records, chinaLocations);
+    assert.ok(options.admin_area.includes('湖南省'));
+    assert.ok(options.admin_area.includes('新疆维吾尔自治区'));
+    assert.ok(options.locality.includes('长沙市'));
+    assert.ok(options.locality.includes('衡阳市'));
+    assert.deepEqual(options.admin_area_type, ['省']);
 });
 
 test('旅行标识建议使用完整日期和目的地', () => {

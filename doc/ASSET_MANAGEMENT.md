@@ -13,7 +13,7 @@ data/
 └── travel_data.json         # 旅行记录索引
 
 assets/
-├── catalogs/               # 通用参考目录，如 countries.json
+├── catalogs/               # 通用参考目录，如 countries.json、china-locations.json
 ├── fonts/                  # 本地字体文件
 ├── images/
 │   ├── backgrounds/        # 全局背景图
@@ -26,6 +26,7 @@ assets/
 | 路径 | 用途 |
 | --- | --- |
 | `assets/catalogs/countries.json` | 通用国家/地区目录，由 `npm run countries` 更新。 |
+| `assets/catalogs/china-locations.json` | 中国省市区目录，由 `npm run china-locations` 更新，用于新增记录地点补全。 |
 | `data/password.json` | 新增记录与全部数据导出共用的访问密码配置。 |
 | `assets/fonts/LXGWWenKaiMono-Regular.ttf` | 正文字体常规字重。 |
 | `assets/fonts/LXGWWenKaiMono-Medium.ttf` | 正文字体加粗字重。 |

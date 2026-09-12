@@ -39,7 +39,7 @@ index.html
 ## 个人内容与通用资源
 
 - `data/`：旅行索引、日记正文、照片、头像及 `password.json` 访问密码。不同使用者复用项目时，在此替换自己的内容。
-- `assets/`：通用国家目录（`catalogs/countries.json`）、字体、页面背景和纹理。
+- `assets/`：通用国家目录（`catalogs/countries.json`）、中国省市区目录（`catalogs/china-locations.json`）、字体、页面背景和纹理。
 - `index.html`、`js/`、`css/`：共享的页面结构与功能实现；`scripts/`、`tests/`、`doc/` 分别负责维护工具、验证和使用说明。
 
 头像由 `index.html` 直接引用 `data/profile/profile-picture.png`。个人档案页的统计由旅行记录计算，不需要单独维护个人资料配置文件。
@@ -58,11 +58,21 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 左页与右页 DOM
 ```
 
+新增记录编辑器另有一条按需数据流：
+
+```text
+assets/catalogs/countries.json
+assets/catalogs/china-locations.json ──→ createRecordEditor()
+data/travel_data.json ────────────────→ getRecordAutofill() / getRecordOptions()
+```
+
 `js/data.js` 会并行加载旅行记录和 `assets/catalogs/countries.json`，先用国家目录配置 `js/location.mjs`，再把国家、一级行政区和目的地规范化。之后读取每条记录的 `desc_md`，把 Markdown 转成 HTML，并为搜索生成 `searchText`。`js/app.js` 在此基础上派生年份、月份、地点、复访、概览统计和路由状态。
 
 地点运行时模型使用 `countryKey → adminAreaKey → locationKey` 三层稳定键。国家优先使用 `country_code`，行政区和目的地键包含上级键，因此不同国家的同名州、省或城市不会在筛选和统计中合并。`admin_area` 可以为空，以支持城市国家及没有必要记录一级行政区的目的地。
 
 `assets/catalogs/countries.json` 覆盖 ISO 3166-1 的 249 个当前分配代码，包含中英文名称、alpha-2/alpha-3/数字代码、别名和行政区显示规则。运行时不再维护内联国家表。该文件由 `scripts/update-countries.mjs` 从 Unicode CLDR 的固定版本生成，更新时运行 `npm run countries`。
+
+`assets/catalogs/china-locations.json` 保存中国大陆省、市和区县层级，专供新增记录编辑器在 `country_code=CN` 时反查省份及补充下拉候选。目录匹配优先于个人历史记录；跨省重名地点不自动选择。该文件由 `scripts/update-china-locations.mjs` 从固定版本的 `cn-division` 生成，更新时运行 `npm run china-locations`。
 
 ## 路由
 
@@ -108,6 +118,7 @@ renderCover() / renderLedger() / renderArchive() / renderPlace() / renderEntryRo
 - `js/photo-uploads.mjs`：浏览器与服务器共用的图片签名校验及可读文件命名规则。
 - `js/location.mjs`：地点字段兼容、国家规则、层级键、显示名称和搜索字段。
 - `assets/catalogs/countries.json`：完整国家/地区目录和行政区显示规则。
+- `assets/catalogs/china-locations.json`：中国省市区目录，为新增记录提供省份反查和省市候选。
 - `scripts/update-countries.mjs`：从固定 CLDR 版本重新生成国家目录。
 - `js/analytics.mjs`：与 DOM 无关的统计计算，适合单元测试。
 - `js/utils.js`：通用格式化与转义工具。

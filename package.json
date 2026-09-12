@@ -5,6 +5,7 @@
   "description": "Personal travel diary static site.",
   "type": "commonjs",
   "scripts": {
+    "china-locations": "node scripts/update-china-locations.mjs",
     "countries": "node scripts/update-countries.mjs",
     "data:archive": "node scripts/build-data-backup.js",
     "fonts": "node scripts/build-fonts.mjs",

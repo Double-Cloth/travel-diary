@@ -10,9 +10,10 @@
 | `npm run fonts` | 从 TTF 生成完整 WOFF2 字体。 | 否，但需预装 `fonttools[woff]` |
 | `npm run fonts:subset` | 按项目文本生成 WOFF2 子集。 | 否，但需预装 `fonttools[woff]` |
 | `npm run countries` | 从固定版本的 Unicode CLDR 更新国家目录。 | 是 |
+| `npm run china-locations` | 从固定版本的 `cn-division` 更新中国省市区目录。 | 是 |
 | `node js/server.js --port 8080 --network` | 指定端口并允许局域网只读访问。 | 否 |
 
-普通启动不会自动更新字体、国家目录或数据备份。局域网地址只能浏览和导出草稿，新增记录与全部数据导入仍限定在运行服务的本机 localhost 页面。
+普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份。局域网地址只能浏览和导出草稿，新增记录与全部数据导入仍限定在运行服务的本机 localhost 页面。
 
 ## 写入故障恢复
 
@@ -67,7 +68,7 @@
    - 任意一个 `#place?...`
    - 国家、一级行政区和目的地三级筛选是否会依次收窄选项。
    - 一个旧版 `province/city` 链接是否会自动转换并保持结果。
-   - 新增记录验证、地点补全、正文双视图、照片选择和草稿导入导出。
+   - 新增记录验证、中国目的地反查省份、地点补全、正文双视图、照片选择和草稿导入导出。
    - 本机保存提示是否可用，静态或局域网访问是否显示只读提示。
 
 ## 测试说明
@@ -75,7 +76,7 @@
 | 范围 | 主要测试 |
 | --- | --- |
 | 应用状态、路由、筛选与统计 | `app.test.mjs`、`route-map.test.mjs`、`analytics.test.mjs`、`visits.test.mjs` |
-| 地点模型与国家目录 | `location.test.mjs`、`countries.test.mjs`、`record-suggestions.test.mjs` |
+| 地点模型与地点目录 | `location.test.mjs`、`countries.test.mjs`、`china-locations.test.mjs`、`record-suggestions.test.mjs` |
 | 记录校验、写入、草稿与照片 | `record-store.test.mjs`、`record-password.test.mjs`、`markdown-editor.test.mjs`、`photo-viewer-transform.test.mjs` |
 | 全部数据 ZIP 导入导出 | `data-archive.test.mjs`、`data-archive-api.test.mjs` |
 | 数据读取与 Markdown 渲染 | `data.test.mjs`、`content.test.mjs`、`performance.test.mjs` |
@@ -93,6 +94,14 @@
 4. 检查 `assets/catalogs/countries.json` 的生成差异，特别是新增、删除或更名的代码；生成文件不应写入个人内容目录 `data/`。
 5. 运行 `npm test` 并在浏览器检查国家筛选。
 
+## 更新中国省市区目录
+
+1. 在 `scripts/update-china-locations.mjs` 更新 `CN_DIVISION_VERSION`。
+2. 核对对应版本的 `cn-division` 发布说明及其民政部地名服务数据来源。
+3. 运行 `npm run china-locations`。
+4. 检查 `assets/catalogs/china-locations.json` 的省、市、区县数量及更名差异。
+5. 运行 `npm test`，并在新增记录编辑器验证新城市、省略后缀和跨省重名地点。
+
 ## 清理原则
 
 - 先确认入口引用，再删除文件。
@@ -107,7 +116,7 @@
 - 检查浏览器控制台是否有模块加载失败。
 - 确认 `index.html` 中 `js/app.js` 路径正确。
 - 确认 `data/travel_data.json` 是合法 JSON 数组。
-- 确认 `assets/catalogs/countries.json` 存在、是合法 JSON，且旅行记录的 `country_code` 能在目录中找到。
+- 确认 `assets/catalogs/countries.json` 与 `assets/catalogs/china-locations.json` 存在且是合法 JSON；旅行记录的 `country_code` 应能在国家目录中找到。
 
 字体或背景缺失：
 

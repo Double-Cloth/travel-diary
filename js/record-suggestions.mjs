@@ -3,7 +3,7 @@ import { recordSlug } from './record-input.mjs';
 const AUTOFILL_FIELDS = ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id'];
 const RECENT_TRIP_LIMIT = 5;
 
-export function getRecordAutofill(input = {}, countries = [], records = []) {
+export function getRecordAutofill(input = {}, countries = [], records = [], chinaLocations = {}) {
     const countryCode = clean(input.country_code).toUpperCase();
     const country = countries.find(item => item.code === countryCode);
     const locality = clean(input.locality);
@@ -18,11 +18,13 @@ export function getRecordAutofill(input = {}, countries = [], records = []) {
         : matchingAdminAreas.length === 1
             ? matches.find(record => sameText(recordValue(record, 'admin_area'), matchingAdminAreas[0]))
             : null;
-    const resolvedAdminArea = adminArea || recordValue(exactLocation, 'admin_area');
+    const catalogLocation = countryCode === 'CN' ? findChinaLocation(locality, chinaLocations) : null;
+    const resolvedAdminArea = adminArea || catalogLocation?.adminArea || recordValue(exactLocation, 'admin_area');
     const values = {
         country: country?.name_zh || '',
-        admin_area: locality ? recordValue(exactLocation, 'admin_area') : '',
-        admin_area_type: recordValue(exactLocation, 'admin_area_type')
+        admin_area: locality && !adminArea ? resolvedAdminArea : '',
+        admin_area_type: catalogLocation?.adminAreaType
+            || recordValue(exactLocation, 'admin_area_type')
             || mostFrequentValue(records.filter(record => sameCountry(record, countryCode) && sameText(recordValue(record, 'admin_area'), resolvedAdminArea)), 'admin_area_type')
             || inferAdminAreaType(resolvedAdminArea, countryCode),
         locality_type: recordValue(exactLocation, 'locality_type') || inferLocalityType(locality),
@@ -32,7 +34,7 @@ export function getRecordAutofill(input = {}, countries = [], records = []) {
     return Object.fromEntries(AUTOFILL_FIELDS.filter(key => values[key]).map(key => [key, values[key]]));
 }
 
-export function getRecordOptions(input = {}, countries = [], records = []) {
+export function getRecordOptions(input = {}, countries = [], records = [], chinaLocations = {}) {
     const countryCode = clean(input.country_code).toUpperCase();
     const adminArea = clean(input.admin_area);
     const locality = clean(input.locality);
@@ -40,15 +42,60 @@ export function getRecordOptions(input = {}, countries = [], records = []) {
     const areaRecords = countryRecords.filter(record => !adminArea || sameText(recordValue(record, 'admin_area'), adminArea));
     const localityRecords = areaRecords.filter(record => !locality || sameText(recordValue(record, 'locality'), locality));
     const country = countries.find(item => item.code === countryCode);
+    const catalogAdminAreas = countryCode === 'CN' ? chinaProvinceNames(chinaLocations) : [];
+    const catalogLocalities = countryCode === 'CN' ? chinaCityNames(chinaLocations, adminArea) : [];
+    const catalogAdminAreaTypes = countryCode === 'CN' ? chinaAdminAreaTypes(chinaLocations, adminArea) : [];
 
     return {
         country: uniqueValues([country?.name_zh, ...(country?.aliases || []), ...countryRecords.map(record => recordValue(record, 'country'))]),
-        admin_area: rankedValues(countryRecords, 'admin_area'),
-        admin_area_type: rankedValues(adminArea ? areaRecords : countryRecords, 'admin_area_type'),
-        locality: rankedValues(areaRecords, 'locality'),
+        admin_area: uniqueValues([...rankedValues(countryRecords, 'admin_area'), ...catalogAdminAreas]),
+        admin_area_type: uniqueValues([...rankedValues(adminArea ? areaRecords : countryRecords, 'admin_area_type'), ...catalogAdminAreaTypes]),
+        locality: uniqueValues([...rankedValues(areaRecords, 'locality'), ...catalogLocalities]),
         locality_type: rankedValues(locality ? localityRecords : areaRecords, 'locality_type'),
         trip_id: recentTripIds(records)
     };
+}
+
+function findChinaLocation(locality, catalog) {
+    if (!locality || !Array.isArray(catalog?.provinces)) return null;
+    const exactMatches = chinaLocationMatches(locality, catalog, sameText);
+    const matches = exactMatches.length ? exactMatches : chinaLocationMatches(locality, catalog, sameChinaName);
+    const adminAreas = uniqueValues(matches.map(match => match.adminArea));
+    if (adminAreas.length !== 1) return null;
+    return matches.find(match => sameText(match.adminArea, adminAreas[0])) || null;
+}
+
+function chinaLocationMatches(locality, catalog, matcher) {
+    const matches = [];
+    catalog.provinces.forEach((province) => {
+        if (matcher(province.name, locality)) {
+            matches.push({ adminArea: province.name, adminAreaType: province.type || inferAdminAreaType(province.name, 'CN') });
+        }
+        (province.cities || []).forEach((city) => {
+            if (matcher(city.name, locality) || (city.districts || []).some(district => matcher(district, locality))) {
+                matches.push({ adminArea: province.name, adminAreaType: province.type || inferAdminAreaType(province.name, 'CN') });
+            }
+        });
+    });
+    return matches;
+}
+
+function chinaProvinceNames(catalog) {
+    return (catalog?.provinces || []).map(province => province.name);
+}
+
+function chinaCityNames(catalog, adminArea) {
+    const provinces = catalog?.provinces || [];
+    const matchingProvinces = adminArea
+        ? provinces.filter(province => sameText(province.name, adminArea) || sameChinaName(province.name, adminArea))
+        : provinces;
+    return matchingProvinces.flatMap(province => (province.cities || []).map(city => city.name));
+}
+
+function chinaAdminAreaTypes(catalog, adminArea) {
+    return uniqueValues((catalog?.provinces || [])
+        .filter(province => !adminArea || sameText(province.name, adminArea) || sameChinaName(province.name, adminArea))
+        .map(province => province.type || inferAdminAreaType(province.name, 'CN')));
 }
 
 export function suggestedTripId(input = {}) {
@@ -147,6 +194,14 @@ function compareRecent(a, b) {
 
 function sameText(a, b) {
     return clean(a).toLocaleLowerCase() === clean(b).toLocaleLowerCase();
+}
+
+function sameChinaName(a, b) {
+    return normalizeChinaName(a) === normalizeChinaName(b);
+}
+
+function normalizeChinaName(value) {
+    return clean(value).replace(/(?:特别行政区|自治州|自治县|自治旗|地区|林区|矿区|新区|省|市|县|区|盟|旗)$/u, '');
 }
 
 function clean(value) {

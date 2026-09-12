@@ -2,7 +2,7 @@ import { escapeHtml } from './utils.js';
 import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
 import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
-import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260912-trip-id-v2';
+import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260912-cn-locations-v1';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
 import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';
 
@@ -19,6 +19,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     dialog.setAttribute('aria-labelledby', 'recordEditorTitle');
     document.body.append(dialog);
     let countries = [];
+    let chinaLocations = {};
     let token = '';
     let requestId = '';
     let busy = false;
@@ -231,15 +232,21 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     function updateAutofill() {
         const input = getDraft().input;
         const records = getRecords() || [];
-        const values = getRecordAutofill(input, countries, records);
+        let values = getRecordAutofill(input, countries, records, chinaLocations);
         const filled = [];
-        ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id'].forEach(name => {
-            const previousAutoValue = autoFilledValues.get(name);
-            if (previousAutoValue && !values[name] && field(name).value === previousAutoValue && !userEditedAutofillFields.has(name)) {
-                field(name).value = '';
-                autoFilledValues.delete(name);
-            }
-        });
+        let clearedStaleAutofill;
+        do {
+            clearedStaleAutofill = false;
+            ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id'].forEach(name => {
+                const previousAutoValue = autoFilledValues.get(name);
+                if (previousAutoValue && !values[name] && field(name).value === previousAutoValue && !userEditedAutofillFields.has(name)) {
+                    field(name).value = '';
+                    autoFilledValues.delete(name);
+                    clearedStaleAutofill = true;
+                }
+            });
+            if (clearedStaleAutofill) values = getRecordAutofill(getDraft().input, countries, records, chinaLocations);
+        } while (clearedStaleAutofill);
         Object.entries(values).forEach(([name, value]) => {
             const control = field(name);
             const previousAutoValue = autoFilledValues.get(name);
@@ -252,7 +259,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             autoFilledValues.set(name, value);
         });
         updatePathHint();
-        renderOptionLists(getRecordOptions(getDraft().input, countries, records));
+        renderOptionLists(getRecordOptions(getDraft().input, countries, records, chinaLocations));
         const hint = dialog.querySelector('[data-editor-autofill]');
         hint.textContent = filled.length
             ? `已补全：${filled.join('、')}。如有需要可直接修改。`
@@ -745,9 +752,13 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             trigger = document.activeElement;
             if (!initialized || saved) {
                 if (!countries.length) {
-                    const response = await fetch(new URL('assets/catalogs/countries.json', window.location.href));
-                    if (!response.ok) throw new Error('国家目录加载失败，请刷新后重试。');
-                    countries = (await response.json()).countries;
+                    const [countryResponse, chinaLocationResponse] = await Promise.all([
+                        fetch(new URL('assets/catalogs/countries.json', window.location.href)),
+                        fetch(new URL('assets/catalogs/china-locations.json', window.location.href))
+                    ]);
+                    if (!countryResponse.ok || !chinaLocationResponse.ok) throw new Error('地点目录加载失败，请刷新后重试。');
+                    countries = (await countryResponse.json()).countries;
+                    chinaLocations = await chinaLocationResponse.json();
                 }
                 render();
                 initialized = true;
