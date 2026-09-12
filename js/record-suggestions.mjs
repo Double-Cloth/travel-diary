@@ -1,6 +1,6 @@
-import { recordSlug } from './record-input.mjs';
+import { defaultMarkdownPath, recordSlug } from './record-input.mjs';
 
-const AUTOFILL_FIELDS = ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id'];
+const AUTOFILL_FIELDS = ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id', 'desc_md'];
 const RECENT_TRIP_LIMIT = 5;
 
 export function getRecordAutofill(input = {}, countries = [], records = [], chinaLocations = {}) {
@@ -28,7 +28,8 @@ export function getRecordAutofill(input = {}, countries = [], records = [], chin
             || mostFrequentValue(records.filter(record => sameCountry(record, countryCode) && sameText(recordValue(record, 'admin_area'), resolvedAdminArea)), 'admin_area_type')
             || inferAdminAreaType(resolvedAdminArea, countryCode),
         locality_type: recordValue(exactLocation, 'locality_type') || inferLocalityType(locality),
-        trip_id: suggestedTripId({ ...input, admin_area: resolvedAdminArea })
+        trip_id: suggestedTripId({ ...input, admin_area: resolvedAdminArea }),
+        desc_md: suggestedMarkdownPath(input)
     };
 
     return Object.fromEntries(AUTOFILL_FIELDS.filter(key => values[key]).map(key => [key, values[key]]));
@@ -103,6 +104,13 @@ export function suggestedTripId(input = {}) {
     const place = clean(input.locality) || clean(input.admin_area);
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !place) return '';
     return `${date}-${recordSlug(place)}`;
+}
+
+export function suggestedMarkdownPath(input = {}) {
+    const date = clean(input.date);
+    const locality = clean(input.locality);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !locality) return '';
+    return defaultMarkdownPath(date, locality);
 }
 
 function recordValue(record, field) {

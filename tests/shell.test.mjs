@@ -8,6 +8,7 @@ const customSelectJs = await readFile(new URL('../js/custom-select.js', import.m
 const dataTransferJs = await readFile(new URL('../js/data-transfer.js', import.meta.url), 'utf8');
 const photoViewerTransformJs = await readFile(new URL('../js/photo-viewer-transform.mjs', import.meta.url), 'utf8');
 const recordEditorJs = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
+const recordDeleteDialogJs = await readFile(new URL('../js/record-delete-dialog.js', import.meta.url), 'utf8');
 const recordPasswordJs = await readFile(new URL('../js/record-password.js', import.meta.url), 'utf8');
 const recordStoreJs = await readFile(new URL('../js/record-store.js', import.meta.url), 'utf8');
 const serverJs = await readFile(new URL('../js/server.js', import.meta.url), 'utf8');
@@ -173,7 +174,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260912-record-management/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260912-record-delete-dialog/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260912-record-management/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
@@ -206,12 +207,22 @@ test('日记详情提供经过密码验证的修改与删除入口', () => {
     assert.match(appJs, /data-action="delete-record"/);
     assert.match(appJs, /openEditRecord = createPasswordGate/);
     assert.match(appJs, /openDeleteRecord = createPasswordGate/);
-    assert.match(appJs, /window\.confirm\(`确定删除旅行记录/);
+    assert.match(appJs, /createRecordDeleteDialog\(\)/);
+    assert.match(appJs, /refs\.confirmDeleteRecord\(record\)\.then\(confirmed/);
+    assert.doesNotMatch(appJs, /window\.confirm\(`确定删除旅行记录/);
+    assert.doesNotMatch(appJs, /window\.alert\(`已删除旅行记录/);
+    assert.match(recordDeleteDialogJs, /dialog\.className = 'record-delete-dialog entry-sheet'/);
+    assert.match(recordDeleteDialogJs, /dialog\.showModal\(\)/);
+    assert.match(recordDeleteDialogJs, /暂不删除/);
+    assert.match(recordDeleteDialogJs, /确认删除/);
+    assert.doesNotMatch(recordDeleteDialogJs, /window\.(?:alert|confirm)\(/);
     assert.match(recordEditorJs, /method: editingRecord \? 'PUT' : 'POST'/);
     assert.match(recordEditorJs, /getRecordInput\(record\)/);
     assert.match(recordStoreJs, /if \(req\.method === 'PUT'\)/);
     assert.match(recordStoreJs, /if \(req\.method === 'DELETE'\)/);
     assert.match(journalCss, /\.sheet-record-actions\s*{/);
+    assert.match(journalCss, /dialog\.record-delete-dialog\.entry-sheet/);
+    assert.match(journalCss, /\.record-delete-dialog-actions\s*{/);
 });
 
 test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => {

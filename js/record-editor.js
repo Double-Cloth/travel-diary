@@ -2,7 +2,7 @@ import { escapeHtml } from './utils.js';
 import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
 import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
-import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260912-cn-locations-v1';
+import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260912-markdown-path-autofill';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
 import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';
 
@@ -30,7 +30,6 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let initialized = false;
     let opening = false;
     let editingRecord = null;
-    let autoManagedMarkdownPath = '';
     let bodyView = 'source';
     let uploads = [];
     let readingPhotos = false;
@@ -260,7 +259,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                     <details class="record-editor-files">
                         <summary><span>文件设置</span><span>按需设置正文路径或引用已有照片</span></summary>
                         <div class="record-editor-fields">
-                            <label>正文路径 <span>选填 · 留空自动生成</span><input name="desc_md" maxlength="200"></label>
+                            <label>正文路径 <span>自动填写 · 可修改</span><input name="desc_md" maxlength="200"></label>
                             <div class="record-editor-grid record-editor-files-grid">
                                 <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="recordPhotoHelp"></label>
                                 <label>已有照片文件名 <span>选填 · 每行一个</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="recordPhotoHelp"></textarea></label>
@@ -293,12 +292,14 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             const value = initialInput[key] ?? (key === 'photos' ? [] : '');
             field(key).value = key === 'photos' ? value.join('\n') : value;
         }
-        autoManagedMarkdownPath = editing && initialInput.desc_md === defaultMarkdownPath(initialInput.date, initialInput.locality)
-            ? initialInput.desc_md
-            : '';
         if (editing) {
             for (const name of ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id']) {
                 userEditedAutofillFields.add(name);
+            }
+            if (initialInput.desc_md === defaultMarkdownPath(initialInput.date, initialInput.locality)) {
+                autoFilledValues.set('desc_md', initialInput.desc_md);
+            } else {
+                userEditedAutofillFields.add('desc_md');
             }
             dialog.querySelector('.record-editor-files').open = Boolean(initialInput.desc_md || initialInput.photo_folder || initialInput.photos.length);
         }
@@ -320,10 +321,6 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const locality = field('locality').value || '目的地';
         const markdownPath = defaultMarkdownPath(field('date').value || 'YYYY-MM-DD', locality);
         const photoPath = `data/photos/${recordSlug(locality)}`;
-        if (autoManagedMarkdownPath && field('desc_md').value === autoManagedMarkdownPath) {
-            field('desc_md').value = markdownPath;
-            autoManagedMarkdownPath = markdownPath;
-        }
         field('desc_md').placeholder = markdownPath;
         field('photo_folder').placeholder = photoPath;
         dialog.querySelector('[data-editor-photo-path-preview]').textContent = photoPath;
@@ -338,7 +335,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         let clearedStaleAutofill;
         do {
             clearedStaleAutofill = false;
-            ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id'].forEach(name => {
+            ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id', 'desc_md'].forEach(name => {
                 const previousAutoValue = autoFilledValues.get(name);
                 if (previousAutoValue && !values[name] && field(name).value === previousAutoValue && !userEditedAutofillFields.has(name)) {
                     field(name).value = '';
@@ -444,7 +441,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function fieldLabel(name) {
-        return ({ country: '国家显示名称', admin_area: '一级行政区', admin_area_type: '行政区类型', locality_type: '目的地类型', trip_id: '旅行标识' })[name] || name;
+        return ({ country: '国家显示名称', admin_area: '一级行政区', admin_area_type: '行政区类型', locality_type: '目的地类型', trip_id: '旅行标识', desc_md: '正文路径' })[name] || name;
     }
 
     function updateBodyView(view) {
@@ -645,8 +642,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (event.target.matches('[data-editor-source]')) syncMarkdown(event.target.value);
         if (event.target.closest('[data-editor-rich]')) syncPreview();
         if (!saved && RECORD_FIELDS.includes(event.target.name)) dirty = true;
-        if (event.target.name === 'desc_md' && event.isTrusted) autoManagedMarkdownPath = '';
-        if (['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id'].includes(event.target.name)) {
+        if (['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id', 'desc_md'].includes(event.target.name)) {
             userEditedAutofillFields.add(event.target.name);
             autoFilledValues.delete(event.target.name);
         }
@@ -788,7 +784,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             dirty = true;
             userEditedAutofillFields.clear();
             autoFilledValues.clear();
-            for (const name of ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id']) {
+            for (const name of ['country', 'admin_area', 'admin_area_type', 'locality_type', 'trip_id', 'desc_md']) {
                 userEditedAutofillFields.add(name);
             }
             updateCountry();

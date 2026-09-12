@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { getRecordAutofill, getRecordOptions, suggestedTripId } from '../js/record-suggestions.mjs';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from '../js/record-suggestions.mjs';
 
 const chinaLocations = JSON.parse(await readFile(new URL('../assets/catalogs/china-locations.json', import.meta.url), 'utf8'));
 
@@ -90,6 +90,12 @@ test('旅行标识随日期和可靠地点自动补全', () => {
     assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN', admin_area: '江苏省' }, countries, records).trip_id, '2026-09-11-jiangsu');
     assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN', locality: '苏州市' }, countries, records).trip_id, '2026-09-11-suzhou');
     assert.equal(getRecordAutofill({ date: '2026-09-11', country_code: 'CN' }, countries, records).trip_id, undefined);
+});
+
+test('正文路径使用完整日期和目的地自动补全', () => {
+    assert.equal(suggestedMarkdownPath({ date: '2026-09-12', locality: '衡阳市' }), 'data/travel-diary/2026/2026-09-12-hengyang.md');
+    assert.equal(suggestedMarkdownPath({ date: '2026-09-12', locality: '' }), '');
+    assert.equal(getRecordAutofill({ date: '2026-09-12', country_code: 'CN', locality: '衡阳市' }, countries, records, chinaLocations).desc_md, 'data/travel-diary/2026/2026-09-12-hengyang.md');
 });
 
 test('旅行标识候选列出最近五个不重复的已有行程', () => {
