@@ -10,6 +10,7 @@ const photoViewerTransformJs = await readFile(new URL('../js/photo-viewer-transf
 const recordEditorJs = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
 const recordDeleteDialogJs = await readFile(new URL('../js/record-delete-dialog.js', import.meta.url), 'utf8');
 const recordPasswordJs = await readFile(new URL('../js/record-password.js', import.meta.url), 'utf8');
+const feedbackDialogJs = await readFile(new URL('../js/feedback-dialog.js', import.meta.url), 'utf8');
 const recordStoreJs = await readFile(new URL('../js/record-store.js', import.meta.url), 'utf8');
 const serverJs = await readFile(new URL('../js/server.js', import.meta.url), 'utf8');
 const journalEntryCss = await readFile(new URL('../css/journal.css', import.meta.url), 'utf8');
@@ -201,6 +202,30 @@ test('新增记录入口先通过 6 位数字密码验证', () => {
     }
     assert.match(journalCss, /\.record-password-keypad\s*{/);
     assert.match(journalCss, /\.record-password-digits\s*{/);
+});
+
+test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () => {
+    assert.match(recordEditorJs, /import \{ confirmFeedback \} from '\.\/feedback-dialog\.js';/);
+    assert.match(recordEditorJs, /data-editor-clear>清空编辑器/);
+    assert.match(recordEditorJs, /confirmFeedback\('当前编辑器中的表单、正文和待保存照片都会被清除/);
+    assert.match(recordEditorJs, /releasePhotoPreviews\(\);\s*uploads = \[\];/);
+    assert.match(recordEditorJs, /for \(const key of RECORD_FIELDS\) field\(key\)\.value = ''/);
+    assert.match(recordEditorJs, /data-editor-rich[\s\S]*?innerHTML = previewHtml\('', ''\)/);
+    assert.match(recordEditorJs, /data-editor-source[\s\S]*?\.value = ''/);
+    assert.match(recordEditorJs, /编辑器已清空，可以重新填写内容。/);
+    assert.match(journalCss, /dialog\.feedback-dialog\.entry-sheet/);
+    assert.match(journalCss, /\.feedback-dialog-confirmation \.feedback-dialog-actions/);
+});
+
+test('运行时提示全部使用站内反馈弹窗而不是浏览器 alert', () => {
+    assert.match(appJs, /import \{ showFeedback \} from '\.\/feedback-dialog\.js';/);
+    assert.match(appJs, /\.catch\(error => showFeedback\(error\.message\)\)/);
+    assert.match(recordPasswordJs, /import \{ showFeedback \} from '\.\/feedback-dialog\.js';/);
+    assert.match(recordPasswordJs, /void showFeedback\(error\?\.message \|\| copy\.actionError/);
+    assert.match(feedbackDialogJs, /dialog\.showModal\(\)/);
+    assert.match(feedbackDialogJs, /data-feedback-confirm/);
+    assert.doesNotMatch(appJs, /window\.alert\s*\(/);
+    assert.doesNotMatch(recordPasswordJs, /window\.alert\s*\(/);
 });
 
 test('日记详情提供经过密码验证的修改与删除入口', () => {

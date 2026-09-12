@@ -5,6 +5,7 @@ import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepar
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260912-markdown-path-autofill';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
 import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';
+import { confirmFeedback } from './feedback-dialog.js';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -281,6 +282,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <div class="record-editor-exports">
                             <button class="paper-button" type="button" data-editor-import>导入草稿</button>
                             <button class="paper-button" type="button" data-editor-download>导出草稿</button>
+                            <button class="paper-button" type="button" data-editor-clear>清空编辑器</button>
                         </div>
                         <button class="brass-button" type="submit" data-editor-save disabled>${editing ? '保存修改' : '保存旅行记录'}</button>
                         <input type="file" accept=".zip,.json,application/zip,application/json" data-editor-file hidden aria-label="选择草稿 ZIP 或旧版 JSON 文件">
@@ -541,6 +543,37 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         status(uploads.length ? `已选择 ${uploads.length} 张照片，保存记录或导出草稿时会一并处理。` : '');
     }
 
+    async function clearEditor() {
+        if (busy || saved || readingPhotos) return;
+        const confirmed = await confirmFeedback('当前编辑器中的表单、正文和待保存照片都会被清除，操作无法撤销。', {
+            label: '编辑器',
+            title: '清空编辑器？',
+            cancelLabel: '保留内容',
+            confirmLabel: '清空内容'
+        });
+        if (!confirmed || busy || saved || readingPhotos) return;
+
+        releasePhotoPreviews();
+        uploads = [];
+        for (const key of RECORD_FIELDS) field(key).value = '';
+        field('country_code').selectedIndex = -1;
+        field('country_code').dispatchEvent(new Event('change', { bubbles: true }));
+        dialog.querySelector('[data-editor-file]').value = '';
+        dialog.querySelector('[data-editor-rich]').innerHTML = previewHtml('', '');
+        dialog.querySelector('[data-editor-source]').value = '';
+        updateMarkdownHighlight('');
+        userEditedAutofillFields.clear();
+        autoFilledValues.clear();
+        dirty = true;
+        dialog.querySelector('.record-editor-files').open = false;
+        updateCountry();
+        updatePathHint();
+        updateAutofill();
+        renderPhotos();
+        status('编辑器已清空，可以重新填写内容。');
+        field('date').focus();
+    }
+
     async function addPhotos(files) {
         if (busy || saved || readingPhotos || !files.length) return;
         readingPhotos = true;
@@ -759,6 +792,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             download(createDraftArchive(getDraft()), `travel-diary-draft-${input.date || 'undated'}-${recordSlug(input.locality || 'destination')}.zip`, 'application/zip');
             status('草稿已开始下载，所选照片已一并打包。');
         }
+        if (event.target.closest('[data-editor-clear]')) {
+            void clearEditor();
+            return;
+        }
         if (event.target.closest('[data-editor-import]')) dialog.querySelector('[data-editor-file]').click();
     });
     dialog.addEventListener('change', async event => {
@@ -843,6 +880,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             dialog.querySelectorAll('button').forEach(button => { button.disabled = false; });
             dialog.querySelector('[data-editor-save]').disabled = saved || !token;
             dialog.querySelector('[data-editor-import]').disabled = saved;
+            dialog.querySelector('[data-editor-clear]').disabled = saved;
             dialog.querySelector('[data-editor-upload]').disabled = saved;
             dialog.querySelectorAll('[data-format]').forEach(button => { button.disabled = saved; });
             dialog.querySelector('[data-editor-rich]').contentEditable = String(!saved);

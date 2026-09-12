@@ -3,6 +3,7 @@ import { createRecordEditor } from './record-editor.js?v=20260912-edit-save-care
 import { createPasswordGate } from './record-password.js?v=20260912-import-password';
 import { createDataTransfer } from './data-transfer.js?v=20260912-import-success';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260912-record-delete-dialog';
+import { showFeedback } from './feedback-dialog.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';
@@ -2013,7 +2014,7 @@ function renderWithPageTurn(renderFn, options = {}) {
 function handleDocumentClick(event) {
     if (event.target.closest('[data-action="export-all-data"]')) {
         event.preventDefault();
-        void openDataExport().catch(error => window.alert(error.message));
+        void openDataExport().catch(error => showFeedback(error.message));
         return;
     }
     if (event.target.closest('[data-action="import-all-data"]')) {
@@ -2024,14 +2025,14 @@ function handleDocumentClick(event) {
     if (event.target.closest('[data-action="add-record"]')) {
         event.preventDefault();
         closeMobileContextPanel();
-        void openRecordEditor().catch(error => window.alert(error.message));
+        void openRecordEditor().catch(error => showFeedback(error.message));
         return;
     }
     const editRecord = event.target.closest('[data-action="edit-record"]');
     if (editRecord) {
         event.preventDefault();
         const record = travelModel?.recordsById.get(editRecord.dataset.recordId);
-        if (record) void refs.openEditRecord(record).catch(error => window.alert(error.message));
+        if (record) void refs.openEditRecord(record).catch(error => showFeedback(error.message));
         return;
     }
     const deleteRecord = event.target.closest('[data-action="delete-record"]');

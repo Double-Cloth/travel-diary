@@ -1,3 +1,5 @@
+import { showFeedback } from './feedback-dialog.js';
+
 const PASSWORD_LENGTH = 6;
 let passwordGateSequence = 0;
 
@@ -120,7 +122,10 @@ export function createPasswordGate(onVerified, options = {}) {
         try {
             await onVerified(verifiedPassword);
         } catch (error) {
-            window.alert(error?.message || copy.actionError);
+            void showFeedback(error?.message || copy.actionError, {
+                label: '访问验证',
+                title: '操作未完成'
+            });
         } finally {
             verifying = false;
             setControlsDisabled(false);
