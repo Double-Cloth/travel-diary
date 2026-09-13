@@ -61,14 +61,8 @@ export function createDataTransfer(onImported) {
     let confirmationResolver;
 
     async function getExportHref() {
-        let dynamic = false;
-        try {
-            await probeWriterService();
-            dynamic = true;
-        } catch {}
-        const url = new URL(dynamic ? 'api/travel-data' : 'travel-diary-data.zip', window.location.href);
-        if (!dynamic) url.searchParams.set('v', Date.now().toString());
-        return url.href;
+        await detectWriterCapability();
+        return new URL('api/travel-data', window.location.href).href;
     }
 
     async function writerToken() {
@@ -108,7 +102,7 @@ export function createDataTransfer(onImported) {
         try {
             await probeWriterService();
         } catch {
-            setStatus('当前站点为只读模式；仍可导出草稿和公开数据备份，但不能导入并替换服务器数据。');
+            setStatus('当前站点为只读模式；静态页面不提供全部数据导入或导出。');
             return;
         }
         await requestImportAuthorization();

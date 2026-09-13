@@ -53,7 +53,7 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
     assert.equal(output.textContent, '');
 });
 
-test('导出和导入依据写入 API 能力选择动态端点或静态只读回退', async t => {
+test('导出和导入都要求写入 API，静态页面不提供全部数据备份', async t => {
     const nodes = [];
     const output = { textContent: '' };
     function node() {
@@ -80,9 +80,7 @@ test('导出和导入依据写入 API 能力选择动态端点或静态只读回
     globalThis.window.location = { hostname: 'static.example', href: 'https://static.example/' };
     globalThis.fetch = async () => ({ ok: false, json: async () => ({ error: 'Not Found' }) });
     const readonly = createDataTransfer(async () => {});
-    const staticHref = new URL(await readonly.getExportHref());
-    assert.equal(staticHref.pathname, '/travel-diary-data.zip');
-    assert.ok(staticHref.searchParams.get('v'));
+    await assert.rejects(readonly.getExportHref(), /Not Found/);
     await readonly.chooseImport();
-    assert.match(output.textContent, /只读模式/);
+    assert.match(output.textContent, /静态页面不提供全部数据导入或导出/);
 });

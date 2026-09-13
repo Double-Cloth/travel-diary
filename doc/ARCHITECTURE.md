@@ -144,7 +144,7 @@ data/travel_data.json ────────────────→ getRec
 
 local write mode 保持原安全边界：只允许回环来源地址、localhost / `127.0.0.1` / `::1` Host，并在提供 Origin 时要求完全匹配本机 HTTP Origin；`--network` 的其他设备仍只能读取。remote write mode 不依赖客户端 IP，但要求合法 Host，且提供的 Origin 必须是 HTTP 或 HTTPS，并与 Host 使用相同 authority。比较时允许外部 HTTPS Origin 对应 Node 内部 HTTP 连接，因此兼容在 Nginx、Caddy、Apache 或 Cloudflare Tunnel 后终止 TLS；协议之外的 `X-Forwarded-*` 不参与授权，也不能绕过来源判断。API 不返回 `Access-Control-Allow-Origin: *`，任意跨域来源会被拒绝。
 
-前端不根据 hostname 推断权限。`probeWriterService()` 可识别存在但尚未登录的 writer API，`detectWriterCapability()` 只有在浏览器携带有效 `HttpOnly` 会话并取得 token 后才返回动态写入能力；local 模式的远程页面、GitHub Pages、普通静态服务器或 API 不存在时自动进入只读模式。只读页面仍可编辑和导出草稿，全量导出回退到只包含公开 `data/` 的静态 `travel-diary-data.zip`。
+前端不根据 hostname 推断权限。`probeWriterService()` 可识别存在但尚未登录的 writer API，`detectWriterCapability()` 只有在浏览器携带有效 `HttpOnly` 会话并取得 token 后才返回动态写入能力；local 模式的远程页面、GitHub Pages、普通静态服务器或 API 不存在时自动进入只读模式。只读页面仍可编辑和导出草稿，但全部数据导入和导出都要求 writer API，不会回退到公开静态 ZIP。
 
 写入和全量数据导入导出共用项目根目录的 `.travel-data.lock` 独占锁。新增记录会重新读取当前索引，独占创建 Markdown 文件，写入并同步临时索引，最后用 `rename` 替换索引。目录和文件拒绝符号链接 / junction；失败时清理本次创建的正文、照片、空照片目录和临时索引。上传图片写入以目的地拼音命名的照片目录，并在索引提交前完成文件写入和同步；重试时比对照片字节。重复提交以正文路径、元数据和 Markdown 内容比对实现去重，默认正文路径使用日期和目的地拼音。自定义正文路径仍遵守年份目录、日期前缀及 ASCII 文件名规范，照片引用仅允许项目内的普通文件。
 
@@ -156,7 +156,7 @@ Markdown 与 JSON 的写入不构成跨文件事务，进程强制终止或断�
 
 正文预览复用 `js/data.js` 导出的 `parseMarkdown()`，与日记详情使用相同的 HTML 转义和链接过滤规则。源码编辑和预览编辑由 `markdown-editor.js` 负责标题拆分、语法高亮与受限 DOM 序列化；粘贴只接受纯文本。文件写入使用 `buildMarkdown()` 生成正文。新草稿导出为 ZIP，`draft.json` 仅保存字段和照片文件引用，实际图片放在 `photos/`；导入后在内存中恢复为现有写入负载。旧版 v1 至 v3 JSON 草稿继续兼容。
 
-动态全量导出只有在会话有效时才遍历普通文件，把 `data/` 与 `.secrets/auth.json` 写入 ZIP；认证配置不含明文密码。GitHub Pages 构建调用 `scripts/build-data-backup.js` 时沿用默认 `includeAuth: false`，因此公开静态 ZIP 只有 `data/`。导入由当前会话与 token 授权，随后校验 ZIP 路径、跨平台大小写冲突、文件目录重名、索引 JSON、记录字段和日期、正文 UTF-8、照片引用及认证配置；remote 模式拒绝未按六位数字策略生成的认证配置。旧备份缺少 `.secrets/auth.json` 时复制当前配置，旧 `data/password.json` 被过滤。全部内容先写入项目内临时目录，再分别以 `rename` 替换 `data/` 与 `.secrets/`；任一步失败都会恢复两组备份并清理暂存目录。成功后清空会话，确保恢复后的凭据立即成为唯一有效登录凭据。
+动态全量导出只有在会话有效时才遍历普通文件，把 `data/` 与 `.secrets/auth.json` 写入 ZIP；认证配置不含明文密码。GitHub Pages 构建只发布页面、脚本和公开 `data/` 文件，不生成或发布数据备份 ZIP。导入由当前会话与 token 授权，随后校验 ZIP 路径、跨平台大小写冲突、文件目录重名、索引 JSON、记录字段和日期、正文 UTF-8、照片引用及认证配置；remote 模式拒绝未按六位数字策略生成的认证配置。旧备份缺少 `.secrets/auth.json` 时复制当前配置，旧 `data/password.json` 被过滤。全部内容先写入项目内临时目录，再分别以 `rename` 替换 `data/` 与 `.secrets/`；任一步失败都会恢复两组备份并清理暂存目录。成功后清空会话，确保恢复后的凭据立即成为唯一有效登录凭据。
 
 应用认证、同源校验与写入 token 形成纵深防护，但不代替传输安全。remote write mode 默认关闭；公网部署必须使用 HTTPS，并建议在应用上游叠加反向代理认证、VPN 或 Zero Trust。跟踪在 Git 中的密码哈希可能被仓库读者用于离线猜测，因此仓库访问控制和高熵长口令仍是生产边界的一部分。
 

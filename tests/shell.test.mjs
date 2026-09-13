@@ -178,7 +178,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260913-server-auth-v2/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260913-no-static-export-v1/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260913-select-placement-v2/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260913-remote-writes-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -309,8 +309,11 @@ test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => 
     assert.match(appJs, /const requestDataExportAuthorization = createPasswordGate/);
     assert.match(appJs, /dataTransfer\.exportAll\(`travel-diary-data-\$\{getTodayDate\(\)\}\.zip`\)/);
     assert.match(appJs, /data-action="export-all-data"[^}]+event\.preventDefault\(\);[^}]+openDataExport\(\)/s);
+    assert.match(appJs, /静态页面不提供全部数据导出/);
+    assert.doesNotMatch(appJs, /catch \{\s*return dataTransfer\.exportAll/);
     assert.match(dataTransferJs, /api\/travel-data/);
-    assert.match(dataTransferJs, /travel-diary-data\.zip/);
+    assert.match(dataTransferJs, /detectWriterCapability\(\)/);
+    assert.doesNotMatch(dataTransferJs, /new URL\('travel-diary-data\.zip'/);
     assert.match(dataTransferJs, /async function exportAll\([^)]*\)[\s\S]+link\.href = await getExportHref\(\);[\s\S]+link\.click\(\);/);
     assert.doesNotMatch(dataTransferJs, /createObjectURL|new Blob|\.exportAll\(/);
     assert.doesNotMatch(dataTransferJs, /window\.location\.hostname|isLocalWriterHost/);

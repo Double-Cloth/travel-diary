@@ -7,7 +7,7 @@
 | `npm start` | 以 `--local --write-mode=local` 默认值启动站点及数据服务。 | 否 |
 | `npm run auth:set` | 在交互式终端设置 6 位数字访问密码，并更新 `.secrets/auth.json` 的 `scrypt` 哈希。 | 否 |
 | `npm test` | 运行全部 Node.js 测试。 | 否 |
-| `npm run data:archive` | 将当前 `data/` 生成到 `dist/travel-diary-data.zip`。 | 否 |
+| `npm run data:archive` | 将当前 `data/` 生成到本地 `dist/travel-diary-data.zip`（不由 GitHub Pages 发布）。 | 否 |
 | `npm run fonts` | 从 TTF 生成完整 WOFF2 字体。 | 否，但需预装 `fonttools[woff]` |
 | `npm run fonts:subset` | 按项目文本生成 WOFF2 子集。 | 否，但需预装 `fonttools[woff]` |
 | `npm run countries` | 从固定版本的 Unicode CLDR 更新国家目录。 | 是 |
@@ -97,7 +97,7 @@ remote 模式要求 `.secrets/auth.json` 使用后端生成的六位数字密码
    - `--network` 未指定 remote write mode 时，局域网页面是否保持只读。
    - 执行 `npm run auth:set` 后，`--network --write-mode=remote` 下远程页面是否可新增、修改、删除和导入；弱兼容配置是否拒绝启动。
    - HTTPS 反向代理下，同站点 Origin 与 Host 是否可写，不匹配 Origin 是否被拒绝。
-   - GitHub Pages 或普通静态托管是否自动使用只读草稿流程，静态 ZIP 是否只含公开 `data/` 且不含 `.secrets/`。
+   - GitHub Pages 或普通静态托管是否自动使用只读草稿流程，且不提供全部数据 ZIP 导入导出。
 
 ## 测试说明
 

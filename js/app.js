@@ -1,7 +1,7 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
 import { createRecordEditor } from './record-editor.js?v=20260913-remote-writes-v1';
 import { createPasswordGate } from './record-password.js?v=20260913-server-auth-v2';
-import { createDataTransfer } from './data-transfer.js?v=20260913-server-auth-v2';
+import { createDataTransfer } from './data-transfer.js?v=20260913-no-static-export-v1';
 import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=20260913-server-auth-v2';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { showFeedback } from './feedback-dialog.js';
@@ -188,8 +188,11 @@ async function initApp() {
         try {
             await probeWriterService();
             return requestDataExportAuthorization();
-        } catch {
-            return dataTransfer.exportAll(`travel-diary-data-${getTodayDate()}.zip`);
+        } catch (error) {
+            if (error?.code === 'WRITER_UNAVAILABLE') {
+                throw new Error('当前站点为只读模式，静态页面不提供全部数据导出。');
+            }
+            throw error;
         }
     };
     renderLoading();
