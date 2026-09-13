@@ -27,7 +27,7 @@ export function createDataTransfer(onImported) {
             </div>
             <p class="journal-label">全部数据导入</p>
             <h2 id="dataImportConfirmTitle">替换当前旅行数据？</h2>
-            <p class="data-import-confirm-note" id="dataImportConfirmDescription">导入后，当前全部旅行数据将被替换。请确认已备份现有数据。</p>
+            <p class="data-import-confirm-note" id="dataImportConfirmDescription">将替换全部日记、照片、头像和访问密码。请先备份当前数据。</p>
             <p class="data-import-confirm-file">已选择 <strong data-import-file-name></strong></p>
             <div class="data-import-confirm-actions">
                 <button class="paper-button" type="button" data-import-cancel>暂不导入</button>
@@ -57,7 +57,7 @@ export function createDataTransfer(onImported) {
     document.body.append(successDialog);
     const requestImportPassword = createPasswordSetup({
         title: '设置导入密码',
-        description: '备份中未包含访问密码，请设置新的 6 位数字密码。',
+        description: '备份未设置访问密码，请设置新的 6 位数字密码。',
         confirmation: '请再次输入相同密码；导入完成后将使用此密码。'
     });
     let busy = false;
@@ -109,7 +109,7 @@ export function createDataTransfer(onImported) {
 
     const requestImportAuthorization = createPasswordGate(chooseImportWithPassword, {
         title: '导入数据验证',
-        description: '输入当前数据的 6 位密码后选择要导入的备份',
+        description: '输入当前 6 位数字密码后选择备份。',
         verifying: '验证成功，正在选择备份…',
         actionError: '无法开始导入，请重试。'
     });
@@ -223,7 +223,7 @@ export function createDataTransfer(onImported) {
             const token = await localToken();
             let { response, result } = await uploadArchive(file, token, currentPassword);
             if (!response.ok && result.code === 'IMPORT_PASSWORD_REQUIRED') {
-                setStatus('备份校验通过，但其中没有访问密码，请先设置密码。');
+                setStatus('备份校验通过，请设置新的访问密码。');
                 const password = await requestImportPassword();
                 if (!password) {
                     setStatus('已取消导入，当前数据未修改。');

@@ -176,9 +176,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260913-review-v4/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260913-review-v5/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260912-edit-save-caret-v1/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260913-editor-keyboard-v3/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260913-editor-copy-v4/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-keyboard-v2/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-keyboard-v2/);
 });
@@ -294,7 +294,7 @@ test('全部数据导入使用站内确认对话框而不是浏览器 confirm', 
     assert.doesNotMatch(dataTransferJs, /window\.confirm|\bconfirm\(/);
     assert.match(dataTransferJs, /dialog\.className = 'data-import-confirm entry-sheet'/);
     assert.match(dataTransferJs, /dialog\.showModal\(\)/);
-    assert.match(dataTransferJs, /导入后，当前全部旅行数据将被替换。请确认已备份现有数据。/);
+    assert.match(dataTransferJs, /将替换全部日记、照片、头像和访问密码。请先备份当前数据。/);
     assert.match(dataTransferJs, /data-import-cancel/);
     assert.match(dataTransferJs, /data-import-confirm/);
     assert.match(dataTransferJs, /await confirmImport\(file\)/);
@@ -326,7 +326,7 @@ test('全部数据导入在备份缺少密码时要求两次设置 6 位密码',
 
 test('全部数据导入先校验当前密码并提交服务端复核', () => {
     assert.match(dataTransferJs, /createPasswordGate\(chooseImportWithPassword/);
-    assert.match(dataTransferJs, /输入当前数据的 6 位密码后选择要导入的备份/);
+    assert.match(dataTransferJs, /输入当前 6 位数字密码后选择备份。/);
     assert.match(dataTransferJs, /X-Travel-Current-Password/);
     assert.match(recordPasswordJs, /onVerified\(verifiedPassword\)/);
 });

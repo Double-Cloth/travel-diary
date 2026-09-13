@@ -1,7 +1,7 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260913-editor-keyboard-v3';
+import { createRecordEditor } from './record-editor.js?v=20260913-editor-copy-v4';
 import { createPasswordGate } from './record-password.js?v=20260912-import-password';
-import { createDataTransfer } from './data-transfer.js?v=20260913-import-feedback-v2';
+import { createDataTransfer } from './data-transfer.js?v=20260913-import-copy-v3';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { showFeedback } from './feedback-dialog.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';

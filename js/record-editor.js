@@ -210,7 +210,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                     <label>旅行日期 <span>必填</span><input name="date" type="date" value="${date}" required></label>
                                     <label>旅行标识 <span>选填</span><span class="record-editor-autocomplete"><input name="trip_id" maxlength="200" data-editor-autocomplete="trip_id" placeholder="填写地点后自动生成" aria-describedby="recordTripHelp" aria-autocomplete="list" aria-controls="recordTripOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordTripOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                 </div>
-                                <p class="record-editor-note" id="recordTripHelp">根据日期与地点自动生成；同一旅行可从下拉选择最近 5 次已有行程。</p>
+                                <p class="record-editor-note" id="recordTripHelp">按日期与地点自动生成；同一次旅行可沿用下拉列表中的已有标识。</p>
                                 <div class="record-editor-grid">
                                     <label>国家 / 地区 <span>必填</span><span class="custom-select"><select name="country_code" data-custom-select aria-label="国家 / 地区" required>
                                         ${countries.map(country => `<option value="${escapeHtml(country.code)}" ${country.code === 'CN' ? 'selected' : ''}>${escapeHtml(country.code)} · ${escapeHtml(country.name_zh)}</option>`).join('')}
@@ -237,7 +237,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                 <div id="recordPanelSource" role="tabpanel" aria-labelledby="recordTabSource" data-editor-panel="source">
                                     <div class="record-editor-source-layer">
                                         <pre data-editor-highlight aria-hidden="true"><code></code></pre>
-                                        <textarea data-editor-source maxlength="100210" rows="10" aria-label="Markdown 源码" aria-describedby="recordBodyHelp" spellcheck="false"></textarea>
+                                        <textarea data-editor-source maxlength="100210" rows="10" aria-label="Markdown 源码" spellcheck="false"></textarea>
                                     </div>
                                 </div>
                                 <div id="recordPanelPreview" role="tabpanel" aria-labelledby="recordTabPreview" data-editor-panel="preview" hidden>
@@ -248,7 +248,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                         <button type="button" data-format="formatBlock" data-format-value="p">段落</button>
                                         <button type="button" data-format="insertUnorderedList">列表</button>
                                     </div>
-                                    <div class="record-editor-preview markdown-content" data-editor-rich contenteditable="true" role="textbox" aria-label="预览正文，可直接编辑" aria-multiline="true" aria-describedby="recordBodyHelp"></div>
+                                    <div class="record-editor-preview markdown-content" data-editor-rich contenteditable="true" role="textbox" aria-label="预览正文，可直接编辑" aria-multiline="true"></div>
                                 </div>
                                 <textarea name="body" hidden></textarea>
                             </div>

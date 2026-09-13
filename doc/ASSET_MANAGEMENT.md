@@ -27,7 +27,7 @@ assets/
 | --- | --- |
 | `assets/catalogs/countries.json` | 通用国家/地区目录，由 `npm run countries` 更新。 |
 | `assets/catalogs/china-locations.json` | 中国省市区目录，由 `npm run china-locations` 更新，用于新增记录地点补全。 |
-| `data/password.json` | 新增记录与全部数据导入导出共用的访问密码配置。 |
+| `data/password.json` | 新增、修改、删除记录与全部数据导入导出共用的访问密码配置。 |
 | `assets/fonts/LXGWWenKaiMono-Regular.ttf` | 正文字体常规字重。 |
 | `assets/fonts/LXGWWenKaiMono-Medium.ttf` | 正文字体加粗字重。 |
 | `assets/fonts/SourceCodePro-Regular.ttf` | 代码和档案编号常规字重。 |

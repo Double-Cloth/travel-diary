@@ -13,7 +13,7 @@
 | `npm run china-locations` | 从固定版本的 `cn-division` 更新中国省市区目录。 | 是 |
 | `node js/server.js --port 8080 --network` | 指定端口并允许局域网只读访问。 | 否 |
 
-普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份。局域网地址只能浏览和导出草稿，新增记录与全部数据导入仍限定在运行服务的本机 localhost 页面。
+普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份。局域网地址只能浏览和导出草稿，新增、修改、删除与全部数据导入仍限定在运行服务的本机 localhost 页面。
 
 ## 写入故障恢复
 
@@ -26,7 +26,8 @@
 | 照片读取失败 | 确认文件确实是 JPEG、PNG、GIF 或 WebP，且浏览器内存、磁盘空间充足；应用不另设张数或文件大小上限。 |
 | 照片引用无效 | 核对 `photo_folder` 与各文件名的拼接结果、文件存在性和大小写。 |
 | 保存失败 | 检查索引 JSON 格式、目录权限、磁盘空间及路径中的符号链接或 junction。 |
-| 重复提交冲突 | 核对已有正文与草稿内容；相同路径仅接受内容完全一致的重试。 |
+| 重复提交冲突 | 新增时核对已有正文与草稿；修改或删除结果不确定时，先刷新核对记录。 |
+| 已保存、已导入或已删除，但页面刷新失败 | 数据已经写入，手动刷新后查看，无需再次执行原操作。 |
 | 数据锁被占用 | 等待当前保存、导入或导出结束；若进程异常终止，按下述步骤恢复。 |
 | 全部数据导入失败 | 先确认输入的是当前数据密码，再确认 ZIP 来自本应用，记录字段、日期和路径有效，并包含 `data/travel_data.json` 以及索引引用的全部正文和照片；若包含 `data/password.json`，密码须为 6 位数字。 |
 | 导入时要求设置密码 | 备份未包含 `data/password.json`，或其中的密码值为空字符串 `""`；连续两次输入相同的 6 位数字即可随导入创建或重置配置，取消则不会修改当前数据。非空但不是 6 位数字的值仍会提示格式不支持。 |
@@ -34,8 +35,8 @@
 异常退出后的恢复步骤：
 
 1. 停止所有本项目服务器，备份 `data/`。
-2. 检查根目录 `.travel-data.lock`、`.travel-data-import-*`、`.travel-data-backup-*`，以及 `data/.travel-write-*.tmp`、旅行索引、对应 Markdown 文件和照片目录。
-3. 对索引未引用的正文，核对后补充索引，或备份并移走文件后重试原草稿。未被索引引用的照片目录同样应先备份核对。临时索引仅在内容核验后用于恢复。
+2. 检查根目录 `.travel-data.lock`、`.travel-data-import-*`、`.travel-data-backup-*`，以及 `data/.travel-write-*.tmp`、日记目录中的 `.travel-edit-*.tmp`、`.travel-edit-*.bak`、`.travel-delete-*.bak`、旅行索引、对应 Markdown 文件和照片目录。
+3. 对索引未引用的正文，核对后补充索引，或备份并移走文件后重试原草稿。未被索引引用的照片目录同样应先备份核对。临时索引和正文备份仅在核对内容与索引后用于恢复；不要直接删除唯一的正文备份。
 4. 确认没有活动数据操作后移除遗留锁；若存在备份目录，先核对当前 `data/` 完整性再决定保留哪份，随后重启服务器并核验记录。
 
 数据锁、导入临时目录和导入回滚目录不纳入版本控制。本地保存与线上发布相互独立；发布通过提交、推送和 GitHub Pages 工作流完成。
@@ -70,6 +71,8 @@
    - 国家、一级行政区和目的地三级筛选是否会依次收窄选项。
    - 一个旧版 `province/city` 链接是否会自动转换并保持结果。
    - 新增记录验证、中国目的地反查省份、地点补全、正文双视图、照片选择和草稿导入导出。
+   - 草稿关闭后继续编辑、清空后导入、下拉菜单连续方向键选择及 Esc 分层关闭。
+   - 修改与删除、数据导入导出，以及写入成功但页面刷新失败的提示。
    - 本机保存提示是否可用，静态或局域网访问是否显示只读提示。
 
 ## 测试说明
@@ -79,7 +82,7 @@
 | 应用状态、路由、筛选与统计 | `app.test.mjs`、`route-map.test.mjs`、`analytics.test.mjs`、`visits.test.mjs` |
 | 地点模型与地点目录 | `location.test.mjs`、`countries.test.mjs`、`china-locations.test.mjs`、`record-suggestions.test.mjs` |
 | 记录校验、写入、草稿与照片 | `record-store.test.mjs`、`record-password.test.mjs`、`markdown-editor.test.mjs`、`photo-viewer-transform.test.mjs` |
-| 全部数据 ZIP 导入导出 | `data-archive.test.mjs`、`data-archive-api.test.mjs` |
+| 全部数据 ZIP 导入导出 | `data-archive.test.mjs`、`data-archive-api.test.mjs`、`data-transfer.test.mjs` |
 | 数据读取与 Markdown 渲染 | `data.test.mjs`、`content.test.mjs`、`performance.test.mjs` |
 | 静态外壳、本机服务与离线约束 | `shell.test.mjs`、`server.test.mjs`、`offline.test.mjs`、`workflow.test.mjs` |
 
