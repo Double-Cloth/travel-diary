@@ -1,12 +1,12 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260913-editor-review-v2';
+import { createRecordEditor } from './record-editor.js?v=20260913-editor-keyboard-v3';
 import { createPasswordGate } from './record-password.js?v=20260912-import-password';
 import { createDataTransfer } from './data-transfer.js?v=20260913-import-feedback-v2';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260912-record-delete-dialog';
 import { showFeedback } from './feedback-dialog.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
-import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';
+import { enhanceCustomSelects } from './custom-select.js?v=20260913-select-keyboard-v2';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {

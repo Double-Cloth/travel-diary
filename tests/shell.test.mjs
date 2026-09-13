@@ -176,11 +176,11 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260913-review-v2/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260913-review-v3/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260912-edit-save-caret-v1/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260913-editor-review-v2/);
-    assert.match(appJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
-    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260913-editor-keyboard-v3/);
+    assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-keyboard-v2/);
+    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-keyboard-v2/);
 });
 
 test('自定义下拉框靠近底部时向上展开并保留原有底部留白', () => {

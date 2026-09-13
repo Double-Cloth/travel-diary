@@ -58,6 +58,7 @@ function closeOtherCustomSelects(current) {
 }
 
 function openCustomSelect(wrapper, activeIndex = -1) {
+    if (wrapper.querySelector('select')?.disabled || wrapper.classList.contains('is-open')) return;
     const trigger = wrapper.querySelector('[data-custom-select-trigger]');
     const menu = wrapper.querySelector('[data-custom-select-menu]');
     const options = getOptions(wrapper);
@@ -99,7 +100,7 @@ function renderCustomSelect(wrapper) {
 function selectCustomOption(wrapper, option) {
     const select = wrapper.querySelector('select');
     const trigger = wrapper.querySelector('[data-custom-select-trigger]');
-    if (!select || !option) return;
+    if (!select || select.disabled || !option) return;
     if (select.value !== option.dataset.customSelectValue) {
         select.value = option.dataset.customSelectValue;
         select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -111,11 +112,13 @@ function selectCustomOption(wrapper, option) {
 }
 
 function moveCustomSelectSelection(wrapper, direction) {
+    if (wrapper.querySelector('select')?.disabled) return;
     openCustomSelect(wrapper);
     const options = getOptions(wrapper);
     if (!options.length) return;
     const current = options.findIndex(option => option.classList.contains('is-active'));
-    const next = (current + direction + options.length) % options.length;
+    const next = current < 0 ? (direction > 0 ? 0 : options.length - 1)
+        : (current + direction + options.length) % options.length;
     options.forEach(option => option.classList.remove('is-active'));
     options[next].classList.add('is-active');
     wrapper.querySelector('[data-custom-select-trigger]')?.setAttribute('aria-activedescendant', options[next].id);
@@ -215,7 +218,9 @@ function enhanceCustomSelect(select) {
             event.preventDefault();
             const option = getOptions(wrapper).find(item => item.classList.contains('is-active'));
             if (option) selectCustomOption(wrapper, option);
-        } else if (event.key === 'Escape') {
+        } else if (event.key === 'Escape' && wrapper.classList.contains('is-open')) {
+            event.preventDefault();
+            event.stopPropagation();
             closeCustomSelect(wrapper);
         } else if (event.key === 'Tab') {
             closeCustomSelect(wrapper);

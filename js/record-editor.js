@@ -4,7 +4,7 @@ import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
-import { enhanceCustomSelects } from './custom-select.js?v=20260912-select-placement-v1';
+import { enhanceCustomSelects } from './custom-select.js?v=20260913-select-keyboard-v2';
 import { confirmFeedback } from './feedback-dialog.js';
 
 const POINTER_MOVE_TOLERANCE = 8;
@@ -437,11 +437,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function moveAutocompleteSelection(input, direction) {
-        showAutocomplete(input);
+        if (input.getAttribute('aria-expanded') !== 'true') showAutocomplete(input);
         const options = autocompleteOptions(input);
         if (!options.length) return;
         const current = options.findIndex(option => option.classList.contains('is-active'));
-        const next = (current + direction + options.length) % options.length;
+        const next = current < 0 ? (direction > 0 ? 0 : options.length - 1)
+            : (current + direction + options.length) % options.length;
         options.forEach(option => option.classList.remove('is-active'));
         const option = options[next];
         option.classList.add('is-active');
@@ -674,7 +675,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 event.preventDefault();
                 selectAutocompleteOption(input, option);
             }
-        } else if (event.key === 'Escape') {
+        } else if (event.key === 'Escape' && input.getAttribute('aria-expanded') === 'true') {
+            event.preventDefault();
             closeAutocomplete(input);
         }
     });
@@ -800,6 +802,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     });
     dialog.addEventListener('change', async event => {
         if (event.target.name === 'country_code') {
+            if (!saved) dirty = true;
             const countryField = field('country');
             const previousAutoValue = autoFilledValues.get('country');
             if (!userEditedAutofillFields.has('country') && (!countryField.value.trim() || countryField.value === previousAutoValue)) {
