@@ -82,7 +82,19 @@
     transform: translateY(-20%) rotate(225deg);
 }
 
+.custom-select.is-open-downward .custom-select-chevron {
+    transform: translateY(-65%) rotate(45deg);
+}
+
 .custom-select.is-open-upward .custom-select-chevron {
+    transform: translateY(-20%) rotate(225deg);
+}
+
+.custom-select.is-open.is-open-downward .custom-select-chevron {
+    transform: translateY(-20%) rotate(225deg);
+}
+
+.custom-select.is-open.is-open-upward .custom-select-chevron {
     transform: translateY(-65%) rotate(45deg);
 }
 
@@ -194,10 +206,6 @@
     min-height: 38px;
     padding: 8px 34px 8px 10px;
     font: 12px/1.3 var(--font-code);
-}
-
-.index-sort-field .custom-select-chevron {
-    transform: translateY(-20%) rotate(225deg);
 }
 
 @media (max-width: 540px) {

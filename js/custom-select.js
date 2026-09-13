@@ -16,9 +16,10 @@ function closeCustomSelect(wrapper) {
     const trigger = wrapper.querySelector('[data-custom-select-trigger]');
     const menu = wrapper.querySelector('[data-custom-select-menu]');
     if (!trigger || !menu) return;
-    wrapper.classList.remove('is-open', 'is-open-upward');
+    wrapper.classList.remove('is-open');
     trigger.setAttribute('aria-expanded', 'false');
     menu.hidden = true;
+    updateCustomSelectPlacement(wrapper);
     getOptions(wrapper).forEach(option => option.classList.remove('is-active'));
     trigger.removeAttribute('aria-activedescendant');
 }
@@ -38,6 +39,9 @@ function updateCustomSelectPlacement(wrapper) {
     const menu = wrapper.querySelector('[data-custom-select-menu]');
     if (!trigger || !menu) return;
 
+    const wasHidden = menu.hidden;
+    if (wasHidden) menu.hidden = false;
+
     const boundary = getCustomSelectBoundary(wrapper);
     const triggerRect = trigger.getBoundingClientRect();
     const menuRect = menu.getBoundingClientRect();
@@ -48,7 +52,10 @@ function updateCustomSelectPlacement(wrapper) {
     const spaceBelow = boundaryRect.bottom - triggerRect.bottom - gap;
     const spaceAbove = triggerRect.top - boundaryRect.top - gap;
 
-    wrapper.classList.toggle('is-open-upward', menuRect.height > spaceBelow && spaceAbove > spaceBelow);
+    const opensUpward = menuRect.height > spaceBelow && spaceAbove > spaceBelow;
+    wrapper.classList.toggle('is-open-upward', opensUpward);
+    wrapper.classList.toggle('is-open-downward', !opensUpward);
+    if (wasHidden) menu.hidden = true;
 }
 
 function closeOtherCustomSelects(current) {
@@ -201,6 +208,7 @@ function enhanceCustomSelect(select) {
     const label = select.closest('label');
     if (label?.htmlFor === select.id) label.htmlFor = trigger.id;
     renderCustomSelect(wrapper);
+    updateCustomSelectPlacement(wrapper);
     select.addEventListener('change', () => renderCustomSelect(wrapper));
     select.addEventListener('focus', () => trigger.focus({ preventScroll: true }));
     trigger.addEventListener('click', () => {
@@ -236,10 +244,15 @@ function enhanceCustomSelect(select) {
 function bindDocumentEvents() {
     if (documentEventsBound) return;
     documentEventsBound = true;
+    const updateCustomSelectPlacements = () => {
+        document.querySelectorAll('.custom-select').forEach(updateCustomSelectPlacement);
+    };
     document.addEventListener('pointerdown', event => {
         if (event.target.closest('[data-custom-select]')) return;
         document.querySelectorAll('[data-custom-select].is-open').forEach(closeCustomSelect);
     });
+    document.addEventListener('scroll', updateCustomSelectPlacements, { passive: true, capture: true });
+    window.addEventListener('resize', updateCustomSelectPlacements, { passive: true });
 }
 
 export function enhanceCustomSelects(root = document) {

@@ -177,19 +177,29 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(indexHtml, /js\/app\.js\?v=20260913-editor-state-v6/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260913-delete-success-button-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260913-select-placement-v2/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260913-editor-state-v5/);
-    assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-keyboard-v2/);
-    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-keyboard-v2/);
+    assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
+    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
 });
 
-test('自定义下拉框靠近底部时向上展开并保留原有底部留白', () => {
+test('自定义下拉框初始方向和打开后的箭头都随弹出方向变化', () => {
     assert.match(customSelectJs, /function getCustomSelectBoundary\(wrapper\)[\s\S]*?overflowY[\s\S]*?return boundary;/);
     assert.match(customSelectJs, /menu\.hidden = false;\s*updateCustomSelectPlacement\(wrapper\);/);
+    assert.match(customSelectJs, /classList\.toggle\('is-open-upward', opensUpward\)/);
+    assert.match(customSelectJs, /classList\.toggle\('is-open-downward', !opensUpward\)/);
+    assert.match(customSelectJs, /document\.addEventListener\('scroll', updateCustomSelectPlacements, \{ passive: true, capture: true \}\)/);
+    assert.match(customSelectJs, /window\.addEventListener\('resize', updateCustomSelectPlacements, \{ passive: true \}\)/);
+    assert.match(customSelectJs, /renderCustomSelect\(wrapper\);\s*updateCustomSelectPlacement\(wrapper\);/);
+    assert.match(customSelectJs, /menu\.hidden = true;\s*updateCustomSelectPlacement\(wrapper\);/);
+    assert.match(journalCss, /\.custom-select\.is-open-downward \.custom-select-chevron\s*\{\s*transform: translateY\(-65%\) rotate\(45deg\);\s*\}/);
+    assert.match(journalCss, /\.custom-select\.is-open-upward \.custom-select-chevron\s*\{\s*transform: translateY\(-20%\) rotate\(225deg\);\s*\}/);
+    assert.match(journalCss, /\.custom-select\.is-open\.is-open-downward \.custom-select-chevron\s*\{\s*transform: translateY\(-20%\) rotate\(225deg\);\s*\}/);
+    assert.match(journalCss, /\.custom-select\.is-open\.is-open-upward \.custom-select-chevron\s*\{\s*transform: translateY\(-65%\) rotate\(45deg\);\s*\}/);
     assert.match(journalCss, /.custom-select\.is-open-upward \.custom-select-menu\s*\{\s*inset: auto 0 calc\(100% \+ 8px\);\s*\}/);
-    assert.match(journalCss, /\.custom-select\.is-open-upward \.custom-select-chevron\s*\{\s*transform: translateY\(-65%\) rotate\(45deg\);\s*\}/);
     assert.match(appJs, /class="index-filter-field\$\{visuallyHiddenLabel \? ' index-sort-field' : ''\}"/);
-    assert.match(journalCss, /\.index-sort-field \.custom-select-chevron\s*\{\s*transform: translateY\(-20%\) rotate\(225deg\);\s*\}/);
+    assert.match(journalEntryCss, /08-custom-select\.css\?v=20260913-select-placement-v5/);
+    assert.doesNotMatch(journalCss, /\.index-sort-field \.custom-select-chevron\s*\{/);
     assert.doesNotMatch(journalCss, /\.index-filter-section:last-child\s*\{\s*padding-bottom:/);
 });
 

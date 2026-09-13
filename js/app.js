@@ -6,7 +6,7 @@ import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-d
 import { showFeedback } from './feedback-dialog.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
-import { enhanceCustomSelects } from './custom-select.js?v=20260913-select-keyboard-v2';
+import { enhanceCustomSelects } from './custom-select.js?v=20260913-select-placement-v3';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
