@@ -1475,7 +1475,7 @@ async function deleteTravelRecord(record) {
         throw new Error(service.error || '无法连接本地保存服务。');
     }
     if (!Array.isArray(service.methods) || !service.methods.includes('DELETE')) {
-        throw new Error('本地保存服务版本过旧，请重新运行 npm start 后再删除记录。');
+        throw new Error('本地保存服务版本过旧，请重新启动项目后再删除记录。');
     }
     const response = await fetch(endpoint, {
         method: 'DELETE',

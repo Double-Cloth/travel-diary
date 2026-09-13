@@ -179,7 +179,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             if (!response.ok || result.service !== 'travel-diary-writer-v1' || !result.token) throw new Error();
             writerMethods = new Set(Array.isArray(result.methods) ? result.methods : ['POST']);
             if (editingRecord && !writerMethods.has('PUT')) {
-                hint.textContent = '本地保存服务版本过旧 · 请重新运行 npm start 后再修改记录。';
+                hint.textContent = '本地保存服务版本过旧 · 请重新启动项目后再修改记录。';
                 return;
             }
             token = result.token;
@@ -863,7 +863,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         event.preventDefault();
         if (busy || saved || readingPhotos || !token) return;
         if (editingRecord && !writerMethods.has('PUT')) {
-            status('本地保存服务版本过旧，请重新运行 npm start 后再修改记录。');
+            status('本地保存服务版本过旧，请重新启动项目后再修改记录。');
             return;
         }
         const draft = getDraft();

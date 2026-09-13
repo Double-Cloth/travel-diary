@@ -77,7 +77,7 @@ export function createDataTransfer(onImported) {
 
     async function localToken() {
         if (!isLocalWriterHost()) {
-            throw new Error('请在本机通过 npm start 打开页面后再操作。');
+            throw new Error('请在本机通过 localhost 打开页面后再操作。');
         }
         const response = await fetch(new URL('api/travel-records', window.location.href), { cache: 'no-store' });
         const result = await response.json();
@@ -117,7 +117,7 @@ export function createDataTransfer(onImported) {
     function chooseImport() {
         if (busy) return;
         if (!isLocalWriterHost()) {
-            setStatus('导入仅支持本机 npm start 页面；当前页面仍可导出备份。');
+            setStatus('导入仅支持本机 localhost 页面；当前页面仍可导出备份。');
             return;
         }
         void requestImportAuthorization();

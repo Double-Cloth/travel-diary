@@ -267,7 +267,7 @@ test('日记详情提供经过密码验证的修改与删除入口', () => {
     assert.doesNotMatch(appJs, /window\.confirm\(`确定删除旅行记录/);
     assert.doesNotMatch(appJs, /window\.alert\(`已删除旅行记录/);
     assert.match(appJs, /service\.methods\.includes\('DELETE'\)/);
-    assert.match(appJs, /本地保存服务版本过旧，请重新运行 npm start 后再删除记录。/);
+    assert.match(appJs, /本地保存服务版本过旧，请重新启动项目后再删除记录。/);
     assert.match(recordDeleteDialogJs, /dialog\.className = 'record-delete-dialog entry-sheet'/);
     assert.match(recordDeleteDialogJs, /dialog\.showModal\(\)/);
     assert.match(recordDeleteDialogJs, /暂不删除/);
@@ -275,7 +275,7 @@ test('日记详情提供经过密码验证的修改与删除入口', () => {
     assert.doesNotMatch(recordDeleteDialogJs, /window\.(?:alert|confirm)\(/);
     assert.match(recordEditorJs, /method: editingRecord \? 'PUT' : 'POST'/);
     assert.match(recordEditorJs, /editingRecord && !writerMethods\.has\('PUT'\)/);
-    assert.match(recordEditorJs, /本地保存服务版本过旧，请重新运行 npm start 后再修改记录。/);
+    assert.match(recordEditorJs, /本地保存服务版本过旧，请重新启动项目后再修改记录。/);
     assert.match(recordEditorJs, /getRecordInput\(record\)/);
     assert.match(recordStoreJs, /if \(req\.method === 'PUT'\)/);
     assert.match(recordStoreJs, /if \(req\.method === 'DELETE'\)/);
