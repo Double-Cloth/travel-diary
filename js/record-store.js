@@ -1,7 +1,8 @@
 const fs = require('fs/promises');
 const path = require('path');
-const { randomBytes } = require('crypto');
+const { randomBytes, timingSafeEqual } = require('crypto');
 const { acquireDataLock, exportDataArchive, importDataArchive } = require('./data-archive.js');
+const { PASSWORD_MAX_LENGTH, readAuthConfig, verifyPassword } = require('./auth.js');
 
 function failure(status, message) {
     return Object.assign(new Error(message), { status });
@@ -55,6 +56,40 @@ function isWriterRequestAllowed(request, writeMode = 'local') {
     }
     if (writeMode !== 'remote' || !isValidHostHeader(host)) return false;
     return isMatchingHttpOrigin(host, request.origin);
+}
+
+function equalCredential(actual, expected) {
+    if (typeof actual !== 'string' || typeof expected !== 'string') return false;
+    const actualBuffer = Buffer.from(actual);
+    const expectedBuffer = Buffer.from(expected);
+    return actualBuffer.length === expectedBuffer.length && timingSafeEqual(actualBuffer, expectedBuffer);
+}
+
+function readCookie(request, name) {
+    const header = request.headers.cookie;
+    if (typeof header !== 'string') return '';
+    for (const part of header.split(';')) {
+        const separator = part.indexOf('=');
+        if (separator < 0 || part.slice(0, separator).trim() !== name) continue;
+        const value = part.slice(separator + 1).trim();
+        return /^[a-f0-9]{64}$/.test(value) ? value : '';
+    }
+    return '';
+}
+
+async function readJsonBody(request, maximumBytes) {
+    const chunks = [];
+    let bytes = 0;
+    for await (const chunk of request) {
+        bytes += chunk.length;
+        if (bytes > maximumBytes) throw failure(413, '请求内容过大。');
+        chunks.push(chunk);
+    }
+    try {
+        return JSON.parse(Buffer.concat(chunks).toString('utf8'));
+    } catch {
+        throw failure(400, '请求 JSON 格式无效。');
+    }
 }
 
 // 写入路径逐层检查，禁止通过链接或 junction 改写项目外的文件。
@@ -434,10 +469,57 @@ async function deleteRecord(root, payload) {
 function createRecordApi(root, options = {}) {
     const writeMode = options.writeMode || 'local';
     if (!['local', 'remote'].includes(writeMode)) throw new Error(`不支持的写入模式：${writeMode}`);
-    const token = randomBytes(32).toString('hex');
+    const sessions = new Map();
+    const failures = new Map();
+    const sessionLifetime = 8 * 60 * 60 * 1000;
+    const failureWindow = 15 * 60 * 1000;
+    const maximumFailures = 5;
+
+    function currentSession(req, host) {
+        const id = readCookie(req, 'travel_session');
+        const session = id && sessions.get(id);
+        if (!session || session.host !== host || session.expiresAt <= Date.now()) {
+            if (id) sessions.delete(id);
+            return null;
+        }
+        return session;
+    }
+
+    function clearExpiredState(now = Date.now()) {
+        for (const [id, session] of sessions) if (session.expiresAt <= now) sessions.delete(id);
+        for (const [key, state] of failures) if (state.startedAt + failureWindow <= now) failures.delete(key);
+    }
+
+    function failureState(key, now = Date.now()) {
+        const previous = failures.get(key);
+        if (!previous || previous.startedAt + failureWindow <= now) return { startedAt: now, count: 0, active: 0 };
+        return previous;
+    }
+
+    function finishLoginAttempt(key, outcome) {
+        const state = failures.get(key);
+        if (!state) return;
+        const next = {
+            ...state,
+            active: Math.max(0, state.active - 1),
+            count: outcome === 'success' ? 0 : state.count + (outcome === 'failure' ? 1 : 0)
+        };
+        if (!next.active && !next.count) failures.delete(key);
+        else failures.set(key, next);
+    }
+
+    function sessionCookie(id, secure, maxAge = sessionLifetime / 1000) {
+        return `travel_session=${id}; Path=/api; HttpOnly; SameSite=Strict; Max-Age=${maxAge}${secure ? '; Secure' : ''}`;
+    }
+
     return async (req, res) => {
-        const send = (status, value) => {
-            res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+        const send = (status, value, headers = {}) => {
+            res.writeHead(status, {
+                'Content-Type': 'application/json; charset=utf-8',
+                'Cache-Control': 'no-store',
+                'X-Content-Type-Options': 'nosniff',
+                ...headers
+            });
             res.end(JSON.stringify(value));
         };
         const host = req.headers.host || '';
@@ -455,24 +537,100 @@ function createRecordApi(root, options = {}) {
                 : '写入请求的 Host 或 Origin 与当前站点不匹配。' });
             return;
         }
+
+        clearExpiredState();
+        const session = currentSession(req, host);
+        if (requestPath === '/api/travel-auth') {
+            if (req.method === 'DELETE') {
+                const id = readCookie(req, 'travel_session');
+                if (id) sessions.delete(id);
+                send(200, { authenticated: false }, { 'Set-Cookie': sessionCookie('', false, 0) });
+                return;
+            }
+            if (req.method !== 'POST' || req.headers['content-type'] !== 'application/json') {
+                send(405, { error: '认证接口仅支持 JSON 登录请求。' }, { Allow: 'POST, DELETE' });
+                return;
+            }
+            if (!req.headers.origin) {
+                send(403, { error: '认证请求必须来自当前站点页面。' });
+                return;
+            }
+            const failureKey = `${req.socket.remoteAddress || 'unknown'}\n${host}`;
+            const state = failureState(failureKey);
+            if (state.count + state.active >= maximumFailures) {
+                const retryAfter = Math.max(1, Math.ceil((state.startedAt + failureWindow - Date.now()) / 1000));
+                send(429, { error: '登录失败次数过多，请稍后重试。' }, { 'Retry-After': String(retryAfter) });
+                return;
+            }
+            let attemptReserved = false;
+            try {
+                const payload = await readJsonBody(req, 4096);
+                const config = await readAuthConfig(root, { requireProduction: writeMode === 'remote' });
+                const reservedState = failureState(failureKey);
+                if (reservedState.count + reservedState.active >= maximumFailures) {
+                    const retryAfter = Math.max(1, Math.ceil((reservedState.startedAt + failureWindow - Date.now()) / 1000));
+                    send(429, { error: '登录失败次数过多，请稍后重试。' }, { 'Retry-After': String(retryAfter) });
+                    return;
+                }
+                failures.set(failureKey, { ...reservedState, active: reservedState.active + 1 });
+                attemptReserved = true;
+                const password = typeof payload?.password === 'string' ? payload.password : '';
+                if (password.length > PASSWORD_MAX_LENGTH || !await verifyPassword(config, password)) {
+                    finishLoginAttempt(failureKey, 'failure');
+                    attemptReserved = false;
+                    send(401, { error: '访问口令不正确。', code: 'AUTH_INVALID' });
+                    return;
+                }
+                finishLoginAttempt(failureKey, 'success');
+                attemptReserved = false;
+                const id = randomBytes(32).toString('hex');
+                const token = randomBytes(32).toString('hex');
+                sessions.set(id, { host, token, expiresAt: Date.now() + sessionLifetime });
+                const secure = req.headers.origin.startsWith('https://');
+                send(200, {
+                    service: 'travel-diary-writer-v1', authenticated: true, token,
+                    methods: ['POST', 'PUT', 'DELETE'], writeMode, expiresIn: sessionLifetime / 1000
+                }, { 'Set-Cookie': sessionCookie(id, secure) });
+            } catch (error) {
+                if (attemptReserved) finishLoginAttempt(failureKey, 'error');
+                const status = error.code === 'AUTH_NOT_PRODUCTION_READY' || error.code === 'AUTH_CONFIG_INVALID'
+                    ? 503
+                    : (error.status || 500);
+                send(status, { error: error.message || '认证服务暂时不可用。', ...(error.code ? { code: error.code } : {}) });
+            }
+            return;
+        }
         if (requestPath === '/api/travel-records' && req.method === 'GET') {
-            send(200, { service: 'travel-diary-writer-v1', token, methods: ['POST', 'PUT', 'DELETE'], writeMode });
+            if (!session) {
+                send(401, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, code: 'AUTH_REQUIRED' });
+                return;
+            }
+            send(200, {
+                service: 'travel-diary-writer-v1', authenticated: true, token: session.token,
+                methods: ['POST', 'PUT', 'DELETE'], writeMode
+            });
             return;
         }
         if (requestPath === '/api/travel-data') {
-            if (req.method !== 'GET' && req.method !== 'HEAD' && req.headers['x-travel-token'] !== token) {
+            if (!session) {
+                send(401, { error: '登录会话已失效，请重新输入访问口令。', code: 'AUTH_REQUIRED' });
+                return;
+            }
+            if (req.method !== 'GET' && req.method !== 'HEAD'
+                && !equalCredential(req.headers['x-travel-token'], session.token)) {
                 send(403, { error: '数据操作凭据无效，请刷新页面后重试。' });
                 return;
             }
             try {
                 if (req.method === 'GET' || req.method === 'HEAD') {
-                    const archive = await exportDataArchive(root);
+                    const archive = await exportDataArchive(root, { includeAuth: true });
                     const today = new Date().toISOString().slice(0, 10);
                     res.writeHead(200, {
                         'Content-Type': 'application/zip',
                         'Content-Length': archive.length,
                         'Content-Disposition': `attachment; filename="travel-diary-data-${today}.zip"`,
-                        'Cache-Control': 'no-store'
+                        'Cache-Control': 'no-store',
+                        'X-Content-Type-Options': 'nosniff'
                     });
                     res.end(req.method === 'HEAD' ? undefined : archive);
                     return;
@@ -481,9 +639,9 @@ function createRecordApi(root, options = {}) {
                     const chunks = [];
                     for await (const chunk of req) chunks.push(chunk);
                     const result = await importDataArchive(root, Buffer.concat(chunks), {
-                        currentPassword: req.headers['x-travel-current-password'],
-                        password: req.headers['x-travel-import-password']
+                        requireProductionAuth: writeMode === 'remote'
                     });
+                    sessions.clear();
                     send(200, { imported: true, ...result });
                     return;
                 }
@@ -500,18 +658,17 @@ function createRecordApi(root, options = {}) {
             send(405, { error: '不支持该请求方法。' });
             return;
         }
-        if (req.headers['x-travel-token'] !== token || req.headers['content-type'] !== 'application/json') {
+        if (!session) {
+            send(401, { error: '登录会话已失效，请重新输入访问口令。', code: 'AUTH_REQUIRED' });
+            return;
+        }
+        if (!equalCredential(req.headers['x-travel-token'], session.token)
+            || req.headers['content-type'] !== 'application/json') {
             send(403, { error: '写入凭据无效，请保留草稿后重新打开窗口。' });
             return;
         }
         try {
-            const chunks = [];
-            for await (const chunk of req) {
-                chunks.push(chunk);
-            }
-            let payload;
-            try { payload = JSON.parse(Buffer.concat(chunks).toString('utf8')); }
-            catch { throw failure(400, '草稿 JSON 格式无效。'); }
+            const payload = await readJsonBody(req, 128 * 1024 * 1024);
             if (req.method === 'PUT') {
                 const result = await updateRecord(root, payload);
                 send(200, { saved: true, updated: true, ...result });

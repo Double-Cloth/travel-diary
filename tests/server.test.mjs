@@ -17,14 +17,17 @@ before(async () => {
     fixture = await mkdtemp(path.join(tmpdir(), 'travel-diary-server-'));
     root = path.join(fixture, 'site');
     await mkdir(path.join(root, 'nested'), { recursive: true });
+    await mkdir(path.join(root, '.secrets'), { recursive: true });
     await mkdir(path.join(fixture, 'site-other'));
     await writeFile(path.join(root, 'index.html'), '首页');
     await writeFile(path.join(root, 'nested', 'index.html'), '子目录');
     await writeFile(path.join(root, '100%.txt'), '百分号');
     await writeFile(path.join(root, '%2e.txt'), '编码名称');
     await writeFile(path.join(root, 'module.mjs'), 'export {};');
+    await writeFile(path.join(root, '.secrets/auth.json'), '{"hash":"never public"}');
     await writeFile(path.join(fixture, 'site-other', 'secret.txt'), '目录外内容');
     await symlink(path.join(fixture, 'site-other'), path.join(root, 'outside'), process.platform === 'win32' ? 'junction' : 'dir');
+    await symlink(path.join(root, '.secrets'), path.join(root, 'secret-alias'), process.platform === 'win32' ? 'junction' : 'dir');
     server = http.createServer(createHandler(root));
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
@@ -72,6 +75,8 @@ test('拒绝同名前缀目录、编码穿越、空字符与链接越界', async
     for (const url of ['/..%2fsite-other/secret.txt', '/..%5csite-other/secret.txt', '/outside/secret.txt', '/bad%00name', '/index.html:stream']) {
         assert.equal((await request(url)).status, 403, url);
     }
+    assert.equal((await request('/.secrets/auth.json')).status, 403);
+    assert.equal((await request('/secret-alias/auth.json')).status, 403);
 });
 
 test('目录跳转保留查询参数，HEAD 与 GET 的资源元数据一致', async () => {
@@ -120,6 +125,15 @@ test('CLI help 说明监听与写入配置，并包含显式远程写入示例',
     assert.match(result.stdout, /--local\|--network/);
     assert.match(result.stdout, /--write-mode(?:=MODE)?/);
     assert.match(result.stdout, /--network --write-mode=remote/);
+    assert.match(result.stdout, /npm run auth:set/);
+});
+
+test('remote 服务拒绝使用仓库内的兼容期弱凭据启动', () => {
+    const result = spawnSync(process.execPath, ['js/server.js', '--write-mode=remote'], {
+        cwd: path.resolve(import.meta.dirname, '..'), encoding: 'utf8'
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /npm run auth:set/);
 });
 
 test('local 写入保持回环地址、回环 Host 与 HTTP 同源限制', () => {

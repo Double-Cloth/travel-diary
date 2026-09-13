@@ -1,6 +1,7 @@
 const fs = require('fs/promises');
 const path = require('path');
 const { randomBytes } = require('crypto');
+const { AUTH_RELATIVE_PATH, validateAuthConfig } = require('./auth.js');
 
 function failure(status, message, code) {
     return Object.assign(new Error(message), { status, ...(code ? { code } : {}) });
@@ -22,6 +23,7 @@ async function acquireDataLock(root) {
 }
 
 function safeArchivePath(name) {
+    if (name === AUTH_RELATIVE_PATH) return true;
     if (!name.startsWith('data/') || /[\u0000-\u001f\u007f:<>"|?*]/.test(name) || name.includes('\\')) return false;
     const parts = name.split('/');
     return parts.length > 1 && parts.every(part => part && part !== '.' && part !== '..'
@@ -69,41 +71,25 @@ async function collectFiles(directory, prefix = 'data') {
     return entries;
 }
 
-async function exportDataArchive(root) {
+async function exportDataArchive(root, options = {}) {
     const release = await acquireDataLock(root);
     try {
         const dataDir = path.join(root, 'data');
         const stat = await fs.lstat(dataDir);
         if (stat.isSymbolicLink() || !stat.isDirectory()) throw failure(403, 'data 必须是项目内的普通目录。');
         const entries = await collectFiles(dataDir);
+        if (options.includeAuth) {
+            const authFile = path.join(root, ...AUTH_RELATIVE_PATH.split('/'));
+            const authStat = await fs.lstat(authFile);
+            if (authStat.isSymbolicLink() || !authStat.isFile()) throw failure(403, '认证配置必须是项目内的普通文件。');
+            validateAuthConfig(parseJsonFile(await fs.readFile(authFile), AUTH_RELATIVE_PATH));
+            entries.push({ name: AUTH_RELATIVE_PATH, data: await fs.readFile(authFile) });
+        }
         if (!entries.length) throw failure(400, 'data 目录为空，无法导出。');
         const { createZip } = await import('./zip-archive.mjs');
         return Buffer.from(createZip(entries));
     } finally {
         await release();
-    }
-}
-
-async function verifyCurrentPassword(root, password) {
-    const passwordFile = path.join(root, 'data/password.json');
-    let stat;
-    let config;
-    try {
-        stat = await fs.lstat(passwordFile);
-        if (stat.isSymbolicLink() || !stat.isFile()) {
-            throw failure(403, '当前访问密码配置必须是普通文件。');
-        }
-        config = parseJsonFile(await fs.readFile(passwordFile), '当前 data/password.json');
-    } catch (error) {
-        if (error.status) throw error;
-        throw failure(409, '当前访问密码配置不存在或无法读取，请先修复 data/password.json。');
-    }
-    const configuredPassword = typeof config === 'string' ? config : config?.password;
-    if (typeof configuredPassword !== 'string' || !/^\d{6}$/.test(configuredPassword)) {
-        throw failure(409, '当前访问密码配置无效，密码必须是 6 位数字。');
-    }
-    if (password !== configuredPassword) {
-        throw failure(403, '当前访问密码不正确，未导入任何数据。', 'CURRENT_PASSWORD_INVALID');
     }
 }
 
@@ -171,39 +157,30 @@ async function validateImportedRecords(entries) {
     });
 }
 
-function ensureImportedPassword(entries, password) {
-    const passwordEntry = entries.find(entry => entry.name === 'data/password.json');
-    if (passwordEntry) {
-        const config = parseJsonFile(passwordEntry.data, 'data/password.json');
-        const configuredPassword = typeof config === 'string' ? config : config?.password;
-        if (configuredPassword === '') {
-            if (!password) {
-                throw failure(428, '备份中的访问密码为空，请设置 6 位数字密码后继续导入。', 'IMPORT_PASSWORD_REQUIRED');
-            }
-            if (typeof password !== 'string' || !/^\d{6}$/.test(password)) {
-                throw failure(400, '新访问密码必须是 6 位数字。');
-            }
-            passwordEntry.data = Buffer.from(`${JSON.stringify({ password }, null, 2)}\n`);
-            return true;
-        }
-        if (typeof configuredPassword !== 'string' || !/^\d{6}$/.test(configuredPassword)) {
-            throw failure(400, '备份中的密码格式不支持，密码必须是 6 位数字。');
+async function ensureImportedAuth(root, entries, options = {}) {
+    const matching = entries.filter(entry => entry.name.toLocaleLowerCase('en-US') === AUTH_RELATIVE_PATH);
+    if (matching.length > 1 || (matching.length === 1 && matching[0].name !== AUTH_RELATIVE_PATH)) {
+        throw failure(400, `备份中的认证配置路径无效，应为 ${AUTH_RELATIVE_PATH}。`);
+    }
+    if (matching.length === 1) {
+        try {
+            validateAuthConfig(parseJsonFile(matching[0].data, AUTH_RELATIVE_PATH), {
+                requireProduction: options.requireProductionAuth === true
+            });
+        } catch (error) {
+            throw failure(400, `备份中的认证配置无效：${error.message}`);
         }
         return false;
     }
-    if (entries.some(entry => entry.name.toLocaleLowerCase('en-US') === 'data/password.json')) {
-        throw failure(400, '备份中的密码配置路径大小写无效，应为 data/password.json。');
-    }
-    if (!password) {
-        throw failure(428, '备份中未包含访问密码，请设置 6 位数字密码后继续导入。', 'IMPORT_PASSWORD_REQUIRED');
-    }
-    if (typeof password !== 'string' || !/^\d{6}$/.test(password)) {
-        throw failure(400, '新访问密码必须是 6 位数字。');
-    }
-    entries.push({
-        name: 'data/password.json',
-        data: Buffer.from(`${JSON.stringify({ password }, null, 2)}\n`)
+
+    const currentAuthFile = path.join(root, ...AUTH_RELATIVE_PATH.split('/'));
+    const stat = await fs.lstat(currentAuthFile);
+    if (stat.isSymbolicLink() || !stat.isFile()) throw failure(403, '当前认证配置必须是项目内的普通文件。');
+    const data = await fs.readFile(currentAuthFile);
+    validateAuthConfig(parseJsonFile(data, `当前 ${AUTH_RELATIVE_PATH}`), {
+        requireProduction: options.requireProductionAuth === true
     });
+    entries.push({ name: AUTH_RELATIVE_PATH, data });
     return true;
 }
 
@@ -212,17 +189,23 @@ async function importDataArchive(root, archive, options = {}) {
     const id = randomBytes(16).toString('hex');
     const stageRoot = path.join(root, `.travel-data-import-${id}`);
     const stageData = path.join(stageRoot, 'data');
+    const stageSecrets = path.join(stageRoot, '.secrets');
     const currentData = path.join(root, 'data');
+    const currentSecrets = path.join(root, '.secrets');
     const backupData = path.join(root, `.travel-data-backup-${id}`);
-    let movedCurrent = false;
+    const backupSecrets = path.join(root, `.travel-secrets-backup-${id}`);
+    let movedData = false;
+    let movedSecrets = false;
+    let installedData = false;
+    let installedSecrets = false;
     try {
-        await verifyCurrentPassword(root, options.currentPassword);
         const { readZip } = await import('./zip-archive.mjs');
         let entries;
         try { entries = readZip(archive); }
         catch (error) { throw failure(400, error.message); }
+        entries = entries.filter(entry => entry.name !== 'data/password.json');
         if (!entries.length || entries.some(entry => !safeArchivePath(entry.name))) {
-            throw failure(400, '备份只能包含 data/ 目录中的安全文件路径。');
+            throw failure(400, `备份只能包含 data/ 与 ${AUTH_RELATIVE_PATH} 的安全文件路径。`);
         }
         const portablePaths = new Map();
         for (const entry of entries) {
@@ -239,30 +222,48 @@ async function importDataArchive(root, archive, options = {}) {
             }
         }
         await validateImportedRecords(entries);
-        const passwordCreated = ensureImportedPassword(entries, options.password);
+        const authPreserved = await ensureImportedAuth(root, entries, options);
         await fs.mkdir(stageData, { recursive: true });
         for (const entry of entries) {
-            const relative = entry.name.slice('data/'.length);
-            const target = path.join(stageData, ...relative.split('/'));
+            const target = entry.name === AUTH_RELATIVE_PATH
+                ? path.join(stageSecrets, 'auth.json')
+                : path.join(stageData, ...entry.name.slice('data/'.length).split('/'));
             await fs.mkdir(path.dirname(target), { recursive: true });
-            await fs.writeFile(target, entry.data, { flag: 'wx' });
+            await fs.writeFile(target, entry.data, {
+                flag: 'wx', ...(entry.name === AUTH_RELATIVE_PATH ? { mode: 0o600 } : {})
+            });
         }
-        const currentStat = await fs.lstat(currentData);
-        if (currentStat.isSymbolicLink() || !currentStat.isDirectory()) throw failure(403, '当前 data 必须是项目内的普通目录。');
+        const [currentStat, secretsStat] = await Promise.all([fs.lstat(currentData), fs.lstat(currentSecrets)]);
+        if (currentStat.isSymbolicLink() || !currentStat.isDirectory()
+            || secretsStat.isSymbolicLink() || !secretsStat.isDirectory()) {
+            throw failure(403, '当前 data 与 .secrets 必须是项目内的普通目录。');
+        }
         await fs.rename(currentData, backupData);
-        movedCurrent = true;
+        movedData = true;
+        await fs.rename(currentSecrets, backupSecrets);
+        movedSecrets = true;
         try {
             await fs.rename(stageData, currentData);
+            installedData = true;
+            await fs.rename(stageSecrets, currentSecrets);
+            installedSecrets = true;
         } catch (error) {
+            if (installedData) await fs.rm(currentData, { recursive: true, force: true });
+            if (installedSecrets) await fs.rm(currentSecrets, { recursive: true, force: true });
             await fs.rename(backupData, currentData);
-            movedCurrent = false;
+            movedData = false;
+            await fs.rename(backupSecrets, currentSecrets);
+            movedSecrets = false;
             throw error;
         }
-        movedCurrent = false;
+        movedData = false;
+        movedSecrets = false;
         await fs.rm(backupData, { recursive: true, force: true }).catch(() => {});
-        return { files: entries.length, passwordCreated };
+        await fs.rm(backupSecrets, { recursive: true, force: true }).catch(() => {});
+        return { files: entries.length, authPreserved };
     } finally {
-        if (movedCurrent) await fs.rename(backupData, currentData).catch(() => {});
+        if (movedData) await fs.rename(backupData, currentData).catch(() => {});
+        if (movedSecrets) await fs.rename(backupSecrets, currentSecrets).catch(() => {});
         await fs.rm(stageRoot, { recursive: true, force: true }).catch(() => {});
         await release();
     }

@@ -7,11 +7,13 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHandler } from '../js/server.js';
 import { DRAFT_FORMAT, prepareRecord, readDraft } from '../js/record-input.mjs';
+import { installAuth, login } from './helpers/auth.mjs';
 
 let root;
 let server;
 let base;
 let token;
+let cookie;
 const countries = [{ code: 'CN', name_zh: '中国' }, { code: 'SG', name_zh: '新加坡' }];
 const original = { date: '2024-01-01', custom: '保留已有未知字段', desc_md: 'original.md' };
 const draft = (id = 'a', input = {}) => ({
@@ -63,11 +65,12 @@ before(async () => {
     await fs.mkdir(path.join(root, 'assets/catalogs'), { recursive: true });
     await fs.writeFile(path.join(root, 'assets/catalogs/countries.json'), JSON.stringify({ countries }));
     await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify([original]));
+    await installAuth(root);
     server = http.createServer(createHandler(root));
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
     base = `http://127.0.0.1:${server.address().port}`;
-    token = (await (await fetch(`${base}/api/travel-records`)).json()).token;
+    ({ token, cookie } = await login(base));
 });
 
 after(async () => {
@@ -80,19 +83,19 @@ after(async () => {
 
 const readIndex = async () => JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'));
 const post = (value, headers = {}) => fetch(`${base}/api/travel-records`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Origin: base, ...headers }, body: JSON.stringify(value)
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers }, body: JSON.stringify(value)
 });
 const put = (originalDescMd, value, headers = {}) => fetch(`${base}/api/travel-records`, {
-    method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Origin: base, ...headers },
+    method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers },
     body: JSON.stringify({ originalDescMd, draft: value })
 });
 const remove = (descMd, headers = {}) => fetch(`${base}/api/travel-records`, {
-    method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Origin: base, ...headers },
+    method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers },
     body: JSON.stringify({ desc_md: descMd })
 });
 
 test('写入服务声明支持新增、修改与删除方法', async () => {
-    const response = await fetch(`${base}/api/travel-records`);
+    const response = await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } });
     assert.equal(response.status, 200);
     assert.deepEqual((await response.json()).methods, ['POST', 'PUT', 'DELETE']);
 });

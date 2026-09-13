@@ -4,7 +4,7 @@ import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
-import { detectWriterCapability } from './writer-capability.js';
+import { detectWriterCapability } from './writer-capability.js?v=20260913-server-auth-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20260913-select-placement-v3';
 import { confirmFeedback } from './feedback-dialog.js';
 
@@ -873,6 +873,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         try {
             const response = await fetch(new URL('api/travel-records', window.location.href), {
                 method: editingRecord ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token },
+                credentials: 'same-origin',
                 body: JSON.stringify(editingRecord ? { originalDescMd: editingRecord.desc_md, draft } : draft),
                 signal: AbortSignal.timeout(60000)
             });

@@ -14,6 +14,7 @@ pids/
 .travel-data.lock
 .travel-data-import-*/
 .travel-data-backup-*/
+.travel-secrets-backup-*/
 tmp/
 temp/
 dist/

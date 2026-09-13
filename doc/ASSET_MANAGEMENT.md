@@ -9,8 +9,10 @@ data/
 ├── profile/                 # 头像、个人资料图
 ├── photos/                  # 旅行照片
 ├── travel-diary/            # 按年份存放的 Markdown 日记
-├── password.json            # 编辑与数据导入导出的访问密码
 └── travel_data.json         # 旅行记录索引
+
+.secrets/
+└── auth.json                # 仅服务端读取的 scrypt 认证哈希配置
 
 assets/
 ├── catalogs/               # 通用参考目录，如 countries.json、china-locations.json
@@ -27,7 +29,7 @@ assets/
 | --- | --- |
 | `assets/catalogs/countries.json` | 通用国家/地区目录，由 `npm run countries` 更新。 |
 | `assets/catalogs/china-locations.json` | 中国省市区目录，由 `npm run china-locations` 更新，用于新增记录地点补全。 |
-| `data/password.json` | 新增、修改、删除记录与全部数据导入导出共用的访问密码配置。 |
+| `.secrets/auth.json` | 新增、修改、删除与动态全部数据操作共用的服务端认证哈希；禁止静态访问，不含明文口令。 |
 | `assets/fonts/LXGWWenKaiMono-Regular.ttf` | 正文字体常规字重。 |
 | `assets/fonts/LXGWWenKaiMono-Medium.ttf` | 正文字体加粗字重。 |
 | `assets/fonts/SourceCodePro-Regular.ttf` | 代码和档案编号常规字重。 |
@@ -54,6 +56,7 @@ assets/
 - 个人头像统一使用 `data/profile/profile-picture.png`；替换该文件即可更换头像，无需修改页面代码。
 - CSS 分片全部位于 `css/` 根目录，因此统一从 `css/` 目录相对引用，例如 `../assets/images/pages/home-hero-travel-diary.png`。
 - 不使用远程字体或远程图片，避免离线和部署环境差异。
+- `.secrets/` 不是页面资产，不得从 HTML、CSS 或浏览器 JavaScript 引用；只有 Node 服务和受认证的动态备份可以读取。
 - `npm run fonts` 默认生成完整 WOFF2 字体；生成文件不是临时构建产物，更新后必须纳入版本控制。
 - `npm run fonts:subset` 仅供明确需要缩减字体体积时使用，会按项目文本生成子集并始终保留数字 `0–9`。
 

@@ -8,11 +8,13 @@ import path from 'node:path';
 import { createHandler } from '../js/server.js';
 import { DRAFT_FORMAT } from '../js/record-input.mjs';
 import { readZip } from '../js/zip-archive.mjs';
+import { AUTH_PASSWORD, installAuth } from './helpers/auth.mjs';
 
 let root;
 let server;
 let port;
 let token;
+let cookie;
 const siteHost = 'diary.example';
 const httpsOrigin = `https://${siteHost}`;
 const countries = [{ code: 'CN', name_zh: '中国' }];
@@ -62,6 +64,18 @@ function request({ pathname = '/api/travel-records', method = 'GET', host = site
 }
 
 const json = response => JSON.parse(response.body.toString('utf8'));
+async function authenticate(origin = httpsOrigin, host = siteHost) {
+    const body = Buffer.from(JSON.stringify({ password: AUTH_PASSWORD }));
+    const response = await request({
+        pathname: '/api/travel-auth', method: 'POST', origin, host,
+        headers: { 'Content-Type': 'application/json', 'Content-Length': body.length }, body
+    });
+    return {
+        response,
+        token: json(response).token,
+        cookie: response.headers['set-cookie']?.[0].split(';', 1)[0] || ''
+    };
+}
 const mutate = (method, value, options = {}) => {
     const body = Buffer.from(JSON.stringify(value));
     return request({
@@ -70,6 +84,7 @@ const mutate = (method, value, options = {}) => {
             'Content-Type': 'application/json',
             'Content-Length': body.length,
             'X-Travel-Token': token,
+            Cookie: cookie,
             ...options.headers
         },
         host: options.host,
@@ -84,14 +99,12 @@ before(async () => {
     await fs.mkdir(path.join(root, 'data'), { recursive: true });
     await fs.writeFile(path.join(root, 'assets/catalogs/countries.json'), JSON.stringify({ countries }));
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
-    await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
+    await installAuth(root);
     server = http.createServer(createHandler(root, { writeMode: 'remote' }));
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
     port = server.address().port;
-    const capability = await request({ origin: httpsOrigin });
-    assert.equal(capability.status, 200);
-    token = json(capability).token;
+    ({ token, cookie } = await authenticate());
 });
 
 after(async () => {
@@ -103,15 +116,20 @@ after(async () => {
 });
 
 test('remote 模式兼容同站点 HTTP 与 HTTPS 反向代理 Origin', async () => {
-    assert.equal((await request({ origin: `http://${siteHost}` })).status, 200);
-    const httpsResponse = await request({ origin: httpsOrigin });
-    assert.equal(httpsResponse.status, 200);
-    assert.equal(httpsResponse.headers['access-control-allow-origin'], undefined);
-    assert.equal((await request({ host: `127.0.0.1:${port}`, origin: `http://127.0.0.1:${port}` })).status, 200);
+    const httpLogin = await authenticate(`http://${siteHost}`);
+    assert.equal(httpLogin.response.status, 200);
+    assert.doesNotMatch(httpLogin.response.headers['set-cookie'][0], /; Secure/);
+    const httpsLogin = await authenticate(httpsOrigin);
+    assert.equal(httpsLogin.response.status, 200);
+    assert.match(httpsLogin.response.headers['set-cookie'][0], /; Secure/);
+    assert.equal(httpsLogin.response.headers['access-control-allow-origin'], undefined);
+    const loopback = await authenticate(`http://127.0.0.1:${port}`, `127.0.0.1:${port}`);
+    assert.equal(loopback.response.status, 200);
 });
 
 test('remote 模式拒绝不匹配 Origin，且 X-Forwarded 信息不能绕过校验', async () => {
     assert.equal((await request({ origin: 'https://evil.example' })).status, 403);
+    assert.equal((await authenticate('https://evil.example')).response.status, 403);
     assert.equal((await request({
         host: 'internal.invalid',
         origin: httpsOrigin,
@@ -140,9 +158,9 @@ test('remote 模式仍要求 mutation 令牌，并支持新增、修改与删除
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), []);
 });
 
-test('remote 模式可动态导出并通过令牌、当前密码导入全部 data', async () => {
+test('remote 模式可通过登录会话和令牌导出、导入 data 与认证配置', async () => {
     const created = json(await mutate('POST', draft('c', { date: '2026-09-15' }))).record;
-    const exported = await request({ pathname: '/api/travel-data' });
+    const exported = await request({ pathname: '/api/travel-data', headers: { Cookie: cookie } });
     assert.equal(exported.status, 200);
     assert.match(exported.headers['content-type'], /application\/zip/);
     assert.equal(readZip(exported.body).some(entry => entry.name === created.desc_md), true);
@@ -151,7 +169,7 @@ test('remote 模式可动态导出并通过令牌、当前密码导入全部 dat
     const missingToken = await request({
         pathname: '/api/travel-data',
         method: 'POST',
-        headers: { 'Content-Type': 'application/zip', 'X-Travel-Current-Password': '123456' },
+        headers: { 'Content-Type': 'application/zip', Cookie: cookie },
         body: exported.body
     });
     assert.equal(missingToken.status, 403);
@@ -162,7 +180,7 @@ test('remote 模式可动态导出并通过令牌、当前密码导入全部 dat
         headers: {
             'Content-Type': 'application/zip',
             'X-Travel-Token': token,
-            'X-Travel-Current-Password': '123456'
+            Cookie: cookie
         },
         body: exported.body
     });

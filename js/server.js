@@ -4,6 +4,7 @@ const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
 const { createRecordApi } = require('./record-store.js');
+const { readAuthConfig } = require('./auth.js');
 
 const CONFIG = {
   defaultPort: 9000,
@@ -78,10 +79,14 @@ Options:
   --write-mode  Write policy: local (default) or remote
   --help, -h    Show this help
 
+Authentication:
+  Run npm run auth:set before remote deployment. Remote mode refuses legacy weak credentials.
+
 Examples:
   node js/server.js
   node js/server.js --dir . --port 9000
   node js/server.js --network
+  npm run auth:set
   node js/server.js --network --write-mode=remote
 `;
 
@@ -181,9 +186,10 @@ function isWithinRoot(rootDir, targetPath) {
 
 function createHandler(rootDir, options = {}) {
   rootDir = fs.realpathSync(rootDir);
+  const secretsRoot = path.join(rootDir, '.secrets');
   const recordApi = createRecordApi(rootDir, { writeMode: options.writeMode || CONFIG.defaultWriteMode });
   return async (req, res) => {
-    if (['/api/travel-records', '/api/travel-data'].includes(req.url.split('?')[0])) {
+    if (['/api/travel-auth', '/api/travel-records', '/api/travel-data'].includes(req.url.split('?')[0])) {
       await recordApi(req, res);
       return;
     }
@@ -223,6 +229,13 @@ function createHandler(rootDir, options = {}) {
       pathname = '/index.html';
     }
 
+    const firstSegment = pathname.replace(/^\/+/, '').split('/')[0];
+    if (firstSegment.startsWith('.')) {
+      res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
+      res.end('Forbidden');
+      return;
+    }
+
     const filePath = safeJoin(rootDir, pathname);
     if (!filePath) {
       res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
@@ -232,7 +245,7 @@ function createHandler(rootDir, options = {}) {
 
     try {
       let targetPath = await fs.promises.realpath(filePath);
-      if (!isWithinRoot(rootDir, targetPath)) {
+      if (!isWithinRoot(rootDir, targetPath) || isWithinRoot(secretsRoot, targetPath)) {
         res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('Forbidden');
         return;
@@ -247,7 +260,7 @@ function createHandler(rootDir, options = {}) {
         targetPath = await fs.promises.realpath(path.join(targetPath, 'index.html'));
         stats = await fs.promises.stat(targetPath);
       }
-      if (!isWithinRoot(rootDir, targetPath)) {
+      if (!isWithinRoot(rootDir, targetPath) || isWithinRoot(secretsRoot, targetPath)) {
         res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('Forbidden');
         return;
@@ -324,6 +337,10 @@ async function main() {
     throw new Error(`Directory does not exist: ${rootDir}`);
   }
 
+  if (args.writeMode === 'remote') {
+    await readAuthConfig(rootDir, { requireProduction: true });
+  }
+
   const { server, port } = await listenWithRetries(rootDir, args.port, !args.local, { writeMode: args.writeMode });
   const localhostUrl = `http://localhost:${port}`;
   const networkUrl = args.local ? 'disabled (local only)' : `http://${getLocalIp()}:${port}`;
@@ -333,6 +350,7 @@ async function main() {
   console.log(`Root: ${rootDir}`);
   console.log(`Bind: ${args.local ? '127.0.0.1 (--local)' : '0.0.0.0 (--network)'}`);
   console.log(`Write mode: ${args.writeMode}`);
+  console.log('Authentication: .secrets/auth.json (scrypt + server session)');
   console.log('-'.repeat(60));
   console.log(`Local: ${localhostUrl}`);
   if (!args.local) {

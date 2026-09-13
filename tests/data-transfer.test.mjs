@@ -30,7 +30,7 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
     globalThis.fetch = async (_, options) => ({
         ok: true, json: async () => options?.method === 'POST'
             ? { imported: true }
-            : { service: 'travel-diary-writer-v1', token: 'test', methods: ['POST', 'PUT', 'DELETE'] }
+            : { service: 'travel-diary-writer-v1', authenticated: true, token: 'test', methods: ['POST', 'PUT', 'DELETE'] }
     });
     let refreshFails = true;
     createDataTransfer(async () => { if (refreshFails) throw new Error('模拟刷新失败'); });
@@ -72,7 +72,7 @@ test('导出和导入依据写入 API 能力选择动态端点或静态只读回
     globalThis.window = { location: { hostname: 'diary.example', href: 'https://diary.example/' } };
     globalThis.fetch = async () => ({
         ok: true,
-        json: async () => ({ service: 'travel-diary-writer-v1', token: 'remote-token', methods: ['POST', 'PUT', 'DELETE'] })
+        json: async () => ({ service: 'travel-diary-writer-v1', authenticated: true, token: 'remote-token', methods: ['POST', 'PUT', 'DELETE'] })
     });
     const writable = createDataTransfer(async () => {});
     assert.equal(await writable.getExportHref(), 'https://diary.example/api/travel-data');

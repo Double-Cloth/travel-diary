@@ -34,13 +34,14 @@ index.html
        └─ js/utils.js
 ```
 
-运行 `js/server.js` 时，服务提供静态文件和正确的 MIME 类型，并将 `/api/travel-records` 与 `/api/travel-data` 交给零安装依赖的数据服务，分别用于记录的新增、修改、删除及整个 `data/` 的 ZIP 导入导出。GitHub Pages 与普通静态托管仍不具备写入端点。
+运行 `js/server.js` 时，服务提供静态文件和正确的 MIME 类型，并将 `/api/travel-auth`、`/api/travel-records` 与 `/api/travel-data` 交给零安装依赖的数据服务，分别用于认证、记录的新增修改删除及 `data/` + `.secrets/auth.json` 的动态 ZIP 导入导出。GitHub Pages 与普通静态托管仍不具备认证或写入端点。
 
 监听配置与写入策略相互独立：`--local` / `--network` 决定绑定 `127.0.0.1` 还是 `0.0.0.0`，`--write-mode=local|remote` 决定哪些请求可以取得写入能力。默认 write mode 为 `local`，所以单独使用 `--network` 不会开放远程写入。只有显式使用 `--write-mode=remote`，同站点远程页面才可访问写入接口。
 
 ## 个人内容与通用资源
 
-- `data/`：旅行索引、日记正文、照片、头像及 `password.json` 访问密码。不同使用者复用项目时，在此替换自己的内容。
+- `data/`：旅行索引、日记正文、照片和头像等公开内容。不同使用者复用项目时，在此替换自己的内容。
+- `.secrets/`：仅供 Node 服务读取的认证配置。`auth.json` 保存 `scrypt` 哈希、随机盐和参数；静态处理器在路径解析和真实路径解析后都会拒绝该目录，防止直接路径、编码路径或目录链接泄露。
 - `assets/`：通用国家目录（`catalogs/countries.json`）、中国省市区目录（`catalogs/china-locations.json`）、字体、页面背景和纹理。
 - `index.html`、`js/`、`css/`：共享的页面结构与功能实现；`scripts/`、`tests/`、`doc/` 分别负责维护工具、验证和使用说明。
 
@@ -109,7 +110,9 @@ data/travel_data.json ────────────────→ getRec
 - `js/record-editor.js`：原生 `dialog` 新增与修改表单、能力检测、全部元数据字段、正文视图、草稿导入导出与提交状态。
 - `js/record-delete-dialog.js`：删除确认和结果反馈。
 - `js/feedback-dialog.js`：通用提示与清空确认。
-- `js/record-password.js`：新增、修改、删除记录及全部数据导入导出共用的原生 `dialog` 密码验证，以及缺失导入密码时的两次输入设置流程；统一支持自定义数字键盘和实体键盘输入。
+- `js/record-password.js`：新增、修改、删除及动态数据导入导出共用的原生 `dialog` 口令输入，将口令只提交给同源认证 API。
+- `js/auth.js`：认证配置格式、强口令策略、`scrypt` 哈希生成与恒定时间验证。
+- `js/writer-capability.js`：区分写入服务探测、未登录状态和已认证写入能力。
 - `js/draft-archive.mjs`：ZIP 草稿元数据与独立图片文件的打包、读取和旧草稿衔接。
 - `js/data-transfer.js`：个人主页全部数据导入导出的浏览器交互。
 - `js/data-archive.js`：服务端 `data/` 归档、完整性校验、原子替换和统一数据锁。
@@ -129,17 +132,19 @@ data/travel_data.json ────────────────→ getRec
 - `js/utils.js`：通用格式化与转义工具。
 - `js/server.js`：开发服务器。
 
-## 密码门禁与记录管理的数据流
+## 服务端认证与记录管理的数据流
 
-新增、修改、删除及个人主页的数据导入导出共用密码验证组件。`record-password.js` 为每项操作创建对应的 `dialog`，每次从 `data/password.json` 读取 6 位数字配置，接受屏幕数字键盘或实体键盘输入；匹配后才打开记录编辑器、发起 HTTP ZIP 下载或选择导入文件。导入还会把用户刚输入的当前密码交给本地服务复核；密码配置会随站点发布，因此整体仍只是本机误操作门槛，不代替正式的账户认证或数据加密。
+新增、修改、删除及动态数据导入导出共用服务端认证。`record-password.js` 不读取任何配置文件，只把用户输入通过相对 URL 发送到 `POST /api/travel-auth`。服务端从普通文件 `.secrets/auth.json` 读取认证配置，以固定参数 `scrypt` 计算候选哈希并用 `timingSafeEqual` 比较。remote 模式要求配置声明至少 16 字符的生产策略；仓库内旧 6 位哈希只能用于 localhost 迁移。
+
+同一来源 15 分钟内连续失败 5 次后被限速。认证成功会创建内存会话和独立 CSRF/写入 token：会话 Cookie 限制为 `/api`、`HttpOnly`、`SameSite=Strict`、最长 8 小时，经过同源校验的 HTTPS Origin 自动添加 `Secure`；token 仅在已登录的认证响应和能力响应中返回。服务重启、显式注销或完整数据导入都会使旧会话失效。所有修改请求必须同时通过 Host/Origin 写入策略、会话和 `X-Travel-Token`，任一条件不能替代其余条件。
 
 验证通过后打开记录编辑器 `dialog`。表单复用国家目录和当前内存中的旅行记录：`record-suggestions.mjs` 先按国家与行政区收窄地点候选菜单，再通过历史精确匹配或明确名称后缀补全空白地点字段。`trip_id` 按完整日期与目的地自动生成，目的地缺失时才回退到行政区；下拉候选独立按最近日期列出 5 个不同的已有行程。自动值与用户手工值分开记录，依赖项变化时可以更新旧的自动值，但不会覆盖手工修改或导入草稿中的值。
 
-`GET /api/travel-records` 返回服务标识、进程内写入令牌和支持的方法列表；前端分别检测新增、修改、删除能力。`POST` 使用 JSON 与 `X-Travel-Token` 提交 v3 草稿，服务端校验字段、国家代码、正文路径及照片引用。`PUT` 提交原正文路径与草稿，`DELETE` 提交正文路径；两者要求索引中恰好匹配一条记录。`record-input.mjs` 兼容 v1、v2 草稿，仅为 v1 补齐后来新增的可选字段。
+未登录的 `GET /api/travel-records` 只返回服务标识、`AUTH_REQUIRED` 和空方法列表，不泄露 token；已登录时才返回 token 与支持的方法。`POST` 使用 JSON、会话与 `X-Travel-Token` 提交 v3 草稿，服务端校验字段、国家代码、正文路径及照片引用。`PUT` 提交原正文路径与草稿，`DELETE` 提交正文路径；两者要求索引中恰好匹配一条记录。`record-input.mjs` 兼容 v1、v2 草稿，仅为 v1 补齐后来新增的可选字段。
 
 local write mode 保持原安全边界：只允许回环来源地址、localhost / `127.0.0.1` / `::1` Host，并在提供 Origin 时要求完全匹配本机 HTTP Origin；`--network` 的其他设备仍只能读取。remote write mode 不依赖客户端 IP，但要求合法 Host，且提供的 Origin 必须是 HTTP 或 HTTPS，并与 Host 使用相同 authority。比较时允许外部 HTTPS Origin 对应 Node 内部 HTTP 连接，因此兼容在 Nginx、Caddy、Apache 或 Cloudflare Tunnel 后终止 TLS；协议之外的 `X-Forwarded-*` 不参与授权，也不能绕过来源判断。API 不返回 `Access-Control-Allow-Origin: *`，任意跨域来源会被拒绝。
 
-前端不再根据 hostname 推断权限。新增、修改、删除及全量数据操作都先通过相对 URL 请求 `GET /api/travel-records`：成功取得服务标识、进程内令牌和方法列表时启用相应动态操作；local 模式下的远程页面、GitHub Pages、普通静态服务器或 API 不存在时自动进入只读模式。只读页面仍可编辑和导出草稿，全量导出回退到静态 `travel-diary-data.zip`。
+前端不根据 hostname 推断权限。`probeWriterService()` 可识别存在但尚未登录的 writer API，`detectWriterCapability()` 只有在浏览器携带有效 `HttpOnly` 会话并取得 token 后才返回动态写入能力；local 模式的远程页面、GitHub Pages、普通静态服务器或 API 不存在时自动进入只读模式。只读页面仍可编辑和导出草稿，全量导出回退到只包含公开 `data/` 的静态 `travel-diary-data.zip`。
 
 写入和全量数据导入导出共用项目根目录的 `.travel-data.lock` 独占锁。新增记录会重新读取当前索引，独占创建 Markdown 文件，写入并同步临时索引，最后用 `rename` 替换索引。目录和文件拒绝符号链接 / junction；失败时清理本次创建的正文、照片、空照片目录和临时索引。上传图片写入以目的地拼音命名的照片目录，并在索引提交前完成文件写入和同步；重试时比对照片字节。重复提交以正文路径、元数据和 Markdown 内容比对实现去重，默认正文路径使用日期和目的地拼音。自定义正文路径仍遵守年份目录、日期前缀及 ASCII 文件名规范，照片引用仅允许项目内的普通文件。
 
@@ -151,9 +156,9 @@ Markdown 与 JSON 的写入不构成跨文件事务，进程强制终止或断�
 
 正文预览复用 `js/data.js` 导出的 `parseMarkdown()`，与日记详情使用相同的 HTML 转义和链接过滤规则。源码编辑和预览编辑由 `markdown-editor.js` 负责标题拆分、语法高亮与受限 DOM 序列化；粘贴只接受纯文本。文件写入使用 `buildMarkdown()` 生成正文。新草稿导出为 ZIP，`draft.json` 仅保存字段和照片文件引用，实际图片放在 `photos/`；导入后在内存中恢复为现有写入负载。旧版 v1 至 v3 JSON 草稿继续兼容。
 
-动态全量数据导出遍历普通文件并把 `data/` 作为 ZIP 根目录，通过当前站点的 HTTP API 返回；local 与 remote write mode 使用同一来源策略。GitHub Pages 部署阶段调用 `scripts/build-data-backup.js` 生成同结构静态 ZIP，避免浏览器 Blob 地址被外部下载工具接管后得到空文件。导入先用当前 `data/password.json` 做页面门禁，服务端在取得数据锁后复核 `X-Travel-Current-Password`，再校验 ZIP 路径与跨平台文件与父目录大小写冲突、文件与目录重名、索引 JSON、记录字段和日期、正文路径与 UTF-8 内容、照片引用及密码配置；备份内密码只决定导入后的访问密码，不用于授权覆盖当前数据。备份缺少密码文件或密码值为空字符串时，服务端以 `IMPORT_PASSWORD_REQUIRED` 响应要求前端完成两次 6 位数字输入，再把配置补入或替换进暂存数据；非空但不是 6 位数字的密码仍按不支持格式拒绝。所有文件写入项目内临时目录后才通过 `rename` 替换，密码错误、校验失败或取消设置均保留原目录；写入失败会尝试恢复备份并清理暂存目录。数据提交与页面刷新分别报告，刷新失败时不误报写入失败。
+动态全量导出只有在会话有效时才遍历普通文件，把 `data/` 与 `.secrets/auth.json` 写入 ZIP；认证配置不含明文口令。GitHub Pages 构建调用 `scripts/build-data-backup.js` 时沿用默认 `includeAuth: false`，因此公开静态 ZIP 只有 `data/`。导入由当前会话与 token 授权，随后校验 ZIP 路径、跨平台大小写冲突、文件目录重名、索引 JSON、记录字段和日期、正文 UTF-8、照片引用及认证配置；remote 模式拒绝弱认证配置。旧备份缺少 `.secrets/auth.json` 时复制当前配置，旧 `data/password.json` 被过滤。全部内容先写入项目内临时目录，再分别以 `rename` 替换 `data/` 与 `.secrets/`；任一步失败都会恢复两组备份并清理暂存目录。成功后清空会话，确保恢复后的凭据立即成为唯一有效登录凭据。
 
-进程令牌和公开的 6 位密码用于阻止跨站请求与误操作，不是用户身份系统。remote write mode 必须默认关闭；公网部署需要在应用上游使用 HTTPS 和真正的访问控制，例如反向代理 HTTP Authentication、VPN 或 Zero Trust。
+应用认证、同源校验与写入 token 形成纵深防护，但不代替传输安全。remote write mode 默认关闭；公网部署必须使用 HTTPS，并建议在应用上游叠加反向代理认证、VPN 或 Zero Trust。跟踪在 Git 中的密码哈希可能被仓库读者用于离线猜测，因此仓库访问控制和高熵长口令仍是生产边界的一部分。
 
 ## 拆分原则
 

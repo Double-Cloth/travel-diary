@@ -7,24 +7,23 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHandler } from '../js/server.js';
 import { createZip, readZip } from '../js/zip-archive.mjs';
+import { AUTH_CONFIG, installAuth, login } from './helpers/auth.mjs';
 
 let root;
 let server;
 let base;
-let token;
 const record = { date: '2026-09-11', country: '中国', country_code: 'CN', admin_area: '江苏省', locality: '苏州市', desc_md: 'data/travel-diary/2026/2026-09-11-suzhou.md', photo_folder: '', photos: [] };
 
 before(async () => {
     root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-archive-api-'));
     await fs.mkdir(path.join(root, 'data/travel-diary/2026'), { recursive: true });
     await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify([record]));
-    await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
     await fs.writeFile(path.join(root, record.desc_md), '# 苏州\n');
+    await installAuth(root);
     server = http.createServer(createHandler(root));
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
     base = `http://127.0.0.1:${server.address().port}`;
-    token = (await (await fetch(`${base}/api/travel-records`)).json()).token;
 });
 
 after(async () => {
@@ -35,128 +34,69 @@ after(async () => {
     }
 });
 
-test('本地数据 API 使用令牌导出并重新导入整个 data 目录', async () => {
-    const exported = await fetch(`${base}/api/travel-data`);
+test('动态全量导出必须登录，并包含 data 与认证哈希配置', async () => {
+    assert.equal((await fetch(`${base}/api/travel-data`)).status, 401);
+    const { cookie } = await login(base);
+    const exported = await fetch(`${base}/api/travel-data`, { headers: { Cookie: cookie } });
     assert.equal(exported.status, 200);
     assert.match(exported.headers.get('content-type'), /application\/zip/);
+    const entries = readZip(new Uint8Array(await exported.arrayBuffer()));
+    assert.equal(entries.some(entry => entry.name === record.desc_md), true);
+    assert.equal(entries.some(entry => entry.name === '.secrets/auth.json'), true);
+    assert.equal(entries.some(entry => entry.name === 'data/password.json'), false);
+    const config = JSON.parse(Buffer.from(entries.find(entry => entry.name === '.secrets/auth.json').data).toString('utf8'));
+    assert.equal(config.hash, AUTH_CONFIG.hash);
+    assert.equal('password' in config, false);
+});
+
+test('登录会话与写入令牌共同保护导入，成功后失效全部旧会话', async () => {
+    const { cookie, token } = await login(base);
+    const exported = await fetch(`${base}/api/travel-data`, { headers: { Cookie: cookie } });
     const archive = new Uint8Array(await exported.arrayBuffer());
-    assert.equal(readZip(archive).some(entry => entry.name === record.desc_md), true);
-
-    const probe = await fetch(`${base}/api/travel-data`, { method: 'HEAD' });
-    assert.equal(probe.status, 200);
-    assert.match(probe.headers.get('content-type'), /application\/zip/);
-    assert.match(probe.headers.get('content-disposition'), /travel-diary-data-\d{4}-\d{2}-\d{2}\.zip/);
-    assert.equal(Number(probe.headers.get('content-length')), archive.length);
-    assert.equal((await probe.arrayBuffer()).byteLength, 0);
-
-    const directDownload = await fetch(`${base}/api/travel-data`);
-    assert.equal(directDownload.status, 200);
-    assert.match(directDownload.headers.get('content-disposition'), /travel-diary-data-\d{4}-\d{2}-\d{2}\.zip/);
-    assert.equal(Number(directDownload.headers.get('content-length')) > 0, true);
-    assert.equal(readZip(new Uint8Array(await directDownload.arrayBuffer())).some(entry => entry.name === record.desc_md), true);
-
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
+
+    const noSession = await fetch(`${base}/api/travel-data`, {
+        method: 'POST', headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Origin: base }, body: archive
+    });
+    assert.equal(noSession.status, 401);
+    const noToken = await fetch(`${base}/api/travel-data`, {
+        method: 'POST', headers: { 'Content-Type': 'application/zip', Cookie: cookie, Origin: base }, body: archive
+    });
+    assert.equal(noToken.status, 403);
+
     const imported = await fetch(`${base}/api/travel-data`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, 'X-Travel-Current-Password': '123456', Origin: base },
+        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Cookie: cookie, Origin: base },
         body: archive
     });
     assert.equal(imported.status, 200);
     assert.equal((await imported.json()).imported, true);
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
+    assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } })).status, 401);
 });
 
-test('本地数据 API 在备份无密码时返回设置要求并接受新密码', async () => {
-    const archive = createZip([
-        { name: 'data/travel_data.json', data: '[]' }
-    ]);
-    const missingPassword = await fetch(`${base}/api/travel-data`, {
+test('旧数据备份不含认证配置时保留当前配置，非法认证配置会被拒绝', async () => {
+    const first = await login(base);
+    const legacyArchive = createZip([{ name: 'data/travel_data.json', data: '[]' }]);
+    const legacyImport = await fetch(`${base}/api/travel-data`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, 'X-Travel-Current-Password': '123456', Origin: base },
-        body: archive
+        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': first.token, Cookie: first.cookie, Origin: base },
+        body: legacyArchive
     });
-    assert.equal(missingPassword.status, 428);
-    assert.equal((await missingPassword.json()).code, 'IMPORT_PASSWORD_REQUIRED');
+    assert.equal(legacyImport.status, 200);
+    assert.equal((await legacyImport.json()).authPreserved, true);
+    assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
 
-    const imported = await fetch(`${base}/api/travel-data`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/zip',
-            'X-Travel-Token': token,
-            'X-Travel-Current-Password': '123456',
-            'X-Travel-Import-Password': '654321',
-            Origin: base
-        },
-        body: archive
-    });
-    assert.equal(imported.status, 200);
-    assert.equal((await imported.json()).passwordCreated, true);
-    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/password.json'), 'utf8')), { password: '654321' });
-});
-
-test('本地数据 API 在备份密码为空字符串时返回重置要求并接受新密码', async () => {
-    await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
-    const archive = createZip([
+    const second = await login(base);
+    const invalid = createZip([
         { name: 'data/travel_data.json', data: '[]' },
-        { name: 'data/password.json', data: '{"password":""}' }
+        { name: '.secrets/auth.json', data: '{}' }
     ]);
     const response = await fetch(`${base}/api/travel-data`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, 'X-Travel-Current-Password': '123456', Origin: base },
-        body: archive
-    });
-    assert.equal(response.status, 428);
-    assert.equal((await response.json()).code, 'IMPORT_PASSWORD_REQUIRED');
-    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/password.json'), 'utf8')), { password: '123456' });
-
-    const imported = await fetch(`${base}/api/travel-data`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/zip',
-            'X-Travel-Token': token,
-            'X-Travel-Current-Password': '123456',
-            'X-Travel-Import-Password': '654321',
-            Origin: base
-        },
-        body: archive
-    });
-    assert.equal(imported.status, 200);
-    assert.equal((await imported.json()).passwordCreated, true);
-    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/password.json'), 'utf8')), { password: '654321' });
-    await fs.writeFile(path.join(root, 'data/password.json'), JSON.stringify({ password: '123456' }));
-});
-
-test('本地数据 API 对非空非法备份密码提示格式不支持', async () => {
-    const archive = createZip([
-        { name: 'data/travel_data.json', data: '[]' },
-        { name: 'data/password.json', data: '{"password":"abc"}' }
-    ]);
-    const response = await fetch(`${base}/api/travel-data`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, 'X-Travel-Current-Password': '123456', Origin: base },
-        body: archive
+        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': second.token, Cookie: second.cookie, Origin: base },
+        body: invalid
     });
     assert.equal(response.status, 400);
-    assert.match((await response.json()).error, /密码格式不支持/);
-});
-
-test('本地数据 API 拒绝缺失或错误的当前密码', async () => {
-    const archive = createZip([
-        { name: 'data/travel_data.json', data: '[]' },
-        { name: 'data/password.json', data: '{"password":"123456"}' }
-    ]);
-    for (const currentPassword of ['', '000000']) {
-        const response = await fetch(`${base}/api/travel-data`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/zip',
-                'X-Travel-Token': token,
-                ...(currentPassword ? { 'X-Travel-Current-Password': currentPassword } : {}),
-                Origin: base
-            },
-            body: archive
-        });
-        assert.equal(response.status, 403);
-        assert.equal((await response.json()).code, 'CURRENT_PASSWORD_INVALID');
-    }
+    assert.match((await response.json()).error, /认证配置无效/);
 });

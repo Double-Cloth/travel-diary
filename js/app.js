@@ -1,8 +1,8 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
 import { createRecordEditor } from './record-editor.js?v=20260913-remote-writes-v1';
-import { createPasswordGate } from './record-password.js?v=20260912-import-password';
-import { createDataTransfer } from './data-transfer.js?v=20260913-remote-writes-v1';
-import { detectWriterCapability } from './writer-capability.js';
+import { createPasswordGate } from './record-password.js?v=20260913-server-auth-v1';
+import { createDataTransfer } from './data-transfer.js?v=20260913-server-auth-v1';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=20260913-server-auth-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { showFeedback } from './feedback-dialog.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
@@ -116,19 +116,35 @@ async function initApp() {
     const getRecords = () => travelModel?.records || [];
     const openCreateEditor = createRecordEditor(handleRecordSaved, getRecords);
     const openUpdateEditor = createRecordEditor(handleRecordSaved, getRecords);
-    openRecordEditor = createPasswordGate(() => openCreateEditor(), {
+    const requestCreateAuthorization = createPasswordGate(() => openCreateEditor(), {
         title: '新增记录验证',
-        description: '输入 6 位数字密码后继续。',
+        description: '输入服务器访问口令后继续。',
         verifying: '验证成功，正在打开编辑器…',
         actionError: '无法打开编辑器，请重试。'
     });
+    openRecordEditor = async () => {
+        try {
+            await probeWriterService();
+            return requestCreateAuthorization();
+        } catch {
+            return openCreateEditor();
+        }
+    };
     let pendingEditRecord = null;
-    openEditRecord = createPasswordGate(() => openUpdateEditor(pendingEditRecord), {
+    const requestEditAuthorization = createPasswordGate(() => openUpdateEditor(pendingEditRecord), {
         title: '修改记录验证',
-        description: '输入 6 位数字密码后修改这条旅行记录。',
+        description: '输入服务器访问口令后修改这条旅行记录。',
         verifying: '验证成功，正在打开编辑器…',
         actionError: '无法打开修改窗口，请重试。'
     });
+    openEditRecord = async () => {
+        try {
+            await probeWriterService();
+            return requestEditAuthorization();
+        } catch {
+            return openUpdateEditor(pendingEditRecord);
+        }
+    };
     let pendingDeleteRecord = null;
     openDeleteRecord = createPasswordGate(async () => {
         const record = pendingDeleteRecord;
@@ -142,7 +158,7 @@ async function initApp() {
         }
     }, {
         title: '删除记录验证',
-        description: '输入 6 位数字密码后永久删除这条记录。',
+        description: '输入服务器访问口令后永久删除这条记录。',
         verifying: '验证成功，正在删除记录…',
         actionError: '删除记录失败，请重试。'
     });
@@ -159,15 +175,23 @@ async function initApp() {
         await refreshTravelModel(getRefreshKey());
         syncRouteFromHash({ initial: true });
     });
-    openDataExport = createPasswordGate(
+    const requestDataExportAuthorization = createPasswordGate(
         () => dataTransfer.exportAll(`travel-diary-data-${getTodayDate()}.zip`),
         {
             title: '导出数据验证',
-            description: '输入 6 位数字密码后导出全部数据。',
+            description: '输入服务器访问口令后导出包含认证配置的全部数据。',
             verifying: '验证成功，正在准备下载…',
             actionError: '无法导出全部数据，请重试。'
         }
     );
+    openDataExport = async () => {
+        try {
+            await probeWriterService();
+            return requestDataExportAuthorization();
+        } catch {
+            return dataTransfer.exportAll(`travel-diary-data-${getTodayDate()}.zip`);
+        }
+    };
     renderLoading();
 
     try {
@@ -1473,6 +1497,7 @@ async function deleteTravelRecord(record) {
     const response = await fetch(capability.endpoint, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json', 'X-Travel-Token': capability.token },
+        credentials: 'same-origin',
         body: JSON.stringify({ desc_md: record.desc_md }),
         signal: AbortSignal.timeout(60000)
     });

@@ -20,6 +20,7 @@ test('GitHub Pages workflow publishes prepared static files', () => {
     assert.match(workflow, /npm run fonts/);
     assert.match(workflow, /node scripts\/build-data-backup\.js _site\/travel-diary-data\.zip/);
     assert.match(workflow, /cp -R assets css data doc js _site\//);
+    assert.doesNotMatch(workflow, /cp -R[^\n]*\.secrets/);
     assert.doesNotMatch(workflow, /cp -R assets css data docs js _site\//);
     assert.match(workflow, /find _site\/assets\/fonts -name '\*\.ttf' -delete/);
     assert.match(workflow, /actions\/upload-pages-artifact@v[0-9]+/);

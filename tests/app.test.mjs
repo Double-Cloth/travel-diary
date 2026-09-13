@@ -26,7 +26,7 @@ test('删除已提交但数据刷新失败时返回已删除状态，避免误�
         requests += 1;
         if (requests > 2) throw new Error('模拟刷新失败');
         return { ok: true, json: async () => requests === 1
-            ? { service: 'travel-diary-writer-v1', token: 'test', methods: ['DELETE'], writeMode: 'remote' }
+            ? { service: 'travel-diary-writer-v1', authenticated: true, token: 'test', methods: ['DELETE'], writeMode: 'remote' }
             : { deleted: true } };
     };
     assert.deepEqual(await app.deleteTravelRecord({ desc_md: 'data/travel-diary/2026/test.md' }), { refreshFailed: true });

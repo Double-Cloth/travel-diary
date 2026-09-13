@@ -5,6 +5,7 @@
   "description": "Personal travel diary static site.",
   "type": "commonjs",
   "scripts": {
+    "auth:set": "node scripts/set-auth-password.js",
     "china-locations": "node scripts/update-china-locations.mjs",
     "countries": "node scripts/update-countries.mjs",
     "data:archive": "node scripts/build-data-backup.js",

@@ -1,5 +1,5 @@
-import { createPasswordGate, createPasswordSetup } from './record-password.js?v=20260912-import-password';
-import { detectWriterCapability } from './writer-capability.js';
+import { createPasswordGate } from './record-password.js?v=20260913-server-auth-v1';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=20260913-server-auth-v1';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -28,7 +28,7 @@ export function createDataTransfer(onImported) {
             </div>
             <p class="journal-label">全部数据导入</p>
             <h2 id="dataImportConfirmTitle">替换当前旅行数据？</h2>
-            <p class="data-import-confirm-note" id="dataImportConfirmDescription">将替换全部日记、照片、头像和访问密码。请先备份当前数据。</p>
+            <p class="data-import-confirm-note" id="dataImportConfirmDescription">将替换全部日记、照片、头像和服务器认证配置。请先备份当前数据。</p>
             <p class="data-import-confirm-file">已选择 <strong data-import-file-name></strong></p>
             <div class="data-import-confirm-actions">
                 <button class="paper-button" type="button" data-import-cancel>暂不导入</button>
@@ -56,20 +56,14 @@ export function createDataTransfer(onImported) {
             </div>
         </div>`;
     document.body.append(successDialog);
-    const requestImportPassword = createPasswordSetup({
-        title: '设置导入密码',
-        description: '备份未设置访问密码，请设置新的 6 位数字密码。',
-        confirmation: '请再次输入相同密码；导入完成后将使用此密码。'
-    });
     let busy = false;
     let importTrigger;
-    let currentImportPassword = '';
     let confirmationResolver;
 
     async function getExportHref() {
         let dynamic = false;
         try {
-            await detectWriterCapability();
+            await probeWriterService();
             dynamic = true;
         } catch {}
         const url = new URL(dynamic ? 'api/travel-data' : 'travel-diary-data.zip', window.location.href);
@@ -96,16 +90,15 @@ export function createDataTransfer(onImported) {
         noteExportStarted();
     }
 
-    function chooseImportWithPassword(password) {
+    function chooseImportWithAuthorization() {
         if (busy) return;
-        currentImportPassword = password;
         importTrigger = document.activeElement;
         input.click();
     }
 
-    const requestImportAuthorization = createPasswordGate(chooseImportWithPassword, {
+    const requestImportAuthorization = createPasswordGate(chooseImportWithAuthorization, {
         title: '导入数据验证',
-        description: '输入当前 6 位数字密码后选择备份。',
+        description: '输入服务器访问口令后选择备份。导入成功后认证配置也会恢复。',
         verifying: '验证成功，正在选择备份…',
         actionError: '无法开始导入，请重试。'
     });
@@ -113,9 +106,9 @@ export function createDataTransfer(onImported) {
     async function chooseImport() {
         if (busy) return;
         try {
-            await detectWriterCapability();
+            await probeWriterService();
         } catch {
-            setStatus('当前站点为只读模式；仍可导出备份，但不能导入并替换服务器数据。');
+            setStatus('当前站点为只读模式；仍可导出草稿和公开数据备份，但不能导入并替换服务器数据。');
             return;
         }
         await requestImportAuthorization();
@@ -158,17 +151,16 @@ export function createDataTransfer(onImported) {
         });
     }
 
-    async function uploadArchive(file, token, currentPassword, password = '') {
+    async function uploadArchive(file, token) {
         const headers = {
             'Content-Type': 'application/zip',
-            'X-Travel-Token': token,
-            'X-Travel-Current-Password': currentPassword
+            'X-Travel-Token': token
         };
-        if (password) headers['X-Travel-Import-Password'] = password;
         const response = await fetch(new URL('api/travel-data', window.location.href), {
             method: 'POST',
             headers,
             body: file,
+            credentials: 'same-origin',
             signal: AbortSignal.timeout(120000)
         });
         let result;
@@ -211,25 +203,13 @@ export function createDataTransfer(onImported) {
     input.addEventListener('change', async () => {
         const file = input.files[0];
         input.value = '';
-        const currentPassword = currentImportPassword;
-        currentImportPassword = '';
         if (!file || busy) return;
         if (!await confirmImport(file)) return;
         busy = true;
         setStatus('正在校验备份并导入数据…');
         try {
             const token = await writerToken();
-            let { response, result } = await uploadArchive(file, token, currentPassword);
-            if (!response.ok && result.code === 'IMPORT_PASSWORD_REQUIRED') {
-                setStatus('备份校验通过，请设置新的访问密码。');
-                const password = await requestImportPassword();
-                if (!password) {
-                    setStatus('已取消导入，当前数据未修改。');
-                    return;
-                }
-                setStatus('正在设置密码并导入已校验的备份…');
-                ({ response, result } = await uploadArchive(file, token, currentPassword, password));
-            }
+            const { response, result } = await uploadArchive(file, token);
             if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
             try { await onImported(); }
             catch {
