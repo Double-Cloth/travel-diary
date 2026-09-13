@@ -177,7 +177,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(indexHtml, /js\/app\.js\?v=20260913-editor-state-v6/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260912-edit-save-caret-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260913-delete-success-button-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260913-editor-state-v5/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-keyboard-v2/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-keyboard-v2/);
@@ -282,6 +282,7 @@ test('日记详情提供经过密码验证的修改与删除入口', () => {
     assert.match(journalCss, /\.sheet-record-actions\s*{/);
     assert.match(journalCss, /dialog\.record-delete-dialog\.entry-sheet/);
     assert.match(journalCss, /\.record-delete-dialog-actions\s*{/);
+    assert.doesNotMatch(journalCss, /\.record-delete-dialog-success \.record-delete-dialog-close\s*{/);
 });
 
 test('Markdown 源码高亮层与输入层使用相同字形和滚动槽', () => {

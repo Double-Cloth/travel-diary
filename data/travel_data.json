@@ -7,7 +7,28 @@
     "locality": "玉溪市",
     "desc_md": "data/travel-diary/2024/2024-07-08-yuxi.md",
     "photo_folder": "data/photos/yuxi",
-    "photos": ["Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png","Example1.png","Example2.png"]
+    "photos": [
+      "Example1.png",
+      "Example2.png",
+      "Example1.png",
+      "Example2.png",
+      "Example1.png",
+      "Example2.png",
+      "Example1.png",
+      "Example2.png",
+      "Example1.png",
+      "Example2.png",
+      "Example1.png",
+      "Example2.png",
+      "Example1.png",
+      "Example2.png",
+      "Example1.png",
+      "Example2.png",
+      "Example1.png",
+      "Example2.png",
+      "Example1.png",
+      "Example2.png"
+    ]
   },
   {
     "date": "2024-07-28",

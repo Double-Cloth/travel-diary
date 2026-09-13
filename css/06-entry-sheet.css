@@ -771,7 +771,6 @@ dialog.feedback-dialog.entry-sheet {
 .record-delete-dialog-actions .record-delete-dialog-submit:hover { border-color: rgba(91, 27, 20, 0.72); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.22), inset 0 -3px 8px rgba(58, 13, 9, 0.22), 0 12px 20px rgba(52, 31, 14, 0.2); }
 .record-delete-dialog-result .record-delete-dialog-note { margin-bottom: 22px; }
 .record-delete-dialog-result .record-delete-dialog-actions { grid-template-columns: minmax(0, 1fr); }
-.record-delete-dialog-success .record-delete-dialog-close { color: var(--paper-50); border-color: rgba(45, 56, 34, 0.56); background: linear-gradient(180deg, #596747, #35422b); }
 .record-delete-dialog-error .record-delete-dialog-close { color: var(--paper-50); border-color: rgba(91, 27, 20, 0.52); background: linear-gradient(180deg, #a84a39, #76271e); }
 
 .feedback-dialog-card { padding: 32px 38px 36px; text-align: center; }
