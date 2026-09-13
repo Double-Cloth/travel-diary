@@ -29,6 +29,10 @@ async function writeSynced(file, content) {
     try {
         await handle.writeFile(content, 'utf8');
         await handle.sync();
+    } catch (error) {
+        await handle.close().catch(() => {});
+        await fs.unlink(file).catch(() => {});
+        throw error;
     } finally {
         await handle.close();
     }
@@ -292,17 +296,13 @@ async function updateRecord(root, payload) {
         if (newDiaryFile === oldDiaryFile) {
             if (oldMarkdown !== markdown) {
                 temporaryMarkdown = path.join(path.dirname(newDiaryFile), `.travel-edit-${randomBytes(16).toString('hex')}.tmp`);
-                backupMarkdown = path.join(path.dirname(oldDiaryFile), `.travel-edit-${randomBytes(16).toString('hex')}.bak`);
+                const backupPath = path.join(path.dirname(oldDiaryFile), `.travel-edit-${randomBytes(16).toString('hex')}.bak`);
                 await writeSynced(temporaryMarkdown, markdown);
-                await fs.rename(oldDiaryFile, backupMarkdown);
-                try {
-                    await fs.rename(temporaryMarkdown, newDiaryFile);
-                    temporaryMarkdown = null;
-                } catch (error) {
-                    await fs.rename(backupMarkdown, oldDiaryFile).catch(() => {});
-                    backupMarkdown = null;
-                    throw error;
-                }
+                await fs.rename(oldDiaryFile, backupPath);
+                // 只有原正文已移入备份，回滚时才允许替换目标文件。
+                backupMarkdown = backupPath;
+                await fs.rename(temporaryMarkdown, newDiaryFile);
+                temporaryMarkdown = null;
             }
         } else {
             try {
@@ -361,11 +361,12 @@ async function deleteRecord(root, payload) {
         if (matches.length !== 1) throw failure(409, matches.length ? '记录标识不唯一，无法安全删除。' : '旅行记录已不存在，请刷新页面后重试。');
 
         const { item: deletedRecord, index } = matches[0];
-        diaryFile = await resolveMarkdownFile(root, markdownPath);
         try {
+            diaryFile = await resolveMarkdownFile(root, markdownPath);
             await checkedFile(diaryFile);
-            backupMarkdown = path.join(path.dirname(diaryFile), `.travel-delete-${randomBytes(16).toString('hex')}.bak`);
-            await fs.rename(diaryFile, backupMarkdown);
+            const backupPath = path.join(path.dirname(diaryFile), `.travel-delete-${randomBytes(16).toString('hex')}.bak`);
+            await fs.rename(diaryFile, backupPath);
+            backupMarkdown = backupPath;
         } catch (error) {
             if (error.code !== 'ENOENT') throw error;
         }

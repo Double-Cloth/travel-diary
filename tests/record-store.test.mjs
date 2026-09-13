@@ -160,6 +160,59 @@ test('删除记录会同步移除索引与 Markdown，并拒绝重复删除', as
     assert.equal((await remove(created.desc_md)).status, 409);
 });
 
+test('修改正文各阶段失败均保留原正文和索引，并允许重试', async () => {
+    const value = draft('a', { locality: '回滚测试', date: '2028-01-02' });
+    const created = (await (await post(value)).json()).record;
+    const diaryFile = path.join(root, created.desc_md);
+    const indexFile = path.join(root, 'data/travel_data.json');
+    const previous = await fs.readFile(indexFile, 'utf8');
+    const markdown = await fs.readFile(diaryFile, 'utf8');
+    const edited = { ...value, input: { ...value.input, body: '修改的正文' } };
+    const rename = fs.rename;
+    for (const stage of ['backup', 'replace', 'index']) {
+        fs.rename = async (from, to) => {
+            if ((stage === 'backup' && from === diaryFile)
+                || (stage === 'replace' && from.endsWith('.tmp') && to === diaryFile)
+                || (stage === 'index' && to === indexFile)) throw new Error(`模拟 ${stage} 失败`);
+            return rename(from, to);
+        };
+        try { assert.equal((await put(created.desc_md, edited)).status, 500); }
+        finally { fs.rename = rename; }
+        assert.equal(await fs.readFile(diaryFile, 'utf8'), markdown);
+        assert.equal(await fs.readFile(indexFile, 'utf8'), previous);
+        assert.deepEqual(await fs.readdir(path.dirname(diaryFile)), [path.basename(diaryFile)]);
+    }
+    assert.equal((await put(created.desc_md, edited)).status, 200);
+});
+
+test('修改到新路径时同步失败会清理半成品正文', async () => {
+    const value = draft('b', { locality: '写入失败测试', date: '2028-02-02' });
+    const created = (await (await post(value)).json()).record;
+    const edited = { ...value, input: { ...value.input, date: '2028-02-03' } };
+    const target = path.join(root, prepareRecord(edited, countries).record.desc_md);
+    const previous = await readIndex();
+    const open = fs.open;
+    fs.open = async (file, ...args) => {
+        const handle = await open(file, ...args);
+        if (file === target) handle.sync = async () => { throw new Error('模拟磁盘同步失败'); };
+        return handle;
+    };
+    try { assert.equal((await put(created.desc_md, edited)).status, 500); }
+    finally { fs.open = open; }
+    assert.deepEqual(await readIndex(), previous);
+    await assert.rejects(fs.stat(target), { code: 'ENOENT' });
+    assert.ok(await fs.readFile(path.join(root, created.desc_md), 'utf8'));
+    assert.equal((await put(created.desc_md, edited)).status, 200);
+});
+
+test('正文年份目录缺失时仍可删除索引记录', async () => {
+    const created = (await (await post(draft('c', { date: '2029-01-01' }))).json()).record;
+    await fs.unlink(path.join(root, created.desc_md));
+    await fs.rmdir(path.dirname(path.join(root, created.desc_md)));
+    assert.equal((await remove(created.desc_md)).status, 200);
+    assert.equal((await readIndex()).some(record => record.desc_md === created.desc_md), false);
+});
+
 test('写入端点拒绝跨源请求、伪造 Host、缺失令牌及不合法数据', async () => {
     const before = await readIndex();
     assert.equal((await post(draft('b'), { Origin: 'https://example.com' })).status, 403);
