@@ -6,6 +6,7 @@ const dataJs = await readFile(new URL('../js/data.js', import.meta.url), 'utf8')
 const foundationCss = await readFile(new URL('../css/01-foundation.css', import.meta.url), 'utf8');
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
 const fontBuildScript = await readFile(new URL('../scripts/build-fonts.mjs', import.meta.url), 'utf8');
+const appJs = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 const recordEditorJs = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
 const entrySheetCss = await readFile(new URL('../css/06-entry-sheet.css', import.meta.url), 'utf8');
 
@@ -51,10 +52,15 @@ test('多图预览不把 Base64 写入 DOM，并降低移动端重绘开销', ()
     assert.match(recordEditorJs, /createImageBitmap\(file,\s*\{[\s\S]*resizeWidth:\s*PHOTO_PREVIEW_WIDTH,[\s\S]*resizeQuality:\s*'medium'/);
     assert.match(recordEditorJs, /const cropWidth = sourceRatio > previewRatio/);
     assert.match(recordEditorJs, /canvas\.toBlob\(resolve, 'image\/jpeg'/);
-    assert.match(recordEditorJs, /loading="lazy" decoding="async" width="\$\{PHOTO_PREVIEW_WIDTH\}" height="\$\{PHOTO_PREVIEW_HEIGHT\}"/);
+    assert.match(recordEditorJs, /loading="lazy" decoding="async" fetchpriority="low" width="\$\{PHOTO_PREVIEW_WIDTH\}" height="\$\{PHOTO_PREVIEW_HEIGHT\}"/);
     assert.doesNotMatch(recordEditorJs, /<img src="data:image\/\$\{/);
     assert.doesNotMatch(recordEditorJs, /const previewUrl = URL\.createObjectURL\(file\);\s*pendingPreviews/);
     assert.match(recordEditorJs, /existing = new Map/);
     assert.match(entrySheetCss, /@media \(max-width: 540px\)[\s\S]*\.record-editor::backdrop \{ backdrop-filter: none; \}/);
     assert.match(entrySheetCss, /@media \(hover: none\) and \(pointer: coarse\)[\s\S]*\.record-editor::backdrop\s*\{[\s\S]*backdrop-filter: none;/);
+});
+
+test('日记照片缩略图使用原生懒加载、异步解码和低请求优先级', () => {
+    assert.match(appJs, /<img src="\$\{escapeHtml\(src\)\}" alt="\$\{escapeHtml\(alt\)\}" loading="lazy" decoding="async" fetchpriority="low">/);
+    assert.match(appJs, /class="photo-viewer-image"[\s\S]*decoding="async"/);
 });

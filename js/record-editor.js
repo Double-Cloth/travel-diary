@@ -493,7 +493,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         figure.className = 'record-editor-photo';
         figure.dataset.photoId = photo.id;
         figure.innerHTML = `
-            <img loading="lazy" decoding="async" width="${PHOTO_PREVIEW_WIDTH}" height="${PHOTO_PREVIEW_HEIGHT}">
+            <img loading="lazy" decoding="async" fetchpriority="low" width="${PHOTO_PREVIEW_WIDTH}" height="${PHOTO_PREVIEW_HEIGHT}">
             <figcaption></figcaption>
             <div>
                 <button type="button" data-photo-move data-direction="-1">←</button>

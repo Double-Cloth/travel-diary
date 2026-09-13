@@ -1575,7 +1575,7 @@ function renderPhotoViewer() {
                 <button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer" aria-label="关闭照片查看器">×</button>
                 <div class="photo-viewer-stage" data-photo-viewer-stage>
                     <div class="photo-viewer-image-frame" data-photo-viewer-frame>
-                        <img class="photo-viewer-image" data-photo-viewer-image src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" draggable="false">
+                        <img class="photo-viewer-image" data-photo-viewer-image src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" decoding="async" draggable="false">
                     </div>
                 </div>
                 <p class="photo-viewer-caption">${escapeHtml(photo.alt)}</p>
@@ -2773,7 +2773,7 @@ function renderPhotoSleeve(record, options = {}) {
                 const alt = `${record.title} · ${photo}`;
                 return `
                 <button class="photo-sleeve-button" type="button" data-action="open-photo-viewer" data-photo-index="${index}" data-photo-src="${escapeHtml(src)}" data-photo-alt="${escapeHtml(alt)}" aria-label="打开照片 ${escapeHtml(photo)}">
-                    <img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy">
+                    <img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async" fetchpriority="low">
                     <span>${escapeHtml(String(index + 1).padStart(2, '0'))}</span>
                 </button>
             `;
