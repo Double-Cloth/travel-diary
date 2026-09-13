@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260913-editor-copy-v4';
+import { createRecordEditor } from './record-editor.js?v=20260913-editor-state-v5';
 import { createPasswordGate } from './record-password.js?v=20260912-import-password';
 import { createDataTransfer } from './data-transfer.js?v=20260913-import-copy-v3';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
@@ -100,7 +100,7 @@ async function initApp() {
     cacheRefs();
     bindGlobalEvents();
     const recordDeleteDialog = createRecordDeleteDialog();
-    const openEditor = createRecordEditor(async (savedRecord, context = {}) => {
+    const handleRecordSaved = async (savedRecord, context = {}) => {
         await refreshTravelModel(getRefreshKey());
         if (context.mode === 'edit') {
             const updatedRecord = travelModel.records.find(record => record.desc_md === savedRecord.desc_md);
@@ -111,15 +111,18 @@ async function initApp() {
             window.location.hash = '#ledger';
         }
         syncRouteFromHash({ initial: true });
-    }, () => travelModel?.records || []);
-    openRecordEditor = createPasswordGate(() => openEditor(), {
+    };
+    const getRecords = () => travelModel?.records || [];
+    const openCreateEditor = createRecordEditor(handleRecordSaved, getRecords);
+    const openUpdateEditor = createRecordEditor(handleRecordSaved, getRecords);
+    openRecordEditor = createPasswordGate(() => openCreateEditor(), {
         title: '新增记录验证',
         description: '输入 6 位数字密码后继续。',
         verifying: '验证成功，正在打开编辑器…',
         actionError: '无法打开编辑器，请重试。'
     });
     let pendingEditRecord = null;
-    openEditRecord = createPasswordGate(() => openEditor(pendingEditRecord), {
+    openEditRecord = createPasswordGate(() => openUpdateEditor(pendingEditRecord), {
         title: '修改记录验证',
         description: '输入 6 位数字密码后修改这条旅行记录。',
         verifying: '验证成功，正在打开编辑器…',

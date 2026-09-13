@@ -176,9 +176,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260913-review-v5/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260913-editor-state-v6/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260912-edit-save-caret-v1/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260913-editor-copy-v4/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260913-editor-state-v5/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-keyboard-v2/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-keyboard-v2/);
 });
@@ -195,7 +195,7 @@ test('自定义下拉框靠近底部时向上展开并保留原有底部留白',
 
 test('新增记录入口先通过 6 位数字密码验证', () => {
     assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260912-import-password';/);
-    assert.match(appJs, /openRecordEditor = createPasswordGate\(\(\) => openEditor\(\),/);
+    assert.match(appJs, /openRecordEditor = createPasswordGate\(\(\) => openCreateEditor\(\),/);
     assert.match(recordPasswordJs, /new URL\('data\/password\.json', window\.location\.href\)/);
     assert.match(recordPasswordJs, /\^\\d\{6\}\$/);
     for (const key of ['data-password-key', 'data-password-clear', 'data-password-delete']) {
@@ -203,6 +203,16 @@ test('新增记录入口先通过 6 位数字密码验证', () => {
     }
     assert.match(journalCss, /\.record-password-keypad\s*{/);
     assert.match(journalCss, /\.record-password-digits\s*{/);
+});
+
+test('新增和修改记录使用独立编辑器实例并生成互不重复的控件 ID', () => {
+    assert.match(appJs, /const openCreateEditor = createRecordEditor\(handleRecordSaved, getRecords\);/);
+    assert.match(appJs, /const openUpdateEditor = createRecordEditor\(handleRecordSaved, getRecords\);/);
+    assert.match(appJs, /openEditRecord = createPasswordGate\(\(\) => openUpdateEditor\(pendingEditRecord\),/);
+    assert.match(recordEditorJs, /let recordEditorCount = 0;/);
+    assert.match(recordEditorJs, /const editorIndex = \+\+recordEditorCount;/);
+    assert.match(recordEditorJs, /const editorId = suffix => `recordEditor\$\{editorIndex\}\$\{suffix\}`;/);
+    assert.match(recordEditorJs, /dialog\.setAttribute\('aria-labelledby', editorId\('Title'\)\);/);
 });
 
 test('新增记录默认使用中国并允许中国地点双向补全', () => {

@@ -10,6 +10,7 @@ import { confirmFeedback } from './feedback-dialog.js';
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
 const PHOTO_PREVIEW_HEIGHT = 200;
+let recordEditorCount = 0;
 
 function pointerMoved(start, event) {
     return Math.abs(event.clientX - start.x) > POINTER_MOVE_TOLERANCE
@@ -17,9 +18,11 @@ function pointerMoved(start, event) {
 }
 
 export function createRecordEditor(onSaved, getRecords = () => []) {
+    const editorIndex = ++recordEditorCount;
+    const editorId = suffix => `recordEditor${editorIndex}${suffix}`;
     const dialog = document.createElement('dialog');
     dialog.className = 'record-editor entry-sheet';
-    dialog.setAttribute('aria-labelledby', 'recordEditorTitle');
+    dialog.setAttribute('aria-labelledby', editorId('Title'));
     document.body.append(dialog);
     let countries = [];
     let chinaLocations = {};
@@ -196,51 +199,51 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const editing = Boolean(record);
         dialog.innerHTML = `
             <header class="record-editor-heading">
-                <div><p class="journal-label">旅行日记</p><h2 id="recordEditorTitle">${editing ? '修改旅行记录' : '新增旅行记录'}</h2></div>
+                <div><p class="journal-label">旅行日记</p><h2 id="${editorId('Title')}">${editing ? '修改旅行记录' : '新增旅行记录'}</h2></div>
                 <button class="paper-button" type="button" data-editor-close aria-label="关闭编辑器并保留本页草稿">关闭</button>
             </header>
             <form>
                 <div class="record-editor-scroll">
                     <p class="record-editor-mode" data-editor-mode></p>
                     <div class="record-editor-layout">
-                        <section class="record-editor-section" aria-labelledby="recordLocationTitle">
-                            <h3 id="recordLocationTitle"><span>01</span> 行程与地点</h3>
+                        <section class="record-editor-section" aria-labelledby="${editorId('LocationTitle')}">
+                            <h3 id="${editorId('LocationTitle')}"><span>01</span> 行程与地点</h3>
                             <div class="record-editor-fields">
                                 <div class="record-editor-grid">
                                     <label>旅行日期 <span>必填</span><input name="date" type="date" value="${date}" required></label>
-                                    <label>旅行标识 <span>选填</span><span class="record-editor-autocomplete"><input name="trip_id" maxlength="200" data-editor-autocomplete="trip_id" placeholder="填写地点后自动生成" aria-describedby="recordTripHelp" aria-autocomplete="list" aria-controls="recordTripOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordTripOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label>旅行标识 <span>选填</span><span class="record-editor-autocomplete"><input name="trip_id" maxlength="200" data-editor-autocomplete="trip_id" placeholder="填写地点后自动生成" aria-describedby="${editorId('TripHelp')}" aria-autocomplete="list" aria-controls="${editorId('TripOptions')}" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="${editorId('TripOptions')}" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                 </div>
-                                <p class="record-editor-note" id="recordTripHelp">按日期与地点自动生成；同一次旅行可沿用下拉列表中的已有标识。</p>
+                                <p class="record-editor-note" id="${editorId('TripHelp')}">按日期与地点自动生成；同一次旅行可沿用下拉列表中的已有标识。</p>
                                 <div class="record-editor-grid">
                                     <label>国家 / 地区 <span>必填</span><span class="custom-select"><select name="country_code" data-custom-select aria-label="国家 / 地区" required>
                                         ${countries.map(country => `<option value="${escapeHtml(country.code)}" ${country.code === 'CN' ? 'selected' : ''}>${escapeHtml(country.code)} · ${escapeHtml(country.name_zh)}</option>`).join('')}
                                     </select></span></label>
-                                    <label>国家显示名称 <span>选填</span><span class="record-editor-autocomplete"><input name="country" maxlength="200" data-editor-autocomplete="country" placeholder="留空使用目录名称" aria-autocomplete="list" aria-controls="recordCountryOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordCountryOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
-                                    <label><span class="record-editor-field-name" data-editor-area>一级行政区</span> <span>选填</span><span class="record-editor-autocomplete"><input name="admin_area" maxlength="200" data-editor-autocomplete="admin_area" placeholder="例如：江苏省" aria-autocomplete="list" aria-controls="recordAdminAreaOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordAdminAreaOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
-                                    <label>行政区类型 <span>选填</span><span class="record-editor-autocomplete"><input name="admin_area_type" maxlength="200" data-editor-autocomplete="admin_area_type" placeholder="例如：省、州" aria-autocomplete="list" aria-controls="recordAdminAreaTypeOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordAdminAreaTypeOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
-                                    <label>城市 / 目的地 <span>必填</span><span class="record-editor-autocomplete"><input name="locality" maxlength="200" data-editor-autocomplete="locality" required placeholder="例如：苏州市" aria-autocomplete="list" aria-controls="recordLocalityOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordLocalityOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
-                                    <label>目的地类型 <span>选填</span><span class="record-editor-autocomplete"><input name="locality_type" maxlength="200" data-editor-autocomplete="locality_type" placeholder="例如：城市、岛屿" aria-autocomplete="list" aria-controls="recordLocalityTypeOptions" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="recordLocalityTypeOptions" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label>国家显示名称 <span>选填</span><span class="record-editor-autocomplete"><input name="country" maxlength="200" data-editor-autocomplete="country" placeholder="留空使用目录名称" aria-autocomplete="list" aria-controls="${editorId('CountryOptions')}" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="${editorId('CountryOptions')}" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label><span class="record-editor-field-name" data-editor-area>一级行政区</span> <span>选填</span><span class="record-editor-autocomplete"><input name="admin_area" maxlength="200" data-editor-autocomplete="admin_area" placeholder="例如：江苏省" aria-autocomplete="list" aria-controls="${editorId('AdminAreaOptions')}" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="${editorId('AdminAreaOptions')}" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label>行政区类型 <span>选填</span><span class="record-editor-autocomplete"><input name="admin_area_type" maxlength="200" data-editor-autocomplete="admin_area_type" placeholder="例如：省、州" aria-autocomplete="list" aria-controls="${editorId('AdminAreaTypeOptions')}" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="${editorId('AdminAreaTypeOptions')}" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label>城市 / 目的地 <span>必填</span><span class="record-editor-autocomplete"><input name="locality" maxlength="200" data-editor-autocomplete="locality" required placeholder="例如：苏州市" aria-autocomplete="list" aria-controls="${editorId('LocalityOptions')}" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="${editorId('LocalityOptions')}" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
+                                    <label>目的地类型 <span>选填</span><span class="record-editor-autocomplete"><input name="locality_type" maxlength="200" data-editor-autocomplete="locality_type" placeholder="例如：城市、岛屿" aria-autocomplete="list" aria-controls="${editorId('LocalityTypeOptions')}" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="${editorId('LocalityTypeOptions')}" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                 </div>
                                 <p class="record-editor-note record-editor-autofill" data-editor-autofill>中国填写行政区或目的地后会互相补全，内容仍可修改。</p>
                                 <div data-editor-option-lists hidden></div>
                             </div>
                         </section>
-                        <section class="record-editor-section" aria-labelledby="recordBodyTitle">
-                            <h3 id="recordBodyTitle"><span>02</span> 旅行正文</h3>
+                        <section class="record-editor-section" aria-labelledby="${editorId('BodyTitle')}">
+                            <h3 id="${editorId('BodyTitle')}"><span>02</span> 旅行正文</h3>
                             <label>日记标题 <span>必填</span><input name="title" maxlength="200" required placeholder="写下这篇日记的标题"></label>
                             <div class="record-editor-workbench">
                                 <div class="record-editor-tabs" role="tablist" aria-label="正文视图">
-                                    <button type="button" role="tab" id="recordTabSource" aria-controls="recordPanelSource" aria-selected="true" data-editor-view="source">源码</button>
-                                    <button type="button" role="tab" id="recordTabPreview" aria-controls="recordPanelPreview" aria-selected="false" tabindex="-1" data-editor-view="preview">预览</button>
+                                    <button type="button" role="tab" id="${editorId('TabSource')}" aria-controls="${editorId('PanelSource')}" aria-selected="true" data-editor-view="source">源码</button>
+                                    <button type="button" role="tab" id="${editorId('TabPreview')}" aria-controls="${editorId('PanelPreview')}" aria-selected="false" tabindex="-1" data-editor-view="preview">预览</button>
                                     <span class="record-editor-format">Markdown</span>
                                 </div>
-                                <div id="recordPanelSource" role="tabpanel" aria-labelledby="recordTabSource" data-editor-panel="source">
+                                <div id="${editorId('PanelSource')}" role="tabpanel" aria-labelledby="${editorId('TabSource')}" data-editor-panel="source">
                                     <div class="record-editor-source-layer">
                                         <pre data-editor-highlight aria-hidden="true"><code></code></pre>
                                         <textarea data-editor-source maxlength="100210" rows="10" aria-label="Markdown 源码" spellcheck="false"></textarea>
                                     </div>
                                 </div>
-                                <div id="recordPanelPreview" role="tabpanel" aria-labelledby="recordTabPreview" data-editor-panel="preview" hidden>
+                                <div id="${editorId('PanelPreview')}" role="tabpanel" aria-labelledby="${editorId('TabPreview')}" data-editor-panel="preview" hidden>
                                     <div class="record-editor-formatting" role="toolbar" aria-label="预览格式">
                                         <button type="button" data-format="bold" aria-label="加粗"><b>粗体</b></button>
                                         <button type="button" data-format="italic" aria-label="斜体"><i>斜体</i></button>
@@ -254,8 +257,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             </div>
                         </section>
                     </div>
-                    <section class="record-editor-photos" aria-labelledby="recordPhotosTitle">
-                        <h3 id="recordPhotosTitle"><span>03</span> 旅行照片</h3>
+                    <section class="record-editor-photos" aria-labelledby="${editorId('PhotosTitle')}">
+                        <h3 id="${editorId('PhotosTitle')}"><span>03</span> 旅行照片</h3>
                         <div class="record-editor-upload-zone" data-editor-drop>
                             <button class="paper-button" type="button" data-editor-upload>＋ 选择照片</button>
                             <p>也可将照片拖到这里</p>
@@ -269,10 +272,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <div class="record-editor-fields">
                             <label>正文路径 <span>自动填写 · 可修改</span><input name="desc_md" maxlength="200"></label>
                             <div class="record-editor-grid record-editor-files-grid">
-                                <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="recordPhotoHelp"></label>
-                                <label>已有照片文件名 <span>选填 · 每行一个</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="recordPhotoHelp"></textarea></label>
+                                <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="${editorId('PhotoHelp')}"></label>
+                                <label>已有照片文件名 <span>选填 · 每行一个</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="${editorId('PhotoHelp')}"></textarea></label>
                             </div>
-                            <p class="record-editor-note" id="recordPhotoHelp">这里仅填写项目内已有的照片；新添加的照片会自动保存到：<output data-editor-photo-path-preview></output></p>
+                            <p class="record-editor-note" id="${editorId('PhotoHelp')}">这里仅填写项目内已有的照片；新添加的照片会自动保存到：<output data-editor-photo-path-preview></output></p>
                         </div>
                     </details>
                 </div>
