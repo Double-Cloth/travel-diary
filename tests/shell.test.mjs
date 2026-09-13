@@ -178,7 +178,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260913-no-static-export-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260913-no-static-delete-v1/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260913-select-placement-v2/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260913-remote-writes-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -269,13 +269,17 @@ test('运行时提示全部使用站内反馈弹窗而不是浏览器 alert', ()
     assert.doesNotMatch(recordPasswordJs, /window\.alert\s*\(/);
 });
 
-test('日记详情提供经过密码验证的修改与删除入口', () => {
+test('日记详情仅在可写站点提供经过密码验证的修改与删除入口', () => {
     assert.match(appJs, /data-action="edit-record"/);
     assert.match(appJs, /data-action="delete-record"/);
     assert.match(appJs, /const requestEditAuthorization = createPasswordGate/);
-    assert.match(appJs, /openDeleteRecord = createPasswordGate/);
+    assert.match(appJs, /const requestDeleteAuthorization = createPasswordGate/);
+    assert.match(appJs, /openDeleteRecord = async record =>/);
+    assert.match(appJs, /await probeWriterService\(\);/);
+    assert.match(appJs, /静态页面不支持删除记录。/);
     assert.match(appJs, /createRecordDeleteDialog\(\)/);
-    assert.match(appJs, /refs\.confirmDeleteRecord\(record\)\.then\(confirmed/);
+    assert.match(appJs, /if \(!await recordDeleteDialog\.confirm\(record\)\) return;/);
+    assert.match(appJs, /return requestDeleteAuthorization\(\);/);
     assert.doesNotMatch(appJs, /window\.confirm\(`确定删除旅行记录/);
     assert.doesNotMatch(appJs, /window\.alert\(`已删除旅行记录/);
     assert.match(appJs, /capability\.methods\.has\('DELETE'\)/);

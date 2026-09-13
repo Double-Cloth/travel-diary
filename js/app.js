@@ -146,7 +146,7 @@ async function initApp() {
         }
     };
     let pendingDeleteRecord = null;
-    openDeleteRecord = createPasswordGate(async () => {
+    const requestDeleteAuthorization = createPasswordGate(async () => {
         const record = pendingDeleteRecord;
         pendingDeleteRecord = null;
         try {
@@ -166,11 +166,20 @@ async function initApp() {
         pendingEditRecord = record;
         return openEditRecord();
     };
-    refs.openDeleteRecord = record => {
+    openDeleteRecord = async record => {
+        try {
+            await probeWriterService();
+        } catch (error) {
+            if (error?.code === 'WRITER_UNAVAILABLE') {
+                throw new Error('当前站点为只读模式，静态页面不支持删除记录。');
+            }
+            throw error;
+        }
+        if (!await recordDeleteDialog.confirm(record)) return;
         pendingDeleteRecord = record;
-        return openDeleteRecord();
+        return requestDeleteAuthorization();
     };
-    refs.confirmDeleteRecord = record => recordDeleteDialog.confirm(record);
+    refs.openDeleteRecord = openDeleteRecord;
     dataTransfer = createDataTransfer(async () => {
         await refreshTravelModel(getRefreshKey());
         syncRouteFromHash({ initial: true });
@@ -2065,9 +2074,7 @@ function handleDocumentClick(event) {
     if (deleteRecord) {
         event.preventDefault();
         const record = travelModel?.recordsById.get(deleteRecord.dataset.recordId);
-        if (record) void refs.confirmDeleteRecord(record).then(confirmed => {
-            if (confirmed) return refs.openDeleteRecord(record);
-        });
+        if (record) void refs.openDeleteRecord(record).catch(error => showFeedback(error.message));
         return;
     }
     const closeContextPanel = event.target.closest('[data-action="close-context-panel"]');
