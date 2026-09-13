@@ -4,6 +4,7 @@ import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
+import { detectWriterCapability } from './writer-capability.js';
 import { enhanceCustomSelects } from './custom-select.js?v=20260913-select-placement-v3';
 import { confirmFeedback } from './feedback-dialog.js';
 
@@ -169,24 +170,19 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         writerMethods = new Set();
         dialog.querySelector('[data-editor-save]').disabled = true;
         const hint = dialog.querySelector('[data-editor-mode]');
-        hint.textContent = '正在连接本地保存服务…';
+        hint.textContent = '正在连接服务器写入服务…';
         try {
-            if (!['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) throw new Error();
-            const response = await fetch(new URL('api/travel-records', window.location.href), {
-                cache: 'no-store', signal: AbortSignal.timeout(4000)
-            });
-            const result = await response.json();
-            if (!response.ok || result.service !== 'travel-diary-writer-v1' || !result.token) throw new Error();
-            writerMethods = new Set(Array.isArray(result.methods) ? result.methods : ['POST']);
+            const capability = await detectWriterCapability();
+            writerMethods = capability.methods;
             if (editingRecord && !writerMethods.has('PUT')) {
-                hint.textContent = '本地保存服务版本过旧 · 请重新启动项目后再修改记录。';
+                hint.textContent = '服务器写入服务版本过旧 · 请更新或重新启动服务后再修改记录。';
                 return;
             }
-            token = result.token;
-            hint.textContent = '本地保存可用 · 保存后写入项目文件。';
+            token = capability.token;
+            hint.textContent = '服务器写入可用 · 保存后写入项目文件。';
             dialog.querySelector('[data-editor-save]').disabled = saved;
         } catch {
-            hint.textContent = '当前为只读模式 · 可先导出草稿，再回到本机导入并保存。';
+            hint.textContent = '当前站点为只读模式 · 可先导出草稿，再到可写站点导入并保存。';
         }
     }
 
@@ -863,7 +859,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         event.preventDefault();
         if (busy || saved || readingPhotos || !token) return;
         if (editingRecord && !writerMethods.has('PUT')) {
-            status('本地保存服务版本过旧，请重新启动项目后再修改记录。');
+            status('服务器写入服务版本过旧，请更新或重新启动服务后再修改记录。');
             return;
         }
         const draft = getDraft();

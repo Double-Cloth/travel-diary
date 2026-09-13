@@ -1,7 +1,8 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260913-editor-state-v5';
+import { createRecordEditor } from './record-editor.js?v=20260913-remote-writes-v1';
 import { createPasswordGate } from './record-password.js?v=20260912-import-password';
-import { createDataTransfer } from './data-transfer.js?v=20260913-import-copy-v3';
+import { createDataTransfer } from './data-transfer.js?v=20260913-remote-writes-v1';
+import { detectWriterCapability } from './writer-capability.js';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { showFeedback } from './feedback-dialog.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
@@ -1465,21 +1466,13 @@ function closeEntrySheet(options = {}) {
 }
 
 async function deleteTravelRecord(record) {
-    if (!['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname)) {
-        throw new Error('删除功能仅可通过本机 localhost 页面使用。');
+    const capability = await detectWriterCapability();
+    if (!capability.methods.has('DELETE')) {
+        throw new Error('服务器写入服务版本过旧，请更新或重新启动服务后再删除记录。');
     }
-    const endpoint = new URL('api/travel-records', window.location.href);
-    const serviceResponse = await fetch(endpoint, { cache: 'no-store', signal: AbortSignal.timeout(4000) });
-    const service = await serviceResponse.json();
-    if (!serviceResponse.ok || service.service !== 'travel-diary-writer-v1' || !service.token) {
-        throw new Error(service.error || '无法连接本地保存服务。');
-    }
-    if (!Array.isArray(service.methods) || !service.methods.includes('DELETE')) {
-        throw new Error('本地保存服务版本过旧，请重新启动项目后再删除记录。');
-    }
-    const response = await fetch(endpoint, {
+    const response = await fetch(capability.endpoint, {
         method: 'DELETE',
-        headers: { 'Content-Type': 'application/json', 'X-Travel-Token': service.token },
+        headers: { 'Content-Type': 'application/json', 'X-Travel-Token': capability.token },
         body: JSON.stringify({ desc_md: record.desc_md }),
         signal: AbortSignal.timeout(60000)
     });
@@ -2024,7 +2017,7 @@ function handleDocumentClick(event) {
     }
     if (event.target.closest('[data-action="import-all-data"]')) {
         event.preventDefault();
-        dataTransfer.chooseImport();
+        void dataTransfer.chooseImport();
         return;
     }
     if (event.target.closest('[data-action="add-record"]')) {

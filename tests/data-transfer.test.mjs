@@ -26,9 +26,11 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
         createElement() { const element = node(); nodes.push(element); return element; },
         body: { append() {} }, querySelector: () => output
     };
-    globalThis.window = { location: { hostname: 'localhost', href: 'http://localhost:9000/' } };
+    globalThis.window = { location: { hostname: 'diary.example', href: 'https://diary.example/' } };
     globalThis.fetch = async (_, options) => ({
-        ok: true, json: async () => options?.method === 'POST' ? { imported: true } : { token: 'test' }
+        ok: true, json: async () => options?.method === 'POST'
+            ? { imported: true }
+            : { service: 'travel-diary-writer-v1', token: 'test', methods: ['POST', 'PUT', 'DELETE'] }
     });
     let refreshFails = true;
     createDataTransfer(async () => { if (refreshFails) throw new Error('模拟刷新失败'); });
@@ -49,4 +51,38 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
     await importFile();
     assert.equal(success.querySelector('#dataImportSuccessDescription').textContent, '全部旅行数据已更新。');
     assert.equal(output.textContent, '');
+});
+
+test('导出和导入依据写入 API 能力选择动态端点或静态只读回退', async t => {
+    const nodes = [];
+    const output = { textContent: '' };
+    function node() {
+        return {
+            events: {}, open: false,
+            setAttribute() {}, addEventListener(name, handler) { this.events[name] = handler; },
+            querySelector() { return node(); }, showModal() { this.open = true; }, close() { this.open = false; }
+        };
+    }
+    const previous = { document: globalThis.document, window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.document = {
+        createElement() { const element = node(); nodes.push(element); return element; },
+        body: { append() {} }, querySelector: () => output, activeElement: null
+    };
+    globalThis.window = { location: { hostname: 'diary.example', href: 'https://diary.example/' } };
+    globalThis.fetch = async () => ({
+        ok: true,
+        json: async () => ({ service: 'travel-diary-writer-v1', token: 'remote-token', methods: ['POST', 'PUT', 'DELETE'] })
+    });
+    const writable = createDataTransfer(async () => {});
+    assert.equal(await writable.getExportHref(), 'https://diary.example/api/travel-data');
+
+    globalThis.window.location = { hostname: 'static.example', href: 'https://static.example/' };
+    globalThis.fetch = async () => ({ ok: false, json: async () => ({ error: 'Not Found' }) });
+    const readonly = createDataTransfer(async () => {});
+    const staticHref = new URL(await readonly.getExportHref());
+    assert.equal(staticHref.pathname, '/travel-diary-data.zip');
+    assert.ok(staticHref.searchParams.get('v'));
+    await readonly.chooseImport();
+    assert.match(output.textContent, /只读模式/);
 });

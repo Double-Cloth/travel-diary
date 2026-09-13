@@ -9,14 +9,16 @@ const CONFIG = {
   defaultPort: 9000,
   maxPortRetries: 100,
   defaultDir: '.',
-  defaultLocal: true
+  defaultLocal: true,
+  defaultWriteMode: 'local'
 };
 
 function parseArgs(argv) {
   const args = {
     dir: CONFIG.defaultDir,
     port: CONFIG.defaultPort,
-    local: CONFIG.defaultLocal
+    local: CONFIG.defaultLocal,
+    writeMode: CONFIG.defaultWriteMode
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -36,6 +38,11 @@ function parseArgs(argv) {
       args.local = true;
     } else if (current === '--network') {
       args.local = false;
+    } else if (current === '--write-mode' && index + 1 < argv.length) {
+      args.writeMode = argv[index + 1];
+      index += 1;
+    } else if (current.startsWith('--write-mode=')) {
+      args.writeMode = current.slice('--write-mode='.length);
     } else if (current === '--help' || current === '-h') {
       printHelpAndExit();
     } else {
@@ -49,6 +56,9 @@ function parseArgs(argv) {
   if (!args.dir.trim() || args.dir.startsWith('--')) {
     throw new Error('请指定有效的目录路径。');
   }
+  if (!['local', 'remote'].includes(args.writeMode)) {
+    throw new Error('写入模式必须是 local 或 remote。');
+  }
 
   return args;
 }
@@ -58,19 +68,21 @@ function printHelpAndExit() {
 Travel Diary static server
 
 Usage:
-  node js/server.js [--dir PATH] [--port PORT] [--local|--network]
+  node js/server.js [--dir PATH] [--port PORT] [--local|--network] [--write-mode=MODE]
 
 Options:
   --dir PATH    Directory to serve (default: ${CONFIG.defaultDir})
   --port PORT   Starting port (default: ${CONFIG.defaultPort})
   --local       Bind to 127.0.0.1 only (default)
   --network     Bind to 0.0.0.0 for LAN access
+  --write-mode  Write policy: local (default) or remote
   --help, -h    Show this help
 
 Examples:
   node js/server.js
   node js/server.js --dir . --port 9000
   node js/server.js --network
+  node js/server.js --network --write-mode=remote
 `;
 
   process.stdout.write(message.trimStart() + '\n');
@@ -167,9 +179,9 @@ function isWithinRoot(rootDir, targetPath) {
   return relativePath !== '..' && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath);
 }
 
-function createHandler(rootDir) {
+function createHandler(rootDir, options = {}) {
   rootDir = fs.realpathSync(rootDir);
-  const recordApi = createRecordApi(rootDir);
+  const recordApi = createRecordApi(rootDir, { writeMode: options.writeMode || CONFIG.defaultWriteMode });
   return async (req, res) => {
     if (['/api/travel-records', '/api/travel-data'].includes(req.url.split('?')[0])) {
       await recordApi(req, res);
@@ -274,13 +286,13 @@ function createHandler(rootDir) {
   };
 }
 
-function listenWithRetries(rootDir, port, bindAll) {
+function listenWithRetries(rootDir, port, bindAll, options = {}) {
   const host = bindAll ? '0.0.0.0' : '127.0.0.1';
   let currentPort = port;
 
   return new Promise((resolve, reject) => {
     const tryListen = () => {
-      const server = http.createServer(createHandler(rootDir));
+      const server = http.createServer(createHandler(rootDir, options));
 
       server.on('error', (error) => {
         if (error.code === 'EADDRINUSE') {
@@ -312,17 +324,24 @@ async function main() {
     throw new Error(`Directory does not exist: ${rootDir}`);
   }
 
-  const { server, port } = await listenWithRetries(rootDir, args.port, !args.local);
+  const { server, port } = await listenWithRetries(rootDir, args.port, !args.local, { writeMode: args.writeMode });
   const localhostUrl = `http://localhost:${port}`;
   const networkUrl = args.local ? 'disabled (local only)' : `http://${getLocalIp()}:${port}`;
 
   console.log('='.repeat(60));
   console.log('Server started');
   console.log(`Root: ${rootDir}`);
+  console.log(`Bind: ${args.local ? '127.0.0.1 (--local)' : '0.0.0.0 (--network)'}`);
+  console.log(`Write mode: ${args.writeMode}`);
   console.log('-'.repeat(60));
   console.log(`Local: ${localhostUrl}`);
   if (!args.local) {
     console.log(`Network: ${networkUrl}`);
+  }
+  if (args.writeMode === 'remote') {
+    console.log('-'.repeat(60));
+    console.warn('WARNING: Remote writes are enabled for same-site requests.');
+    console.warn('Protect public deployments with a reverse proxy, VPN, Zero Trust, or HTTP authentication.');
   }
   console.log('-'.repeat(60));
   console.log('Tip: refresh the page after file changes. Press Ctrl+C to stop.');

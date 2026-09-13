@@ -1,4 +1,5 @@
 import { createPasswordGate, createPasswordSetup } from './record-password.js?v=20260912-import-password';
+import { detectWriterCapability } from './writer-capability.js';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -65,33 +66,28 @@ export function createDataTransfer(onImported) {
     let currentImportPassword = '';
     let confirmationResolver;
 
-    function isLocalWriterHost() {
-        return ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
-    }
-
-    function getExportHref() {
-        const url = new URL(isLocalWriterHost() ? 'api/travel-data' : 'travel-diary-data.zip', window.location.href);
-        if (!isLocalWriterHost()) url.searchParams.set('v', Date.now().toString());
+    async function getExportHref() {
+        let dynamic = false;
+        try {
+            await detectWriterCapability();
+            dynamic = true;
+        } catch {}
+        const url = new URL(dynamic ? 'api/travel-data' : 'travel-diary-data.zip', window.location.href);
+        if (!dynamic) url.searchParams.set('v', Date.now().toString());
         return url.href;
     }
 
-    async function localToken() {
-        if (!isLocalWriterHost()) {
-            throw new Error('请在本机通过 localhost 打开页面后再操作。');
-        }
-        const response = await fetch(new URL('api/travel-records', window.location.href), { cache: 'no-store' });
-        const result = await response.json();
-        if (!response.ok || !result.token) throw new Error('本地数据服务不可用，请重新启动项目。');
-        return result.token;
+    async function writerToken() {
+        return (await detectWriterCapability()).token;
     }
 
     function noteExportStarted() {
         setStatus('全部数据备份已开始下载。');
     }
 
-    function exportAll(downloadName = 'travel-diary-data.zip') {
+    async function exportAll(downloadName = 'travel-diary-data.zip') {
         const link = document.createElement('a');
-        link.href = getExportHref();
+        link.href = await getExportHref();
         link.download = downloadName;
         link.hidden = true;
         document.body.append(link);
@@ -114,13 +110,15 @@ export function createDataTransfer(onImported) {
         actionError: '无法开始导入，请重试。'
     });
 
-    function chooseImport() {
+    async function chooseImport() {
         if (busy) return;
-        if (!isLocalWriterHost()) {
-            setStatus('导入仅支持本机 localhost 页面；当前页面仍可导出备份。');
+        try {
+            await detectWriterCapability();
+        } catch {
+            setStatus('当前站点为只读模式；仍可导出备份，但不能导入并替换服务器数据。');
             return;
         }
-        void requestImportAuthorization();
+        await requestImportAuthorization();
     }
 
     function restoreImportFocus() {
@@ -220,7 +218,7 @@ export function createDataTransfer(onImported) {
         busy = true;
         setStatus('正在校验备份并导入数据…');
         try {
-            const token = await localToken();
+            const token = await writerToken();
             let { response, result } = await uploadArchive(file, token, currentPassword);
             if (!response.ok && result.code === 'IMPORT_PASSWORD_REQUIRED') {
                 setStatus('备份校验通过，请设置新的访问密码。');

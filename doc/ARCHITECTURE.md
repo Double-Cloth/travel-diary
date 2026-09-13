@@ -2,7 +2,7 @@
 
 ## 运行架构
 
-Travel Diary 采用“静态前端 + 本机数据服务”架构。浏览与筛选不需要构建步骤或后端；通过 `npm start` 运行时，Node.js 服务额外提供受限的本机写入和数据备份接口。浏览器只加载一个样式入口 `css/journal.css` 和一个应用入口 `js/app.js`。
+Travel Diary 采用“静态前端 + 可选数据写入服务”架构。浏览与筛选不需要构建步骤或后端；通过 `js/server.js` 运行时，Node.js 服务额外提供按策略限制的写入和数据备份接口。浏览器只加载一个样式入口 `css/journal.css` 和一个应用入口 `js/app.js`。
 
 ```text
 index.html
@@ -34,7 +34,9 @@ index.html
        └─ js/utils.js
 ```
 
-本地运行时，`js/server.js` 提供静态文件服务和正确的 MIME 类型，并将 `/api/travel-records` 与 `/api/travel-data` 交给零安装依赖的本地数据服务，分别用于记录的新增、修改、删除及整个 `data/` 的 ZIP 导入导出。GitHub Pages 仍只发布静态文件，不具备写入端点。
+运行 `js/server.js` 时，服务提供静态文件和正确的 MIME 类型，并将 `/api/travel-records` 与 `/api/travel-data` 交给零安装依赖的数据服务，分别用于记录的新增、修改、删除及整个 `data/` 的 ZIP 导入导出。GitHub Pages 与普通静态托管仍不具备写入端点。
+
+监听配置与写入策略相互独立：`--local` / `--network` 决定绑定 `127.0.0.1` 还是 `0.0.0.0`，`--write-mode=local|remote` 决定哪些请求可以取得写入能力。默认 write mode 为 `local`，所以单独使用 `--network` 不会开放远程写入。只有显式使用 `--write-mode=remote`，同站点远程页面才可访问写入接口。
 
 ## 个人内容与通用资源
 
@@ -115,7 +117,8 @@ data/travel_data.json ────────────────→ getRec
 - `js/slug.mjs`：中文地点、旅行标识和文件名的离线拼音规范化。
 - `js/record-input.mjs`：浏览器与 Node.js 共用的草稿字段校验、记录与 Markdown 生成。
 - `js/record-suggestions.mjs`：根据国家目录、已填地点和历史记录生成关联候选、可靠的空白字段补全值及旅行标识建议。
-- `js/record-store.js`：本机写入端点、请求来源校验、图片文件写入、写入锁、索引替换和失败回滚。
+- `js/record-store.js`：可配置写入端点、Host / Origin 来源校验、图片文件写入、写入锁、索引替换和失败回滚。
+- `js/writer-capability.js`：前端统一探测当前站点是否提供写入服务，并解析令牌和支持的方法。
 - `js/markdown-editor.js`：源码拆分、预览渲染及可编辑 DOM 到 Markdown 的序列化。
 - `js/photo-uploads.mjs`：浏览器与服务器共用的图片签名校验及可读文件命名规则。
 - `js/location.mjs`：地点字段兼容、国家规则、层级键、显示名称和搜索字段。
@@ -134,7 +137,9 @@ data/travel_data.json ────────────────→ getRec
 
 `GET /api/travel-records` 返回服务标识、进程内写入令牌和支持的方法列表；前端分别检测新增、修改、删除能力。`POST` 使用 JSON 与 `X-Travel-Token` 提交 v3 草稿，服务端校验字段、国家代码、正文路径及照片引用。`PUT` 提交原正文路径与草稿，`DELETE` 提交正文路径；两者要求索引中恰好匹配一条记录。`record-input.mjs` 兼容 v1、v2 草稿，仅为 v1 补齐后来新增的可选字段。
 
-服务端仅允许回环地址连接、localhost / 回环 Host 和同源 Origin（如提供）；写入接口不设置跨域许可，`--network` 的其他设备访问仍只读。表单从非本机站点打开时直接提供只读草稿流程，不向第三方站点发送写入请求。
+local write mode 保持原安全边界：只允许回环来源地址、localhost / `127.0.0.1` / `::1` Host，并在提供 Origin 时要求完全匹配本机 HTTP Origin；`--network` 的其他设备仍只能读取。remote write mode 不依赖客户端 IP，但要求合法 Host，且提供的 Origin 必须是 HTTP 或 HTTPS，并与 Host 使用相同 authority。比较时允许外部 HTTPS Origin 对应 Node 内部 HTTP 连接，因此兼容在 Nginx、Caddy、Apache 或 Cloudflare Tunnel 后终止 TLS；协议之外的 `X-Forwarded-*` 不参与授权，也不能绕过来源判断。API 不返回 `Access-Control-Allow-Origin: *`，任意跨域来源会被拒绝。
+
+前端不再根据 hostname 推断权限。新增、修改、删除及全量数据操作都先通过相对 URL 请求 `GET /api/travel-records`：成功取得服务标识、进程内令牌和方法列表时启用相应动态操作；local 模式下的远程页面、GitHub Pages、普通静态服务器或 API 不存在时自动进入只读模式。只读页面仍可编辑和导出草稿，全量导出回退到静态 `travel-diary-data.zip`。
 
 写入和全量数据导入导出共用项目根目录的 `.travel-data.lock` 独占锁。新增记录会重新读取当前索引，独占创建 Markdown 文件，写入并同步临时索引，最后用 `rename` 替换索引。目录和文件拒绝符号链接 / junction；失败时清理本次创建的正文、照片、空照片目录和临时索引。上传图片写入以目的地拼音命名的照片目录，并在索引提交前完成文件写入和同步；重试时比对照片字节。重复提交以正文路径、元数据和 Markdown 内容比对实现去重，默认正文路径使用日期和目的地拼音。自定义正文路径仍遵守年份目录、日期前缀及 ASCII 文件名规范，照片引用仅允许项目内的普通文件。
 
@@ -146,7 +151,9 @@ Markdown 与 JSON 的写入不构成跨文件事务，进程强制终止或断�
 
 正文预览复用 `js/data.js` 导出的 `parseMarkdown()`，与日记详情使用相同的 HTML 转义和链接过滤规则。源码编辑和预览编辑由 `markdown-editor.js` 负责标题拆分、语法高亮与受限 DOM 序列化；粘贴只接受纯文本。文件写入使用 `buildMarkdown()` 生成正文。新草稿导出为 ZIP，`draft.json` 仅保存字段和照片文件引用，实际图片放在 `photos/`；导入后在内存中恢复为现有写入负载。旧版 v1 至 v3 JSON 草稿继续兼容。
 
-本地全量数据导出遍历普通文件并把 `data/` 作为 ZIP 根目录，通过仅允许本机访问的 HTTP 下载地址返回。GitHub Pages 部署阶段调用 `scripts/build-data-backup.js` 生成同结构静态 ZIP，避免浏览器 Blob 地址被外部下载工具接管后得到空文件。导入先用当前 `data/password.json` 授权，服务端在取得数据锁后复核 `X-Travel-Current-Password`，再校验 ZIP 路径与跨平台文件与父目录大小写冲突、文件与目录重名、索引 JSON、记录字段和日期、正文路径与 UTF-8 内容、照片引用及密码配置；备份内密码只决定导入后的访问密码，不用于授权覆盖当前数据。备份缺少密码文件或密码值为空字符串时，服务端以 `IMPORT_PASSWORD_REQUIRED` 响应要求前端完成两次 6 位数字输入，再把配置补入或替换进暂存数据；非空但不是 6 位数字的密码仍按不支持格式拒绝。所有文件写入项目内临时目录后才通过 `rename` 替换，密码错误、校验失败或取消设置均保留原目录；写入失败会尝试恢复备份并清理暂存目录。数据提交与页面刷新分别报告，刷新失败时不误报写入失败。
+动态全量数据导出遍历普通文件并把 `data/` 作为 ZIP 根目录，通过当前站点的 HTTP API 返回；local 与 remote write mode 使用同一来源策略。GitHub Pages 部署阶段调用 `scripts/build-data-backup.js` 生成同结构静态 ZIP，避免浏览器 Blob 地址被外部下载工具接管后得到空文件。导入先用当前 `data/password.json` 做页面门禁，服务端在取得数据锁后复核 `X-Travel-Current-Password`，再校验 ZIP 路径与跨平台文件与父目录大小写冲突、文件与目录重名、索引 JSON、记录字段和日期、正文路径与 UTF-8 内容、照片引用及密码配置；备份内密码只决定导入后的访问密码，不用于授权覆盖当前数据。备份缺少密码文件或密码值为空字符串时，服务端以 `IMPORT_PASSWORD_REQUIRED` 响应要求前端完成两次 6 位数字输入，再把配置补入或替换进暂存数据；非空但不是 6 位数字的密码仍按不支持格式拒绝。所有文件写入项目内临时目录后才通过 `rename` 替换，密码错误、校验失败或取消设置均保留原目录；写入失败会尝试恢复备份并清理暂存目录。数据提交与页面刷新分别报告，刷新失败时不误报写入失败。
+
+进程令牌和公开的 6 位密码用于阻止跨站请求与误操作，不是用户身份系统。remote write mode 必须默认关闭；公网部署需要在应用上游使用 HTTPS 和真正的访问控制，例如反向代理 HTTP Authentication、VPN 或 Zero Trust。
 
 ## 拆分原则
 

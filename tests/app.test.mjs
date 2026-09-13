@@ -20,13 +20,13 @@ delete globalThis.document;
 test('删除已提交但数据刷新失败时返回已删除状态，避免误报删除失败', async t => {
     const previous = { window: globalThis.window, fetch: globalThis.fetch };
     t.after(() => Object.assign(globalThis, previous));
-    globalThis.window = { location: { hostname: 'localhost', href: 'http://localhost:9000/' } };
+    globalThis.window = { location: { hostname: 'diary.example', href: 'https://diary.example/' } };
     let requests = 0;
     globalThis.fetch = async () => {
         requests += 1;
         if (requests > 2) throw new Error('模拟刷新失败');
         return { ok: true, json: async () => requests === 1
-            ? { service: 'travel-diary-writer-v1', token: 'test', methods: ['DELETE'] }
+            ? { service: 'travel-diary-writer-v1', token: 'test', methods: ['DELETE'], writeMode: 'remote' }
             : { deleted: true } };
     };
     assert.deepEqual(await app.deleteTravelRecord({ desc_md: 'data/travel-diary/2026/test.md' }), { refreshFailed: true });

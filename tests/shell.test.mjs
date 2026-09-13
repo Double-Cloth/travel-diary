@@ -176,9 +176,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260913-editor-state-v6/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260913-remote-writes-v1/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260913-select-placement-v2/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260913-editor-state-v5/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260913-remote-writes-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
 });
@@ -276,8 +276,8 @@ test('日记详情提供经过密码验证的修改与删除入口', () => {
     assert.match(appJs, /refs\.confirmDeleteRecord\(record\)\.then\(confirmed/);
     assert.doesNotMatch(appJs, /window\.confirm\(`确定删除旅行记录/);
     assert.doesNotMatch(appJs, /window\.alert\(`已删除旅行记录/);
-    assert.match(appJs, /service\.methods\.includes\('DELETE'\)/);
-    assert.match(appJs, /本地保存服务版本过旧，请重新启动项目后再删除记录。/);
+    assert.match(appJs, /capability\.methods\.has\('DELETE'\)/);
+    assert.match(appJs, /服务器写入服务版本过旧，请更新或重新启动服务后再删除记录。/);
     assert.match(recordDeleteDialogJs, /dialog\.className = 'record-delete-dialog entry-sheet'/);
     assert.match(recordDeleteDialogJs, /dialog\.showModal\(\)/);
     assert.match(recordDeleteDialogJs, /暂不删除/);
@@ -285,7 +285,9 @@ test('日记详情提供经过密码验证的修改与删除入口', () => {
     assert.doesNotMatch(recordDeleteDialogJs, /window\.(?:alert|confirm)\(/);
     assert.match(recordEditorJs, /method: editingRecord \? 'PUT' : 'POST'/);
     assert.match(recordEditorJs, /editingRecord && !writerMethods\.has\('PUT'\)/);
-    assert.match(recordEditorJs, /本地保存服务版本过旧，请重新启动项目后再修改记录。/);
+    assert.match(recordEditorJs, /服务器写入服务版本过旧，请更新或重新启动服务后再修改记录。/);
+    assert.doesNotMatch(appJs, /window\.location\.hostname/);
+    assert.doesNotMatch(recordEditorJs, /window\.location\.hostname/);
     assert.match(recordEditorJs, /getRecordInput\(record\)/);
     assert.match(recordStoreJs, /if \(req\.method === 'PUT'\)/);
     assert.match(recordStoreJs, /if \(req\.method === 'DELETE'\)/);
@@ -307,8 +309,9 @@ test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => 
     assert.match(appJs, /data-action="export-all-data"[^}]+event\.preventDefault\(\);[^}]+openDataExport\(\)/s);
     assert.match(dataTransferJs, /api\/travel-data/);
     assert.match(dataTransferJs, /travel-diary-data\.zip/);
-    assert.match(dataTransferJs, /function exportAll\([^)]*\)[\s\S]+link\.href = getExportHref\(\);[\s\S]+link\.click\(\);/);
+    assert.match(dataTransferJs, /async function exportAll\([^)]*\)[\s\S]+link\.href = await getExportHref\(\);[\s\S]+link\.click\(\);/);
     assert.doesNotMatch(dataTransferJs, /createObjectURL|new Blob|\.exportAll\(/);
+    assert.doesNotMatch(dataTransferJs, /window\.location\.hostname|isLocalWriterHost/);
 });
 
 test('全部数据导入使用站内确认对话框而不是浏览器 confirm', () => {

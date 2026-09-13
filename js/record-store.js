@@ -7,6 +7,56 @@ function failure(status, message) {
     return Object.assign(new Error(message), { status });
 }
 
+const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
+
+function isValidHostHeader(host) {
+    if (typeof host !== 'string' || !host || host !== host.trim() || host.length > 512) return false;
+    try {
+        const parsed = new URL(`http://${host}`);
+        return Boolean(parsed.hostname)
+            && !parsed.username
+            && !parsed.password
+            && parsed.pathname === '/'
+            && !parsed.search
+            && !parsed.hash;
+    } catch {
+        return false;
+    }
+}
+
+function isMatchingHttpOrigin(host, origin) {
+    if (!isValidHostHeader(host)) return false;
+    if (!origin) return true;
+    if (typeof origin !== 'string') return false;
+    try {
+        const parsedOrigin = new URL(origin);
+        if (!['http:', 'https:'].includes(parsedOrigin.protocol)
+            || parsedOrigin.origin !== origin
+            || parsedOrigin.pathname !== '/'
+            || parsedOrigin.username
+            || parsedOrigin.password) return false;
+        const hostAtOriginScheme = new URL(`${parsedOrigin.protocol}//${host}`);
+        return hostAtOriginScheme.host === parsedOrigin.host;
+    } catch {
+        return false;
+    }
+}
+
+function isWriterRequestAllowed(request, writeMode = 'local') {
+    const host = request.host || '';
+    if (writeMode === 'local') {
+        const local = LOOPBACK_ADDRESSES.has(request.remoteAddress);
+        const validHost = [
+            `localhost:${request.localPort}`,
+            `127.0.0.1:${request.localPort}`,
+            `[::1]:${request.localPort}`
+        ].includes(host);
+        return local && validHost && (!request.origin || request.origin === `http://${host}`);
+    }
+    if (writeMode !== 'remote' || !isValidHostHeader(host)) return false;
+    return isMatchingHttpOrigin(host, request.origin);
+}
+
 // 写入路径逐层检查，禁止通过链接或 junction 改写项目外的文件。
 async function checkedDirectory(root, parts, create = false) {
     let current = root;
@@ -381,7 +431,9 @@ async function deleteRecord(root, payload) {
     }
 }
 
-function createRecordApi(root) {
+function createRecordApi(root, options = {}) {
+    const writeMode = options.writeMode || 'local';
+    if (!['local', 'remote'].includes(writeMode)) throw new Error(`不支持的写入模式：${writeMode}`);
     const token = randomBytes(32).toString('hex');
     return async (req, res) => {
         const send = (status, value) => {
@@ -391,14 +443,20 @@ function createRecordApi(root) {
         const host = req.headers.host || '';
         const requestUrl = new URL(req.url, 'http://localhost');
         const requestPath = requestUrl.pathname;
-        const local = ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress);
-        const validHost = [`localhost:${req.socket.localPort}`, `127.0.0.1:${req.socket.localPort}`, `[::1]:${req.socket.localPort}`].includes(host);
-        if (!local || !validHost || (req.headers.origin && req.headers.origin !== `http://${host}`)) {
-            send(403, { error: '仅允许通过本机 localhost 页面保存记录；局域网访问为只读。' });
+        const allowed = isWriterRequestAllowed({
+            remoteAddress: req.socket.remoteAddress,
+            localPort: req.socket.localPort,
+            host,
+            origin: req.headers.origin
+        }, writeMode);
+        if (!allowed) {
+            send(403, { error: writeMode === 'local'
+                ? '当前服务器仅允许通过本机 localhost 或回环地址写入；远程页面为只读。'
+                : '写入请求的 Host 或 Origin 与当前站点不匹配。' });
             return;
         }
         if (requestPath === '/api/travel-records' && req.method === 'GET') {
-            send(200, { service: 'travel-diary-writer-v1', token, methods: ['POST', 'PUT', 'DELETE'] });
+            send(200, { service: 'travel-diary-writer-v1', token, methods: ['POST', 'PUT', 'DELETE'], writeMode });
             return;
         }
         if (requestPath === '/api/travel-data') {
@@ -472,4 +530,4 @@ function createRecordApi(root) {
     };
 }
 
-module.exports = { createRecordApi };
+module.exports = { createRecordApi, isMatchingHttpOrigin, isValidHostHeader, isWriterRequestAllowed };
