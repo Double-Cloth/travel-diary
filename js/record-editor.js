@@ -564,7 +564,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         updateMarkdownHighlight('');
         userEditedAutofillFields.clear();
         autoFilledValues.clear();
-        dirty = true;
+        dirty = false;
         dialog.querySelector('.record-editor-files').open = false;
         updateCountry();
         updatePathHint();
@@ -817,11 +817,18 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (!event.target.matches('[data-editor-file]')) return;
         const file = event.target.files[0];
         if (!file) return;
+        if (busy || saved || readingPhotos) { event.target.value = ''; return; }
+        if (dirty) {
+            status('当前有未保存内容。请先导出草稿，再清空编辑器后导入。');
+            event.target.value = '';
+            return;
+        }
+        busy = true;
+        dialog.querySelector('form').inert = true;
         try {
             const draft = file.name.toLocaleLowerCase('en-US').endsWith('.zip')
                 ? readDraftArchive(await file.arrayBuffer())
                 : readDraft(JSON.parse(await file.text()));
-            if (dirty) throw new Error('当前有未保存内容，无法直接导入。请先保存；如需替换，请导出草稿并刷新页面后再导入。');
             for (const key of RECORD_FIELDS) field(key).value = key === 'photos' ? draft.input.photos.join('\n') : draft.input[key];
             requestId = draft.requestId;
             uploads = readUploads(draft.uploads);
@@ -841,6 +848,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         } catch (error) {
             status(error instanceof SyntaxError ? '文件不是有效的 JSON 草稿。' : error.message);
         } finally {
+            busy = false;
+            dialog.querySelector('form').inert = false;
             event.target.value = '';
         }
     });
@@ -902,10 +911,9 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             trigger = document.activeElement;
             const requestedRecordKey = record ? `record:${record.desc_md || record.id || ''}` : 'new';
             const currentRecordKey = editingRecord ? `record:${editingRecord.desc_md || editingRecord.id || ''}` : 'new';
-            const replacingNewDraft = !record && !editingRecord;
             let shouldRender = !initialized || saved || requestedRecordKey !== currentRecordKey;
-            if (initialized && !saved && dirty && (requestedRecordKey !== currentRecordKey || replacingNewDraft)) {
-                const confirmed = await confirmFeedback('编辑器中还有未保存内容。请先保存或导出草稿，再打开另一条记录。', {
+            if (initialized && !saved && dirty && requestedRecordKey !== currentRecordKey) {
+                const confirmed = await confirmFeedback('打开另一条记录会清空当前未保存内容，且无法撤销。需要保留时，请取消并导出草稿。', {
                     label: '编辑器',
                     title: '编辑器中有未保存内容',
                     cancelLabel: '取消',

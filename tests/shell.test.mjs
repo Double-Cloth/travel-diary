@@ -176,9 +176,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260913-editor-location-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260913-review-v2/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260912-edit-save-caret-v1/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260913-editor-location-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260913-editor-review-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260912-select-placement-v1/);
 });
@@ -216,7 +216,7 @@ test('新增记录默认使用中国并允许中国地点双向补全', () => {
 });
 
 test('切换记录前的未保存提示支持取消或立即清空编辑器', () => {
-    assert.match(recordEditorJs, /编辑器中还有未保存内容。请先保存或导出草稿，再打开另一条记录。/);
+    assert.match(recordEditorJs, /打开另一条记录会清空当前未保存内容，且无法撤销。/);
     assert.match(recordEditorJs, /cancelLabel: '取消'/);
     assert.match(recordEditorJs, /confirmLabel: '立即清空编辑器'/);
     assert.match(recordEditorJs, /if \(!confirmed\) return;/);
@@ -305,7 +305,7 @@ test('全部数据导入使用站内确认对话框而不是浏览器 confirm', 
 test('全部数据导入成功后使用站内结果弹窗而不是状态文字', () => {
     assert.match(dataTransferJs, /successDialog\.className = 'data-import-success entry-sheet'/);
     assert.match(dataTransferJs, /<h2 id="dataImportSuccessTitle">导入成功<\/h2>/);
-    assert.match(dataTransferJs, /await onImported\(\);\s*setStatus\(''\);\s*showImportSuccess\(\);/);
+    assert.match(dataTransferJs, /await onImported\(\);[\s\S]*setStatus\(''\);\s*showImportSuccess\(\);/);
     assert.match(dataTransferJs, /successDialog\.showModal\(\)/);
     assert.match(dataTransferJs, /data-import-success-close/);
     assert.doesNotMatch(dataTransferJs, /已导入 \$\{result\.files\} 个文件/);

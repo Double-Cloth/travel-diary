@@ -134,8 +134,9 @@ export function createDataTransfer(onImported) {
         restoreImportFocus();
     }
 
-    function showImportSuccess() {
+    function showImportSuccess(message = '全部旅行数据已更新。') {
         if (successDialog.open) return;
+        successDialog.querySelector('#dataImportSuccessDescription').textContent = message;
         successDialog.showModal();
         successDialog.querySelector('[data-import-success-close]').focus();
     }
@@ -232,7 +233,12 @@ export function createDataTransfer(onImported) {
                 ({ response, result } = await uploadArchive(file, token, currentPassword, password));
             }
             if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
-            await onImported();
+            try { await onImported(); }
+            catch {
+                setStatus('数据已导入，页面刷新失败。请手动刷新后查看。');
+                showImportSuccess('数据已导入，页面刷新失败。请手动刷新后查看。');
+                return;
+            }
             setStatus('');
             showImportSuccess();
         } catch (error) {
