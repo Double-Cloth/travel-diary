@@ -22,26 +22,11 @@ async function acquireDataLock(root) {
 }
 
 function safeArchivePath(name) {
-    if (!name.startsWith('data/') || /[\u0000-\u001f\u007f:]/.test(name) || name.includes('\\')) return false;
+    if (!name.startsWith('data/') || /[\u0000-\u001f\u007f:<>"|?*]/.test(name) || name.includes('\\')) return false;
     const parts = name.split('/');
     return parts.length > 1 && parts.every(part => part && part !== '.' && part !== '..'
         && !/[. ]$/.test(part)
         && !/^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(part));
-}
-
-function isValidDateString(value) {
-    if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
-    const [year, month, day] = value.split('-').map(Number);
-    const date = new Date(Date.UTC(year, month - 1, day));
-    return date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day;
-}
-
-function isSafeAsciiFileName(name) {
-    return typeof name === 'string'
-        && /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)
-        && !name.includes('..')
-        && !name.endsWith('.')
-        && !/^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(name);
 }
 
 function decodeUtf8(data, fileName) {
@@ -122,7 +107,10 @@ async function verifyCurrentPassword(root, password) {
     }
 }
 
-function validateImportedRecords(entries) {
+async function validateImportedRecords(entries) {
+    const [{ isValidDateString }, { isSafeAsciiFileName }] = await Promise.all([
+        import('./analytics.mjs'), import('./slug.mjs')
+    ]);
     const files = new Map(entries.map(entry => [entry.name, entry.data]));
     const index = files.get('data/travel_data.json');
     if (!index) throw failure(400, '备份缺少 data/travel_data.json。');
@@ -236,11 +224,21 @@ async function importDataArchive(root, archive, options = {}) {
         if (!entries.length || entries.some(entry => !safeArchivePath(entry.name))) {
             throw failure(400, '备份只能包含 data/ 目录中的安全文件路径。');
         }
-        const portablePaths = new Set(entries.map(entry => entry.name.toLocaleLowerCase('en-US')));
-        if (portablePaths.size !== entries.length) {
-            throw failure(400, '备份包含仅大小写不同的重复路径，无法安全导入。');
+        const portablePaths = new Map();
+        for (const entry of entries) {
+            const parts = entry.name.split('/');
+            for (let length = 1; length <= parts.length; length += 1) {
+                const name = parts.slice(0, length).join('/');
+                const key = name.toLocaleLowerCase('en-US');
+                const isFile = length === parts.length;
+                const previous = portablePaths.get(key);
+                if (previous && (previous.name !== name || previous.isFile || isFile)) {
+                    throw failure(400, '备份包含大小写冲突或文件与目录重名的路径，无法安全导入。');
+                }
+                portablePaths.set(key, { name, isFile });
+            }
         }
-        validateImportedRecords(entries);
+        await validateImportedRecords(entries);
         const passwordCreated = ensureImportedPassword(entries, options.password);
         await fs.mkdir(stageData, { recursive: true });
         for (const entry of entries) {

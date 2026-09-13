@@ -119,7 +119,48 @@ test('全部数据导入拒绝无效记录字段、密码配置与大小写冲�
         { name: 'data/travel_data.json', data: '[]' },
         { name: 'data/password.json', data: '{"password":"123456"}' },
         { name: 'data/PASSWORD.json', data: '{}' }
-    ]), { currentPassword: '123456' }), /仅大小写不同的重复路径/);
+    ]), { currentPassword: '123456' }), /大小写冲突/);
+});
+
+test('备份导入与记录保存使用相同日期校验，支持低年份与世纪闰年', async t => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-archive-dates-'));
+    t.after(async () => fs.rm(root, { recursive: true, force: true }));
+    await fs.mkdir(path.join(root, 'data'));
+    await fs.writeFile(path.join(root, 'data/password.json'), '{"password":"123456"}');
+    for (const date of ['0004-02-29', '0099-12-31', '2000-02-29']) {
+        const record = { date, country: '中国', country_code: 'CN', admin_area: '', locality: '测试',
+            desc_md: `data/travel-diary/${date.slice(0, 4)}/${date}-test.md`, photo_folder: '', photos: [] };
+        const archive = createZip([
+            { name: 'data/travel_data.json', data: JSON.stringify([record]) },
+            { name: 'data/password.json', data: '{"password":"123456"}' },
+            { name: record.desc_md, data: '# 测试\n' }
+        ]);
+        await importDataArchive(root, archive, { currentPassword: '123456' });
+        assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
+    }
+});
+
+test('导入在写入前拒绝父目录大小写冲突、文件目录重名及跨平台非法字符', async t => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-archive-paths-'));
+    t.after(async () => fs.rm(root, { recursive: true, force: true }));
+    await fs.mkdir(path.join(root, 'data'));
+    await fs.writeFile(path.join(root, 'data/password.json'), '{"password":"123456"}');
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
+    for (const names of [
+        ['data/Photos/a.png', 'data/photos/b.png'],
+        ['data/file', 'data/file/child'],
+        ['data/file/child', 'data/file'],
+        ...['<', '>', '"', '|', '?', '*'].map(character => [`data/test${character}.txt`])
+    ]) {
+        const archive = createZip([
+            { name: 'data/travel_data.json', data: '[]' },
+            { name: 'data/password.json', data: '{"password":"123456"}' },
+            ...names.map(name => ({ name, data: 'x' }))
+        ]);
+        await assert.rejects(importDataArchive(root, archive, { currentPassword: '123456' }), error => error.status === 400);
+        assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]');
+        assert.deepEqual(await fs.readdir(root), ['data']);
+    }
 });
 
 test('全部数据导入必须使用当前数据密码授权', async t => {
