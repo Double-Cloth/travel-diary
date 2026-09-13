@@ -7,7 +7,7 @@ globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
     renderWithPageTurn, scheduleSearchRouteUpdate, syncRouteFromHash,
-    applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget };
+    applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget, deleteTravelRecord };
 export function setTestState(values) {
     if (values.spread) refs.spread = values.spread;
     if (values.route) activeRoute = values.route;
@@ -16,6 +16,21 @@ export function setTestState(values) {
 }
 `);
 delete globalThis.document;
+
+test('删除已提交但数据刷新失败时返回已删除状态，避免误报删除失败', async t => {
+    const previous = { window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.window = { location: { hostname: 'localhost', href: 'http://localhost:9000/' } };
+    let requests = 0;
+    globalThis.fetch = async () => {
+        requests += 1;
+        if (requests > 2) throw new Error('模拟刷新失败');
+        return { ok: true, json: async () => requests === 1
+            ? { service: 'travel-diary-writer-v1', token: 'test', methods: ['DELETE'] }
+            : { deleted: true } };
+    };
+    assert.deepEqual(await app.deleteTravelRecord({ desc_md: 'data/travel-diary/2026/test.md' }), { refreshFailed: true });
+});
 
 test('路由搜索保留查询值中的后续问号', () => {
     assert.equal(app.parseRoute('#ledger?q=去哪?怎么去?&year=2026').params.q, '去哪?怎么去?');

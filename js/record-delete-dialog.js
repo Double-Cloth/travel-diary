@@ -114,8 +114,8 @@ export function createRecordDeleteDialog() {
 
     return {
         confirm,
-        showSuccess(record) {
-            showResult('success', '记录已删除', `旅行记录“${record.title}”已删除，相关照片文件仍然保留。`);
+        showSuccess(record, { refreshFailed = false } = {}) {
+            showResult('success', '记录已删除', `旅行记录“${record.title}”已删除，照片文件已保留。${refreshFailed ? '页面刷新失败，请手动刷新后查看。' : ''}`);
         },
         showError(error) {
             showResult('error', '删除未完成', error?.message || '删除记录失败，请重试。');

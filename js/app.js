@@ -2,7 +2,7 @@ import { loadTravelData, loadTravelRecords } from './data.js';
 import { createRecordEditor } from './record-editor.js?v=20260913-editor-keyboard-v3';
 import { createPasswordGate } from './record-password.js?v=20260912-import-password';
 import { createDataTransfer } from './data-transfer.js?v=20260913-import-feedback-v2';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260912-record-delete-dialog';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { showFeedback } from './feedback-dialog.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
@@ -131,8 +131,8 @@ async function initApp() {
         pendingDeleteRecord = null;
         try {
             if (!record) throw new Error('要删除的旅行记录已失效，请重新打开后再试。');
-            await deleteTravelRecord(record);
-            recordDeleteDialog.showSuccess(record);
+            const result = await deleteTravelRecord(record);
+            recordDeleteDialog.showSuccess(record, result);
         } catch (error) {
             recordDeleteDialog.showError(error);
         }
@@ -1482,10 +1482,12 @@ async function deleteTravelRecord(record) {
     });
     const result = await response.json();
     if (!response.ok || !result.deleted) throw new Error(result.error || '未收到服务器的删除确认。');
-    await refreshTravelModel(getRefreshKey());
+    try { await refreshTravelModel(getRefreshKey()); }
+    catch { return { refreshFailed: true }; }
     closeEntrySheet();
     window.location.hash = lastReadingHash || '#ledger';
     syncRouteFromHash({ initial: true });
+    return { refreshFailed: false };
 }
 
 function openPhotoViewer(photos, index = 0) {
