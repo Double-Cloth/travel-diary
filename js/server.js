@@ -80,7 +80,7 @@ Options:
   --help, -h    Show this help
 
 Authentication:
-  Run npm run auth:set before remote deployment. Remote mode refuses legacy weak credentials.
+  Run npm run auth:set to replace the 6-digit access password with a server-side scrypt hash.
 
 Examples:
   node js/server.js

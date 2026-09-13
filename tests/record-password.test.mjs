@@ -6,8 +6,8 @@ import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
 const { createAuthConfig, validateAuthConfig, validatePassword, verifyPassword } = require('../js/auth.js');
 
-test('生产认证使用带随机盐的 scrypt 哈希且不保存明文口令', async () => {
-    const password = 'correct horse battery staple';
+test('六位数字密码使用带随机盐的 scrypt 哈希且不保存明文', async () => {
+    const password = '483920';
     const first = await createAuthConfig(password);
     const second = await createAuthConfig(password);
     assert.equal(first.algorithm, 'scrypt');
@@ -19,16 +19,17 @@ test('生产认证使用带随机盐的 scrypt 哈希且不保存明文口令', 
     assert.equal(validateAuthConfig(first, { requireProduction: true }).productionReady, true);
 });
 
-test('生产口令策略拒绝短口令和低多样性口令', () => {
-    for (const password of [null, '', '123456', 'a'.repeat(16), 'abcabcabcabcabca']) {
-        assert.throws(() => validatePassword(password), /口令/);
+test('密码策略只接受六位数字', () => {
+    assert.equal(validatePassword('123456'), '123456');
+    for (const password of [null, '', '12345', '1234567', 'abcdef', '１２３４５６']) {
+        assert.throws(() => validatePassword(password), /密码/);
     }
 });
 
-test('仓库不再发布明文密码，兼容配置禁止 remote 生产启动', async () => {
+test('仓库不再发布明文密码，后端配置可用于 remote 模式', async () => {
     await assert.rejects(access(new URL('../data/password.json', import.meta.url)));
     const config = JSON.parse(await readFile(new URL('../.secrets/auth.json', import.meta.url), 'utf8'));
     assert.equal('password' in config, false);
-    assert.throws(() => validateAuthConfig(config, { requireProduction: true }), /npm run auth:set/);
-    assert.equal(await verifyPassword(config, '240918'), true);
+    assert.equal(validateAuthConfig(config, { requireProduction: true }).productionReady, true);
+    assert.equal(await verifyPassword(config, '000000'), false);
 });

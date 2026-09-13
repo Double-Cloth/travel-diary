@@ -5,7 +5,7 @@
 | 命令 | 用途 | 是否需要联网 |
 | --- | --- | --- |
 | `npm start` | 以 `--local --write-mode=local` 默认值启动站点及数据服务。 | 否 |
-| `npm run auth:set` | 在交互式终端设置强访问口令，并更新 `.secrets/auth.json` 的 `scrypt` 哈希。 | 否 |
+| `npm run auth:set` | 在交互式终端设置 6 位数字访问密码，并更新 `.secrets/auth.json` 的 `scrypt` 哈希。 | 否 |
 | `npm test` | 运行全部 Node.js 测试。 | 否 |
 | `npm run data:archive` | 将当前 `data/` 生成到 `dist/travel-diary-data.zip`。 | 否 |
 | `npm run fonts` | 从 TTF 生成完整 WOFF2 字体。 | 否，但需预装 `fonttools[woff]` |
@@ -17,7 +17,7 @@
 
 普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份。`--local` / `--network` 只决定监听范围，`--write-mode=local|remote` 单独决定写入策略；默认始终是 local，因此 `--network` 本身不会开放写权限。启动日志会同时显示 Bind 与 Write mode，remote 模式还会输出明显安全警告。
 
-remote 模式要求 `.secrets/auth.json` 已由 `npm run auth:set` 配置为生产级强口令，否则启动直接失败。口令只保存带随机盐的 `scrypt` 哈希；服务端登录连续失败 5 次后限速 15 分钟，成功会话最长 8 小时，使用 `HttpOnly`、`SameSite=Strict` Cookie，HTTPS Origin 自动增加 `Secure`。项目服务器会拒绝 `.secrets/` 和任何指向它的目录链接，但其他 Web 服务器也必须配置同等拒绝规则。
+remote 模式要求 `.secrets/auth.json` 使用后端生成的六位数字密码配置。密码只保存带随机盐的 `scrypt` 哈希；服务端同一来源登录连续失败 5 次后锁定 15 分钟，成功会话最长 8 小时，使用 `HttpOnly`、`SameSite=Strict` Cookie，HTTPS Origin 自动增加 `Secure`。项目服务器会拒绝 `.secrets/` 和任何指向它的目录链接，但其他 Web 服务器也必须配置同等拒绝规则。
 
 局域网 HTTP 可用，但生产环境必须由 Nginx、Caddy、Apache 或 Cloudflare Tunnel 终止 HTTPS 后转发到 Node HTTP 端口。代理应保留外部 `Host`；服务端允许 Origin 的协议与内部连接协议不同，但要求 HTTP/HTTPS Origin 的 authority 与 Host 一致，并忽略 `X-Forwarded-*` 授权提示。公网部署仍建议叠加 HTTP Authentication、VPN、Zero Trust 或等效身份控制。
 
@@ -27,16 +27,17 @@ remote 模式要求 `.secrets/auth.json` 已由 `npm run auth:set` 配置为生�
 2. 使用专门的低权限系统账户运行 Node；Linux 启动时会把 `.secrets/` 和 `auth.json` 权限收紧为 `0700` / `0600`。Windows 应通过 NTFS ACL 限制为运行账户和管理员可读。
 3. 反向代理只转发请求给 `127.0.0.1:9000`，不要另行把项目根目录作为静态目录发布；如果必须配置静态根目录，应显式拒绝所有点目录。
 4. 对外只开放 HTTPS，启用 HSTS，并保留浏览器看到的外部 Host。不要依据客户端提供的 `X-Forwarded-*` 放宽认证或同源判断。
-5. `.secrets/auth.json` 可以纳入版本控制，但生产仓库必须限制访问，并使用密码管理器生成的高熵长口令。哈希可供离线猜测，公开仓库不是安全的秘密存储边界。
-6. 动态完整备份包含认证哈希，应存入受访问控制且加密的备份位置；静态构建产物不得包含 `.secrets/`。
+5. `.secrets/auth.json` 可以纳入版本控制，但远程写入仓库必须限制访问。六位数字哈希可以被离线穷举，公开仓库不是安全的秘密存储边界。
+6. 六位密码不能单独承担公网身份认证；公网必须在反向代理、VPN 或 Zero Trust 层增加独立访问控制。
+7. 动态完整备份包含认证哈希，应存入受访问控制且加密的备份位置；静态构建产物不得包含 `.secrets/`。
 
 ## 写入故障恢复
 
 | 现象 | 检查项 |
 | --- | --- |
-| 编辑器显示只读模式 | 确认当前站点能访问 `GET /api/travel-records` 和 `POST /api/travel-auth`。默认 local 模式只允许 localhost / 回环地址；远程写入需设置强口令并显式使用 `--write-mode=remote`；静态托管始终只读。 |
+| 编辑器显示只读模式 | 确认当前站点能访问 `GET /api/travel-records` 和 `POST /api/travel-auth`。默认 local 模式只允许 localhost / 回环地址；远程写入需显式使用 `--write-mode=remote`；静态托管始终只读。 |
 | remote 模式仍返回 Host / Origin 错误 | 确认浏览器页面与 API 使用同一站点的相对 URL，代理保留外部 Host，Origin 的域名与端口和 Host 一致；不要依靠 `X-Forwarded-*` 绕过判断。 |
-| remote 模式提示认证配置非生产级 | 在服务器项目目录的交互式终端运行 `npm run auth:set`，设置至少 16 个字符的强口令，然后重启。 |
+| remote 模式提示认证配置无效 | 在服务器项目目录的交互式终端运行 `npm run auth:set`，重新设置 6 位数字密码，然后重启。 |
 | 口令正确但无法继续 | 检查 `.secrets/` 与 `auth.json` 是普通目录和普通文件、Node 进程可读；确认反向代理保留 Host 与 `Set-Cookie`，HTTPS 页面得到的 Cookie 带 `Secure`。修改配置后重启。 |
 | 登录返回 429 | 同一来源在 15 分钟内连续失败达到 5 次；等待 `Retry-After` 指示的时间，或在确认没有攻击后重启进程清除内存限速状态。 |
 | 正文路径无效 | 核对年份目录、旅行日期前缀、`.md` 扩展名及文件名字符。 |

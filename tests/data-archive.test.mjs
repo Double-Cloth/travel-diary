@@ -73,14 +73,14 @@ test('导入拒绝越界路径、缺失正文及非法认证配置', async t => 
     assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]');
 });
 
-test('remote 导入拒绝兼容期弱认证配置', async t => {
+test('remote 导入拒绝未由后端生成的认证策略配置', async t => {
     const root = await fixture(t, 'travel-diary-archive-weak-auth-');
-    const weak = { ...AUTH_CONFIG, policy: { minimumLength: 6, productionReady: false } };
+    const weak = { ...AUTH_CONFIG, policy: { format: 'digits', length: 6, productionReady: false } };
     const archive = createZip([
         { name: 'data/travel_data.json', data: '[]' },
         { name: '.secrets/auth.json', data: JSON.stringify(weak) }
     ]);
-    await assert.rejects(importDataArchive(root, archive, { requireProductionAuth: true }), /生产级口令/);
+    await assert.rejects(importDataArchive(root, archive, { requireProductionAuth: true }), /后端生成/);
 });
 
 test('备份导入与记录保存使用相同日期校验，支持低年份与世纪闰年', async t => {

@@ -3,11 +3,15 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { once } from 'node:events';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, mkdir, writeFile, symlink, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, symlink, rm } from 'node:fs/promises';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHandler, parseArgs, safeJoin, listenWithRetries } from '../js/server.js';
 import { isMatchingHttpOrigin, isValidHostHeader, isWriterRequestAllowed } from '../js/record-store.js';
+
+const require = createRequire(import.meta.url);
+const { validateAuthConfig } = require('../js/auth.js');
 
 let fixture;
 let root;
@@ -128,12 +132,9 @@ test('CLI help 说明监听与写入配置，并包含显式远程写入示例',
     assert.match(result.stdout, /npm run auth:set/);
 });
 
-test('remote 服务拒绝使用仓库内的兼容期弱凭据启动', () => {
-    const result = spawnSync(process.execPath, ['js/server.js', '--write-mode=remote'], {
-        cwd: path.resolve(import.meta.dirname, '..'), encoding: 'utf8'
-    });
-    assert.notEqual(result.status, 0);
-    assert.match(result.stderr, /npm run auth:set/);
+test('仓库内后端生成的六位密码配置可启用 remote 服务', async () => {
+    const config = JSON.parse(await readFile(path.resolve(import.meta.dirname, '../.secrets/auth.json'), 'utf8'));
+    assert.equal(validateAuthConfig(config, { requireProduction: true }).productionReady, true);
 });
 
 test('local 写入保持回环地址、回环 Host 与 HTTP 同源限制', () => {

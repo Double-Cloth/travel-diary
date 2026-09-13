@@ -5,8 +5,8 @@ const { promisify } = require('util');
 
 const scryptAsync = promisify(scrypt);
 const AUTH_RELATIVE_PATH = '.secrets/auth.json';
-const PASSWORD_MIN_LENGTH = 16;
-const PASSWORD_MAX_LENGTH = 128;
+const PASSWORD_LENGTH = 6;
+const PASSWORD_MAX_LENGTH = PASSWORD_LENGTH;
 const SCRYPT_OPTIONS = Object.freeze({ N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
 const HASH_LENGTH = 32;
 
@@ -15,11 +15,8 @@ function authFailure(message, code = 'AUTH_CONFIG_INVALID') {
 }
 
 function validatePassword(password) {
-    if (typeof password !== 'string' || password.length < PASSWORD_MIN_LENGTH || password.length > PASSWORD_MAX_LENGTH) {
-        throw authFailure(`访问口令必须为 ${PASSWORD_MIN_LENGTH} 到 ${PASSWORD_MAX_LENGTH} 个字符。`, 'PASSWORD_POLICY_INVALID');
-    }
-    if (new Set(password).size < 6) {
-        throw authFailure('访问口令过于简单，请使用更长的随机口令或多个无关单词组成的口令短语。', 'PASSWORD_POLICY_INVALID');
+    if (typeof password !== 'string' || !/^\d{6}$/.test(password)) {
+        throw authFailure('访问密码必须为 6 位数字。', 'PASSWORD_POLICY_INVALID');
     }
     return password;
 }
@@ -44,9 +41,11 @@ function validateAuthConfig(config, { requireProduction = false } = {}) {
     }
     decodeBase64(config.salt, 16, 'salt');
     decodeBase64(config.hash, HASH_LENGTH, 'hash');
-    const productionReady = config.policy?.minimumLength >= PASSWORD_MIN_LENGTH && config.policy?.productionReady === true;
+    const productionReady = config.policy?.format === 'digits'
+        && config.policy?.length === PASSWORD_LENGTH
+        && config.policy?.productionReady === true;
     if (requireProduction && !productionReady) {
-        throw authFailure(`remote write mode 要求生产级口令，请先运行 npm run auth:set 设置至少 ${PASSWORD_MIN_LENGTH} 个字符的口令。`, 'AUTH_NOT_PRODUCTION_READY');
+        throw authFailure('remote write mode 要求使用后端生成的 6 位数字密码配置，请先运行 npm run auth:set。', 'AUTH_NOT_PRODUCTION_READY');
     }
     return { ...config, productionReady };
 }
@@ -83,7 +82,7 @@ async function createAuthConfig(password) {
         hash: Buffer.from(hash).toString('base64'),
         keyLength: HASH_LENGTH,
         cost: { N: SCRYPT_OPTIONS.N, r: SCRYPT_OPTIONS.r, p: SCRYPT_OPTIONS.p },
-        policy: { minimumLength: PASSWORD_MIN_LENGTH, productionReady: true }
+        policy: { format: 'digits', length: PASSWORD_LENGTH, productionReady: true }
     };
 }
 
@@ -91,7 +90,7 @@ async function verifyPassword(config, password) {
     const validConfig = validateAuthConfig(config);
     const salt = decodeBase64(validConfig.salt, 16, 'salt');
     const expected = decodeBase64(validConfig.hash, HASH_LENGTH, 'hash');
-    const candidate = typeof password === 'string' && password.length <= PASSWORD_MAX_LENGTH
+    const candidate = typeof password === 'string' && /^\d{6}$/.test(password)
         ? password
         : '\0invalid-password';
     const actual = Buffer.from(await scryptAsync(candidate, salt, HASH_LENGTH, SCRYPT_OPTIONS));
@@ -101,7 +100,7 @@ async function verifyPassword(config, password) {
 module.exports = {
     AUTH_RELATIVE_PATH,
     PASSWORD_MAX_LENGTH,
-    PASSWORD_MIN_LENGTH,
+    PASSWORD_LENGTH,
     SCRYPT_OPTIONS,
     createAuthConfig,
     readAuthConfig,

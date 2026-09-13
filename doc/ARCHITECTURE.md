@@ -111,7 +111,7 @@ data/travel_data.json ────────────────→ getRec
 - `js/record-delete-dialog.js`：删除确认和结果反馈。
 - `js/feedback-dialog.js`：通用提示与清空确认。
 - `js/record-password.js`：新增、修改、删除及动态数据导入导出共用的原生 `dialog` 口令输入，将口令只提交给同源认证 API。
-- `js/auth.js`：认证配置格式、强口令策略、`scrypt` 哈希生成与恒定时间验证。
+- `js/auth.js`：六位数字密码配置、`scrypt` 哈希生成与恒定时间验证。
 - `js/writer-capability.js`：区分写入服务探测、未登录状态和已认证写入能力。
 - `js/draft-archive.mjs`：ZIP 草稿元数据与独立图片文件的打包、读取和旧草稿衔接。
 - `js/data-transfer.js`：个人主页全部数据导入导出的浏览器交互。
@@ -134,7 +134,7 @@ data/travel_data.json ────────────────→ getRec
 
 ## 服务端认证与记录管理的数据流
 
-新增、修改、删除及动态数据导入导出共用服务端认证。`record-password.js` 不读取任何配置文件，只把用户输入通过相对 URL 发送到 `POST /api/travel-auth`。服务端从普通文件 `.secrets/auth.json` 读取认证配置，以固定参数 `scrypt` 计算候选哈希并用 `timingSafeEqual` 比较。remote 模式要求配置声明至少 16 字符的生产策略；仓库内旧 6 位哈希只能用于 localhost 迁移。
+新增、修改、删除及动态数据导入导出共用服务端认证。`record-password.js` 保留六格指示器与数字键盘，但不读取任何配置文件，也不在浏览器内比较密码；输满 6 位后只通过相对 URL 提交到 `POST /api/travel-auth`。服务端从普通文件 `.secrets/auth.json` 读取认证配置，以固定参数 `scrypt` 计算候选哈希并用 `timingSafeEqual` 比较，再执行登录失败限速。remote 模式只接受由后端工具生成并标记为可远程使用的六位数字配置。
 
 同一来源 15 分钟内连续失败 5 次后被限速。认证成功会创建内存会话和独立 CSRF/写入 token：会话 Cookie 限制为 `/api`、`HttpOnly`、`SameSite=Strict`、最长 8 小时，经过同源校验的 HTTPS Origin 自动添加 `Secure`；token 仅在已登录的认证响应和能力响应中返回。服务重启、显式注销或完整数据导入都会使旧会话失效。所有修改请求必须同时通过 Host/Origin 写入策略、会话和 `X-Travel-Token`，任一条件不能替代其余条件。
 
@@ -156,7 +156,7 @@ Markdown 与 JSON 的写入不构成跨文件事务，进程强制终止或断�
 
 正文预览复用 `js/data.js` 导出的 `parseMarkdown()`，与日记详情使用相同的 HTML 转义和链接过滤规则。源码编辑和预览编辑由 `markdown-editor.js` 负责标题拆分、语法高亮与受限 DOM 序列化；粘贴只接受纯文本。文件写入使用 `buildMarkdown()` 生成正文。新草稿导出为 ZIP，`draft.json` 仅保存字段和照片文件引用，实际图片放在 `photos/`；导入后在内存中恢复为现有写入负载。旧版 v1 至 v3 JSON 草稿继续兼容。
 
-动态全量导出只有在会话有效时才遍历普通文件，把 `data/` 与 `.secrets/auth.json` 写入 ZIP；认证配置不含明文口令。GitHub Pages 构建调用 `scripts/build-data-backup.js` 时沿用默认 `includeAuth: false`，因此公开静态 ZIP 只有 `data/`。导入由当前会话与 token 授权，随后校验 ZIP 路径、跨平台大小写冲突、文件目录重名、索引 JSON、记录字段和日期、正文 UTF-8、照片引用及认证配置；remote 模式拒绝弱认证配置。旧备份缺少 `.secrets/auth.json` 时复制当前配置，旧 `data/password.json` 被过滤。全部内容先写入项目内临时目录，再分别以 `rename` 替换 `data/` 与 `.secrets/`；任一步失败都会恢复两组备份并清理暂存目录。成功后清空会话，确保恢复后的凭据立即成为唯一有效登录凭据。
+动态全量导出只有在会话有效时才遍历普通文件，把 `data/` 与 `.secrets/auth.json` 写入 ZIP；认证配置不含明文密码。GitHub Pages 构建调用 `scripts/build-data-backup.js` 时沿用默认 `includeAuth: false`，因此公开静态 ZIP 只有 `data/`。导入由当前会话与 token 授权，随后校验 ZIP 路径、跨平台大小写冲突、文件目录重名、索引 JSON、记录字段和日期、正文 UTF-8、照片引用及认证配置；remote 模式拒绝未按六位数字策略生成的认证配置。旧备份缺少 `.secrets/auth.json` 时复制当前配置，旧 `data/password.json` 被过滤。全部内容先写入项目内临时目录，再分别以 `rename` 替换 `data/` 与 `.secrets/`；任一步失败都会恢复两组备份并清理暂存目录。成功后清空会话，确保恢复后的凭据立即成为唯一有效登录凭据。
 
 应用认证、同源校验与写入 token 形成纵深防护，但不代替传输安全。remote write mode 默认关闭；公网部署必须使用 HTTPS，并建议在应用上游叠加反向代理认证、VPN 或 Zero Trust。跟踪在 Git 中的密码哈希可能被仓库读者用于离线猜测，因此仓库访问控制和高熵长口令仍是生产边界的一部分。
 

@@ -1,5 +1,5 @@
-import { createPasswordGate } from './record-password.js?v=20260913-server-auth-v1';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=20260913-server-auth-v1';
+import { createPasswordGate } from './record-password.js?v=20260913-server-auth-v2';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=20260913-server-auth-v2';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -98,8 +98,8 @@ export function createDataTransfer(onImported) {
 
     const requestImportAuthorization = createPasswordGate(chooseImportWithAuthorization, {
         title: '导入数据验证',
-        description: '输入服务器访问口令后选择备份。导入成功后认证配置也会恢复。',
-        verifying: '验证成功，正在选择备份…',
+        description: '输入 6 位数字密码后选择备份。导入成功后认证配置也会恢复。',
+        verifying: '正在验证并选择备份…',
         actionError: '无法开始导入，请重试。'
     });
 

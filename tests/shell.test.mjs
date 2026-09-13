@@ -178,7 +178,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260913-server-auth-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260913-server-auth-v2/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260913-select-placement-v2/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260913-remote-writes-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -206,14 +206,15 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
 });
 
 test('新增记录入口先通过服务端口令验证', () => {
-    assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260913-server-auth-v1';/);
+    assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260913-server-auth-v2';/);
     assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\(\(\) => openCreateEditor\(\),/);
     assert.match(appJs, /openRecordEditor = async \(\) =>/);
-    assert.match(recordPasswordJs, /authenticateWriter\(input\.value\)/);
-    assert.match(recordPasswordJs, /type="password"/);
+    assert.match(recordPasswordJs, /authenticateWriter\(password\)/);
+    assert.match(recordPasswordJs, /const PASSWORD_LENGTH = 6/);
+    assert.match(recordPasswordJs, /data-password-key/);
     assert.doesNotMatch(recordPasswordJs, /data\/password\.json/);
     assert.match(writerCapabilityJs, /api\/travel-auth/);
-    assert.match(journalCss, /\.record-password-field input\s*{/);
+    assert.match(journalCss, /\.record-password-keypad\s*{/);
 });
 
 test('新增和修改记录使用独立编辑器实例并生成互不重复的控件 ID', () => {
@@ -344,12 +345,12 @@ test('全部数据导入恢复认证哈希且不再传输旧明文密码头', ()
     assert.doesNotMatch(dataTransferJs, /X-Travel-(?:Current|Import)-Password/);
     assert.match(recordStoreJs, /importDataArchive\(root, Buffer\.concat\(chunks\)/);
     assert.match(authJs, /algorithm: 'scrypt'/);
-    assert.match(authJs, /PASSWORD_MIN_LENGTH = 16/);
+    assert.match(authJs, /PASSWORD_LENGTH = 6/);
 });
 
 test('全部数据导入先建立服务端会话并提交双重写入凭据', () => {
     assert.match(dataTransferJs, /createPasswordGate\(chooseImportWithAuthorization/);
-    assert.match(dataTransferJs, /输入服务器访问口令后选择备份/);
+    assert.match(dataTransferJs, /输入 6 位数字密码后选择备份/);
     assert.match(dataTransferJs, /X-Travel-Token/);
     assert.match(dataTransferJs, /credentials: 'same-origin'/);
     assert.match(recordStoreJs, /travel_session/);

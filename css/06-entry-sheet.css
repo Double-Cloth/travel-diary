@@ -634,14 +634,6 @@ dialog.feedback-dialog.entry-sheet {
 .record-password .journal-label { margin: 0 0 8px; }
 .record-password h2 { margin: 0; color: var(--ink); font-size: 27px; line-height: 1.25; }
 .record-password-note { margin: 9px 0 22px; color: var(--ink-soft); font-size: 14px; line-height: 1.7; }
-.record-password-field { display: grid; gap: 8px; width: min(340px, 100%); margin: 0 auto; text-align: left; color: var(--ink-soft); font-size: 13px; }
-.record-password-field input {
-    width: 100%; box-sizing: border-box; border: 1px solid rgba(111, 74, 37, 0.32); border-radius: 8px;
-    padding: 11px 12px; background: rgba(255, 252, 240, 0.82); color: var(--ink); font: 16px var(--font-serif);
-}
-.record-password-field input:focus { outline: 2px solid rgba(143, 53, 39, 0.24); border-color: var(--stamp); }
-.record-password-submit { width: min(340px, 100%); }
-.record-password-submit:disabled { cursor: wait; opacity: 0.55; }
 .record-password-digits { display: grid; grid-template-columns: repeat(6, 1fr); gap: 9px; width: min(290px, 100%); margin: 0 auto; }
 .record-password-digits span {
     position: relative;

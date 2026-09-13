@@ -1,7 +1,7 @@
 const fs = require('fs/promises');
 const path = require('path');
 const readline = require('readline');
-const { createAuthConfig, PASSWORD_MIN_LENGTH } = require('../js/auth.js');
+const { createAuthConfig, PASSWORD_LENGTH } = require('../js/auth.js');
 
 function readSecret(prompt) {
     if (!process.stdin.isTTY || !process.stdout.isTTY) {
@@ -31,7 +31,7 @@ function readSecret(prompt) {
                 }
                 return;
             }
-            if (!key.ctrl && !key.meta && character && !/[\u0000-\u001f\u007f]/.test(character)) {
+            if (!key.ctrl && !key.meta && /^\d$/.test(character) && value.length < PASSWORD_LENGTH) {
                 value += character;
                 process.stdout.write('*');
             }
@@ -58,10 +58,10 @@ async function writeAuthConfig(root, config) {
 
 async function main() {
     const root = path.resolve(__dirname, '..');
-    process.stdout.write(`访问口令至少需要 ${PASSWORD_MIN_LENGTH} 个字符，建议使用密码管理器生成。\n`);
-    const password = await readSecret('新访问口令：');
+    process.stdout.write(`请设置 ${PASSWORD_LENGTH} 位数字访问密码。输入过程不会回显数字。\n`);
+    const password = await readSecret('新访问密码：');
     const confirmation = await readSecret('再次输入：');
-    if (password !== confirmation) throw new Error('两次输入的访问口令不一致。');
+    if (password !== confirmation) throw new Error('两次输入的访问密码不一致。');
     const config = await createAuthConfig(password);
     await writeAuthConfig(root, config);
     process.stdout.write('已安全更新 .secrets/auth.json。重启服务器后生效。\n');

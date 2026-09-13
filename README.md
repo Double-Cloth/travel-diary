@@ -22,7 +22,7 @@ node js/server.js --port 8080
 node js/server.js --network
 ```
 
-需要让局域网地址或反向代理后的域名写入时，必须显式启用 remote write mode：
+需要让局域网地址或反向代理后的域名写入时，必须显式启用 remote write mode。需要更换六位密码时，先在交互式终端运行 `npm run auth:set`：
 
 ```bash
 npm run auth:set
@@ -33,13 +33,13 @@ node js/server.js --network --write-mode=remote
 
 反向代理与 Node 位于同一服务器时，推荐用 `node js/server.js --local --write-mode=remote`，只让代理连接 Node；只有确实需要其他主机直接访问 Node 端口时才使用 `--network`。
 
-访问口令只以带随机盐的 `scrypt` 哈希保存在 `.secrets/auth.json`，不再放入公开的 `data/`。项目服务器明确拒绝 `.secrets/` 及其目录链接的静态访问；登录由服务端完成，连续失败会被限速，成功后签发最长 8 小时的 `HttpOnly`、`SameSite=Strict` 会话，HTTPS 页面还会自动使用 `Secure` Cookie。仓库自带的旧 6 位凭据只为本机兼容，不能启动 remote write mode；部署前必须运行 `npm run auth:set` 设置至少 16 个字符的强口令。
+访问密码保持为 6 位数字，页面仍使用六格数字键盘，但浏览器不再下载密码文件或自行比较。密码只以带随机盐的 `scrypt` 哈希保存在 `.secrets/auth.json`，不再放入公开的 `data/`。项目服务器明确拒绝 `.secrets/` 及其目录链接的静态访问；登录由服务端完成，同一来源连续失败 5 次会锁定 15 分钟，成功后签发最长 8 小时的 `HttpOnly`、`SameSite=Strict` 会话，HTTPS 页面还会自动使用 `Secure` Cookie。
 
-remote write mode 仍默认关闭。公网部署必须使用 HTTPS，并建议继续在上游增加 VPN、Zero Trust、HTTP Authentication 或等效的第二层访问控制。若提交 `.secrets/auth.json`，仓库应限制访问；虽然其中没有明文密码，获得哈希的人仍可离线猜测弱口令。
+remote write mode 仍默认关闭。六位数字只有 100 万种组合，慢哈希和在线限速不能把它变成独立的公网强认证。公网部署必须使用 HTTPS，并必须在上游增加 VPN、Zero Trust、HTTP Authentication 或等效访问控制。`.secrets/auth.json` 可以提交 Git，但公开仓库会让攻击者离线穷举六位密码；远程写入仓库和动态完整备份都应限制访问。
 
 ## 管理旅行记录
 
-点击头部「＋」或旅行路径页的「新增旅行记录」，输入服务器访问口令后即可开始编辑。编辑器提供：
+点击头部「＋」或旅行路径页的「新增旅行记录」，在原有数字键盘输入 6 位访问密码后即可开始编辑。编辑器提供：
 
 - 地点候选与空白字段补全；中国目的地会从内置省市区目录反查省份，旅行标识会自动生成，也可从最近 5 次已有行程中选择。
 - 带语法高亮的 Markdown 源码，以及可直接编辑的预览。
