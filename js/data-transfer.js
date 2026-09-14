@@ -1,5 +1,5 @@
-import { createPasswordGate } from './record-password.js?v=20260913-server-auth-v2';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=20260913-server-auth-v2';
+import { createPasswordGate } from './record-password.js?v=20260914-static-auth-v2';
+import { detectWriterCapability } from './writer-capability.js?v=20260914-static-auth-v2';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -58,24 +58,27 @@ export function createDataTransfer(onImported) {
     document.body.append(successDialog);
     let busy = false;
     let importTrigger;
+    let importCapability;
     let confirmationResolver;
 
-    async function getExportHref() {
-        await detectWriterCapability();
+    async function getExportHref(authenticatedCapability = null) {
+        const capability = authenticatedCapability || await detectWriterCapability();
+        if (!capability.authenticated || !capability.token) throw new Error('登录会话已失效，请重新输入访问口令。');
         return new URL('api/travel-data', window.location.href).href;
     }
 
-    async function writerToken() {
-        return (await detectWriterCapability()).token;
+    function writerToken(capability) {
+        if (!capability?.authenticated || !capability.token) throw new Error('登录会话已失效，请重新输入访问口令。');
+        return capability.token;
     }
 
     function noteExportStarted() {
         setStatus('全部数据备份已开始下载。');
     }
 
-    async function exportAll(downloadName = 'travel-diary-data.zip') {
+    async function exportAll(downloadName = 'travel-diary-data.zip', authenticatedCapability = null) {
         const link = document.createElement('a');
-        link.href = await getExportHref();
+        link.href = await getExportHref(authenticatedCapability);
         link.download = downloadName;
         link.hidden = true;
         document.body.append(link);
@@ -84,8 +87,9 @@ export function createDataTransfer(onImported) {
         noteExportStarted();
     }
 
-    function chooseImportWithAuthorization() {
+    function chooseImportWithAuthorization(capability) {
         if (busy) return;
+        importCapability = capability;
         importTrigger = document.activeElement;
         input.click();
     }
@@ -94,17 +98,12 @@ export function createDataTransfer(onImported) {
         title: '导入数据验证',
         description: '输入 6 位数字密码后选择备份。导入不会修改当前服务器密码。',
         verifying: '正在验证并选择备份…',
-        actionError: '无法开始导入，请重试。'
+        actionError: '无法开始导入，请重试。',
+        onStatic: () => setStatus('当前站点为静态只读页面，不提供全部数据导入或导出。')
     });
 
     async function chooseImport() {
         if (busy) return;
-        try {
-            await probeWriterService();
-        } catch {
-            setStatus('当前站点为只读模式；静态页面不提供全部数据导入或导出。');
-            return;
-        }
         await requestImportAuthorization();
     }
 
@@ -197,12 +196,14 @@ export function createDataTransfer(onImported) {
     input.addEventListener('change', async () => {
         const file = input.files[0];
         input.value = '';
+        const capability = importCapability;
+        importCapability = undefined;
         if (!file || busy) return;
         if (!await confirmImport(file)) return;
         busy = true;
         setStatus('正在校验备份并导入数据…');
         try {
-            const token = await writerToken();
+            const token = writerToken(capability);
             const { response, result } = await uploadArchive(file, token);
             if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
             try { await onImported(); }

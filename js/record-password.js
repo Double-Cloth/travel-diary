@@ -1,5 +1,5 @@
 import { showFeedback } from './feedback-dialog.js';
-import { authenticateWriter } from './writer-capability.js?v=20260913-server-auth-v2';
+import { authenticateWriter, probeWriterService } from './writer-capability.js?v=20260914-static-auth-v2';
 
 const PASSWORD_LENGTH = 6;
 let passwordGateSequence = 0;
@@ -38,7 +38,8 @@ export function createPasswordGate(onVerified, options = {}) {
         title: options.title || '访问验证',
         description: options.description || '输入 6 位数字密码后继续。',
         verifying: options.verifying || '正在安全验证…',
-        actionError: options.actionError || '操作未完成，请重试。'
+        actionError: options.actionError || '操作未完成，请重试。',
+        staticMessage: options.staticMessage || '当前站点为静态只读页面，无法执行此操作。'
     };
     const dialog = document.createElement('dialog');
     dialog.className = 'record-password entry-sheet';
@@ -49,6 +50,7 @@ export function createPasswordGate(onVerified, options = {}) {
     dialog.querySelector('[data-password-note]').textContent = copy.description;
 
     let enteredPassword = '';
+    let probing = false;
     let verifying = false;
     let trigger;
     let pendingContext;
@@ -172,8 +174,29 @@ export function createPasswordGate(onVerified, options = {}) {
     });
 
     return async context => {
-        if (dialog.open || verifying) return;
+        if (dialog.open || probing || verifying) return;
         trigger = document.activeElement;
+        probing = true;
+        try {
+            await probeWriterService();
+        } catch (error) {
+            if (error?.code === 'STATIC_READONLY') {
+                if (typeof options.onStatic === 'function') {
+                    try { await options.onStatic(context); }
+                    catch (staticError) {
+                        void showFeedback(staticError?.message || copy.actionError, { label: '只读模式', title: '操作未完成' });
+                    }
+                } else {
+                    void showFeedback(copy.staticMessage, { label: '只读模式', title: '当前站点为静态页面' });
+                }
+                return;
+            }
+            void showFeedback(error?.message || copy.actionError, { label: '访问验证', title: '服务暂不可用' });
+            return;
+        } finally {
+            probing = false;
+        }
+        if (typeof options.beforePrompt === 'function' && !await options.beforePrompt(context)) return;
         pendingContext = context;
         reset();
         dialog.showModal();

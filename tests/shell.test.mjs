@@ -178,9 +178,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260914-auth-gate-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260914-static-auth-v2/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260914-empty-archive-v1/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260914-auth-gate-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260914-static-auth-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
 });
@@ -205,11 +205,18 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
     assert.doesNotMatch(journalCss, /\.index-filter-section:last-child\s*\{\s*padding-bottom:/);
 });
 
-test('新增记录入口先通过服务端口令验证', () => {
-    assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260914-auth-gate-v1';/);
+test('静态页面免密码打开只读编辑器，动态环境必须先通过服务端口令验证', () => {
+    assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260914-static-auth-v2';/);
     assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability\)/);
+    assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}\)/);
+    assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}\)/);
     assert.match(appJs, /openRecordEditor = requestCreateAuthorization;/);
-    assert.doesNotMatch(appJs, /openRecordEditor = async[\s\S]*?catch[\s\S]*?openCreateEditor/);
+    assert.match(recordPasswordJs, /await probeWriterService\(\)/);
+    assert.match(recordPasswordJs, /error\?\.code === 'STATIC_READONLY'/);
+    assert.doesNotMatch(recordPasswordJs, /WRITER_UNREACHABLE[\s\S]*?onStatic/);
+    assert.match(writerCapabilityJs, /result\?\.service === 'travel-diary-static-v1' && result\.readonly === true/);
+    assert.match(writerCapabilityJs, /'WRITER_UNREACHABLE'/);
+    assert.match(writerCapabilityJs, /'WRITER_INVALID_RESPONSE'/);
     assert.match(recordPasswordJs, /authenticateWriter\(password\)/);
     assert.match(recordPasswordJs, /const PASSWORD_LENGTH = 6/);
     assert.match(recordPasswordJs, /data-password-key/);
@@ -272,17 +279,16 @@ test('运行时提示全部使用站内反馈弹窗而不是浏览器 alert', ()
     assert.doesNotMatch(recordPasswordJs, /window\.alert\s*\(/);
 });
 
-test('日记详情仅在可写站点提供经过密码验证的修改与删除入口', () => {
+test('日记详情在动态站点验证修改与删除，静态站点只允许只读编辑草稿', () => {
     assert.match(appJs, /data-action="edit-record"/);
     assert.match(appJs, /data-action="delete-record"/);
     assert.match(appJs, /const requestEditAuthorization = createPasswordGate/);
     assert.match(appJs, /const requestDeleteAuthorization = createPasswordGate/);
-    assert.match(appJs, /openDeleteRecord = async record =>/);
-    assert.match(appJs, /await probeWriterService\(\);/);
-    assert.match(appJs, /静态页面不支持删除记录。/);
+    assert.match(appJs, /openDeleteRecord = requestDeleteAuthorization;/);
+    assert.match(appJs, /staticMessage: '当前站点为静态只读页面，不支持删除记录。'/);
     assert.match(appJs, /createRecordDeleteDialog\(\)/);
-    assert.match(appJs, /if \(!await recordDeleteDialog\.confirm\(record\)\) return;/);
-    assert.match(appJs, /return requestDeleteAuthorization\(record\);/);
+    assert.match(appJs, /beforePrompt: record => recordDeleteDialog\.confirm\(record\)/);
+    assert.match(appJs, /deleteTravelRecord\(record, capability\)/);
     assert.doesNotMatch(appJs, /window\.confirm\(`确定删除旅行记录/);
     assert.doesNotMatch(appJs, /window\.alert\(`已删除旅行记录/);
     assert.match(appJs, /capability\.methods\.has\('DELETE'\)/);
@@ -314,14 +320,14 @@ test('Markdown 源码高亮层与输入层使用相同字形和滚动槽', () =>
 test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => {
     assert.match(appJs, /<button class="paper-button" type="button" data-action="export-all-data"/);
     assert.match(appJs, /const requestDataExportAuthorization = createPasswordGate/);
-    assert.match(appJs, /dataTransfer\.exportAll\(`travel-diary-data-\$\{getTodayDate\(\)\}\.zip`\)/);
+    assert.match(appJs, /dataTransfer\.exportAll\(`travel-diary-data-\$\{getTodayDate\(\)\}\.zip`, capability\)/);
     assert.match(appJs, /data-action="export-all-data"[^}]+event\.preventDefault\(\);[^}]+openDataExport\(\)/s);
-    assert.match(appJs, /静态页面不提供全部数据导出/);
+    assert.match(appJs, /静态只读页面，不提供全部数据导出/);
     assert.doesNotMatch(appJs, /catch \{\s*return dataTransfer\.exportAll/);
     assert.match(dataTransferJs, /api\/travel-data/);
     assert.match(dataTransferJs, /detectWriterCapability\(\)/);
     assert.doesNotMatch(dataTransferJs, /new URL\('travel-diary-data\.zip'/);
-    assert.match(dataTransferJs, /async function exportAll\([^)]*\)[\s\S]+link\.href = await getExportHref\(\);[\s\S]+link\.click\(\);/);
+    assert.match(dataTransferJs, /async function exportAll\([^)]*\)[\s\S]+link\.href = await getExportHref\(authenticatedCapability\);[\s\S]+link\.click\(\);/);
     assert.doesNotMatch(dataTransferJs, /createObjectURL|new Blob|\.exportAll\(/);
     assert.doesNotMatch(dataTransferJs, /window\.location\.hostname|isLocalWriterHost/);
 });

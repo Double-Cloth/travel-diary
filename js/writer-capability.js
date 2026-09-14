@@ -25,11 +25,17 @@ export async function probeWriterService(timeout = 4000) {
             cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(timeout)
         });
     } catch {
-        throw writerError('当前站点未提供可用的服务器写入服务。');
+        throw writerError('服务器写入服务暂时无法连接，请检查网络后重试。', 'WRITER_UNREACHABLE');
     }
     const result = await readResult(response);
+    if (result?.service === 'travel-diary-static-v1' && result.readonly === true) {
+        throw writerError('当前站点为静态只读页面。', 'STATIC_READONLY');
+    }
     if (result?.service !== 'travel-diary-writer-v1') {
-        throw writerError(result?.error || '当前站点未提供可用的服务器写入服务。');
+        throw writerError(
+            result?.error || '服务器写入服务返回了无法识别的结果，请稍后重试。',
+            'WRITER_INVALID_RESPONSE'
+        );
     }
     return { ...capabilityFrom(endpoint, result), status: response.status };
 }

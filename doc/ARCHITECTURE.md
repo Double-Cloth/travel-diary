@@ -138,13 +138,13 @@ data/travel_data.json ────────────────→ getRec
 
 任何来源合计在 15 分钟内连续失败 5 次后全局限速，并在验证前预留并发名额，避免轮换 IP/Host 或并发绕过。认证成功会创建有上限的内存会话和独立 CSRF/写入 token：Cookie 限制为 `/api`、`HttpOnly`、`SameSite=Strict`、最长 8 小时，remote 模式始终添加 `Secure`。会话绑定签发时的认证哈希，换密后旧会话在下一次请求立即失效。所有修改请求必须同时通过 Host/Origin 写入策略、会话和 `X-Travel-Token`。
 
-验证通过后打开记录编辑器 `dialog`。表单复用国家目录和当前内存中的旅行记录：`record-suggestions.mjs` 先按国家与行政区收窄地点候选菜单，再通过历史精确匹配或明确名称后缀补全空白地点字段。`trip_id` 按完整日期与目的地自动生成，目的地缺失时才回退到行政区；下拉候选独立按最近日期列出 5 个不同的已有行程。自动值与用户手工值分开记录，依赖项变化时可以更新旧的自动值，但不会覆盖手工修改或导入草稿中的值。
+动态写入环境验证通过后打开记录编辑器 `dialog`；明确的静态页面则免密码打开显式只读编辑器，只允许整理和导入导出草稿。表单复用国家目录和当前内存中的旅行记录：`record-suggestions.mjs` 先按国家与行政区收窄地点候选菜单，再通过历史精确匹配或明确名称后缀补全空白地点字段。`trip_id` 按完整日期与目的地自动生成，目的地缺失时才回退到行政区；下拉候选独立按最近日期列出 5 个不同的已有行程。自动值与用户手工值分开记录，依赖项变化时可以更新旧的自动值，但不会覆盖手工修改或导入草稿中的值。
 
 未登录的 `GET /api/travel-records` 只返回服务标识、`AUTH_REQUIRED` 和空方法列表，不泄露 token；已登录时才返回 token 与支持的方法。`POST` 使用 JSON、会话与 `X-Travel-Token` 提交 v3 草稿，服务端校验字段、国家代码、正文路径及照片引用。`PUT` 提交原正文路径与草稿，`DELETE` 提交正文路径；两者要求索引中恰好匹配一条记录。`record-input.mjs` 兼容 v1、v2 草稿，仅为 v1 补齐后来新增的可选字段。
 
 local write mode 保持原安全边界：只允许回环来源地址、localhost / `127.0.0.1` / `::1` Host，并在提供 Origin 时要求完全匹配本机 HTTP Origin；`--network` 的其他设备仍只能读取。remote write mode 不依赖客户端 IP，但只允许白名单中的 HTTPS Origin 和对应 Host，可安全兼容在 Nginx、Caddy、Apache 或 Cloudflare Tunnel 后终止 TLS。`X-Forwarded-*` 不参与授权。API 不返回 `Access-Control-Allow-Origin: *`。
 
-前端不根据 hostname 推断权限。新增和修改入口无条件先进入 `record-password.js`，只有 `POST /api/travel-auth` 成功后才把本次验证得到的能力交给编辑器；探测超时、异常响应或 API 不存在都不能触发编辑器。`detectWriterCapability()` 只有在浏览器携带有效 `HttpOnly` 会话并取得 token 后才返回动态写入能力。local 模式的远程页面、GitHub Pages、普通静态服务器或 API 不存在时保持只读，全部数据导入和导出也不会回退到公开静态 ZIP。
+前端不根据 hostname 推断权限。新增、修改、删除和动态数据导入导出都由 `record-password.js` 先探测同源 writer API：Node 环境返回 writer 服务标识并强制通过 `POST /api/travel-auth`；静态发布物在同一路径提供 `travel-diary-static-v1` 只读标记。静态页面的新增与修改免密码进入显式只读编辑器，删除和全部数据导入导出直接提示不可用；404、探测超时、连接失败、403 或异常响应都中止操作，不能被当作静态环境降级。认证成功后，本次能力直接交给后续操作；`detectWriterCapability()` 只有在浏览器携带有效 `HttpOnly` 会话并取得 token 后才返回动态写入能力。
 
 写入和全量数据导入导出共用项目根目录的 `.travel-data.lock` 独占锁。新增记录会重新读取当前索引，独占创建 Markdown 文件，写入并同步临时索引，最后用 `rename` 替换索引。目录和文件拒绝符号链接 / junction；失败时清理本次创建的正文、照片、空照片目录和临时索引。上传图片写入以目的地拼音命名的照片目录，并在索引提交前完成文件写入和同步；重试时比对照片字节。重复提交以正文路径、元数据和 Markdown 内容比对实现去重，默认正文路径使用日期和目的地拼音。自定义正文路径仍遵守年份目录、日期前缀及 ASCII 文件名规范，照片引用仅允许项目内的普通文件。
 

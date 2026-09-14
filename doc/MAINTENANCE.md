@@ -99,7 +99,8 @@ remote 模式要求 `.secrets/auth.json` 由当前后端工具生成，并必须
    - `--network` 未指定 remote write mode 时，局域网页面是否保持只读。
    - 执行 `npm run auth:set` 后，`--write-mode=remote --allowed-origin=https://...` 下白名单页面是否可新增、修改、删除和导入；HTTP 与非白名单来源是否被拒绝。
    - HTTPS 反向代理下，同站点 Origin 与 Host 是否可写，不匹配 Origin 是否被拒绝。
-   - GitHub Pages 或普通静态托管是否保持只读，且新增、修改和全部数据 ZIP 导入导出均不能绕过密码验证。
+   - GitHub Pages 或普通静态托管是否免密码打开显式只读编辑器，且不能保存、删除或执行全部数据 ZIP 导入导出。
+   - 写入服务存在时，新增、修改、删除和全部数据导入导出是否都要求密码；API 超时、连接失败、403 与异常响应是否都会中止而非降级。
 
 ## 测试说明
 

@@ -4,7 +4,7 @@ import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
-import { detectWriterCapability } from './writer-capability.js?v=20260913-server-auth-v2';
+import { detectWriterCapability } from './writer-capability.js?v=20260914-static-auth-v2';
 import { enhanceCustomSelects } from './custom-select.js?v=20260913-select-placement-v3';
 import { confirmFeedback } from './feedback-dialog.js';
 
@@ -165,14 +165,18 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         }
     }
 
-    async function detectWriter(authenticatedCapability = null) {
+    async function detectWriter(writerAccess = null) {
         token = '';
         writerMethods = new Set();
         dialog.querySelector('[data-editor-save]').disabled = true;
         const hint = dialog.querySelector('[data-editor-mode]');
+        if (writerAccess?.readonly === true) {
+            hint.textContent = '当前站点为静态只读页面 · 可编辑并导出草稿，再到可写站点导入保存。';
+            return;
+        }
         hint.textContent = '正在连接服务器写入服务…';
         try {
-            const capability = authenticatedCapability || await detectWriterCapability();
+            const capability = writerAccess || await detectWriterCapability();
             writerMethods = capability.methods;
             if (editingRecord && !writerMethods.has('PUT')) {
                 hint.textContent = '服务器写入服务版本过旧 · 请更新或重新启动服务后再修改记录。';
@@ -906,7 +910,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         event.returnValue = '';
     });
 
-    return async (record = null, authenticatedCapability = null) => {
+    return async (record = null, writerAccess = null) => {
         if (dialog.open || opening) return;
         opening = true;
         try {
@@ -939,7 +943,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 initialized = true;
             }
             dialog.showModal();
-            await detectWriter(authenticatedCapability);
+            await detectWriter(writerAccess);
         } finally {
             opening = false;
         }

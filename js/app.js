@@ -1,8 +1,8 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260914-auth-gate-v1';
-import { createPasswordGate } from './record-password.js?v=20260914-auth-gate-v1';
-import { createDataTransfer } from './data-transfer.js?v=20260913-no-static-export-v1';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=20260913-server-auth-v2';
+import { createRecordEditor } from './record-editor.js?v=20260914-static-auth-v2';
+import { createPasswordGate } from './record-password.js?v=20260914-static-auth-v2';
+import { createDataTransfer } from './data-transfer.js?v=20260914-static-auth-v2';
+import { detectWriterCapability } from './writer-capability.js?v=20260914-static-auth-v2';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { showFeedback } from './feedback-dialog.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
@@ -122,7 +122,8 @@ async function initApp() {
             title: '新增记录验证',
             description: '输入 6 位数字密码后继续。',
             verifying: '正在验证并打开编辑器…',
-            actionError: '无法打开编辑器，请重试。'
+            actionError: '无法打开编辑器，请重试。',
+            onStatic: () => openCreateEditor(null, { readonly: true })
         }
     );
     openRecordEditor = requestCreateAuthorization;
@@ -130,13 +131,14 @@ async function initApp() {
         title: '修改记录验证',
         description: '输入 6 位数字密码后修改这条旅行记录。',
         verifying: '正在验证并打开编辑器…',
-        actionError: '无法打开修改窗口，请重试。'
+        actionError: '无法打开修改窗口，请重试。',
+        onStatic: record => openUpdateEditor(record, { readonly: true })
     });
     openEditRecord = requestEditAuthorization;
-    const requestDeleteAuthorization = createPasswordGate(async (_capability, record) => {
+    const requestDeleteAuthorization = createPasswordGate(async (capability, record) => {
         try {
             if (!record) throw new Error('要删除的旅行记录已失效，请重新打开后再试。');
-            const result = await deleteTravelRecord(record);
+            const result = await deleteTravelRecord(record, capability);
             recordDeleteDialog.showSuccess(record, result);
         } catch (error) {
             recordDeleteDialog.showError(error);
@@ -145,46 +147,28 @@ async function initApp() {
         title: '删除记录验证',
         description: '输入 6 位数字密码后永久删除这条记录。',
         verifying: '正在验证并删除记录…',
-        actionError: '删除记录失败，请重试。'
+        actionError: '删除记录失败，请重试。',
+        staticMessage: '当前站点为静态只读页面，不支持删除记录。',
+        beforePrompt: record => recordDeleteDialog.confirm(record)
     });
     refs.openEditRecord = record => openEditRecord(record);
-    openDeleteRecord = async record => {
-        try {
-            await probeWriterService();
-        } catch (error) {
-            if (error?.code === 'WRITER_UNAVAILABLE') {
-                throw new Error('当前站点为只读模式，静态页面不支持删除记录。');
-            }
-            throw error;
-        }
-        if (!await recordDeleteDialog.confirm(record)) return;
-        return requestDeleteAuthorization(record);
-    };
+    openDeleteRecord = requestDeleteAuthorization;
     refs.openDeleteRecord = openDeleteRecord;
     dataTransfer = createDataTransfer(async () => {
         await refreshTravelModel(getRefreshKey());
         syncRouteFromHash({ initial: true });
     });
     const requestDataExportAuthorization = createPasswordGate(
-        () => dataTransfer.exportAll(`travel-diary-data-${getTodayDate()}.zip`),
+        capability => dataTransfer.exportAll(`travel-diary-data-${getTodayDate()}.zip`, capability),
         {
             title: '导出数据验证',
             description: '输入 6 位数字密码后导出全部旅行数据（不包含认证配置）。',
             verifying: '正在验证并准备下载…',
-            actionError: '无法导出全部数据，请重试。'
+            actionError: '无法导出全部数据，请重试。',
+            staticMessage: '当前站点为静态只读页面，不提供全部数据导出。'
         }
     );
-    openDataExport = async () => {
-        try {
-            await probeWriterService();
-            return requestDataExportAuthorization();
-        } catch (error) {
-            if (error?.code === 'WRITER_UNAVAILABLE') {
-                throw new Error('当前站点为只读模式，静态页面不提供全部数据导出。');
-            }
-            throw error;
-        }
-    };
+    openDataExport = requestDataExportAuthorization;
     renderLoading();
 
     try {
@@ -1515,8 +1499,8 @@ function closeEntrySheet(options = {}) {
     }
 }
 
-async function deleteTravelRecord(record) {
-    const capability = await detectWriterCapability();
+async function deleteTravelRecord(record, authenticatedCapability = null) {
+    const capability = authenticatedCapability || await detectWriterCapability();
     if (!capability.methods.has('DELETE')) {
         throw new Error('服务器写入服务版本过旧，请更新或重新启动服务后再删除记录。');
     }

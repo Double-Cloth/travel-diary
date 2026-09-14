@@ -11,8 +11,10 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
         const children = new Map();
         return {
             events: {}, open: false,
-            setAttribute() {}, focus() {},
+            classList: { add() {}, remove() {} },
+            setAttribute() {}, focus() {}, click() {},
             addEventListener(name, handler) { this.events[name] = handler; },
+            querySelectorAll() { return []; },
             querySelector(selector) {
                 if (!children.has(selector)) children.set(selector, node());
                 return children.get(selector);
@@ -28,14 +30,35 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
     };
     globalThis.window = { location: { hostname: 'diary.example', href: 'https://diary.example/' } };
     globalThis.fetch = async (_, options) => ({
-        ok: true, json: async () => options?.method === 'POST'
+        ok: true,
+        status: 200,
+        json: async () => options?.headers?.['Content-Type'] === 'application/zip'
             ? { imported: true }
-            : { service: 'travel-diary-writer-v1', authenticated: true, token: 'test', methods: ['POST', 'PUT', 'DELETE'] }
+            : {
+                service: 'travel-diary-writer-v1',
+                authenticated: options?.method === 'POST',
+                token: options?.method === 'POST' ? 'test' : undefined,
+                methods: ['POST', 'PUT', 'DELETE']
+            }
     });
     let refreshFails = true;
-    createDataTransfer(async () => { if (refreshFails) throw new Error('模拟刷新失败'); });
-    const [input, confirmation, success] = nodes;
+    const transfer = createDataTransfer(async () => { if (refreshFails) throw new Error('模拟刷新失败'); });
+    const [input, confirmation, success, passwordDialog] = nodes;
+    async function authorizeImport() {
+        await transfer.chooseImport();
+        for (let index = 0; index < 6; index += 1) {
+            passwordDialog.events.click({
+                target: {
+                    closest: selector => selector === '[data-password-key]'
+                        ? { dataset: { passwordKey: '8' } }
+                        : null
+                }
+            });
+        }
+        await new Promise(resolve => setImmediate(resolve));
+    }
     async function importFile() {
+        await authorizeImport();
         input.files = [{ name: 'backup.zip' }];
         const pending = input.events.change();
         assert.equal(confirmation.open, true);
@@ -78,9 +101,14 @@ test('导出和导入都要求写入 API，静态页面不提供全部数据备�
     assert.equal(await writable.getExportHref(), 'https://diary.example/api/travel-data');
 
     globalThis.window.location = { hostname: 'static.example', href: 'https://static.example/' };
-    globalThis.fetch = async () => ({ ok: false, json: async () => ({ error: 'Not Found' }) });
+    globalThis.fetch = async () => ({
+        status: 200,
+        ok: true,
+        json: async () => ({ service: 'travel-diary-static-v1', readonly: true })
+    });
     const readonly = createDataTransfer(async () => {});
-    await assert.rejects(readonly.getExportHref(), /Not Found/);
+    await assert.rejects(readonly.getExportHref(), error => error.code === 'STATIC_READONLY');
     await readonly.chooseImport();
-    assert.match(output.textContent, /静态页面不提供全部数据导入或导出/);
+    assert.match(output.textContent, /静态只读页面，不提供全部数据导入或导出/);
+    assert.equal(nodes[3].open, false);
 });
