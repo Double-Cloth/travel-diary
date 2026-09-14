@@ -75,7 +75,7 @@ export function createPasswordGate(onVerified, options = {}) {
 
     function updatePrompt() {
         const prompt = mode === 'setup-first'
-            ? { title: '创建访问密码', description: '请输入新的 6 位数字密码。' }
+            ? { title: '未设置访问密码，请先创建密码', description: '请输入新的 6 位数字密码。' }
             : mode === 'setup-confirm'
                 ? { title: '再次输入密码', description: '请再次输入相同的 6 位数字密码。' }
                 : copy;
