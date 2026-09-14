@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { spawn } = require('child_process');
-const { createRecordApi } = require('./record-store.js');
+const { createRecordApi, normalizeAllowedOrigins } = require('./record-store.js');
 const { readAuthConfig } = require('./auth.js');
 
 const CONFIG = {
@@ -14,12 +14,22 @@ const CONFIG = {
   defaultWriteMode: 'local'
 };
 
+const STATIC_SECURITY_HEADERS = Object.freeze({
+  'Content-Security-Policy': "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; img-src 'self' data: blob:; font-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
+  'Cross-Origin-Opener-Policy': 'same-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Referrer-Policy': 'no-referrer',
+  'X-Content-Type-Options': 'nosniff',
+  'X-Frame-Options': 'DENY'
+});
+
 function parseArgs(argv) {
   const args = {
     dir: CONFIG.defaultDir,
     port: CONFIG.defaultPort,
     local: CONFIG.defaultLocal,
-    writeMode: CONFIG.defaultWriteMode
+    writeMode: CONFIG.defaultWriteMode,
+    allowedOrigins: []
   };
 
   for (let index = 0; index < argv.length; index += 1) {
@@ -44,6 +54,11 @@ function parseArgs(argv) {
       index += 1;
     } else if (current.startsWith('--write-mode=')) {
       args.writeMode = current.slice('--write-mode='.length);
+    } else if (current === '--allowed-origin' && index + 1 < argv.length) {
+      args.allowedOrigins.push(argv[index + 1]);
+      index += 1;
+    } else if (current.startsWith('--allowed-origin=')) {
+      args.allowedOrigins.push(current.slice('--allowed-origin='.length));
     } else if (current === '--help' || current === '-h') {
       printHelpAndExit();
     } else {
@@ -60,6 +75,13 @@ function parseArgs(argv) {
   if (!['local', 'remote'].includes(args.writeMode)) {
     throw new Error('写入模式必须是 local 或 remote。');
   }
+  args.allowedOrigins = normalizeAllowedOrigins(args.allowedOrigins);
+  if (args.writeMode === 'remote' && !args.allowedOrigins.length) {
+    throw new Error('remote write mode 必须通过 --allowed-origin 指定至少一个 HTTPS 站点来源。');
+  }
+  if (args.writeMode === 'local' && args.allowedOrigins.length) {
+    throw new Error('--allowed-origin 仅能与 --write-mode=remote 同时使用。');
+  }
 
   return args;
 }
@@ -69,7 +91,7 @@ function printHelpAndExit() {
 Travel Diary static server
 
 Usage:
-  node js/server.js [--dir PATH] [--port PORT] [--local|--network] [--write-mode=MODE]
+  node js/server.js [--dir PATH] [--port PORT] [--local|--network] [--write-mode=MODE] [--allowed-origin=ORIGIN]
 
 Options:
   --dir PATH    Directory to serve (default: ${CONFIG.defaultDir})
@@ -77,6 +99,7 @@ Options:
   --local       Bind to 127.0.0.1 only (default)
   --network     Bind to 0.0.0.0 for LAN access
   --write-mode  Write policy: local (default) or remote
+  --allowed-origin  Exact HTTPS Origin allowed in remote mode (repeatable)
   --help, -h    Show this help
 
 Authentication:
@@ -87,7 +110,7 @@ Examples:
   node js/server.js --dir . --port 9000
   node js/server.js --network
   npm run auth:set
-  node js/server.js --network --write-mode=remote
+  node js/server.js --local --write-mode=remote --allowed-origin=https://diary.example.com
 `;
 
   process.stdout.write(message.trimStart() + '\n');
@@ -187,7 +210,10 @@ function isWithinRoot(rootDir, targetPath) {
 function createHandler(rootDir, options = {}) {
   rootDir = fs.realpathSync(rootDir);
   const secretsRoot = path.join(rootDir, '.secrets');
-  const recordApi = createRecordApi(rootDir, { writeMode: options.writeMode || CONFIG.defaultWriteMode });
+  const recordApi = createRecordApi(rootDir, {
+    writeMode: options.writeMode || CONFIG.defaultWriteMode,
+    allowedOrigins: options.allowedOrigins || []
+  });
   return async (req, res) => {
     if (['/api/travel-auth', '/api/travel-records', '/api/travel-data'].includes(req.url.split('?')[0])) {
       await recordApi(req, res);
@@ -279,7 +305,8 @@ function createHandler(rootDir, options = {}) {
         Expires: '0',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, HEAD, OPTIONS',
-        'Access-Control-Allow-Headers': 'X-Requested-With, Content-Type'
+        'Access-Control-Allow-Headers': 'X-Requested-With, Content-Type',
+        ...STATIC_SECURITY_HEADERS
       });
 
       if (req.method === 'HEAD') {
@@ -306,6 +333,10 @@ function listenWithRetries(rootDir, port, bindAll, options = {}) {
   return new Promise((resolve, reject) => {
     const tryListen = () => {
       const server = http.createServer(createHandler(rootDir, options));
+      server.requestTimeout = 120_000;
+      server.headersTimeout = 15_000;
+      server.keepAliveTimeout = 5_000;
+      server.maxHeadersCount = 100;
 
       server.on('error', (error) => {
         if (error.code === 'EADDRINUSE') {
@@ -341,7 +372,10 @@ async function main() {
     await readAuthConfig(rootDir, { requireProduction: true });
   }
 
-  const { server, port } = await listenWithRetries(rootDir, args.port, !args.local, { writeMode: args.writeMode });
+  const { server, port } = await listenWithRetries(rootDir, args.port, !args.local, {
+    writeMode: args.writeMode,
+    allowedOrigins: args.allowedOrigins
+  });
   const localhostUrl = `http://localhost:${port}`;
   const networkUrl = args.local ? 'disabled (local only)' : `http://${getLocalIp()}:${port}`;
 
@@ -350,6 +384,7 @@ async function main() {
   console.log(`Root: ${rootDir}`);
   console.log(`Bind: ${args.local ? '127.0.0.1 (--local)' : '0.0.0.0 (--network)'}`);
   console.log(`Write mode: ${args.writeMode}`);
+  if (args.writeMode === 'remote') console.log(`Allowed origins: ${args.allowedOrigins.join(', ')}`);
   console.log('Authentication: .secrets/auth.json (scrypt + server session)');
   console.log('-'.repeat(60));
   console.log(`Local: ${localhostUrl}`);

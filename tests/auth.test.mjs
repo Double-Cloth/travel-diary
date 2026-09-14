@@ -5,8 +5,12 @@ import { once } from 'node:events';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { createRequire } from 'node:module';
 import { createHandler } from '../js/server.js';
 import { AUTH_PASSWORD, installAuth, login } from './helpers/auth.mjs';
+
+const require = createRequire(import.meta.url);
+const { createAuthConfig } = require('../js/auth.js');
 
 async function fixture(t) {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-auth-'));
@@ -22,7 +26,7 @@ async function fixture(t) {
         await new Promise(resolve => server.close(resolve));
         await fs.rm(root, { recursive: true, force: true });
     });
-    return { base };
+    return { base, root };
 }
 
 test('能力端点不再公开令牌，登录后签发受限 HttpOnly 会话', async t => {
@@ -74,4 +78,33 @@ test('登录使用慢哈希验证，并在连续失败后限速', async t => {
     });
     assert.equal(blocked.status, 429);
     assert.ok(Number(blocked.headers.get('retry-after')) > 0);
+    assert.equal((await blocked.json()).code, 'AUTH_RATE_LIMITED');
+});
+
+test('换密后旧会话立即失效', async t => {
+    const { base, root } = await fixture(t);
+    const authenticated = await login(base);
+    assert.equal(authenticated.response.status, 200);
+    const replacement = await createAuthConfig('590247');
+    await fs.writeFile(path.join(root, '.secrets/auth.json'), `${JSON.stringify(replacement, null, 2)}\n`);
+    const capability = await fetch(`${base}/api/travel-records`, {
+        headers: { Cookie: authenticated.cookie }
+    });
+    assert.equal(capability.status, 401);
+});
+
+test('认证接口兼容带 charset 的 JSON，并在读取前拒绝超大请求', async t => {
+    const { base } = await fixture(t);
+    const valid = await fetch(`${base}/api/travel-auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json; charset=utf-8', Origin: base },
+        body: JSON.stringify({ password: AUTH_PASSWORD })
+    });
+    assert.equal(valid.status, 200);
+    const oversized = await fetch(`${base}/api/travel-auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: base },
+        body: JSON.stringify({ password: '9'.repeat(5000) })
+    });
+    assert.equal(oversized.status, 413);
 });

@@ -28,7 +28,7 @@ export function createDataTransfer(onImported) {
             </div>
             <p class="journal-label">全部数据导入</p>
             <h2 id="dataImportConfirmTitle">替换当前旅行数据？</h2>
-            <p class="data-import-confirm-note" id="dataImportConfirmDescription">将替换全部日记、照片、头像和服务器认证配置。请先备份当前数据。</p>
+            <p class="data-import-confirm-note" id="dataImportConfirmDescription">将替换全部日记、照片和头像，当前服务器密码保持不变。请先备份当前数据。</p>
             <p class="data-import-confirm-file">已选择 <strong data-import-file-name></strong></p>
             <div class="data-import-confirm-actions">
                 <button class="paper-button" type="button" data-import-cancel>暂不导入</button>
@@ -92,7 +92,7 @@ export function createDataTransfer(onImported) {
 
     const requestImportAuthorization = createPasswordGate(chooseImportWithAuthorization, {
         title: '导入数据验证',
-        description: '输入 6 位数字密码后选择备份。导入成功后认证配置也会恢复。',
+        description: '输入 6 位数字密码后选择备份。导入不会修改当前服务器密码。',
         verifying: '正在验证并选择备份…',
         actionError: '无法开始导入，请重试。'
     });

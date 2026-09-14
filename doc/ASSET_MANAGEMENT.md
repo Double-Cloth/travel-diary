@@ -56,7 +56,7 @@ assets/
 - 个人头像统一使用 `data/profile/profile-picture.png`；替换该文件即可更换头像，无需修改页面代码。
 - CSS 分片全部位于 `css/` 根目录，因此统一从 `css/` 目录相对引用，例如 `../assets/images/pages/home-hero-travel-diary.png`。
 - 不使用远程字体或远程图片，避免离线和部署环境差异。
-- `.secrets/` 不是页面资产，不得从 HTML、CSS 或浏览器 JavaScript 引用；只有 Node 服务和受认证的动态备份可以读取。
+- `.secrets/` 不是页面资产，不得从 HTML、CSS 或浏览器 JavaScript 引用；只有 Node 服务可以读取，动态数据备份也不包含它。
 - `npm run fonts` 默认生成完整 WOFF2 字体；生成文件不是临时构建产物，更新后必须纳入版本控制。
 - `npm run fonts:subset` 仅供明确需要缩减字体体积时使用，会按项目文本生成子集并始终保留数字 `0–9`。
 

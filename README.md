@@ -22,20 +22,20 @@ node js/server.js --port 8080
 node js/server.js --network
 ```
 
-需要让局域网地址或反向代理后的域名写入时，必须显式启用 remote write mode。需要更换六位密码时，先在交互式终端运行 `npm run auth:set`：
+需要让 HTTPS 反向代理后的域名写入时，必须显式启用 remote write mode 并声明精确的允许来源。需要更换六位密码时，先在交互式终端运行 `npm run auth:set`：
 
 ```bash
 npm run auth:set
-node js/server.js --network --write-mode=remote
+node js/server.js --local --write-mode=remote --allowed-origin=https://diary.example.com
 ```
 
-浏览器始终通过当前站点的相对 URL 探测写入 API，因此 `http://192.168.1.100:9000/`、`http://example.com/` 以及由 Nginx、Caddy、Apache 或 Cloudflare Tunnel 终止 TLS 的 `https://example.com/` 都可以在 remote 模式下写入。应用不信任 `X-Forwarded-*`，反向代理应保留外部 `Host`；`Origin` 必须与该 Host 属于同一 authority。
+浏览器始终通过当前站点的相对 URL 探测写入 API。remote 模式仅接受 `--allowed-origin` 白名单中的完整 HTTPS Origin（可重复指定），且请求 `Host` 必须与之精确匹配。应用不信任 `X-Forwarded-*`，反向代理应保留外部 `Host` 和 `Origin`。
 
-反向代理与 Node 位于同一服务器时，推荐用 `node js/server.js --local --write-mode=remote`，只让代理连接 Node；只有确实需要其他主机直接访问 Node 端口时才使用 `--network`。
+反向代理与 Node 位于同一服务器时，推荐保持 `--local`，只让代理连接 Node；只有确实需要其他主机连接 Node 端口时才使用 `--network`。
 
-访问密码保持为 6 位数字，页面仍使用六格数字键盘，但浏览器不再下载密码文件或自行比较。密码只以带随机盐的 `scrypt` 哈希保存在 `.secrets/auth.json`，不再放入公开的 `data/`。项目服务器明确拒绝 `.secrets/` 及其目录链接的静态访问；登录由服务端完成，同一来源连续失败 5 次会锁定 15 分钟，成功后签发最长 8 小时的 `HttpOnly`、`SameSite=Strict` 会话，HTTPS 页面还会自动使用 `Secure` Cookie。
+访问密码保持为 6 位数字，但设置工具会拒绝连续、重复和常见弱组合。浏览器不下载认证配置；密码只以带随机盐的 `scrypt` 哈希保存在 `.secrets/auth.json`，并被静态服务永久拒绝。全局连续失败 5 次会锁定 15 分钟，避免轮换 IP 或 Host 穷举；会话与当前哈希绑定，换密后旧会话立即失效。Cookie 使用 `HttpOnly`、`SameSite=Strict`，remote 模式一律增加 `Secure`。
 
-remote write mode 仍默认关闭。六位数字只有 100 万种组合，慢哈希和在线限速不能把它变成独立的公网强认证。公网部署必须使用 HTTPS，并必须在上游增加 VPN、Zero Trust、HTTP Authentication 或等效访问控制。`.secrets/auth.json` 可以提交 Git，但公开仓库会让攻击者离线穷举六位密码；远程写入仓库和动态完整备份都应限制访问。
+remote write mode 仍默认关闭。当前项目按部署需要跟踪 `.secrets/auth.json`，但哈希并非加密，六位数字只有 100 万种组合；仓库必须设为私有，并限制克隆和 Actions 日志权限。公网部署除 HTTPS 白名单外，仍应在上游增加 VPN、Zero Trust 或等效的独立访问控制。若仓库曾公开，应清理 Git 历史并立即换密。
 
 ## 管理旅行记录
 
@@ -46,9 +46,9 @@ remote write mode 仍默认关闭。六位数字只有 100 万种组合，慢哈
 - 多选、拖放和排序照片；保存时自动生成小写拼音路径与文件名。
 - ZIP 草稿导入与导出，便于暂存或从只读页面转到可写站点保存。
 
-具有服务器写入能力的页面可新增、修改和删除记录。日记详情提供「修改」「删除」入口；删除会移除记录及正文，保留照片文件。默认本机 localhost 可写；显式 remote 模式下，同站点远程页面也可写。GitHub Pages 等静态页面会自动回退为只读，可编辑和导出草稿，但不能写回仓库，也不提供全部数据导入或导出。
+具有服务器写入能力的页面可新增、修改和删除记录。日记详情提供「修改」「删除」入口；删除会移除记录及正文，保留照片文件。默认本机 localhost 可写；显式 remote 模式下，HTTPS 白名单中的同站点页面也可写。新增和修改入口始终先显示密码验证，服务探测失败不会再回退并打开编辑器；GitHub Pages 等静态页面保持只读。
 
-个人主页的动态「数据备份」只在服务端验证访问口令后导出整个 `data/` 与 `.secrets/auth.json`；认证配置只含哈希、盐和参数，不含明文口令。导入同样要求有效服务端会话与写入令牌，并原子替换数据和认证配置，成功后立即注销旧会话。GitHub Pages 等静态部署不提供全部数据导入或导出，避免在没有服务端认证时直接下载数据备份；如需完整备份，请登录具有 writer API 的服务器。详细用法、字段定义和环境限制见 [内容维护指南](doc/CONTENT_GUIDE.md#页面编辑器)。
+个人主页的动态「数据备份」只在服务端验证后导出 `data/`，不包含 `.secrets/` 或任何认证哈希。导入要求有效会话与写入令牌，并原子替换数据；新旧备份中的认证文件都不会改变当前服务器密码。成功后会注销旧会话。GitHub Pages 等静态部署不提供全部数据导入或导出。详细用法、字段定义和环境限制见 [内容维护指南](doc/CONTENT_GUIDE.md#页面编辑器)。
 
 ## 内容与资源
 

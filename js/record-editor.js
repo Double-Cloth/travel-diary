@@ -165,14 +165,14 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         }
     }
 
-    async function detectWriter() {
+    async function detectWriter(authenticatedCapability = null) {
         token = '';
         writerMethods = new Set();
         dialog.querySelector('[data-editor-save]').disabled = true;
         const hint = dialog.querySelector('[data-editor-mode]');
         hint.textContent = '正在连接服务器写入服务…';
         try {
-            const capability = await detectWriterCapability();
+            const capability = authenticatedCapability || await detectWriterCapability();
             writerMethods = capability.methods;
             if (editingRecord && !writerMethods.has('PUT')) {
                 hint.textContent = '服务器写入服务版本过旧 · 请更新或重新启动服务后再修改记录。';
@@ -906,7 +906,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         event.returnValue = '';
     });
 
-    return async (record = null) => {
+    return async (record = null, authenticatedCapability = null) => {
         if (dialog.open || opening) return;
         opening = true;
         try {
@@ -939,7 +939,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 initialized = true;
             }
             dialog.showModal();
-            await detectWriter();
+            await detectWriter(authenticatedCapability);
         } finally {
             opening = false;
         }

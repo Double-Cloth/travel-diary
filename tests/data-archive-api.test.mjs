@@ -34,7 +34,7 @@ after(async () => {
     }
 });
 
-test('动态全量导出必须登录，并包含 data 与认证哈希配置', async () => {
+test('动态全量导出必须登录，且不泄露认证哈希', async () => {
     assert.equal((await fetch(`${base}/api/travel-data`)).status, 401);
     const { cookie } = await login(base);
     const exported = await fetch(`${base}/api/travel-data`, { headers: { Cookie: cookie } });
@@ -42,11 +42,8 @@ test('动态全量导出必须登录，并包含 data 与认证哈希配置', as
     assert.match(exported.headers.get('content-type'), /application\/zip/);
     const entries = readZip(new Uint8Array(await exported.arrayBuffer()));
     assert.equal(entries.some(entry => entry.name === record.desc_md), true);
-    assert.equal(entries.some(entry => entry.name === '.secrets/auth.json'), true);
+    assert.equal(entries.some(entry => entry.name === '.secrets/auth.json'), false);
     assert.equal(entries.some(entry => entry.name === 'data/password.json'), false);
-    const config = JSON.parse(Buffer.from(entries.find(entry => entry.name === '.secrets/auth.json').data).toString('utf8'));
-    assert.equal(config.hash, AUTH_CONFIG.hash);
-    assert.equal('password' in config, false);
 });
 
 test('登录会话与写入令牌共同保护导入，成功后失效全部旧会话', async () => {
@@ -75,7 +72,7 @@ test('登录会话与写入令牌共同保护导入，成功后失效全部旧�
     assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } })).status, 401);
 });
 
-test('旧数据备份不含认证配置时保留当前配置，非法认证配置会被拒绝', async () => {
+test('新旧数据备份都保留当前认证配置', async () => {
     const first = await login(base);
     const legacyArchive = createZip([{ name: 'data/travel_data.json', data: '[]' }]);
     const legacyImport = await fetch(`${base}/api/travel-data`, {
@@ -97,6 +94,7 @@ test('旧数据备份不含认证配置时保留当前配置，非法认证配�
         headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': second.token, Cookie: second.cookie, Origin: base },
         body: invalid
     });
-    assert.equal(response.status, 400);
-    assert.match((await response.json()).error, /认证配置无效/);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).authPreserved, true);
+    assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
 });

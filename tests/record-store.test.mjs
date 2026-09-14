@@ -230,7 +230,7 @@ test('写入端点拒绝跨源请求、伪造 Host、缺失令牌及不合法数
     assert.equal((await post(draft('b'), { 'X-Travel-Token': '' })).status, 403);
     assert.equal((await put('missing.md', draft('b'), { 'X-Travel-Token': '' })).status, 403);
     assert.equal((await remove('missing.md', { 'X-Travel-Token': '' })).status, 403);
-    assert.equal((await post(draft('b'), { 'Content-Type': 'text/plain' })).status, 403);
+    assert.equal((await post(draft('b'), { 'Content-Type': 'text/plain' })).status, 415);
     assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Origin: 'https://example.com' } })).status, 403);
     assert.equal((await post(draft('b', { date: '2026-02-30' }))).status, 400);
     assert.equal((await post(draft('b', { body: '字'.repeat(180000) }))).status, 400);

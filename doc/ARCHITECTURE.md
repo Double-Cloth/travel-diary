@@ -34,14 +34,14 @@ index.html
        └─ js/utils.js
 ```
 
-运行 `js/server.js` 时，服务提供静态文件和正确的 MIME 类型，并将 `/api/travel-auth`、`/api/travel-records` 与 `/api/travel-data` 交给零安装依赖的数据服务，分别用于认证、记录的新增修改删除及 `data/` + `.secrets/auth.json` 的动态 ZIP 导入导出。GitHub Pages 与普通静态托管仍不具备认证或写入端点。
+运行 `js/server.js` 时，服务提供静态文件和正确的 MIME 类型，并将 `/api/travel-auth`、`/api/travel-records` 与 `/api/travel-data` 交给零安装依赖的数据服务，分别用于认证、记录的新增修改删除及 `data/` 的动态 ZIP 导入导出。认证材料不进入数据备份。GitHub Pages 与普通静态托管仍不具备认证或写入端点。
 
-监听配置与写入策略相互独立：`--local` / `--network` 决定绑定 `127.0.0.1` 还是 `0.0.0.0`，`--write-mode=local|remote` 决定哪些请求可以取得写入能力。默认 write mode 为 `local`，所以单独使用 `--network` 不会开放远程写入。只有显式使用 `--write-mode=remote`，同站点远程页面才可访问写入接口。
+监听配置与写入策略相互独立：`--local` / `--network` 决定绑定 `127.0.0.1` 还是 `0.0.0.0`，`--write-mode=local|remote` 决定哪些请求可以取得写入能力。默认 write mode 为 `local`，所以单独使用 `--network` 不会开放远程写入。remote 模式还必须通过可重复的 `--allowed-origin=https://...` 声明精确的 HTTPS 来源白名单。
 
 ## 个人内容与通用资源
 
 - `data/`：旅行索引、日记正文、照片和头像等公开内容。不同使用者复用项目时，在此替换自己的内容。
-- `.secrets/`：仅供 Node 服务读取的认证配置。`auth.json` 保存 `scrypt` 哈希、随机盐和参数；静态处理器在路径解析和真实路径解析后都会拒绝该目录，防止直接路径、编码路径或目录链接泄露。
+- `.secrets/`：仅供 Node 服务读取的认证配置。`auth.json` 保存 `scrypt` 哈希、随机盐和参数；按当前部署要求纳入版本控制，但不进入数据备份。静态处理器在路径解析和真实路径解析后都会拒绝该目录。
 - `assets/`：通用国家目录（`catalogs/countries.json`）、中国省市区目录（`catalogs/china-locations.json`）、字体、页面背景和纹理。
 - `index.html`、`js/`、`css/`：共享的页面结构与功能实现；`scripts/`、`tests/`、`doc/` 分别负责维护工具、验证和使用说明。
 
@@ -136,15 +136,15 @@ data/travel_data.json ────────────────→ getRec
 
 新增、修改、删除及动态数据导入导出共用服务端认证。`record-password.js` 保留六格指示器与数字键盘，但不读取任何配置文件，也不在浏览器内比较密码；输满 6 位后只通过相对 URL 提交到 `POST /api/travel-auth`。服务端从普通文件 `.secrets/auth.json` 读取认证配置，以固定参数 `scrypt` 计算候选哈希并用 `timingSafeEqual` 比较，再执行登录失败限速。remote 模式只接受由后端工具生成并标记为可远程使用的六位数字配置。
 
-同一来源 15 分钟内连续失败 5 次后被限速。认证成功会创建内存会话和独立 CSRF/写入 token：会话 Cookie 限制为 `/api`、`HttpOnly`、`SameSite=Strict`、最长 8 小时，经过同源校验的 HTTPS Origin 自动添加 `Secure`；token 仅在已登录的认证响应和能力响应中返回。服务重启、显式注销或完整数据导入都会使旧会话失效。所有修改请求必须同时通过 Host/Origin 写入策略、会话和 `X-Travel-Token`，任一条件不能替代其余条件。
+任何来源合计在 15 分钟内连续失败 5 次后全局限速，并在验证前预留并发名额，避免轮换 IP/Host 或并发绕过。认证成功会创建有上限的内存会话和独立 CSRF/写入 token：Cookie 限制为 `/api`、`HttpOnly`、`SameSite=Strict`、最长 8 小时，remote 模式始终添加 `Secure`。会话绑定签发时的认证哈希，换密后旧会话在下一次请求立即失效。所有修改请求必须同时通过 Host/Origin 写入策略、会话和 `X-Travel-Token`。
 
 验证通过后打开记录编辑器 `dialog`。表单复用国家目录和当前内存中的旅行记录：`record-suggestions.mjs` 先按国家与行政区收窄地点候选菜单，再通过历史精确匹配或明确名称后缀补全空白地点字段。`trip_id` 按完整日期与目的地自动生成，目的地缺失时才回退到行政区；下拉候选独立按最近日期列出 5 个不同的已有行程。自动值与用户手工值分开记录，依赖项变化时可以更新旧的自动值，但不会覆盖手工修改或导入草稿中的值。
 
 未登录的 `GET /api/travel-records` 只返回服务标识、`AUTH_REQUIRED` 和空方法列表，不泄露 token；已登录时才返回 token 与支持的方法。`POST` 使用 JSON、会话与 `X-Travel-Token` 提交 v3 草稿，服务端校验字段、国家代码、正文路径及照片引用。`PUT` 提交原正文路径与草稿，`DELETE` 提交正文路径；两者要求索引中恰好匹配一条记录。`record-input.mjs` 兼容 v1、v2 草稿，仅为 v1 补齐后来新增的可选字段。
 
-local write mode 保持原安全边界：只允许回环来源地址、localhost / `127.0.0.1` / `::1` Host，并在提供 Origin 时要求完全匹配本机 HTTP Origin；`--network` 的其他设备仍只能读取。remote write mode 不依赖客户端 IP，但要求合法 Host，且提供的 Origin 必须是 HTTP 或 HTTPS，并与 Host 使用相同 authority。比较时允许外部 HTTPS Origin 对应 Node 内部 HTTP 连接，因此兼容在 Nginx、Caddy、Apache 或 Cloudflare Tunnel 后终止 TLS；协议之外的 `X-Forwarded-*` 不参与授权，也不能绕过来源判断。API 不返回 `Access-Control-Allow-Origin: *`，任意跨域来源会被拒绝。
+local write mode 保持原安全边界：只允许回环来源地址、localhost / `127.0.0.1` / `::1` Host，并在提供 Origin 时要求完全匹配本机 HTTP Origin；`--network` 的其他设备仍只能读取。remote write mode 不依赖客户端 IP，但只允许白名单中的 HTTPS Origin 和对应 Host，可安全兼容在 Nginx、Caddy、Apache 或 Cloudflare Tunnel 后终止 TLS。`X-Forwarded-*` 不参与授权。API 不返回 `Access-Control-Allow-Origin: *`。
 
-前端不根据 hostname 推断权限。`probeWriterService()` 可识别存在但尚未登录的 writer API，`detectWriterCapability()` 只有在浏览器携带有效 `HttpOnly` 会话并取得 token 后才返回动态写入能力；local 模式的远程页面、GitHub Pages、普通静态服务器或 API 不存在时自动进入只读模式。只读页面仍可编辑和导出草稿，但全部数据导入和导出都要求 writer API，不会回退到公开静态 ZIP。
+前端不根据 hostname 推断权限。新增和修改入口无条件先进入 `record-password.js`，只有 `POST /api/travel-auth` 成功后才把本次验证得到的能力交给编辑器；探测超时、异常响应或 API 不存在都不能触发编辑器。`detectWriterCapability()` 只有在浏览器携带有效 `HttpOnly` 会话并取得 token 后才返回动态写入能力。local 模式的远程页面、GitHub Pages、普通静态服务器或 API 不存在时保持只读，全部数据导入和导出也不会回退到公开静态 ZIP。
 
 写入和全量数据导入导出共用项目根目录的 `.travel-data.lock` 独占锁。新增记录会重新读取当前索引，独占创建 Markdown 文件，写入并同步临时索引，最后用 `rename` 替换索引。目录和文件拒绝符号链接 / junction；失败时清理本次创建的正文、照片、空照片目录和临时索引。上传图片写入以目的地拼音命名的照片目录，并在索引提交前完成文件写入和同步；重试时比对照片字节。重复提交以正文路径、元数据和 Markdown 内容比对实现去重，默认正文路径使用日期和目的地拼音。自定义正文路径仍遵守年份目录、日期前缀及 ASCII 文件名规范，照片引用仅允许项目内的普通文件。
 
@@ -156,9 +156,9 @@ Markdown 与 JSON 的写入不构成跨文件事务，进程强制终止或断�
 
 正文预览复用 `js/data.js` 导出的 `parseMarkdown()`，与日记详情使用相同的 HTML 转义和链接过滤规则。源码编辑和预览编辑由 `markdown-editor.js` 负责标题拆分、语法高亮与受限 DOM 序列化；粘贴只接受纯文本。文件写入使用 `buildMarkdown()` 生成正文。新草稿导出为 ZIP，`draft.json` 仅保存字段和照片文件引用，实际图片放在 `photos/`；导入后在内存中恢复为现有写入负载。旧版 v1 至 v3 JSON 草稿继续兼容。
 
-动态全量导出只有在会话有效时才遍历普通文件，把 `data/` 与 `.secrets/auth.json` 写入 ZIP；认证配置不含明文密码。GitHub Pages 构建只发布页面、脚本和公开 `data/` 文件，不生成或发布数据备份 ZIP。导入由当前会话与 token 授权，随后校验 ZIP 路径、跨平台大小写冲突、文件目录重名、索引 JSON、记录字段和日期、正文 UTF-8、照片引用及认证配置；remote 模式拒绝未按六位数字策略生成的认证配置。旧备份缺少 `.secrets/auth.json` 时复制当前配置，旧 `data/password.json` 被过滤。全部内容先写入项目内临时目录，再分别以 `rename` 替换 `data/` 与 `.secrets/`；任一步失败都会恢复两组备份并清理暂存目录。成功后清空会话，确保恢复后的凭据立即成为唯一有效登录凭据。
+动态全量导出只有在会话有效时才遍历 `data/` 普通文件，不导出认证哈希。GitHub Pages 构建也不生成或发布数据备份 ZIP。导入由当前会话与 token 授权，校验 ZIP 路径、跨平台大小写冲突、文件目录重名、索引 JSON、记录字段和日期、正文 UTF-8 及照片引用。旧备份中的 `.secrets/auth.json` 和 `data/password.json` 都被过滤，当前认证保持不变。内容先写入临时目录，再以 `rename` 原子替换 `data/`，失败时恢复备份。成功后清空会话。
 
-应用认证、同源校验与写入 token 形成纵深防护，但不代替传输安全。remote write mode 默认关闭；公网部署必须使用 HTTPS，并建议在应用上游叠加反向代理认证、VPN 或 Zero Trust。跟踪在 Git 中的密码哈希可能被仓库读者用于离线猜测，因此仓库访问控制和高熵长口令仍是生产边界的一部分。
+应用认证、HTTPS Origin 白名单、会话与写入 token 形成纵深防护，但不代替传输安全。remote write mode 默认关闭；公网部署必须使用 HTTPS，并在应用上游叠加独立认证、VPN 或 Zero Trust。当前部署选择跟踪认证哈希，因此仓库必须保持私有并限制读取权限；若曾公开，必须清理历史并换密。
 
 ## 拆分原则
 

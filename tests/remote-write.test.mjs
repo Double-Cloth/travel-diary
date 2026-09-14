@@ -100,7 +100,7 @@ before(async () => {
     await fs.writeFile(path.join(root, 'assets/catalogs/countries.json'), JSON.stringify({ countries }));
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
     await installAuth(root);
-    server = http.createServer(createHandler(root, { writeMode: 'remote' }));
+    server = http.createServer(createHandler(root, { writeMode: 'remote', allowedOrigins: [httpsOrigin] }));
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
     port = server.address().port;
@@ -115,16 +115,15 @@ after(async () => {
     }
 });
 
-test('remote 模式兼容同站点 HTTP 与 HTTPS 反向代理 Origin', async () => {
+test('remote 模式只接受显式白名单中的 HTTPS Origin', async () => {
     const httpLogin = await authenticate(`http://${siteHost}`);
-    assert.equal(httpLogin.response.status, 200);
-    assert.doesNotMatch(httpLogin.response.headers['set-cookie'][0], /; Secure/);
+    assert.equal(httpLogin.response.status, 403);
     const httpsLogin = await authenticate(httpsOrigin);
     assert.equal(httpsLogin.response.status, 200);
     assert.match(httpsLogin.response.headers['set-cookie'][0], /; Secure/);
     assert.equal(httpsLogin.response.headers['access-control-allow-origin'], undefined);
     const loopback = await authenticate(`http://127.0.0.1:${port}`, `127.0.0.1:${port}`);
-    assert.equal(loopback.response.status, 200);
+    assert.equal(loopback.response.status, 403);
 });
 
 test('remote 模式拒绝不匹配 Origin，且 X-Forwarded 信息不能绕过校验', async () => {
@@ -158,12 +157,13 @@ test('remote 模式仍要求 mutation 令牌，并支持新增、修改与删除
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), []);
 });
 
-test('remote 模式可通过登录会话和令牌导出、导入 data 与认证配置', async () => {
+test('remote 模式可通过登录会话和令牌导出、导入 data，但不导出认证配置', async () => {
     const created = json(await mutate('POST', draft('c', { date: '2026-09-15' }))).record;
     const exported = await request({ pathname: '/api/travel-data', headers: { Cookie: cookie } });
     assert.equal(exported.status, 200);
     assert.match(exported.headers['content-type'], /application\/zip/);
     assert.equal(readZip(exported.body).some(entry => entry.name === created.desc_md), true);
+    assert.equal(readZip(exported.body).some(entry => entry.name === '.secrets/auth.json'), false);
 
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
     const missingToken = await request({

@@ -1,6 +1,6 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260913-remote-writes-v1';
-import { createPasswordGate } from './record-password.js?v=20260913-server-auth-v2';
+import { createRecordEditor } from './record-editor.js?v=20260914-auth-gate-v1';
+import { createPasswordGate } from './record-password.js?v=20260914-auth-gate-v1';
 import { createDataTransfer } from './data-transfer.js?v=20260913-no-static-export-v1';
 import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=20260913-server-auth-v2';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
@@ -116,39 +116,24 @@ async function initApp() {
     const getRecords = () => travelModel?.records || [];
     const openCreateEditor = createRecordEditor(handleRecordSaved, getRecords);
     const openUpdateEditor = createRecordEditor(handleRecordSaved, getRecords);
-    const requestCreateAuthorization = createPasswordGate(() => openCreateEditor(), {
-        title: '新增记录验证',
-        description: '输入 6 位数字密码后继续。',
-        verifying: '正在验证并打开编辑器…',
-        actionError: '无法打开编辑器，请重试。'
-    });
-    openRecordEditor = async () => {
-        try {
-            await probeWriterService();
-            return requestCreateAuthorization();
-        } catch {
-            return openCreateEditor();
+    const requestCreateAuthorization = createPasswordGate(
+        capability => openCreateEditor(null, capability),
+        {
+            title: '新增记录验证',
+            description: '输入 6 位数字密码后继续。',
+            verifying: '正在验证并打开编辑器…',
+            actionError: '无法打开编辑器，请重试。'
         }
-    };
-    let pendingEditRecord = null;
-    const requestEditAuthorization = createPasswordGate(() => openUpdateEditor(pendingEditRecord), {
+    );
+    openRecordEditor = requestCreateAuthorization;
+    const requestEditAuthorization = createPasswordGate((capability, record) => openUpdateEditor(record, capability), {
         title: '修改记录验证',
         description: '输入 6 位数字密码后修改这条旅行记录。',
         verifying: '正在验证并打开编辑器…',
         actionError: '无法打开修改窗口，请重试。'
     });
-    openEditRecord = async () => {
-        try {
-            await probeWriterService();
-            return requestEditAuthorization();
-        } catch {
-            return openUpdateEditor(pendingEditRecord);
-        }
-    };
-    let pendingDeleteRecord = null;
-    const requestDeleteAuthorization = createPasswordGate(async () => {
-        const record = pendingDeleteRecord;
-        pendingDeleteRecord = null;
+    openEditRecord = requestEditAuthorization;
+    const requestDeleteAuthorization = createPasswordGate(async (_capability, record) => {
         try {
             if (!record) throw new Error('要删除的旅行记录已失效，请重新打开后再试。');
             const result = await deleteTravelRecord(record);
@@ -162,10 +147,7 @@ async function initApp() {
         verifying: '正在验证并删除记录…',
         actionError: '删除记录失败，请重试。'
     });
-    refs.openEditRecord = record => {
-        pendingEditRecord = record;
-        return openEditRecord();
-    };
+    refs.openEditRecord = record => openEditRecord(record);
     openDeleteRecord = async record => {
         try {
             await probeWriterService();
@@ -176,8 +158,7 @@ async function initApp() {
             throw error;
         }
         if (!await recordDeleteDialog.confirm(record)) return;
-        pendingDeleteRecord = record;
-        return requestDeleteAuthorization();
+        return requestDeleteAuthorization(record);
     };
     refs.openDeleteRecord = openDeleteRecord;
     dataTransfer = createDataTransfer(async () => {
@@ -188,7 +169,7 @@ async function initApp() {
         () => dataTransfer.exportAll(`travel-diary-data-${getTodayDate()}.zip`),
         {
             title: '导出数据验证',
-            description: '输入 6 位数字密码后导出包含认证配置的全部数据。',
+            description: '输入 6 位数字密码后导出全部旅行数据（不包含认证配置）。',
             verifying: '正在验证并准备下载…',
             actionError: '无法导出全部数据，请重试。'
         }

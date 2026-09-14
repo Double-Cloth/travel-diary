@@ -51,6 +51,7 @@ export function createPasswordGate(onVerified, options = {}) {
     let enteredPassword = '';
     let verifying = false;
     let trigger;
+    let pendingContext;
     const status = message => { dialog.querySelector('[data-password-status]').textContent = message; };
 
     function setControlsDisabled(disabled) {
@@ -84,6 +85,7 @@ export function createPasswordGate(onVerified, options = {}) {
         if (verifying) return;
         dialog.close();
         reset();
+        pendingContext = undefined;
         restoreTriggerFocus();
     }
 
@@ -115,9 +117,11 @@ export function createPasswordGate(onVerified, options = {}) {
         }
         dialog.close();
         reset();
+        const verifiedContext = pendingContext;
+        pendingContext = undefined;
         restoreTriggerFocus();
         try {
-            await onVerified(capability);
+            await onVerified(capability, verifiedContext);
         } catch (error) {
             void showFeedback(error?.message || copy.actionError, { label: '访问验证', title: '操作未完成' });
         }
@@ -167,9 +171,10 @@ export function createPasswordGate(onVerified, options = {}) {
         event.stopPropagation();
     });
 
-    return async () => {
+    return async context => {
         if (dialog.open || verifying) return;
         trigger = document.activeElement;
+        pendingContext = context;
         reset();
         dialog.showModal();
         dialog.querySelector('[data-password-key]')?.focus();

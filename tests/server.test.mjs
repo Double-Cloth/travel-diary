@@ -3,15 +3,11 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { once } from 'node:events';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, mkdir, readFile, writeFile, symlink, rm } from 'node:fs/promises';
-import { createRequire } from 'node:module';
+import { mkdtemp, mkdir, writeFile, symlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHandler, parseArgs, safeJoin, listenWithRetries } from '../js/server.js';
 import { isMatchingHttpOrigin, isValidHostHeader, isWriterRequestAllowed } from '../js/record-store.js';
-
-const require = createRequire(import.meta.url);
-const { validateAuthConfig } = require('../js/auth.js');
 
 let fixture;
 let root;
@@ -93,6 +89,9 @@ test('目录跳转保留查询参数，HEAD 与 GET 的资源元数据一致', a
     assert.equal(head.body, '');
     assert.equal(head.headers['content-length'], String(Buffer.byteLength('export {};')));
     assert.match(head.headers['content-type'], /text\/javascript/);
+    assert.match(head.headers['content-security-policy'], /default-src 'self'/);
+    assert.equal(head.headers['x-frame-options'], 'DENY');
+    assert.equal(head.headers['x-content-type-options'], 'nosniff');
     assert.equal((await request('/missing')).status, 404);
     assert.equal((await request('/', 'POST')).status, 405);
     assert.equal((await request('/', 'OPTIONS')).headers['access-control-allow-methods'], 'GET, HEAD, OPTIONS');
@@ -112,12 +111,14 @@ test('端口参数不能越界且被占用时自动尝试后续端口', async ()
 });
 
 test('监听范围与写入模式独立，默认及单独 network 均保持 local 写入', () => {
-    assert.deepEqual(parseArgs([]), { dir: '.', port: 9000, local: true, writeMode: 'local' });
+    assert.deepEqual(parseArgs([]), { dir: '.', port: 9000, local: true, writeMode: 'local', allowedOrigins: [] });
     assert.equal(parseArgs(['--network']).writeMode, 'local');
-    assert.deepEqual(parseArgs(['--network', '--write-mode=remote']), {
-        dir: '.', port: 9000, local: false, writeMode: 'remote'
+    assert.deepEqual(parseArgs(['--local', '--write-mode=remote', '--allowed-origin=https://diary.example']), {
+        dir: '.', port: 9000, local: true, writeMode: 'remote', allowedOrigins: ['https://diary.example']
     });
-    assert.equal(parseArgs(['--write-mode', 'remote']).writeMode, 'remote');
+    assert.throws(() => parseArgs(['--write-mode', 'remote']), /allowed-origin/);
+    assert.throws(() => parseArgs(['--write-mode=remote', '--allowed-origin=http://diary.example']), /HTTPS Origin/);
+    assert.throws(() => parseArgs(['--allowed-origin=https://diary.example']), /remote/);
 });
 
 test('CLI help 说明监听与写入配置，并包含显式远程写入示例', () => {
@@ -128,13 +129,8 @@ test('CLI help 说明监听与写入配置，并包含显式远程写入示例',
     assert.equal(result.status, 0);
     assert.match(result.stdout, /--local\|--network/);
     assert.match(result.stdout, /--write-mode(?:=MODE)?/);
-    assert.match(result.stdout, /--network --write-mode=remote/);
+    assert.match(result.stdout, /--allowed-origin=https:\/\/diary\.example\.com/);
     assert.match(result.stdout, /npm run auth:set/);
-});
-
-test('仓库内后端生成的六位密码配置可启用 remote 服务', async () => {
-    const config = JSON.parse(await readFile(path.resolve(import.meta.dirname, '../.secrets/auth.json'), 'utf8'));
-    assert.equal(validateAuthConfig(config, { requireProduction: true }).productionReady, true);
 });
 
 test('local 写入保持回环地址、回环 Host 与 HTTP 同源限制', () => {
@@ -146,23 +142,25 @@ test('local 写入保持回环地址、回环 Host 与 HTTP 同源限制', () =>
     assert.equal(isWriterRequestAllowed({ ...local, forwardedHost: 'localhost:9000', remoteAddress: '192.168.1.20' }, 'local'), false);
 });
 
-test('remote 写入接受同站点 HTTP/HTTPS Origin，拒绝伪造或不匹配来源', () => {
+test('remote 写入仅接受 HTTPS Origin 白名单中的 Host 与来源', () => {
+    const allowed = ['https://example.com', 'https://example.com:8443'];
     for (const request of [
-        { host: '192.168.1.100:9000', origin: 'http://192.168.1.100:9000' },
-        { host: 'example.com', origin: 'http://example.com' },
         { host: 'example.com', origin: 'https://example.com' },
         { host: 'example.com:8443', origin: 'https://example.com:8443' },
         { host: 'example.com' }
-    ]) assert.equal(isWriterRequestAllowed(request, 'remote'), true, JSON.stringify(request));
+    ]) assert.equal(isWriterRequestAllowed(request, 'remote', allowed), true, JSON.stringify(request));
 
     for (const request of [
+        { host: '192.168.1.100:9000', origin: 'http://192.168.1.100:9000' },
+        { host: 'example.com', origin: 'http://example.com' },
         { host: 'example.com', origin: 'https://evil.example' },
         { host: 'example.com', origin: 'file://example.com' },
         { host: 'example.com', origin: 'null' },
         { host: 'example.com/path', origin: 'https://example.com' },
         { host: 'evil.example@example.com', origin: 'https://example.com' },
         { host: '', origin: 'https://example.com' }
-    ]) assert.equal(isWriterRequestAllowed(request, 'remote'), false, JSON.stringify(request));
+    ]) assert.equal(isWriterRequestAllowed(request, 'remote', allowed), false, JSON.stringify(request));
+    assert.equal(isWriterRequestAllowed({ host: 'example.com', origin: 'https://example.com' }, 'remote'), false);
 
     assert.equal(isValidHostHeader('[::1]:9000'), true);
     assert.equal(isMatchingHttpOrigin('example.com', 'https://example.com'), true);

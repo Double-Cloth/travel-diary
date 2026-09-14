@@ -9,7 +9,7 @@ export const AUTH_CONFIG = Object.freeze({
     hash: 'TjGzYhK4G4S1xMNE7O6jYCwO8ZC9EaDjjeewpmFnUhs=',
     keyLength: 32,
     cost: { N: 32768, r: 8, p: 1 },
-    policy: { format: 'digits', length: 6, productionReady: true }
+    policy: { format: 'digits', length: 6, productionReady: true, commonPatternsRejected: true }
 });
 
 export async function installAuth(root, config = AUTH_CONFIG) {

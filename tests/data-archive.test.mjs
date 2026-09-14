@@ -20,7 +20,7 @@ async function fixture(t, prefix = 'travel-diary-archive-') {
     return root;
 }
 
-test('完整 ZIP 保留 data 与认证配置并可共同恢复', async t => {
+test('完整 ZIP 只保留 data，恢复时不修改当前认证', async t => {
     const root = await fixture(t);
     await fs.mkdir(path.join(root, 'data/travel-diary/2026'), { recursive: true });
     await fs.mkdir(path.join(root, 'data/photos/suzhou'), { recursive: true });
@@ -29,16 +29,15 @@ test('完整 ZIP 保留 data 与认证配置并可共同恢复', async t => {
     await fs.writeFile(path.join(root, record.desc_md), '# 苏州\n');
     await fs.writeFile(path.join(root, record.photo_folder, record.photos[0]), Buffer.from([1, 2, 3]));
 
-    const archive = await exportDataArchive(root, { includeAuth: true });
+    const archive = await exportDataArchive(root);
     assert.deepEqual(readZip(archive).map(entry => entry.name).sort(), [
-        '.secrets/auth.json',
         'data/photos/suzhou/lake.png',
         'data/travel-diary/2026/2026-09-11-suzhou.md',
         'data/travel_data.json'
     ]);
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
     const result = await importDataArchive(root, archive, { requireProductionAuth: true });
-    assert.deepEqual(result, { files: 4, authPreserved: false });
+    assert.deepEqual(result, { files: 3, authPreserved: true });
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
     assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, record.photos[0])), Buffer.from([1, 2, 3]));
     assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
@@ -52,35 +51,39 @@ test('旧备份没有认证配置时保留当前认证，旧明文密码不会�
         { name: 'data/password.json', data: '{"password":"123456"}' }
     ]);
     const result = await importDataArchive(root, archive, { requireProductionAuth: true });
-    assert.deepEqual(result, { files: 2, authPreserved: true });
+    assert.deepEqual(result, { files: 1, authPreserved: true });
     await assert.rejects(fs.access(path.join(root, 'data/password.json')));
     assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
 });
 
-test('导入拒绝越界路径、缺失正文及非法认证配置', async t => {
+test('导入拒绝越界路径、缺失正文及伪造认证路径', async t => {
     const root = await fixture(t, 'travel-diary-archive-invalid-');
     await assert.rejects(importDataArchive(root, createZip([{ name: 'other/file.txt', data: 'x' }])), /只能包含 data/);
     const record = [{ date: '2026-09-11', country: '中国', country_code: 'CN', admin_area: '江苏省', locality: '苏州市', desc_md: 'data/travel-diary/2026/2026-09-11-missing.md', photo_folder: '', photos: [] }];
     await assert.rejects(importDataArchive(root, createZip([{ name: 'data/travel_data.json', data: JSON.stringify(record) }])), /缺少正文文件/);
-    await assert.rejects(importDataArchive(root, createZip([
+    const ignoredAuth = await importDataArchive(root, createZip([
         { name: 'data/travel_data.json', data: '[]' },
         { name: '.secrets/auth.json', data: '{}' }
-    ])), /认证配置无效/);
+    ]));
+    assert.deepEqual(ignoredAuth, { files: 1, authPreserved: true });
     await assert.rejects(importDataArchive(root, createZip([
         { name: 'data/travel_data.json', data: '[]' },
         { name: '.SECRETS/auth.json', data: JSON.stringify(AUTH_CONFIG) }
-    ])), /安全文件路径/);
+    ])), /认证配置路径无效/);
     assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]');
 });
 
-test('remote 导入拒绝未由后端生成的认证策略配置', async t => {
+test('remote 导入忽略备份中的认证配置', async t => {
     const root = await fixture(t, 'travel-diary-archive-weak-auth-');
     const weak = { ...AUTH_CONFIG, policy: { format: 'digits', length: 6, productionReady: false } };
     const archive = createZip([
         { name: 'data/travel_data.json', data: '[]' },
         { name: '.secrets/auth.json', data: JSON.stringify(weak) }
     ]);
-    await assert.rejects(importDataArchive(root, archive, { requireProductionAuth: true }), /后端生成/);
+    assert.deepEqual(await importDataArchive(root, archive, { requireProductionAuth: true }), {
+        files: 1, authPreserved: true
+    });
+    assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
 });
 
 test('备份导入与记录保存使用相同日期校验，支持低年份与世纪闰年', async t => {

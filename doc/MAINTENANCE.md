@@ -13,13 +13,13 @@
 | `npm run countries` | 从固定版本的 Unicode CLDR 更新国家目录。 | 是 |
 | `npm run china-locations` | 从固定版本的 `cn-division` 更新中国省市区目录。 | 是 |
 | `node js/server.js --port 8080 --network` | 监听局域网；写入仍保持默认 local 模式。 | 否 |
-| `node js/server.js --network --write-mode=remote` | 监听局域网并显式允许同站点远程写入。 | 否 |
+| `node js/server.js --local --write-mode=remote --allowed-origin=https://diary.example.com` | 仅允许精确 HTTPS 白名单站点远程写入。 | 否 |
 
 普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份。`--local` / `--network` 只决定监听范围，`--write-mode=local|remote` 单独决定写入策略；默认始终是 local，因此 `--network` 本身不会开放写权限。启动日志会同时显示 Bind 与 Write mode，remote 模式还会输出明显安全警告。
 
-remote 模式要求 `.secrets/auth.json` 使用后端生成的六位数字密码配置。密码只保存带随机盐的 `scrypt` 哈希；服务端同一来源登录连续失败 5 次后锁定 15 分钟，成功会话最长 8 小时，使用 `HttpOnly`、`SameSite=Strict` Cookie，HTTPS Origin 自动增加 `Secure`。项目服务器会拒绝 `.secrets/` 和任何指向它的目录链接，但其他 Web 服务器也必须配置同等拒绝规则。
+remote 模式要求 `.secrets/auth.json` 由当前后端工具生成，并必须声明至少一个精确 HTTPS `--allowed-origin`。密码只保存带随机盐的 `scrypt` 哈希；所有来源合计连续失败 5 次后锁定 15 分钟。成功会话最长 8 小时，使用 `HttpOnly`、`SameSite=Strict`、`Secure` Cookie，并与当前认证哈希绑定。
 
-局域网 HTTP 可用，但生产环境必须由 Nginx、Caddy、Apache 或 Cloudflare Tunnel 终止 HTTPS 后转发到 Node HTTP 端口。代理应保留外部 `Host`；服务端允许 Origin 的协议与内部连接协议不同，但要求 HTTP/HTTPS Origin 的 authority 与 Host 一致，并忽略 `X-Forwarded-*` 授权提示。公网部署仍建议叠加 HTTP Authentication、VPN、Zero Trust 或等效身份控制。
+生产环境必须由 Nginx、Caddy、Apache 或 Cloudflare Tunnel 终止 HTTPS 后转发到 Node HTTP 端口。代理应保留外部 `Host` 和 `Origin`；remote 模式不信任 `X-Forwarded-*` 授权提示，也不接受 HTTP Origin。公网部署仍建议叠加 VPN、Zero Trust 或等效身份控制。
 
 ### 生产部署最小要求
 
@@ -27,19 +27,19 @@ remote 模式要求 `.secrets/auth.json` 使用后端生成的六位数字密码
 2. 使用专门的低权限系统账户运行 Node；Linux 启动时会把 `.secrets/` 和 `auth.json` 权限收紧为 `0700` / `0600`。Windows 应通过 NTFS ACL 限制为运行账户和管理员可读。
 3. 反向代理只转发请求给 `127.0.0.1:9000`，不要另行把项目根目录作为静态目录发布；如果必须配置静态根目录，应显式拒绝所有点目录。
 4. 对外只开放 HTTPS，启用 HSTS，并保留浏览器看到的外部 Host。不要依据客户端提供的 `X-Forwarded-*` 放宽认证或同源判断。
-5. `.secrets/auth.json` 可以纳入版本控制，但远程写入仓库必须限制访问。六位数字哈希可以被离线穷举，公开仓库不是安全的秘密存储边界。
+5. 当前部署选择将 `.secrets/auth.json` 纳入版本控制，但不得放入数据备份；仓库必须保持私有并限制读取权限。若认证哈希曾进入公开 Git 历史，应清理历史并立即换密。
 6. 六位密码不能单独承担公网身份认证；公网必须在反向代理、VPN 或 Zero Trust 层增加独立访问控制。
-7. 动态完整备份包含认证哈希，应存入受访问控制且加密的备份位置；静态构建产物不得包含 `.secrets/`。
+7. 动态完整备份不包含认证哈希，但仍可能含有私密旅行数据，应存入受访问控制的备份位置。
 
 ## 写入故障恢复
 
 | 现象 | 检查项 |
 | --- | --- |
 | 编辑器显示只读模式 | 确认当前站点能访问 `GET /api/travel-records` 和 `POST /api/travel-auth`。默认 local 模式只允许 localhost / 回环地址；远程写入需显式使用 `--write-mode=remote`；静态托管始终只读。 |
-| remote 模式仍返回 Host / Origin 错误 | 确认浏览器页面与 API 使用同一站点的相对 URL，代理保留外部 Host，Origin 的域名与端口和 Host 一致；不要依靠 `X-Forwarded-*` 绕过判断。 |
-| remote 模式提示认证配置无效 | 在服务器项目目录的交互式终端运行 `npm run auth:set`，重新设置 6 位数字密码，然后重启。 |
-| 口令正确但无法继续 | 检查 `.secrets/` 与 `auth.json` 是普通目录和普通文件、Node 进程可读；确认反向代理保留 Host 与 `Set-Cookie`，HTTPS 页面得到的 Cookie 带 `Secure`。修改配置后重启。 |
-| 登录返回 429 | 同一来源在 15 分钟内连续失败达到 5 次；等待 `Retry-After` 指示的时间，或在确认没有攻击后重启进程清除内存限速状态。 |
+| remote 模式仍返回 Host / Origin 错误 | 确认页面的完整 HTTPS Origin 已通过 `--allowed-origin` 声明，代理保留外部 Host 和 Origin；不要依靠 `X-Forwarded-*` 绕过判断。 |
+| remote 模式提示认证配置无效 | 在服务器项目目录的交互式终端运行 `npm run auth:set`，重新设置非弱组合的 6 位数字密码。 |
+| 口令正确但无法继续 | 检查 `.secrets/` 与 `auth.json` 是普通目录和普通文件、Node 进程可读；确认反向代理保留 Host、Origin 与 `Set-Cookie`，remote Cookie 带 `Secure`。 |
+| 登录返回 429 | 全局在 15 分钟内连续失败达到 5 次；按 `Retry-After` 等待。若非本人操作，应同时检查上游访问日志。 |
 | 正文路径无效 | 核对年份目录、旅行日期前缀、`.md` 扩展名及文件名字符。 |
 | 照片读取失败 | 确认文件确实是 JPEG、PNG、GIF 或 WebP，且浏览器内存、磁盘空间充足；应用不另设张数或文件大小上限。 |
 | 照片引用无效 | 核对 `photo_folder` 与各文件名的拼接结果、文件存在性和大小写。 |
@@ -47,8 +47,8 @@ remote 模式要求 `.secrets/auth.json` 使用后端生成的六位数字密码
 | 重复提交冲突 | 新增时核对已有正文与草稿；修改或删除结果不确定时，先刷新核对记录。 |
 | 已保存、已导入或已删除，但页面刷新失败 | 数据已经写入，手动刷新后查看，无需再次执行原操作。 |
 | 数据锁被占用 | 等待当前保存、导入或导出结束；若进程异常终止，按下述步骤恢复。 |
-| 全部数据导入失败 | 先重新登录，再确认 ZIP 来自本应用，包含 `data/travel_data.json` 及索引引用的正文和照片；动态完整备份还应包含合法 `.secrets/auth.json`。旧备份缺少认证配置时保留当前配置。 |
-| 导入后要求重新登录 | 导入会恢复备份内的认证配置，并主动注销全部旧会话；请使用生成该备份时的访问口令登录。 |
+| 全部数据导入失败 | 先重新登录，再确认 ZIP 不超过 256 MiB，包含 `data/travel_data.json` 及索引引用的正文和照片。 |
+| 导入后要求重新登录 | 导入会主动注销全部旧会话，但不会修改当前服务器密码；使用当前密码重新登录。 |
 
 异常退出后的恢复步骤：
 
@@ -95,9 +95,9 @@ remote 模式要求 `.secrets/auth.json` 使用后端生成的六位数字密码
    - `.secrets/auth.json`、大小写变体和指向该目录的链接是否都无法通过 HTTP 下载。
    - 未登录时能力端点不返回 token；错误口令限速、会话过期和导入后注销是否正常。
    - `--network` 未指定 remote write mode 时，局域网页面是否保持只读。
-   - 执行 `npm run auth:set` 后，`--network --write-mode=remote` 下远程页面是否可新增、修改、删除和导入；弱兼容配置是否拒绝启动。
+   - 执行 `npm run auth:set` 后，`--write-mode=remote --allowed-origin=https://...` 下白名单页面是否可新增、修改、删除和导入；HTTP 与非白名单来源是否被拒绝。
    - HTTPS 反向代理下，同站点 Origin 与 Host 是否可写，不匹配 Origin 是否被拒绝。
-   - GitHub Pages 或普通静态托管是否自动使用只读草稿流程，且不提供全部数据 ZIP 导入导出。
+   - GitHub Pages 或普通静态托管是否保持只读，且新增、修改和全部数据 ZIP 导入导出均不能绕过密码验证。
 
 ## 测试说明
 

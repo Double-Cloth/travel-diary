@@ -9,6 +9,10 @@ const PASSWORD_LENGTH = 6;
 const PASSWORD_MAX_LENGTH = PASSWORD_LENGTH;
 const SCRYPT_OPTIONS = Object.freeze({ N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
 const HASH_LENGTH = 32;
+const COMMON_PASSWORDS = new Set([
+    '000001', '112233', '121212', '123123', '131452', '321321',
+    '520520', '521521', '666888', '775852', '888666'
+]);
 
 function authFailure(message, code = 'AUTH_CONFIG_INVALID') {
     return Object.assign(new Error(message), { code });
@@ -17,6 +21,16 @@ function authFailure(message, code = 'AUTH_CONFIG_INVALID') {
 function validatePassword(password) {
     if (typeof password !== 'string' || !/^\d{6}$/.test(password)) {
         throw authFailure('访问密码必须为 6 位数字。', 'PASSWORD_POLICY_INVALID');
+    }
+    const ascending = '012345678901234';
+    const descending = '987654321098765';
+    if (/^(\d)\1{5}$/.test(password)
+        || /^(.{2})\1{2}$/.test(password)
+        || /^(.{3})\1$/.test(password)
+        || ascending.includes(password)
+        || descending.includes(password)
+        || COMMON_PASSWORDS.has(password)) {
+        throw authFailure('访问密码不能使用连续、重复或常见数字组合。', 'PASSWORD_TOO_WEAK');
     }
     return password;
 }
@@ -43,7 +57,8 @@ function validateAuthConfig(config, { requireProduction = false } = {}) {
     decodeBase64(config.hash, HASH_LENGTH, 'hash');
     const productionReady = config.policy?.format === 'digits'
         && config.policy?.length === PASSWORD_LENGTH
-        && config.policy?.productionReady === true;
+        && config.policy?.productionReady === true
+        && config.policy?.commonPatternsRejected === true;
     if (requireProduction && !productionReady) {
         throw authFailure('remote write mode 要求使用后端生成的 6 位数字密码配置，请先运行 npm run auth:set。', 'AUTH_NOT_PRODUCTION_READY');
     }
@@ -82,7 +97,10 @@ async function createAuthConfig(password) {
         hash: Buffer.from(hash).toString('base64'),
         keyLength: HASH_LENGTH,
         cost: { N: SCRYPT_OPTIONS.N, r: SCRYPT_OPTIONS.r, p: SCRYPT_OPTIONS.p },
-        policy: { format: 'digits', length: PASSWORD_LENGTH, productionReady: true }
+        policy: {
+            format: 'digits', length: PASSWORD_LENGTH, productionReady: true,
+            commonPatternsRejected: true
+        }
     };
 }
 
