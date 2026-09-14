@@ -672,7 +672,9 @@ function createRecordApi(root, options = {}) {
                     ? 503
                     : (error.status || 500);
                 send(status, {
-                    error: status === 503 ? '认证服务尚未安全配置，请联系管理员。' : (error.message || '认证服务暂时不可用。'),
+                    error: status === 503
+                        ? '认证服务尚未安全配置，请运行 npm run auth:set 创建 6 位数字访问密码。'
+                        : (error.message || '认证服务暂时不可用。'),
                     ...(error.code ? { code: error.code } : {})
                 });
             }

@@ -209,7 +209,7 @@ function isWithinRoot(rootDir, targetPath) {
 
 async function ensureDataStructure(rootDir) {
   const resolvedRoot = await fs.promises.realpath(rootDir);
-  const directories = ['data', 'data/travel-diary', 'data/photos', 'data/profile'];
+  const directories = ['.secrets', 'data', 'data/travel-diary', 'data/photos', 'data/profile'];
 
   for (const relativePath of directories) {
     const directory = path.join(resolvedRoot, ...relativePath.split('/'));
@@ -264,6 +264,19 @@ async function ensureDataStructure(rootDir) {
       throw new Error(`${file.label} 必须是项目内的普通文件。`);
     }
   }
+
+  const authFile = path.join(resolvedRoot, '.secrets', 'auth.json');
+  let authConfigured = false;
+  try {
+    const authStat = await fs.promises.lstat(authFile);
+    if (authStat.isSymbolicLink() || !authStat.isFile()) {
+      throw new Error('.secrets/auth.json 必须是项目内的普通文件。');
+    }
+    authConfigured = true;
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+  }
+  return { authConfigured };
 }
 
 function createHandler(rootDir, options = {}) {
@@ -428,6 +441,7 @@ async function main() {
     throw new Error(`Directory does not exist: ${rootDir}`);
   }
 
+  const structure = await ensureDataStructure(rootDir);
   if (args.writeMode === 'remote') {
     await readAuthConfig(rootDir, { requireProduction: true });
   }
@@ -446,6 +460,9 @@ async function main() {
   console.log(`Write mode: ${args.writeMode}`);
   if (args.writeMode === 'remote') console.log(`Allowed origins: ${args.allowedOrigins.join(', ')}`);
   console.log('Authentication: .secrets/auth.json (scrypt + server session)');
+  if (!structure.authConfigured) {
+    console.warn('未发现 .secrets/auth.json，已自动创建 .secrets/；请运行 npm run auth:set 创建 6 位数字访问密码。');
+  }
   console.log('-'.repeat(60));
   console.log(`Local: ${localhostUrl}`);
   if (!args.local) {

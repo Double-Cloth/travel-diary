@@ -79,6 +79,29 @@ async function exportDataArchive(root) {
         if (stat.isSymbolicLink() || !stat.isDirectory()) throw failure(403, 'data 必须是项目内的普通目录。');
         const entries = await collectFiles(dataDir);
         if (!entries.length) throw failure(400, 'data 目录为空，无法导出。');
+        const secretsDir = path.join(root, '.secrets');
+        await fs.mkdir(secretsDir, { recursive: true });
+        const secretsDirStat = await fs.lstat(secretsDir);
+        if (secretsDirStat.isSymbolicLink() || !secretsDirStat.isDirectory()) {
+            throw failure(403, '.secrets 必须是项目内的普通目录。');
+        }
+        await fs.chmod(secretsDir, 0o700).catch(() => {});
+        const authFile = path.join(root, ...AUTH_RELATIVE_PATH.split('/'));
+        let authStat;
+        try { authStat = await fs.lstat(authFile); }
+        catch (error) {
+            if (error.code === 'ENOENT') throw failure(503, '缺少 .secrets/auth.json，请先运行 npm run auth:set 创建访问密码。', 'AUTH_NOT_CONFIGURED');
+            throw error;
+        }
+        if (authStat.isSymbolicLink() || !authStat.isFile()) {
+            throw failure(403, '.secrets/auth.json 必须是项目内的普通文件。');
+        }
+        const authData = await fs.readFile(authFile);
+        try { validateAuthConfig(parseJsonFile(authData, `当前 ${AUTH_RELATIVE_PATH}`)); }
+        catch (error) {
+            throw failure(503, '认证配置无效，请先运行 npm run auth:set 创建新的访问密码。', error.code);
+        }
+        entries.push({ name: AUTH_RELATIVE_PATH, data: authData });
         const { createZip } = await import('./zip-archive.mjs');
         return Buffer.from(createZip(entries));
     } finally {
@@ -178,10 +201,11 @@ async function importDataArchive(root, archive, options = {}) {
         if (authEntries.length > 1 || (authEntries.length === 1 && authEntries[0].name !== AUTH_RELATIVE_PATH)) {
             throw failure(400, `备份中的认证配置路径无效，应为 ${AUTH_RELATIVE_PATH}。`);
         }
-        // 数据备份不应携带或替换登录凭据；兼容旧备份时只忽略其中的认证文件。
-        entries = entries.filter(entry => entry.name !== 'data/password.json' && entry.name !== AUTH_RELATIVE_PATH);
+        const authEntry = authEntries[0] || null;
+        // 兼容旧备份中的明文密码文件，但不再静默丢弃当前版本导出的认证配置。
+        entries = entries.filter(entry => entry.name !== 'data/password.json');
         if (!entries.length || entries.some(entry => !safeArchivePath(entry.name))) {
-            throw failure(400, '备份只能包含 data/ 下的安全文件路径。');
+            throw failure(400, `备份只能包含 data/ 和 ${AUTH_RELATIVE_PATH} 下的安全文件路径。`);
         }
         const portablePaths = new Map();
         for (const entry of entries) {
@@ -198,31 +222,74 @@ async function importDataArchive(root, archive, options = {}) {
             }
         }
         await validateImportedRecords(entries);
-        await validateCurrentAuth(root, options);
+        if (authEntry) {
+            try {
+                validateAuthConfig(parseJsonFile(authEntry.data, AUTH_RELATIVE_PATH), {
+                    requireProduction: options.requireProductionAuth === true
+                });
+            } catch (error) {
+                if (error.status) throw error;
+                throw failure(400, `备份中的 ${AUTH_RELATIVE_PATH} 无效。`, error.code);
+            }
+        } else {
+            await validateCurrentAuth(root, options);
+        }
+        const stageSecrets = path.join(stageRoot, '.secrets');
+        const currentSecrets = path.join(root, '.secrets');
+        const backupSecrets = path.join(root, `.travel-secrets-backup-${id}`);
         await fs.mkdir(stageData, { recursive: true });
         for (const entry of entries) {
+            if (entry.name === AUTH_RELATIVE_PATH) continue;
             const target = path.join(stageData, ...entry.name.slice('data/'.length).split('/'));
             await fs.mkdir(path.dirname(target), { recursive: true });
             await fs.writeFile(target, entry.data, { flag: 'wx' });
+        }
+        if (authEntry) {
+            await fs.mkdir(stageSecrets, { recursive: true });
+            await fs.writeFile(path.join(stageSecrets, 'auth.json'), authEntry.data, { flag: 'wx', mode: 0o600 });
         }
         const currentStat = await fs.lstat(currentData);
         if (currentStat.isSymbolicLink() || !currentStat.isDirectory()) {
             throw failure(403, '当前 data 必须是项目内的普通目录。');
         }
+        if (authEntry) {
+            let secretsStat;
+            try { secretsStat = await fs.lstat(currentSecrets); }
+            catch (error) {
+                if (error.code !== 'ENOENT') throw error;
+                await fs.mkdir(currentSecrets, { recursive: true });
+                secretsStat = await fs.lstat(currentSecrets);
+            }
+            if (secretsStat.isSymbolicLink() || !secretsStat.isDirectory()) {
+                throw failure(403, '.secrets 必须是项目内的普通目录。');
+            }
+        }
+        let movedSecrets = false;
+        let installedSecrets = false;
         await fs.rename(currentData, backupData);
         movedData = true;
         try {
             await fs.rename(stageData, currentData);
             installedData = true;
+            if (authEntry) {
+                await fs.rename(currentSecrets, backupSecrets);
+                movedSecrets = true;
+                await fs.rename(stageSecrets, currentSecrets);
+                installedSecrets = true;
+            }
         } catch (error) {
+            if (installedSecrets) await fs.rm(currentSecrets, { recursive: true, force: true });
+            if (movedSecrets) await fs.rename(backupSecrets, currentSecrets).catch(() => {});
             if (installedData) await fs.rm(currentData, { recursive: true, force: true });
             await fs.rename(backupData, currentData);
             movedData = false;
             throw error;
         }
         movedData = false;
+        movedSecrets = false;
         await fs.rm(backupData, { recursive: true, force: true }).catch(() => {});
-        return { files: entries.length, authPreserved: true };
+        await fs.rm(backupSecrets, { recursive: true, force: true }).catch(() => {});
+        return { files: entries.length, authPreserved: !authEntry };
     } finally {
         if (movedData) await fs.rename(backupData, currentData).catch(() => {});
         await fs.rm(stageRoot, { recursive: true, force: true }).catch(() => {});

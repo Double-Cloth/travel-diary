@@ -67,14 +67,15 @@ test('畸形 URL 返回错误且后续请求仍正常', async () => {
 test('缺少 data 时创建可用的最小目录结构且不覆盖已有索引', async () => {
     const emptyRoot = path.join(fixture, 'empty-site');
     await mkdir(emptyRoot);
-    await ensureDataStructure(emptyRoot);
+    assert.deepEqual(await ensureDataStructure(emptyRoot), { authConfigured: false });
+    assert.equal((await stat(path.join(emptyRoot, '.secrets'))).isDirectory(), true);
     assert.equal(await readFile(path.join(emptyRoot, 'data/travel_data.json'), 'utf8'), '[]\n');
     assert.ok((await stat(path.join(emptyRoot, 'data/profile/profile-picture.png'))).size > 0);
     for (const directory of ['travel-diary', 'photos', 'profile']) {
         assert.equal((await stat(path.join(emptyRoot, 'data', directory))).isDirectory(), true);
     }
     await writeFile(path.join(emptyRoot, 'data/travel_data.json'), '[{"kept":true}]\n');
-    await ensureDataStructure(emptyRoot);
+    assert.deepEqual(await ensureDataStructure(emptyRoot), { authConfigured: false });
     assert.equal(await readFile(path.join(emptyRoot, 'data/travel_data.json'), 'utf8'), '[{"kept":true}]\n');
 });
 

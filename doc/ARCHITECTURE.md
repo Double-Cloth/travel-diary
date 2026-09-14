@@ -34,14 +34,14 @@ index.html
        └─ js/utils.js
 ```
 
-运行 `js/server.js` 时，服务提供静态文件和正确的 MIME 类型，并将 `/api/travel-auth`、`/api/travel-records` 与 `/api/travel-data` 交给零安装依赖的数据服务，分别用于认证、记录的新增修改删除及 `data/` 的动态 ZIP 导入导出。认证材料不进入数据备份。GitHub Pages 与普通静态托管仍不具备认证或写入端点。
+运行 `js/server.js` 时，服务提供静态文件和正确的 MIME 类型，并将 `/api/travel-auth`、`/api/travel-records` 与 `/api/travel-data` 交给零安装依赖的数据服务，分别用于认证、记录的新增修改删除及 `data/` 与 `.secrets/auth.json` 的动态 ZIP 导入导出。GitHub Pages 与普通静态托管仍不具备认证或写入端点。
 
 监听配置与写入策略相互独立：`--local` / `--network` 决定绑定 `127.0.0.1` 还是 `0.0.0.0`，`--write-mode=local|remote` 决定哪些请求可以取得写入能力。默认 write mode 为 `local`，所以单独使用 `--network` 不会开放远程写入。remote 模式还必须通过可重复的 `--allowed-origin=https://...` 声明精确的 HTTPS 来源白名单。
 
 ## 个人内容与通用资源
 
 - `data/`：旅行索引、日记正文、照片和头像等公开内容。不同使用者复用项目时，在此替换自己的内容。
-- `.secrets/`：仅供 Node 服务读取的认证配置。`auth.json` 保存 `scrypt` 哈希、随机盐和参数；按当前部署要求纳入版本控制，但不进入数据备份。静态处理器在路径解析和真实路径解析后都会拒绝该目录。
+- `.secrets/`：仅供 Node 服务读取的认证配置。`auth.json` 保存 `scrypt` 哈希、随机盐和参数；服务启动时若目录缺失会自动创建，并提示运行 `npm run auth:set`。完整数据备份包含该文件；静态处理器在路径解析和真实路径解析后都会拒绝该目录。
 - `assets/`：通用国家目录（`catalogs/countries.json`）、中国省市区目录（`catalogs/china-locations.json`）、字体、页面背景和纹理。
 - `index.html`、`js/`、`css/`：共享的页面结构与功能实现；`scripts/`、`tests/`、`doc/` 分别负责维护工具、验证和使用说明。
 
@@ -156,7 +156,7 @@ Markdown 与 JSON 的写入不构成跨文件事务，进程强制终止或断�
 
 正文预览复用 `js/data.js` 导出的 `parseMarkdown()`，与日记详情使用相同的 HTML 转义和链接过滤规则。源码编辑和预览编辑由 `markdown-editor.js` 负责标题拆分、语法高亮与受限 DOM 序列化；粘贴只接受纯文本。文件写入使用 `buildMarkdown()` 生成正文。新草稿导出为 ZIP，`draft.json` 仅保存字段和照片文件引用，实际图片放在 `photos/`；导入后在内存中恢复为现有写入负载。旧版 v1 至 v3 JSON 草稿继续兼容。
 
-动态全量导出只有在会话有效时才遍历 `data/` 普通文件，不导出认证哈希。GitHub Pages 构建也不生成或发布数据备份 ZIP。导入由当前会话与 token 授权，校验 ZIP 路径、跨平台大小写冲突、文件目录重名、索引 JSON、记录字段和日期、正文 UTF-8 及照片引用。旧备份中的 `.secrets/auth.json` 和 `data/password.json` 都被过滤，当前认证保持不变。内容先写入临时目录，再以 `rename` 原子替换 `data/`，失败时恢复备份。成功后清空会话。
+动态全量导出只有在会话有效时才遍历 `data/` 普通文件，并附带经过校验的 `.secrets/auth.json`。GitHub Pages 构建也不生成或发布数据备份 ZIP。导入由当前会话与 token 授权，校验 ZIP 路径、跨平台大小写冲突、文件目录重名、索引 JSON、记录字段和日期、正文 UTF-8、照片引用及认证配置。新备份会原子替换 `data/` 与 `.secrets/`；不含认证文件的旧备份保留当前认证，`data/password.json` 始终过滤。失败时恢复备份，成功后清空会话。
 
 应用认证、HTTPS Origin 白名单、会话与写入 token 形成纵深防护，但不代替传输安全。remote write mode 默认关闭；公网部署必须使用 HTTPS，并在应用上游叠加独立认证、VPN 或 Zero Trust。当前部署选择跟踪认证哈希，因此仓库必须保持私有并限制读取权限；若曾公开，必须清理历史并换密。
 

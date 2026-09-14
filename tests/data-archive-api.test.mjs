@@ -34,7 +34,7 @@ after(async () => {
     }
 });
 
-test('动态全量导出必须登录，且不泄露认证哈希', async () => {
+test('动态全量导出必须登录，且包含认证配置', async () => {
     assert.equal((await fetch(`${base}/api/travel-data`)).status, 401);
     const { cookie } = await login(base);
     const exported = await fetch(`${base}/api/travel-data`, { headers: { Cookie: cookie } });
@@ -42,7 +42,7 @@ test('动态全量导出必须登录，且不泄露认证哈希', async () => {
     assert.match(exported.headers.get('content-type'), /application\/zip/);
     const entries = readZip(new Uint8Array(await exported.arrayBuffer()));
     assert.equal(entries.some(entry => entry.name === record.desc_md), true);
-    assert.equal(entries.some(entry => entry.name === '.secrets/auth.json'), false);
+    assert.equal(entries.some(entry => entry.name === '.secrets/auth.json'), true);
     assert.equal(entries.some(entry => entry.name === 'data/password.json'), false);
 });
 
@@ -72,7 +72,7 @@ test('登录会话与写入令牌共同保护导入，成功后失效全部旧�
     assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } })).status, 401);
 });
 
-test('新旧数据备份都保留当前认证配置', async () => {
+test('新旧数据备份按内容恢复或保留认证配置', async () => {
     const first = await login(base);
     const legacyArchive = createZip([{ name: 'data/travel_data.json', data: '[]' }]);
     const legacyImport = await fetch(`${base}/api/travel-data`, {
@@ -94,7 +94,6 @@ test('新旧数据备份都保留当前认证配置', async () => {
         headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': second.token, Cookie: second.cookie, Origin: base },
         body: invalid
     });
-    assert.equal(response.status, 200);
-    assert.equal((await response.json()).authPreserved, true);
+    assert.equal(response.status, 400);
     assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
 });

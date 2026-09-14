@@ -157,13 +157,13 @@ test('remote 模式仍要求 mutation 令牌，并支持新增、修改与删除
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), []);
 });
 
-test('remote 模式可通过登录会话和令牌导出、导入 data，但不导出认证配置', async () => {
+test('remote 模式可通过登录会话和令牌导出、导入完整备份', async () => {
     const created = json(await mutate('POST', draft('c', { date: '2026-09-15' }))).record;
     const exported = await request({ pathname: '/api/travel-data', headers: { Cookie: cookie } });
     assert.equal(exported.status, 200);
     assert.match(exported.headers['content-type'], /application\/zip/);
     assert.equal(readZip(exported.body).some(entry => entry.name === created.desc_md), true);
-    assert.equal(readZip(exported.body).some(entry => entry.name === '.secrets/auth.json'), false);
+    assert.equal(readZip(exported.body).some(entry => entry.name === '.secrets/auth.json'), true);
 
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
     const missingToken = await request({

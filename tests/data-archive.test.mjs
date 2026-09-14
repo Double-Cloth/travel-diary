@@ -20,7 +20,16 @@ async function fixture(t, prefix = 'travel-diary-archive-') {
     return root;
 }
 
-test('完整 ZIP 只保留 data，恢复时不修改当前认证', async t => {
+test('导出时自动创建缺失的 .secrets 并提示设置访问密码', async t => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-archive-no-secrets-'));
+    t.after(async () => fs.rm(root, { recursive: true, force: true }));
+    await fs.mkdir(path.join(root, 'data'), { recursive: true });
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
+    await assert.rejects(exportDataArchive(root), error => error.code === 'AUTH_NOT_CONFIGURED' && error.status === 503);
+    assert.equal((await fs.stat(path.join(root, '.secrets'))).isDirectory(), true);
+});
+
+test('完整 ZIP 包含 data 与认证配置，并可恢复访问密码', async t => {
     const root = await fixture(t);
     await fs.mkdir(path.join(root, 'data/travel-diary/2026'), { recursive: true });
     await fs.mkdir(path.join(root, 'data/photos/suzhou'), { recursive: true });
@@ -31,13 +40,14 @@ test('完整 ZIP 只保留 data，恢复时不修改当前认证', async t => {
 
     const archive = await exportDataArchive(root);
     assert.deepEqual(readZip(archive).map(entry => entry.name).sort(), [
+        '.secrets/auth.json',
         'data/photos/suzhou/lake.png',
         'data/travel-diary/2026/2026-09-11-suzhou.md',
         'data/travel_data.json'
     ]);
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
     const result = await importDataArchive(root, archive, { requireProductionAuth: true });
-    assert.deepEqual(result, { files: 3, authPreserved: true });
+    assert.deepEqual(result, { files: 4, authPreserved: false });
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
     assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, record.photos[0])), Buffer.from([1, 2, 3]));
     assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
@@ -61,11 +71,11 @@ test('导入拒绝越界路径、缺失正文及伪造认证路径', async t => 
     await assert.rejects(importDataArchive(root, createZip([{ name: 'other/file.txt', data: 'x' }])), /只能包含 data/);
     const record = [{ date: '2026-09-11', country: '中国', country_code: 'CN', admin_area: '江苏省', locality: '苏州市', desc_md: 'data/travel-diary/2026/2026-09-11-missing.md', photo_folder: '', photos: [] }];
     await assert.rejects(importDataArchive(root, createZip([{ name: 'data/travel_data.json', data: JSON.stringify(record) }])), /缺少正文文件/);
-    const ignoredAuth = await importDataArchive(root, createZip([
+    const invalidAuth = await assert.rejects(importDataArchive(root, createZip([
         { name: 'data/travel_data.json', data: '[]' },
         { name: '.secrets/auth.json', data: '{}' }
-    ]));
-    assert.deepEqual(ignoredAuth, { files: 1, authPreserved: true });
+    ])), error => error.status === 400);
+    assert.equal(invalidAuth, undefined);
     await assert.rejects(importDataArchive(root, createZip([
         { name: 'data/travel_data.json', data: '[]' },
         { name: '.SECRETS/auth.json', data: JSON.stringify(AUTH_CONFIG) }
@@ -73,16 +83,14 @@ test('导入拒绝越界路径、缺失正文及伪造认证路径', async t => 
     assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]');
 });
 
-test('remote 导入忽略备份中的认证配置', async t => {
+test('remote 导入恢复备份中的有效认证配置并拒绝弱配置', async t => {
     const root = await fixture(t, 'travel-diary-archive-weak-auth-');
     const weak = { ...AUTH_CONFIG, policy: { format: 'digits', length: 6, productionReady: false } };
     const archive = createZip([
         { name: 'data/travel_data.json', data: '[]' },
         { name: '.secrets/auth.json', data: JSON.stringify(weak) }
     ]);
-    assert.deepEqual(await importDataArchive(root, archive, { requireProductionAuth: true }), {
-        files: 1, authPreserved: true
-    });
+    await assert.rejects(importDataArchive(root, archive, { requireProductionAuth: true }), error => error.status === 400);
     assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
 });
 
@@ -123,11 +131,11 @@ test('导入在写入前拒绝无效字段、路径大小写冲突、文件目�
     }
 });
 
-test('静态站点备份只发布 data，不泄露认证哈希', async t => {
+test('数据备份包含认证配置，便于完整恢复部署', async t => {
     const root = await fixture(t, 'travel-diary-static-backup-');
     const outputFile = path.join(root, '_site/travel-diary-data.zip');
     const result = await writeDataBackup(root, outputFile);
     const archive = await fs.readFile(outputFile);
     assert.equal(result.bytes, archive.length);
-    assert.deepEqual(readZip(archive).map(entry => entry.name), ['data/travel_data.json']);
+    assert.deepEqual(readZip(archive).map(entry => entry.name), ['data/travel_data.json', '.secrets/auth.json']);
 });

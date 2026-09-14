@@ -15,7 +15,7 @@
 | `node js/server.js --port 8080 --network` | 监听局域网；写入仍保持默认 local 模式。 | 否 |
 | `node js/server.js --local --write-mode=remote --allowed-origin=https://diary.example.com` | 仅允许精确 HTTPS 白名单站点远程写入。 | 否 |
 
-普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份。`--local` / `--network` 只决定监听范围，`--write-mode=local|remote` 单独决定写入策略；默认始终是 local，因此 `--network` 本身不会开放写权限。启动日志会同时显示 Bind 与 Write mode，remote 模式还会输出明显安全警告。
+普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份；若 `.secrets/` 缺失，启动会先创建目录并提示运行 `npm run auth:set`。`--local` / `--network` 只决定监听范围，`--write-mode=local|remote` 单独决定写入策略；默认始终是 local，因此 `--network` 本身不会开放写权限。启动日志会同时显示 Bind 与 Write mode，remote 模式还会输出明显安全警告。
 
 首次启动缺少 `data/` 时，服务会自动创建空索引、`travel-diary/`、`photos/`、`profile/` 子目录和默认头像；已存在的索引与头像不会被覆盖。GitHub Pages 构建也会补齐同样的最小结构。
 
@@ -29,9 +29,9 @@ remote 模式要求 `.secrets/auth.json` 由当前后端工具生成，并必须
 2. 使用专门的低权限系统账户运行 Node；Linux 启动时会把 `.secrets/` 和 `auth.json` 权限收紧为 `0700` / `0600`。Windows 应通过 NTFS ACL 限制为运行账户和管理员可读。
 3. 反向代理只转发请求给 `127.0.0.1:9000`，不要另行把项目根目录作为静态目录发布；如果必须配置静态根目录，应显式拒绝所有点目录。
 4. 对外只开放 HTTPS，启用 HSTS，并保留浏览器看到的外部 Host。不要依据客户端提供的 `X-Forwarded-*` 放宽认证或同源判断。
-5. 当前部署选择将 `.secrets/auth.json` 纳入版本控制，但不得放入数据备份；仓库必须保持私有并限制读取权限。若认证哈希曾进入公开 Git 历史，应清理历史并立即换密。
+5. 当前部署选择将 `.secrets/auth.json` 纳入版本控制，完整数据备份也会包含该哈希；仓库和备份 ZIP 必须保持私有并限制读取权限。若认证哈希曾进入公开 Git 历史，应清理历史并立即换密。
 6. 六位密码不能单独承担公网身份认证；公网必须在反向代理、VPN 或 Zero Trust 层增加独立访问控制。
-7. 动态完整备份不包含认证哈希，但仍可能含有私密旅行数据，应存入受访问控制的备份位置。
+7. 动态完整备份包含认证哈希和私密旅行数据，应存入受访问控制的备份位置，不要通过公共网盘或公开附件传递。
 
 ## 写入故障恢复
 
