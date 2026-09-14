@@ -207,13 +207,15 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
 });
 
 test('静态页面免密码打开只读编辑器，动态环境必须先通过服务端口令验证', () => {
-    assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260914-static-auth-v2';/);
+    assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260914-auth-config-v3';/);
     assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability\)/);
     assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}\)/);
     assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}\)/);
     assert.match(appJs, /openRecordEditor = requestCreateAuthorization;/);
     assert.match(recordPasswordJs, /await probeWriterService\(\)/);
     assert.match(recordPasswordJs, /error\?\.code === 'STATIC_READONLY'/);
+    assert.match(recordPasswordJs, /title: error\.code === 'AUTH_CONFIG_MISSING' \? '请先创建访问密码' : '密码配置无效'/);
+    assert.match(recordPasswordJs, /showFeedback\(error\.message, feedback\)/);
     assert.doesNotMatch(recordPasswordJs, /WRITER_UNREACHABLE[\s\S]*?onStatic/);
     assert.match(writerCapabilityJs, /result\?\.service === 'travel-diary-static-v1' && result\.readonly === true/);
     assert.match(writerCapabilityJs, /'WRITER_UNREACHABLE'/);
@@ -267,6 +269,7 @@ test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () =>
     assert.match(recordEditorJs, /编辑器已清空，可以重新填写内容。/);
     assert.match(journalCss, /dialog\.feedback-dialog\.entry-sheet/);
     assert.match(journalCss, /\.feedback-dialog-confirmation \.feedback-dialog-actions/);
+    assert.match(journalCss, /\.feedback-dialog-actions \.feedback-dialog-cancel\[hidden\]\s*\{\s*display:\s*none;\s*\}/);
 });
 
 test('运行时提示全部使用站内反馈弹窗而不是浏览器 alert', () => {

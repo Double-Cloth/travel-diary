@@ -1,8 +1,16 @@
 import { showFeedback } from './feedback-dialog.js';
-import { authenticateWriter, probeWriterService } from './writer-capability.js?v=20260914-static-auth-v2';
+import { authenticateWriter, probeWriterService } from './writer-capability.js?v=20260914-auth-config-v3';
 
 const PASSWORD_LENGTH = 6;
 let passwordGateSequence = 0;
+
+function authConfigurationFeedback(error) {
+    if (error?.code !== 'AUTH_NOT_PRODUCTION_READY' && !error?.code?.startsWith('AUTH_CONFIG_')) return null;
+    return {
+        label: '密码配置',
+        title: error.code === 'AUTH_CONFIG_MISSING' ? '请先创建访问密码' : '密码配置无效'
+    };
+}
 
 function passwordKeypadMarkup(titleId) {
     return `
@@ -107,6 +115,15 @@ export function createPasswordGate(onVerified, options = {}) {
         try {
             capability = await authenticateWriter(password);
         } catch (error) {
+            const feedback = authConfigurationFeedback(error);
+            if (feedback) {
+                dialog.close();
+                reset();
+                pendingContext = undefined;
+                restoreTriggerFocus();
+                void showFeedback(error.message, feedback);
+                return;
+            }
             showError(error?.message || '访问密码验证失败。');
             if (error?.code === 'WRITER_UNAVAILABLE') {
                 void showFeedback(error.message, { label: '访问验证', title: '当前站点为只读模式' });
@@ -180,6 +197,11 @@ export function createPasswordGate(onVerified, options = {}) {
         try {
             await probeWriterService();
         } catch (error) {
+            const feedback = authConfigurationFeedback(error);
+            if (feedback) {
+                void showFeedback(error.message, feedback);
+                return;
+            }
             if (error?.code === 'STATIC_READONLY') {
                 if (typeof options.onStatic === 'function') {
                     try { await options.onStatic(context); }

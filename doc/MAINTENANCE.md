@@ -15,7 +15,7 @@
 | `node js/server.js --port 8080 --network` | 监听局域网；写入仍保持默认 local 模式。 | 否 |
 | `node js/server.js --local --write-mode=remote --allowed-origin=https://diary.example.com` | 仅允许精确 HTTPS 白名单站点远程写入。 | 否 |
 
-普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份；若 `.secrets/` 缺失，启动会先创建目录并提示运行 `npm run auth:set`。`--local` / `--network` 只决定监听范围，`--write-mode=local|remote` 单独决定写入策略；默认始终是 local，因此 `--network` 本身不会开放写权限。启动日志会同时显示 Bind 与 Write mode，remote 模式还会输出明显安全警告。
+普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份；若 `.secrets/` 缺失，启动会先创建目录并提示运行 `npm run auth:set`。尚未创建 `auth.json`，或文件存在 JSON 损坏、必填字段缺失、算法参数错误等问题时，页面执行写入操作会直接显示包含修复方法的密码配置弹窗，不会先要求输入一个注定无法验证的密码。`--local` / `--network` 只决定监听范围，`--write-mode=local|remote` 单独决定写入策略；默认始终是 local，因此 `--network` 本身不会开放写权限。启动日志会同时显示 Bind 与 Write mode，remote 模式还会输出明显安全警告。
 
 首次启动缺少 `data/` 时，服务会自动创建空索引、`travel-diary/`、`photos/`、`profile/` 子目录和默认头像；已存在的索引与头像不会被覆盖。GitHub Pages 构建也会补齐同样的最小结构。
 

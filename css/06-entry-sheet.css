@@ -794,6 +794,7 @@ dialog.feedback-dialog.entry-sheet {
 .feedback-dialog-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .feedback-dialog-confirmation .feedback-dialog-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .feedback-dialog-actions button { min-width: 0; padding-inline: 12px; }
+.feedback-dialog-actions .feedback-dialog-cancel[hidden] { display: none; }
 .feedback-dialog-actions .feedback-dialog-confirm { color: var(--paper-50); border-color: rgba(45, 56, 34, 0.56); background: linear-gradient(180deg, #596747, #35422b); }
 .feedback-dialog-confirmation .feedback-dialog-actions .feedback-dialog-confirm { border-color: rgba(91, 27, 20, 0.52); background: linear-gradient(180deg, #a84a39, #76271e); }
 

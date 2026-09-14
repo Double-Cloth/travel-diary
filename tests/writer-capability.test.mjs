@@ -44,3 +44,24 @@ test('检测到未登录的动态写入服务时仍返回服务能力并要求�
     assert.equal(capability.authenticated, false);
     assert.equal(capability.writeMode, 'remote');
 });
+
+test('写入服务认证配置异常时保留服务端错误码和明确提示', async t => {
+    const previous = { window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.window = { location: { href: 'https://diary.example/' } };
+    globalThis.fetch = async () => ({
+        ok: false,
+        status: 503,
+        json: async () => ({
+            service: 'travel-diary-writer-v1',
+            code: 'AUTH_CONFIG_MISSING',
+            error: '尚未创建 .secrets/auth.json。请运行 npm run auth:set 创建密码。'
+        })
+    });
+
+    await assert.rejects(probeWriterService(), error => {
+        assert.equal(error.code, 'AUTH_CONFIG_MISSING');
+        assert.match(error.message, /npm run auth:set/);
+        return true;
+    });
+});

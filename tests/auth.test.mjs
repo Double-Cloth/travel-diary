@@ -12,11 +12,16 @@ import { AUTH_PASSWORD, installAuth, login } from './helpers/auth.mjs';
 const require = createRequire(import.meta.url);
 const { createAuthConfig } = require('../js/auth.js');
 
-async function fixture(t) {
+async function fixture(t, { configured = true, authSource } = {}) {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-auth-'));
     await fs.mkdir(path.join(root, 'data'));
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
-    await installAuth(root);
+    if (authSource !== undefined) {
+        await fs.mkdir(path.join(root, '.secrets'));
+        await fs.writeFile(path.join(root, '.secrets/auth.json'), authSource);
+    } else if (configured) {
+        await installAuth(root);
+    }
     const server = http.createServer(createHandler(root));
     server.listen(0, '127.0.0.1');
     await once(server, 'listening');
@@ -28,6 +33,40 @@ async function fixture(t) {
     });
     return { base, root };
 }
+
+test('认证配置缺失或内容不完整时接口返回可直接展示的明确错误', async t => {
+    await t.test('缺少 auth.json 时提示创建密码', async t => {
+        const { base, root } = await fixture(t, { configured: false });
+        await fs.mkdir(path.join(root, '.secrets'));
+        const response = await fetch(`${base}/api/travel-records`);
+        const result = await response.json();
+        assert.equal(response.status, 503);
+        assert.equal(result.service, 'travel-diary-writer-v1');
+        assert.equal(result.code, 'AUTH_CONFIG_MISSING');
+        assert.match(result.error, /npm run auth:set.*创建 6 位数字访问密码/);
+    });
+
+    await t.test('缺少必填字段时列出字段名称', async t => {
+        const { base } = await fixture(t, { authSource: '{}' });
+        const response = await fetch(`${base}/api/travel-records`);
+        const result = await response.json();
+        assert.equal(response.status, 503);
+        assert.equal(result.code, 'AUTH_CONFIG_INVALID');
+        assert.match(result.error, /内容不完整/);
+        assert.match(result.error, /version/);
+        assert.match(result.error, /hash/);
+    });
+
+    await t.test('JSON 损坏时提示重新创建配置', async t => {
+        const { base } = await fixture(t, { authSource: '{invalid' });
+        const response = await fetch(`${base}/api/travel-records`);
+        const result = await response.json();
+        assert.equal(response.status, 503);
+        assert.equal(result.code, 'AUTH_CONFIG_INVALID');
+        assert.match(result.error, /不是有效的 JSON 文件/);
+        assert.match(result.error, /npm run auth:set/);
+    });
+});
 
 test('能力端点不再公开令牌，登录后签发受限 HttpOnly 会话', async t => {
     const { base } = await fixture(t);

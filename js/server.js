@@ -210,14 +210,18 @@ function isWithinRoot(rootDir, targetPath) {
 async function ensureDataStructure(rootDir) {
   const resolvedRoot = await fs.promises.realpath(rootDir);
   const directories = ['.secrets', 'data', 'data/travel-diary', 'data/photos', 'data/profile'];
+  let secretsCreated = false;
 
   for (const relativePath of directories) {
     const directory = path.join(resolvedRoot, ...relativePath.split('/'));
+    let created = false;
     try {
       await fs.promises.mkdir(directory);
+      created = true;
     } catch (error) {
       if (error.code !== 'EEXIST') throw error;
     }
+    if (relativePath === '.secrets') secretsCreated = created;
     const stats = await fs.promises.lstat(directory);
     if (stats.isSymbolicLink() || !stats.isDirectory()) {
       throw new Error(`${relativePath} 必须是项目内的普通目录。`);
@@ -276,7 +280,7 @@ async function ensureDataStructure(rootDir) {
   } catch (error) {
     if (error.code !== 'ENOENT') throw error;
   }
-  return { authConfigured };
+  return { authConfigured, secretsCreated };
 }
 
 function createHandler(rootDir, options = {}) {
@@ -461,7 +465,9 @@ async function main() {
   if (args.writeMode === 'remote') console.log(`Allowed origins: ${args.allowedOrigins.join(', ')}`);
   console.log('Authentication: .secrets/auth.json (scrypt + server session)');
   if (!structure.authConfigured) {
-    console.warn('未发现 .secrets/auth.json，已自动创建 .secrets/；请运行 npm run auth:set 创建 6 位数字访问密码。');
+    console.warn(structure.secretsCreated
+      ? '未发现 .secrets，已自动创建该目录；请运行 npm run auth:set 创建 6 位数字访问密码。'
+      : '尚未创建 .secrets/auth.json；请运行 npm run auth:set 创建 6 位数字访问密码。');
   }
   console.log('-'.repeat(60));
   console.log(`Local: ${localhostUrl}`);

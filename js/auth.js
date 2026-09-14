@@ -47,11 +47,27 @@ function decodeBase64(value, expectedLength, field) {
 }
 
 function validateAuthConfig(config, { requireProduction = false } = {}) {
-    if (!config || typeof config !== 'object' || Array.isArray(config)
-        || config.version !== 1 || config.algorithm !== 'scrypt'
-        || config.keyLength !== HASH_LENGTH
-        || config.cost?.N !== SCRYPT_OPTIONS.N || config.cost?.r !== SCRYPT_OPTIONS.r || config.cost?.p !== SCRYPT_OPTIONS.p) {
-        throw authFailure('认证配置格式或 scrypt 参数无效。');
+    if (!config || typeof config !== 'object' || Array.isArray(config)) {
+        throw authFailure('.secrets/auth.json 的内容必须是 JSON 对象。');
+    }
+    const requiredFields = ['version', 'algorithm', 'salt', 'hash', 'keyLength', 'cost', 'cost.N', 'cost.r', 'cost.p'];
+    const missingFields = requiredFields.filter(field => {
+        const parts = field.split('.');
+        let value = config;
+        return parts.some(part => {
+            if (!value || typeof value !== 'object' || !Object.prototype.hasOwnProperty.call(value, part)) return true;
+            value = value[part];
+            return false;
+        });
+    });
+    if (missingFields.length) {
+        throw authFailure(`.secrets/auth.json 内容不完整，缺少必填字段：${missingFields.join('、')}。`);
+    }
+    if (config.version !== 1) throw authFailure('认证配置中的 version 必须为 1。');
+    if (config.algorithm !== 'scrypt') throw authFailure('认证配置中的 algorithm 必须为 scrypt。');
+    if (config.keyLength !== HASH_LENGTH) throw authFailure(`认证配置中的 keyLength 必须为 ${HASH_LENGTH}。`);
+    if (config.cost.N !== SCRYPT_OPTIONS.N || config.cost.r !== SCRYPT_OPTIONS.r || config.cost.p !== SCRYPT_OPTIONS.p) {
+        throw authFailure(`认证配置中的 scrypt cost 参数必须为 N=${SCRYPT_OPTIONS.N}、r=${SCRYPT_OPTIONS.r}、p=${SCRYPT_OPTIONS.p}。`);
     }
     decodeBase64(config.salt, 16, 'salt');
     decodeBase64(config.hash, HASH_LENGTH, 'hash');
@@ -60,7 +76,7 @@ function validateAuthConfig(config, { requireProduction = false } = {}) {
         && config.policy?.productionReady === true
         && config.policy?.commonPatternsRejected === true;
     if (requireProduction && !productionReady) {
-        throw authFailure('remote write mode 要求使用后端生成的 6 位数字密码配置，请先运行 npm run auth:set。', 'AUTH_NOT_PRODUCTION_READY');
+        throw authFailure('认证配置中的 policy 内容不完整或不正确；remote write mode 要求使用后端生成的 6 位数字密码配置，请运行 npm run auth:set 重新创建。', 'AUTH_NOT_PRODUCTION_READY');
     }
     return { ...config, productionReady };
 }
@@ -68,22 +84,54 @@ function validateAuthConfig(config, { requireProduction = false } = {}) {
 async function readAuthConfig(root, options = {}) {
     const secretsDir = path.join(root, '.secrets');
     const authFile = path.join(secretsDir, 'auth.json');
+    let directoryStat;
     try {
-        const [directoryStat, fileStat] = await Promise.all([fs.lstat(secretsDir), fs.lstat(authFile)]);
-        if (directoryStat.isSymbolicLink() || !directoryStat.isDirectory()
-            || fileStat.isSymbolicLink() || !fileStat.isFile()) {
-            throw authFailure('认证配置必须位于项目内的普通 .secrets/auth.json 文件中。');
+        directoryStat = await fs.lstat(secretsDir);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            throw authFailure('未找到 .secrets 目录。服务器启动时会自动创建该目录；请随后运行 npm run auth:set 创建 6 位数字访问密码。', 'AUTH_CONFIG_MISSING');
         }
+        throw authFailure('无法访问 .secrets 目录，请检查目录权限。', 'AUTH_CONFIG_UNREADABLE');
+    }
+    if (directoryStat.isSymbolicLink() || !directoryStat.isDirectory()) {
+        throw authFailure('.secrets 必须是项目内的普通目录，不能是文件或符号链接。');
+    }
+
+    let fileStat;
+    try {
+        fileStat = await fs.lstat(authFile);
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            throw authFailure('尚未创建 .secrets/auth.json。请在项目根目录运行 npm run auth:set 创建 6 位数字访问密码。', 'AUTH_CONFIG_MISSING');
+        }
+        throw authFailure('无法访问 .secrets/auth.json，请检查文件权限。', 'AUTH_CONFIG_UNREADABLE');
+    }
+    if (fileStat.isSymbolicLink() || !fileStat.isFile()) {
+        throw authFailure('.secrets/auth.json 必须是项目内的普通文件，不能是目录或符号链接。');
+    }
+
+    try {
         if (options.requireProduction && process.platform !== 'win32') {
             await fs.chmod(secretsDir, 0o700);
             await fs.chmod(authFile, 0o600);
         }
-        const config = JSON.parse(await fs.readFile(authFile, 'utf8'));
-        return validateAuthConfig(config, options);
-    } catch (error) {
-        if (error.code?.startsWith('AUTH_')) throw error;
-        throw authFailure('无法读取 .secrets/auth.json，请先运行 npm run auth:set。');
+    } catch {
+        throw authFailure('无法设置 .secrets/auth.json 的安全权限，请检查文件所有者和权限。', 'AUTH_CONFIG_UNREADABLE');
     }
+
+    let source;
+    try {
+        source = await fs.readFile(authFile, 'utf8');
+    } catch (error) {
+        throw authFailure('无法读取 .secrets/auth.json，请检查文件权限。', 'AUTH_CONFIG_UNREADABLE');
+    }
+    let config;
+    try {
+        config = JSON.parse(source);
+    } catch {
+        throw authFailure('.secrets/auth.json 不是有效的 JSON 文件，请运行 npm run auth:set 重新创建。');
+    }
+    return validateAuthConfig(config, options);
 }
 
 async function createAuthConfig(password) {

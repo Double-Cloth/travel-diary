@@ -1,5 +1,5 @@
-import { createPasswordGate } from './record-password.js?v=20260914-static-auth-v2';
-import { detectWriterCapability } from './writer-capability.js?v=20260914-static-auth-v2';
+import { createPasswordGate } from './record-password.js?v=20260914-auth-config-v3';
+import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-config-v3';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');

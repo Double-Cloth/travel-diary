@@ -37,6 +37,12 @@ export async function probeWriterService(timeout = 4000) {
             'WRITER_INVALID_RESPONSE'
         );
     }
+    if (response.status !== 401 && (response.ok === false || response.status < 200 || response.status >= 300)) {
+        throw writerError(
+            result?.error || '服务器写入服务暂时不可用，请稍后重试。',
+            result?.code || 'WRITER_UNAVAILABLE'
+        );
+    }
     return { ...capabilityFrom(endpoint, result), status: response.status };
 }
 

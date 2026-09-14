@@ -599,20 +599,14 @@ function createRecordApi(root, options = {}) {
     const sessions = new Map();
     const failures = new Map();
 
-    async function currentSession(req, host) {
+    function currentSession(req, host, config) {
         const id = readCookie(req, 'travel_session');
         const session = id && sessions.get(id);
         if (!session || session.host !== host || session.expiresAt <= Date.now()) {
             if (id) sessions.delete(id);
             return null;
         }
-        try {
-            const config = await readAuthConfig(root, { requireProduction: writeMode === 'remote' });
-            if (!equalCredential(config.hash, session.authRevision)) {
-                sessions.delete(id);
-                return null;
-            }
-        } catch {
+        if (!equalCredential(config.hash, session.authRevision)) {
             sessions.delete(id);
             return null;
         }
@@ -679,8 +673,22 @@ function createRecordApi(root, options = {}) {
             return;
         }
 
+        let authConfig;
+        try {
+            authConfig = await readAuthConfig(root, { requireProduction: writeMode === 'remote' });
+        } catch (error) {
+            const configurationError = error.code === 'AUTH_NOT_PRODUCTION_READY'
+                || error.code?.startsWith('AUTH_CONFIG_');
+            send(configurationError ? 503 : 500, {
+                service: 'travel-diary-writer-v1',
+                error: error.message || '认证服务暂时不可用。',
+                ...(error.code ? { code: error.code } : {})
+            });
+            return;
+        }
+
         clearExpiredState();
-        const session = await currentSession(req, host);
+        const session = currentSession(req, host, authConfig);
         if (requestPath === '/api/travel-auth') {
             if (req.method === 'DELETE') {
                 const id = readCookie(req, 'travel_session');
@@ -712,7 +720,6 @@ function createRecordApi(root, options = {}) {
             let attemptReserved = false;
             try {
                 const payload = await readJsonBody(req, MAXIMUM_LOGIN_BYTES);
-                const config = await readAuthConfig(root, { requireProduction: writeMode === 'remote' });
                 const reservedState = failureState(failureKey);
                 if (reservedState.count + reservedState.active >= MAXIMUM_LOGIN_FAILURES) {
                     const retryAfter = Math.max(1, Math.ceil((reservedState.startedAt + LOGIN_FAILURE_WINDOW - Date.now()) / 1000));
@@ -722,7 +729,7 @@ function createRecordApi(root, options = {}) {
                 failures.set(failureKey, { ...reservedState, active: reservedState.active + 1 });
                 attemptReserved = true;
                 const password = typeof payload?.password === 'string' ? payload.password : '';
-                if (!await verifyPassword(config, password)) {
+                if (!await verifyPassword(authConfig, password)) {
                     finishLoginAttempt(failureKey, 'failure');
                     attemptReserved = false;
                     send(401, { error: '访问口令不正确。', code: 'AUTH_INVALID' });
@@ -735,7 +742,7 @@ function createRecordApi(root, options = {}) {
                 const id = randomBytes(32).toString('hex');
                 const token = randomBytes(32).toString('hex');
                 storeSession(id, {
-                    host, token, authRevision: config.hash, expiresAt: Date.now() + SESSION_LIFETIME
+                    host, token, authRevision: authConfig.hash, expiresAt: Date.now() + SESSION_LIFETIME
                 });
                 const secure = writeMode === 'remote' || req.headers.origin.startsWith('https://');
                 send(200, {
@@ -744,13 +751,12 @@ function createRecordApi(root, options = {}) {
                 }, { 'Set-Cookie': sessionCookie(id, secure) });
             } catch (error) {
                 if (attemptReserved) finishLoginAttempt(failureKey, 'error');
-                const status = error.code === 'AUTH_NOT_PRODUCTION_READY' || error.code === 'AUTH_CONFIG_INVALID'
+                const status = error.code === 'AUTH_NOT_PRODUCTION_READY' || error.code?.startsWith('AUTH_CONFIG_')
                     ? 503
                     : (error.status || 500);
                 send(status, {
-                    error: status === 503
-                        ? '认证服务尚未安全配置，请运行 npm run auth:set 创建 6 位数字访问密码。'
-                        : (error.message || '认证服务暂时不可用。'),
+                    service: 'travel-diary-writer-v1',
+                    error: error.message || '认证服务暂时不可用。',
                     ...(error.code ? { code: error.code } : {})
                 });
             }
