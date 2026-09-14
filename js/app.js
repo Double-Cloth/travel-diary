@@ -65,6 +65,7 @@ let openEditRecord;
 let openDeleteRecord;
 let openDataExport;
 let openProfilePictureUpload;
+let profilePictureCapability = null;
 let dataTransfer;
 let travelModel = null;
 let activeRoute = null;
@@ -171,23 +172,14 @@ async function initApp() {
         }
     );
     openDataExport = requestDataExportAuthorization;
-    openProfilePictureUpload = createPasswordGate(async (capability, picture) => {
-        const button = refs.profilePictureButton;
-        button?.setAttribute('aria-busy', 'true');
-        if (button) button.disabled = true;
-        try {
-            await uploadProfilePicture(picture, capability);
-            refreshProfilePicture();
-            void showFeedback('新头像已保存。', { label: '个人头像', title: '头像更新成功' });
-        } finally {
-            button?.removeAttribute('aria-busy');
-            if (button) button.disabled = false;
-        }
+    openProfilePictureUpload = createPasswordGate(capability => {
+        profilePictureCapability = capability;
+        refs.profilePictureInput?.click();
     }, {
         title: '更换头像验证',
-        description: '输入 6 位数字密码后保存新头像。',
-        verifying: '正在验证并上传头像…',
-        actionError: '头像上传失败，请重试。',
+        description: '输入 6 位数字密码后选择新头像。',
+        verifying: '正在验证并打开文件选择器…',
+        actionError: '无法打开头像选择器，请重试。',
         staticMessage: '当前站点为静态只读页面，不支持更换头像。'
     });
     renderLoading();
@@ -211,6 +203,9 @@ function cacheRefs() {
     refs.sheet = document.getElementById('sheetRoot');
     refs.profilePictureButton = document.querySelector('.spine-profile');
     refs.profilePictureInput = document.getElementById('profilePictureInput');
+    refs.profilePictureInput?.addEventListener('cancel', () => {
+        profilePictureCapability = null;
+    });
     const profilePicture = document.querySelector('.spine-profile img');
     if (profilePicture) {
         const profilePictureUrl = new URL(profilePicture.dataset.src, window.location.href);
@@ -241,13 +236,24 @@ function refreshProfilePicture() {
 
 async function handleProfilePictureSelection(input) {
     const [file] = input.files || [];
+    const capability = profilePictureCapability;
+    profilePictureCapability = null;
     input.value = '';
     if (!file) return;
+    if (!capability) {
+        void showFeedback('请先点击头像并完成密码验证。', {
+            label: '个人头像',
+            title: '需要验证密码'
+        });
+        return;
+    }
     refs.profilePictureButton?.setAttribute('aria-busy', 'true');
     if (refs.profilePictureButton) refs.profilePictureButton.disabled = true;
     try {
         const picture = await prepareProfilePicture(file);
-        await openProfilePictureUpload(picture);
+        await uploadProfilePicture(picture, capability);
+        refreshProfilePicture();
+        void showFeedback('新头像已保存。', { label: '个人头像', title: '头像更新成功' });
     } catch (error) {
         void showFeedback(error?.message || '头像处理失败，请换一张图片后重试。', {
             label: '个人头像',
@@ -2116,7 +2122,8 @@ function handleDocumentClick(event) {
     }
     if (event.target.closest('[data-action="upload-profile-picture"]')) {
         event.preventDefault();
-        refs.profilePictureInput?.click();
+        profilePictureCapability = null;
+        void openProfilePictureUpload().catch(error => showFeedback(error.message));
         return;
     }
     if (event.target.closest('[data-action="add-record"]')) {

@@ -179,7 +179,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260914-profile-upload-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260914-profile-upload-v2/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260914-empty-archive-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260914-static-auth-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -485,11 +485,13 @@ test('空数据目录使用内置头像并仅在自定义头像存在时替换',
     assert.match(appJs, /profilePicture\.naturalWidth > 1 \|\| profilePicture\.naturalHeight > 1/);
 });
 
-test('点击头像可选择常见图片，并通过认证写入服务更新固定头像文件', () => {
+test('点击头像先验证密码，再选择常见图片并写入服务更新固定头像文件', () => {
     assert.match(indexHtml, /data-action="upload-profile-picture"/);
     assert.match(indexHtml, /id="profilePictureInput"[^>]*accept="image\/jpeg,image\/png,image\/gif,image\/webp"[^>]*hidden/);
     assert.match(appJs, /prepareProfilePicture/);
-    assert.match(appJs, /createPasswordGate\(async \(capability, picture\)/);
+    assert.match(appJs, /createPasswordGate\(capability => \{\s*profilePictureCapability = capability;\s*refs\.profilePictureInput\?\.click\(\);/);
+    assert.match(appJs, /const capability = profilePictureCapability;\s*profilePictureCapability = null;/);
+    assert.match(appJs, /await uploadProfilePicture\(picture, capability\);/);
     assert.match(profilePictureJs, /api\/travel-profile/);
     assert.match(profilePictureJs, /'X-Travel-Token': capability\.token/);
     assert.match(serverJs, /'\/api\/travel-profile'/);
