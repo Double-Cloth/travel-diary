@@ -17,6 +17,8 @@
 
 普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份。`--local` / `--network` 只决定监听范围，`--write-mode=local|remote` 单独决定写入策略；默认始终是 local，因此 `--network` 本身不会开放写权限。启动日志会同时显示 Bind 与 Write mode，remote 模式还会输出明显安全警告。
 
+首次启动缺少 `data/` 时，服务会自动创建空索引、`travel-diary/`、`photos/`、`profile/` 子目录和默认头像；已存在的索引与头像不会被覆盖。GitHub Pages 构建也会补齐同样的最小结构。
+
 remote 模式要求 `.secrets/auth.json` 由当前后端工具生成，并必须声明至少一个精确 HTTPS `--allowed-origin`。密码只保存带随机盐的 `scrypt` 哈希；所有来源合计连续失败 5 次后锁定 15 分钟。成功会话最长 8 小时，使用 `HttpOnly`、`SameSite=Strict`、`Secure` Cookie，并与当前认证哈希绑定。
 
 生产环境必须由 Nginx、Caddy、Apache 或 Cloudflare Tunnel 终止 HTTPS 后转发到 Node HTTP 端口。代理应保留外部 `Host` 和 `Origin`；remote 模式不信任 `X-Forwarded-*` 授权提示，也不接受 HTTP Origin。公网部署仍建议叠加 VPN、Zero Trust 或等效身份控制。

@@ -3,10 +3,10 @@ import assert from 'node:assert/strict';
 import http from 'node:http';
 import { once } from 'node:events';
 import { spawnSync } from 'node:child_process';
-import { mkdtemp, mkdir, writeFile, symlink, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, stat, writeFile, symlink, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { createHandler, parseArgs, safeJoin, listenWithRetries } from '../js/server.js';
+import { createHandler, ensureDataStructure, parseArgs, safeJoin, listenWithRetries } from '../js/server.js';
 import { isMatchingHttpOrigin, isValidHostHeader, isWriterRequestAllowed } from '../js/record-store.js';
 
 let fixture;
@@ -62,6 +62,20 @@ test('畸形 URL 返回错误且后续请求仍正常', async () => {
         assert.equal((await request(url)).status, 400);
     }
     assert.equal((await request('/')).body, '首页');
+});
+
+test('缺少 data 时创建可用的最小目录结构且不覆盖已有索引', async () => {
+    const emptyRoot = path.join(fixture, 'empty-site');
+    await mkdir(emptyRoot);
+    await ensureDataStructure(emptyRoot);
+    assert.equal(await readFile(path.join(emptyRoot, 'data/travel_data.json'), 'utf8'), '[]\n');
+    assert.ok((await stat(path.join(emptyRoot, 'data/profile/profile-picture.png'))).size > 0);
+    for (const directory of ['travel-diary', 'photos', 'profile']) {
+        assert.equal((await stat(path.join(emptyRoot, 'data', directory))).isDirectory(), true);
+    }
+    await writeFile(path.join(emptyRoot, 'data/travel_data.json'), '[{"kept":true}]\n');
+    await ensureDataStructure(emptyRoot);
+    assert.equal(await readFile(path.join(emptyRoot, 'data/travel_data.json'), 'utf8'), '[{"kept":true}]\n');
 });
 
 test('路径只解码一次，含百分号的合法文件仍可访问', async () => {

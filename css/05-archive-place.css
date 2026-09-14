@@ -340,3 +340,29 @@
     text-align: center;
 }
 
+.archive-empty-state {
+    display: grid;
+    justify-items: center;
+    gap: 10px;
+    padding: 24px 20px;
+}
+
+.archive-empty-state strong {
+    color: var(--ink);
+    font-size: 20px;
+}
+
+.archive-empty-state p {
+    max-width: 36em;
+    margin: 0;
+    line-height: 1.75;
+}
+
+.archive-empty-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 4px;
+}
+

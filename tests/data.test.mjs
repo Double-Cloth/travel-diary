@@ -80,3 +80,10 @@ test('数据入口拒绝损坏的记录与无效日期，并过滤异常照片�
     data = [];
     assert.deepEqual(await loadTravelData(), []);
 });
+
+test('旅行索引不存在时按首次使用的空档案加载', async (t) => {
+    mockRequests(t, async url => url.includes('countries.json')
+        ? Response.json({ countries: [] })
+        : new Response('', { status: 404 }));
+    assert.deepEqual(await loadTravelData(), []);
+});

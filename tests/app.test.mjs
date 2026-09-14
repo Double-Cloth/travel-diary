@@ -7,7 +7,8 @@ globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
     renderWithPageTurn, scheduleSearchRouteUpdate, syncRouteFromHash,
-    applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget, deleteTravelRecord };
+    applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
+    deleteTravelRecord, renderEmptyArchiveState };
 export function setTestState(values) {
     if (values.spread) refs.spread = values.spread;
     if (values.route) activeRoute = values.route;
@@ -52,6 +53,14 @@ test('同名或缺少正文路径的记录保留独立身份及原始顺序', ()
     assert.equal(model.records[1].id, 'note-2');
     assert.equal(model.stats.total, 4);
     assert.equal(app.deriveTravelModel([]).recordsById.size, 0);
+});
+
+test('空档案提供新增与导入入口，不再显示不可用死路', () => {
+    const state = app.renderEmptyArchiveState();
+    assert.match(state, /档案盒已经准备好了/);
+    assert.match(state, /data-action="add-record"/);
+    assert.match(state, /data-action="import-all-data"/);
+    assert.doesNotMatch(state, /暂时打不开/);
 });
 
 test('重复文件名生成的后缀不会占用已有日记链接', () => {

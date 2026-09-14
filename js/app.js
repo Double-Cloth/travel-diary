@@ -204,6 +204,21 @@ function cacheRefs() {
     refs.leftPage = document.getElementById('leftPage');
     refs.rightPage = document.getElementById('rightPage');
     refs.sheet = document.getElementById('sheetRoot');
+    const profilePicture = document.querySelector('.spine-profile img');
+    if (profilePicture) {
+        const profilePictureUrl = new URL(profilePicture.dataset.src, window.location.href);
+        void fetch(profilePictureUrl, { method: 'HEAD' })
+            .then(response => {
+                if (!response.ok) return;
+                profilePicture.addEventListener('load', () => {
+                    if (profilePicture.naturalWidth > 1 || profilePicture.naturalHeight > 1) {
+                        profilePicture.hidden = false;
+                    }
+                }, { once: true });
+                profilePicture.src = profilePictureUrl.href;
+            })
+            .catch(() => {});
+    }
 }
 
 function bindGlobalEvents() {
@@ -745,7 +760,7 @@ function renderCover() {
             <h1 class="archive-home-title">最近旅行记录</h1>
             <p class="journal-label">最近记录</p>
             <div class="cover-record-list">
-                ${recentRecords.length ? recentRecords.map(renderCoverRecord).join('') : '<div class="empty-note">还没有旅行记录。</div>'}
+                ${recentRecords.length ? recentRecords.map(renderCoverRecord).join('') : renderEmptyArchiveState()}
             </div>
         </div>
     `, `
@@ -765,7 +780,7 @@ function renderCover() {
                     <span class="route-washi route-washi-a" aria-hidden="true"></span>
                     <span class="route-washi route-washi-b" aria-hidden="true"></span>
                     <span class="route-postmark" aria-hidden="true">TRAVEL<br>DIARY</span>
-                    ${routeRecords.length ? renderRouteMap(routeRecords) : '<span class="route-map-empty">还没有目的地可抽取</span>'}
+                    ${routeRecords.length ? renderRouteMap(routeRecords) : '<span class="route-map-empty">添加第一条记录后，这里会出现随机目的地</span>'}
                     <span class="map-compass">N</span>
                 </div>
             </div>
@@ -890,7 +905,9 @@ function renderLedger(params = {}, options = {}) {
             </div>
             <p class="result-count" aria-live="polite">${escapeHtml(resultLabel)}</p>
             <div class="timeline-list" id="ledgerList">
-                ${filtered.length ? renderLedgerGroups(filtered, ledgerParams) : '<div class="empty-note">没有找到匹配的旅行记录。</div>'}
+                ${filtered.length
+                    ? renderLedgerGroups(filtered, ledgerParams)
+                    : (travelModel.records.length ? '<div class="empty-note">没有找到匹配的旅行记录。</div>' : renderEmptyArchiveState())}
             </div>
         </div>
     `, `
@@ -1072,7 +1089,9 @@ function renderArchive(params = {}) {
             </div>
             ${renderMobileContextToggle('打开旅行概览', '查看足迹摘要与统计')}
             <div class="archive-country-list">
-                ${countries.length ? countries.map(renderCountryFolder).join('') : '<div class="empty-note">没有找到匹配的地点。</div>'}
+                ${countries.length
+                    ? countries.map(renderCountryFolder).join('')
+                    : (travelModel.records.length ? '<div class="empty-note">没有找到匹配的地点。</div>' : renderEmptyArchiveState())}
             </div>
         </div>
     `, `
@@ -1118,6 +1137,19 @@ function renderArchive(params = {}) {
                 <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
             </section>
     `, 'dossier-page context-panel');
+}
+
+function renderEmptyArchiveState() {
+    return `
+        <div class="empty-note archive-empty-state">
+            <strong>档案盒已经准备好了</strong>
+            <p>这里还没有旅行记录。可以新增第一条记录，或导入以前保存的完整数据备份。</p>
+            <div class="archive-empty-actions">
+                <button class="paper-button" type="button" data-action="add-record"><span aria-hidden="true">＋</span> 新增第一条记录</button>
+                <button class="paper-button" type="button" data-action="import-all-data">导入数据备份</button>
+            </div>
+        </div>
+    `;
 }
 
 function renderMobileContextToggle(label, description) {
@@ -1348,8 +1380,9 @@ function renderFatalError(error) {
     setPages(`
         <div class="loading-page">
             <p class="journal-label">加载失败</p>
-            <h1>档案盒暂时打不开。</h1>
+            <h1>旅行数据加载失败。</h1>
             <p class="page-copy">${escapeHtml(error.message)}</p>
+            <button class="paper-button" type="button" data-action="retry-load">重新加载</button>
         </div>
     `, '<div class="loading-page muted-page"></div>');
 }
@@ -2028,6 +2061,11 @@ function renderWithPageTurn(renderFn, options = {}) {
 }
 
 function handleDocumentClick(event) {
+    if (event.target.closest('[data-action="retry-load"]')) {
+        event.preventDefault();
+        window.location.reload();
+        return;
+    }
     if (event.target.closest('[data-action="export-all-data"]')) {
         event.preventDefault();
         void openDataExport().catch(error => showFeedback(error.message));

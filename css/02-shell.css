@@ -328,6 +328,18 @@
     transition: opacity 0.18s ease;
 }
 
+.spine-profile-fallback {
+    position: absolute;
+    inset: 2px;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: rgba(255, 238, 188, 0.9);
+    background: linear-gradient(145deg, #795638, #3f2b1d);
+    font-size: 20px;
+    font-weight: 700;
+}
+
 .spine-profile img {
     position: relative;
     z-index: 1;
@@ -340,6 +352,10 @@
     object-position: center;
     box-shadow: 0 3px 8px rgba(27, 15, 7, 0.22);
     transition: transform 0.18s ease, filter 0.18s ease, box-shadow 0.18s ease;
+}
+
+.spine-profile img[hidden] {
+    display: none;
 }
 
 .spine-profile:hover,

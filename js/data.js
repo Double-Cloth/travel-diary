@@ -16,20 +16,23 @@ export async function loadTravelData(cacheKey = '') {
         fetch(countryCatalogPath)
     ]);
 
-    if (!response.ok) {
-        throw new Error(`Failed to load travel data (${response.status})`);
-    }
     if (!countryCatalogResponse.ok) {
         throw new Error(`Failed to load country catalog (${countryCatalogResponse.status})`);
     }
+    const countryCatalog = await countryCatalogResponse.json();
+    configureCountryCatalog(countryCatalog);
+
+    // 首次使用或仅部署应用外壳时，缺少索引应当表现为空档案，而不是让整站失效。
+    if (response.status === 404) return [];
+    if (!response.ok) {
+        throw new Error(`Failed to load travel data (${response.status})`);
+    }
 
     const data = await response.json();
-    const countryCatalog = await countryCatalogResponse.json();
 
     if (!Array.isArray(data)) {
         throw new Error('Travel data file must contain an array.');
     }
-    configureCountryCatalog(countryCatalog);
 
     return data.map((record, index) => {
         if (!record || typeof record !== 'object' || Array.isArray(record)) {

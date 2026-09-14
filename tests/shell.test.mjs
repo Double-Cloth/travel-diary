@@ -179,7 +179,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(indexHtml, /js\/app\.js\?v=20260914-auth-gate-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260913-select-placement-v2/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260914-empty-archive-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260914-auth-gate-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -466,6 +466,13 @@ test('头部方块控件在书脊栏中显式垂直居中', () => {
     assert.match(journalCss, /--brand-rivet-y:\s*12px;/);
     assert.doesNotMatch(journalCss, /circle at calc\(50% [-+] 1px\) 7px|circle at calc\(50% [-+] 1px\) 9px/);
     assert.doesNotMatch(journalCss, /\\.chapter-tab-active\\s*{[\\s\\S]*?transform: translateY\\(1px\\);/);
+});
+
+test('空数据目录使用内置头像并仅在自定义头像存在时替换', () => {
+    assert.match(indexHtml, /class="spine-profile-fallback"[^>]*>旅<\/span>/);
+    assert.match(indexHtml, /<img data-src="data\/profile\/profile-picture\.png"[^>]*hidden>/);
+    assert.match(appJs, /fetch\(profilePictureUrl, \{ method: 'HEAD' \}\)/);
+    assert.match(appJs, /profilePicture\.naturalWidth > 1 \|\| profilePicture\.naturalHeight > 1/);
 });
 
 test('地点详情页仅保留左页返回按钮', () => {

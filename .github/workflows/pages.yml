@@ -80,9 +80,12 @@ jobs:
 
       - name: Prepare static site
         run: |
-          mkdir -p _site
+          mkdir -p _site/data/travel-diary _site/data/photos _site/data/profile
           cp index.html _site/
-          cp -R assets css data doc js _site/
+          cp -R api assets css doc js _site/
+          if [ -d data ]; then cp -R data/. _site/data/; fi
+          if [ ! -f _site/data/travel_data.json ]; then printf '[]\n' > _site/data/travel_data.json; fi
+          if [ ! -f _site/data/profile/profile-picture.png ]; then printf 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=' | base64 --decode > _site/data/profile/profile-picture.png; fi
           find _site/assets/fonts -name '*.ttf' -delete
           touch _site/.nojekyll
 

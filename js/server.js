@@ -207,6 +207,65 @@ function isWithinRoot(rootDir, targetPath) {
   return relativePath !== '..' && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath);
 }
 
+async function ensureDataStructure(rootDir) {
+  const resolvedRoot = await fs.promises.realpath(rootDir);
+  const directories = ['data', 'data/travel-diary', 'data/photos', 'data/profile'];
+
+  for (const relativePath of directories) {
+    const directory = path.join(resolvedRoot, ...relativePath.split('/'));
+    try {
+      await fs.promises.mkdir(directory);
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error;
+    }
+    const stats = await fs.promises.lstat(directory);
+    if (stats.isSymbolicLink() || !stats.isDirectory()) {
+      throw new Error(`${relativePath} 必须是项目内的普通目录。`);
+    }
+    const realDirectory = await fs.promises.realpath(directory);
+    if (!isWithinRoot(resolvedRoot, realDirectory)) {
+      throw new Error(`${relativePath} 不能指向项目目录之外。`);
+    }
+  }
+
+  const initialFiles = [
+    {
+      path: path.join(resolvedRoot, 'data', 'travel_data.json'),
+      content: Buffer.from('[]\n', 'utf8'),
+      label: 'data/travel_data.json'
+    },
+    {
+      path: path.join(resolvedRoot, 'data', 'profile', 'profile-picture.png'),
+      content: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=', 'base64'),
+      label: 'data/profile/profile-picture.png'
+    }
+  ];
+
+  for (const file of initialFiles) {
+    let handle;
+    let created = false;
+    try {
+      handle = await fs.promises.open(file.path, 'wx');
+      created = true;
+      await handle.writeFile(file.content);
+      await handle.sync();
+    } catch (error) {
+      if (error.code !== 'EEXIST') {
+        if (handle) await handle.close().catch(() => {});
+        if (created) await fs.promises.unlink(file.path).catch(() => {});
+        throw error;
+      }
+    } finally {
+      if (handle) await handle.close().catch(() => {});
+    }
+
+    const stats = await fs.promises.lstat(file.path);
+    if (stats.isSymbolicLink() || !stats.isFile()) {
+      throw new Error(`${file.label} 必须是项目内的普通文件。`);
+    }
+  }
+}
+
 function createHandler(rootDir, options = {}) {
   rootDir = fs.realpathSync(rootDir);
   const secretsRoot = path.join(rootDir, '.secrets');
@@ -326,7 +385,8 @@ function createHandler(rootDir, options = {}) {
   };
 }
 
-function listenWithRetries(rootDir, port, bindAll, options = {}) {
+async function listenWithRetries(rootDir, port, bindAll, options = {}) {
+  await ensureDataStructure(rootDir);
   const host = bindAll ? '0.0.0.0' : '127.0.0.1';
   let currentPort = port;
 
@@ -420,4 +480,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createHandler, parseArgs, safeJoin, listenWithRetries };
+module.exports = { createHandler, ensureDataStructure, parseArgs, safeJoin, listenWithRetries };
