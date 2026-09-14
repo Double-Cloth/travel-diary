@@ -178,7 +178,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260914-static-auth-v2/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260914-static-transfer-feedback-v1/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260914-empty-archive-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260914-static-auth-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -271,6 +271,9 @@ test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () =>
 test('运行时提示全部使用站内反馈弹窗而不是浏览器 alert', () => {
     assert.match(appJs, /import \{ showFeedback \} from '\.\/feedback-dialog\.js';/);
     assert.match(appJs, /\.catch\(error => showFeedback\(error\.message\)\)/);
+    assert.match(appJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据导出。'/);
+    assert.match(dataTransferJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据导入。'/);
+    assert.doesNotMatch(dataTransferJs, /onStatic: \(\) => setStatus/);
     assert.match(recordPasswordJs, /import \{ showFeedback \} from '\.\/feedback-dialog\.js';/);
     assert.match(recordPasswordJs, /void showFeedback\(error\?\.message \|\| copy\.actionError/);
     assert.match(feedbackDialogJs, /dialog\.showModal\(\)/);

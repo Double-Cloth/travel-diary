@@ -1,7 +1,7 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
 import { createRecordEditor } from './record-editor.js?v=20260914-static-auth-v2';
 import { createPasswordGate } from './record-password.js?v=20260914-static-auth-v2';
-import { createDataTransfer } from './data-transfer.js?v=20260914-static-auth-v2';
+import { createDataTransfer } from './data-transfer.js?v=20260914-static-transfer-feedback-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-static-auth-v2';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { showFeedback } from './feedback-dialog.js';

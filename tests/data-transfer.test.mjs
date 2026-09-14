@@ -80,10 +80,18 @@ test('导出和导入都要求写入 API，静态页面不提供全部数据备�
     const nodes = [];
     const output = { textContent: '' };
     function node() {
+        const children = new Map();
         return {
             events: {}, open: false,
-            setAttribute() {}, addEventListener(name, handler) { this.events[name] = handler; },
-            querySelector() { return node(); }, showModal() { this.open = true; }, close() { this.open = false; }
+            classList: { add() {}, remove() {}, toggle() {} },
+            setAttribute() {}, focus() {}, click() {},
+            addEventListener(name, handler) { this.events[name] = handler; },
+            querySelectorAll() { return []; },
+            querySelector(selector) {
+                if (!children.has(selector)) children.set(selector, node());
+                return children.get(selector);
+            },
+            showModal() { this.open = true; }, close() { this.open = false; }
         };
     }
     const previous = { document: globalThis.document, window: globalThis.window, fetch: globalThis.fetch };
@@ -109,6 +117,16 @@ test('导出和导入都要求写入 API，静态页面不提供全部数据备�
     const readonly = createDataTransfer(async () => {});
     await assert.rejects(readonly.getExportHref(), error => error.code === 'STATIC_READONLY');
     await readonly.chooseImport();
-    assert.match(output.textContent, /静态只读页面，不提供全部数据导入或导出/);
-    assert.equal(nodes[3].open, false);
+    const feedbackDialog = nodes.find(item => item.className === 'feedback-dialog entry-sheet');
+    const readonlyPasswordDialog = nodes.filter(item => item.className === 'record-password entry-sheet').at(-1);
+    assert.ok(feedbackDialog, '静态导入失败应创建站内反馈弹窗');
+    assert.equal(feedbackDialog.open, true);
+    assert.equal(feedbackDialog.querySelector('[data-feedback-label]').textContent, '只读模式');
+    assert.equal(feedbackDialog.querySelector('[data-feedback-title]').textContent, '当前站点为静态页面');
+    assert.equal(feedbackDialog.querySelector('[data-feedback-message]').textContent, '当前站点为静态只读页面，不提供全部数据导入。');
+    assert.equal(output.textContent, '');
+    assert.equal(readonlyPasswordDialog.open, false);
+    feedbackDialog.events.click({
+        target: { closest: selector => selector === '[data-feedback-confirm]' ? {} : null }
+    });
 });
