@@ -5,6 +5,7 @@ import { createDataTransfer } from './data-transfer.js?v=20260914-static-transfe
 import { detectWriterCapability } from './writer-capability.js?v=20260914-static-auth-v2';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { showFeedback } from './feedback-dialog.js';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20260914-profile-upload-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { enhanceCustomSelects } from './custom-select.js?v=20260913-select-placement-v3';
@@ -63,6 +64,7 @@ let openRecordEditor;
 let openEditRecord;
 let openDeleteRecord;
 let openDataExport;
+let openProfilePictureUpload;
 let dataTransfer;
 let travelModel = null;
 let activeRoute = null;
@@ -169,6 +171,25 @@ async function initApp() {
         }
     );
     openDataExport = requestDataExportAuthorization;
+    openProfilePictureUpload = createPasswordGate(async (capability, picture) => {
+        const button = refs.profilePictureButton;
+        button?.setAttribute('aria-busy', 'true');
+        if (button) button.disabled = true;
+        try {
+            await uploadProfilePicture(picture, capability);
+            refreshProfilePicture();
+            void showFeedback('新头像已保存。', { label: '个人头像', title: '头像更新成功' });
+        } finally {
+            button?.removeAttribute('aria-busy');
+            if (button) button.disabled = false;
+        }
+    }, {
+        title: '更换头像验证',
+        description: '输入 6 位数字密码后保存新头像。',
+        verifying: '正在验证并上传头像…',
+        actionError: '头像上传失败，请重试。',
+        staticMessage: '当前站点为静态只读页面，不支持更换头像。'
+    });
     renderLoading();
 
     try {
@@ -188,6 +209,8 @@ function cacheRefs() {
     refs.leftPage = document.getElementById('leftPage');
     refs.rightPage = document.getElementById('rightPage');
     refs.sheet = document.getElementById('sheetRoot');
+    refs.profilePictureButton = document.querySelector('.spine-profile');
+    refs.profilePictureInput = document.getElementById('profilePictureInput');
     const profilePicture = document.querySelector('.spine-profile img');
     if (profilePicture) {
         const profilePictureUrl = new URL(profilePicture.dataset.src, window.location.href);
@@ -202,6 +225,37 @@ function cacheRefs() {
                 profilePicture.src = profilePictureUrl.href;
             })
             .catch(() => {});
+    }
+}
+
+function refreshProfilePicture() {
+    const profilePicture = refs.profilePictureButton?.querySelector('img');
+    if (!profilePicture) return;
+    const profilePictureUrl = new URL(profilePicture.dataset.src, window.location.href);
+    profilePictureUrl.searchParams.set('v', getRefreshKey());
+    profilePicture.addEventListener('load', () => {
+        profilePicture.hidden = false;
+    }, { once: true });
+    profilePicture.src = profilePictureUrl.href;
+}
+
+async function handleProfilePictureSelection(input) {
+    const [file] = input.files || [];
+    input.value = '';
+    if (!file) return;
+    refs.profilePictureButton?.setAttribute('aria-busy', 'true');
+    if (refs.profilePictureButton) refs.profilePictureButton.disabled = true;
+    try {
+        const picture = await prepareProfilePicture(file);
+        await openProfilePictureUpload(picture);
+    } catch (error) {
+        void showFeedback(error?.message || '头像处理失败，请换一张图片后重试。', {
+            label: '个人头像',
+            title: '无法使用这张图片'
+        });
+    } finally {
+        refs.profilePictureButton?.removeAttribute('aria-busy');
+        if (refs.profilePictureButton) refs.profilePictureButton.disabled = false;
     }
 }
 
@@ -2060,6 +2114,11 @@ function handleDocumentClick(event) {
         void dataTransfer.chooseImport();
         return;
     }
+    if (event.target.closest('[data-action="upload-profile-picture"]')) {
+        event.preventDefault();
+        refs.profilePictureInput?.click();
+        return;
+    }
     if (event.target.closest('[data-action="add-record"]')) {
         event.preventDefault();
         closeMobileContextPanel();
@@ -2319,6 +2378,10 @@ function handleDocumentInput(event) {
 }
 
 function handleDocumentChange(event) {
+    if (event.target === refs.profilePictureInput) {
+        void handleProfilePictureSelection(event.target);
+        return;
+    }
     const filter = event.target.closest('[data-ledger-filter]');
     if (!filter) {
         return;

@@ -12,6 +12,7 @@ const recordSuggestionsJs = await readFile(new URL('../js/record-suggestions.mjs
 const recordDeleteDialogJs = await readFile(new URL('../js/record-delete-dialog.js', import.meta.url), 'utf8');
 const recordPasswordJs = await readFile(new URL('../js/record-password.js', import.meta.url), 'utf8');
 const feedbackDialogJs = await readFile(new URL('../js/feedback-dialog.js', import.meta.url), 'utf8');
+const profilePictureJs = await readFile(new URL('../js/profile-picture.js', import.meta.url), 'utf8');
 const recordStoreJs = await readFile(new URL('../js/record-store.js', import.meta.url), 'utf8');
 const writerCapabilityJs = await readFile(new URL('../js/writer-capability.js', import.meta.url), 'utf8');
 const authJs = await readFile(new URL('../js/auth.js', import.meta.url), 'utf8');
@@ -178,7 +179,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260914-static-transfer-feedback-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260914-profile-upload-v1/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260914-empty-archive-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260914-static-auth-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -482,6 +483,17 @@ test('空数据目录使用内置头像并仅在自定义头像存在时替换',
     assert.match(indexHtml, /<img data-src="data\/profile\/profile-picture\.png"[^>]*hidden>/);
     assert.match(appJs, /fetch\(profilePictureUrl, \{ method: 'HEAD' \}\)/);
     assert.match(appJs, /profilePicture\.naturalWidth > 1 \|\| profilePicture\.naturalHeight > 1/);
+});
+
+test('点击头像可选择常见图片，并通过认证写入服务更新固定头像文件', () => {
+    assert.match(indexHtml, /data-action="upload-profile-picture"/);
+    assert.match(indexHtml, /id="profilePictureInput"[^>]*accept="image\/jpeg,image\/png,image\/gif,image\/webp"[^>]*hidden/);
+    assert.match(appJs, /prepareProfilePicture/);
+    assert.match(appJs, /createPasswordGate\(async \(capability, picture\)/);
+    assert.match(profilePictureJs, /api\/travel-profile/);
+    assert.match(profilePictureJs, /'X-Travel-Token': capability\.token/);
+    assert.match(serverJs, /'\/api\/travel-profile'/);
+    assert.match(recordStoreJs, /saveProfilePicture/);
 });
 
 test('地点详情页仅保留左页返回按钮', () => {

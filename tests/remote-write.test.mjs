@@ -157,6 +157,46 @@ test('remote 模式仍要求 mutation 令牌，并支持新增、修改与删除
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), []);
 });
 
+test('remote 模式通过会话与令牌更新头像，并拒绝无效图片', async () => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAQAAABX3VL4AAAADUlEQVR42mNk+M/wHwAF/gL+RxR5WQAAAABJRU5ErkJggg==', 'base64');
+    const missingTokenBody = Buffer.from(JSON.stringify({ data: png.toString('base64') }));
+    const missingToken = await request({
+        pathname: '/api/travel-profile',
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'Content-Length': missingTokenBody.length,
+            Cookie: cookie
+        },
+        body: missingTokenBody
+    });
+    assert.equal(missingToken.status, 403);
+
+    const invalidBody = Buffer.from(JSON.stringify({ data: Buffer.from('not an image').toString('base64') }));
+    const invalid = await request({
+        pathname: '/api/travel-profile', method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json', 'Content-Length': invalidBody.length,
+            'X-Travel-Token': token, Cookie: cookie
+        },
+        body: invalidBody
+    });
+    assert.equal(invalid.status, 400);
+
+    const body = Buffer.from(JSON.stringify({ data: png.toString('base64') }));
+    const updated = await request({
+        pathname: '/api/travel-profile', method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json', 'Content-Length': body.length,
+            'X-Travel-Token': token, Cookie: cookie
+        },
+        body
+    });
+    assert.equal(updated.status, 200, updated.body.toString('utf8'));
+    assert.equal(json(updated).saved, true);
+    assert.deepEqual(await fs.readFile(path.join(root, 'data/profile/profile-picture.png')), png);
+});
+
 test('remote 模式可通过登录会话和令牌导出、导入完整备份', async () => {
     const created = json(await mutate('POST', draft('c', { date: '2026-09-15' }))).record;
     const exported = await request({ pathname: '/api/travel-data', headers: { Cookie: cookie } });

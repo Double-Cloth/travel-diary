@@ -41,10 +41,11 @@
                     </svg>
                 </button>
                 <span class="tool-divider" aria-hidden="true"></span>
-                <a class="spine-tool spine-profile" href="#archive" aria-label="打开个人主页">
+                <button class="spine-tool spine-profile" type="button" data-action="upload-profile-picture" aria-label="更换头像" title="点击更换头像">
                     <span class="spine-profile-fallback" aria-hidden="true">旅</span>
                     <img data-src="data/profile/profile-picture.png" alt="" aria-hidden="true" hidden>
-                </a>
+                </button>
+                <input id="profilePictureInput" type="file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
             </div>
         </header>
 
@@ -60,6 +61,6 @@
 
     <div class="entry-sheet-root" id="sheetRoot" aria-hidden="true"></div>
 
-    <script type="module" src="js/app.js?v=20260914-static-transfer-feedback-v1"></script>
+    <script type="module" src="js/app.js?v=20260914-profile-upload-v1"></script>
 </body>
 </html>

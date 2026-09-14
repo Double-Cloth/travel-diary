@@ -287,7 +287,7 @@ function createHandler(rootDir, options = {}) {
     allowedOrigins: options.allowedOrigins || []
   });
   return async (req, res) => {
-    if (['/api/travel-auth', '/api/travel-records', '/api/travel-data'].includes(req.url.split('?')[0])) {
+    if (['/api/travel-auth', '/api/travel-records', '/api/travel-data', '/api/travel-profile'].includes(req.url.split('?')[0])) {
       await recordApi(req, res);
       return;
     }

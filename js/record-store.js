@@ -11,6 +11,8 @@ const MAXIMUM_SESSIONS = 64;
 const MAXIMUM_LOGIN_BYTES = 4096;
 const MAXIMUM_RECORD_BYTES = 128 * 1024 * 1024;
 const MAXIMUM_ARCHIVE_BYTES = 256 * 1024 * 1024;
+const MAXIMUM_PROFILE_BYTES = 8 * 1024 * 1024;
+const MAXIMUM_PROFILE_IMAGE_BYTES = 6 * 1024 * 1024;
 
 function failure(status, message) {
     return Object.assign(new Error(message), { status });
@@ -178,6 +180,80 @@ async function resolveMarkdownFile(root, markdownPath, createDirectory = false) 
     if (!match || !isSafeAsciiFileName(match[2])) throw failure(400, '旅行正文路径无效。');
     const directory = await checkedDirectory(root, ['data', 'travel-diary', match[1]], createDirectory);
     return path.join(directory, match[2]);
+}
+
+function readProfilePicture(payload) {
+    const encoded = payload && Object.keys(payload).length === 1 && typeof payload.data === 'string'
+        ? payload.data
+        : '';
+    if (!encoded || encoded.length % 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) {
+        throw failure(400, '头像图片内容无效。');
+    }
+    const picture = Buffer.from(encoded, 'base64');
+    if (!picture.length || picture.length > MAXIMUM_PROFILE_IMAGE_BYTES) {
+        throw failure(413, '头像图片不能超过 6 MB。');
+    }
+    const pngSignature = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+    if (picture.length < 33 || !picture.subarray(0, 8).equals(pngSignature)
+        || picture.toString('ascii', 12, 16) !== 'IHDR') {
+        throw failure(400, '头像必须是有效的 PNG 图片。');
+    }
+    const width = picture.readUInt32BE(16);
+    const height = picture.readUInt32BE(20);
+    if (!width || !height || width > 2048 || height > 2048) {
+        throw failure(400, '头像图片尺寸无效。');
+    }
+    return picture;
+}
+
+async function saveProfilePicture(root, payload) {
+    const picture = readProfilePicture(payload);
+    const releaseLock = await acquireDataLock(root);
+    const suffix = randomBytes(8).toString('hex');
+    let temporaryFile = '';
+    let backupFile = '';
+    let committed = false;
+    try {
+        const profileDirectory = await checkedDirectory(root, ['data', 'profile'], true);
+        const targetFile = path.join(profileDirectory, 'profile-picture.png');
+        try { await checkedFile(targetFile); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; }
+        temporaryFile = path.join(profileDirectory, `.profile-picture-${suffix}.tmp`);
+        const handle = await fs.open(temporaryFile, 'wx');
+        try {
+            await handle.writeFile(picture);
+            await handle.sync();
+        } finally {
+            await handle.close();
+        }
+        try {
+            backupFile = path.join(profileDirectory, `.profile-picture-${suffix}.bak`);
+            await fs.rename(targetFile, backupFile);
+        } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+            backupFile = '';
+        }
+        try {
+            await fs.rename(temporaryFile, targetFile);
+            temporaryFile = '';
+            committed = true;
+        } catch (error) {
+            if (backupFile) {
+                try {
+                    await fs.rename(backupFile, targetFile);
+                    backupFile = '';
+                } catch {}
+            }
+            throw error;
+        }
+        if (backupFile) await fs.unlink(backupFile).catch(() => {});
+        backupFile = '';
+        return { path: 'data/profile/profile-picture.png' };
+    } finally {
+        if (temporaryFile) await fs.unlink(temporaryFile).catch(() => {});
+        if (committed && backupFile) await fs.unlink(backupFile).catch(() => {});
+        await releaseLock();
+    }
 }
 
 async function replaceIndex(dataDir, indexFile, previous, records) {
@@ -729,6 +805,34 @@ function createRecordApi(root, options = {}) {
                 send(error.status || 500, {
                     error: error.status ? error.message : '全部数据操作失败，请检查目录权限、磁盘空间和备份文件。',
                     ...(error.code ? { code: error.code } : {})
+                });
+            }
+            return;
+        }
+        if (requestPath === '/api/travel-profile') {
+            if (req.method !== 'PUT') {
+                send(405, { error: '头像接口仅支持更新操作。' }, { Allow: 'PUT' });
+                return;
+            }
+            if (!session) {
+                send(401, { error: '登录会话已失效，请重新输入访问口令。', code: 'AUTH_REQUIRED' });
+                return;
+            }
+            if (!equalCredential(req.headers['x-travel-token'], session.token)) {
+                send(403, { error: '写入凭据无效，请重新验证后再试。' });
+                return;
+            }
+            if (!hasMediaType(req, 'application/json')) {
+                send(415, { error: '头像更新请求必须使用 application/json。' });
+                return;
+            }
+            try {
+                const payload = await readJsonBody(req, MAXIMUM_PROFILE_BYTES);
+                const result = await saveProfilePicture(root, payload);
+                send(200, { saved: true, ...result });
+            } catch (error) {
+                send(error.status || 500, {
+                    error: error.status ? error.message : '头像保存失败，请检查数据目录权限和磁盘空间。'
                 });
             }
             return;

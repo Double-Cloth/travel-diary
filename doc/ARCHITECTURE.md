@@ -34,7 +34,7 @@ index.html
        └─ js/utils.js
 ```
 
-运行 `js/server.js` 时，服务提供静态文件和正确的 MIME 类型，并将 `/api/travel-auth`、`/api/travel-records` 与 `/api/travel-data` 交给零安装依赖的数据服务，分别用于认证、记录的新增修改删除及 `data/` 与 `.secrets/auth.json` 的动态 ZIP 导入导出。GitHub Pages 与普通静态托管仍不具备认证或写入端点。
+运行 `js/server.js` 时，服务提供静态文件和正确的 MIME 类型，并将 `/api/travel-auth`、`/api/travel-records`、`/api/travel-profile` 与 `/api/travel-data` 交给零安装依赖的数据服务，分别用于认证、记录的新增修改删除、头像更新及 `data/` 与 `.secrets/auth.json` 的动态 ZIP 导入导出。GitHub Pages 与普通静态托管仍不具备认证或写入端点。
 
 监听配置与写入策略相互独立：`--local` / `--network` 决定绑定 `127.0.0.1` 还是 `0.0.0.0`，`--write-mode=local|remote` 决定哪些请求可以取得写入能力。默认 write mode 为 `local`，所以单独使用 `--network` 不会开放远程写入。remote 模式还必须通过可重复的 `--allowed-origin=https://...` 声明精确的 HTTPS 来源白名单。
 
@@ -45,7 +45,7 @@ index.html
 - `assets/`：通用国家目录（`catalogs/countries.json`）、中国省市区目录（`catalogs/china-locations.json`）、字体、页面背景和纹理。
 - `index.html`、`js/`、`css/`：共享的页面结构与功能实现；`scripts/`、`tests/`、`doc/` 分别负责维护工具、验证和使用说明。
 
-头像由 `index.html` 直接引用 `data/profile/profile-picture.png`。个人档案页的统计由旅行记录计算，不需要单独维护个人资料配置文件。
+头像由 `index.html` 直接引用 `data/profile/profile-picture.png`；页面上传时由浏览器统一转换为 PNG，并通过认证写入接口原子替换该文件。个人档案页的统计由旅行记录计算，不需要单独维护个人资料配置文件。
 
 ## 数据流
 
@@ -124,6 +124,7 @@ data/travel_data.json ────────────────→ getRec
 - `js/writer-capability.js`：前端统一探测当前站点是否提供写入服务，并解析令牌和支持的方法。
 - `js/markdown-editor.js`：源码拆分、预览渲染及可编辑 DOM 到 Markdown 的序列化。
 - `js/photo-uploads.mjs`：浏览器与服务器共用的图片签名校验及可读文件命名规则。
+- `js/profile-picture.js`：头像选择、浏览器端缩放与 PNG 转换，以及认证后的上传请求。
 - `js/location.mjs`：地点字段兼容、国家规则、层级键、显示名称和搜索字段。
 - `assets/catalogs/countries.json`：完整国家/地区目录和行政区显示规则。
 - `assets/catalogs/china-locations.json`：中国省市区目录，为新增记录提供省份反查和省市候选。

@@ -4,7 +4,7 @@
 
 个人内容统一放在 `data/`，复用项目时按以下步骤替换：
 
-1. 用自己的 PNG 头像替换 `data/profile/profile-picture.png`，保留文件名即可。
+1. 在页面顶部点击头像，选择 JPEG、PNG、GIF 或 WebP 图片并输入访问密码即可更新；也可手动用自己的 PNG 头像替换 `data/profile/profile-picture.png`，保留文件名。
 2. 将旅行记录写入 `data/travel_data.json`，正文放入 `data/travel-diary/YYYY/`，照片放入 `data/photos/`，并同步记录中的路径。不保留任何记录时使用空数组 `[]`。
 3. 删除不再使用的示例日记和照片，避免它们仍随静态站点发布。
 4. 字体源文件发生变化时，按 [资源维护规范](ASSET_MANAGEMENT.md) 运行 `npm run fonts` 更新本地完整字体，再运行 `npm test` 并检查页面。
