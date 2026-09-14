@@ -2,7 +2,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const { randomBytes, timingSafeEqual } = require('crypto');
 const { acquireDataLock, exportDataArchive, importDataArchive } = require('./data-archive.js');
-const { readAuthConfig, verifyPassword } = require('./auth.js');
+const { initializeAuthConfig, readAuthConfig, verifyPassword } = require('./auth.js');
 
 const LOGIN_FAILURE_WINDOW = 15 * 60 * 1000;
 const MAXIMUM_LOGIN_FAILURES = 5;
@@ -677,6 +677,55 @@ function createRecordApi(root, options = {}) {
         try {
             authConfig = await readAuthConfig(root, { requireProduction: writeMode === 'remote' });
         } catch (error) {
+            if (error.code === 'AUTH_CONFIG_MISSING' && writeMode === 'local') {
+                if (requestPath !== '/api/travel-auth/setup') {
+                    send(409, {
+                        service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode,
+                        error: '尚未设置访问密码，请在当前页面创建新的 6 位数字密码。',
+                        code: 'AUTH_SETUP_REQUIRED'
+                    });
+                    return;
+                }
+                if (req.method !== 'POST') {
+                    send(405, { error: '首次密码设置接口仅支持 JSON 请求。' }, { Allow: 'POST' });
+                    return;
+                }
+                if (!hasMediaType(req, 'application/json')) {
+                    send(415, { error: '首次密码设置请求必须使用 application/json。' });
+                    return;
+                }
+                if (!req.headers.origin) {
+                    send(403, { error: '首次密码设置请求必须来自当前站点页面。' });
+                    return;
+                }
+                try {
+                    const payload = await readJsonBody(req, MAXIMUM_LOGIN_BYTES);
+                    authConfig = await initializeAuthConfig(root, typeof payload?.password === 'string' ? payload.password : '');
+                    sessions.clear();
+                    failures.clear();
+                    const id = randomBytes(32).toString('hex');
+                    const token = randomBytes(32).toString('hex');
+                    storeSession(id, {
+                        host, token, authRevision: authConfig.hash, expiresAt: Date.now() + SESSION_LIFETIME
+                    });
+                    send(201, {
+                        service: 'travel-diary-writer-v1', authenticated: true, token,
+                        methods: ['POST', 'PUT', 'DELETE'], writeMode, expiresIn: SESSION_LIFETIME / 1000
+                    }, { 'Set-Cookie': sessionCookie(id, false) });
+                } catch (setupError) {
+                    const status = ['PASSWORD_POLICY_INVALID', 'PASSWORD_TOO_WEAK'].includes(setupError.code)
+                        ? 400
+                        : (setupError.code === 'AUTH_SETUP_ALREADY_COMPLETE'
+                            ? 409
+                            : (setupError.code?.startsWith('AUTH_CONFIG_') ? 503 : 500));
+                    send(status, {
+                        service: 'travel-diary-writer-v1',
+                        error: setupError.message || '访问密码创建失败，请检查 .secrets 目录权限。',
+                        ...(setupError.code ? { code: setupError.code } : {})
+                    });
+                }
+                return;
+            }
             const configurationError = error.code === 'AUTH_NOT_PRODUCTION_READY'
                 || error.code?.startsWith('AUTH_CONFIG_');
             send(configurationError ? 503 : 500, {
@@ -689,6 +738,14 @@ function createRecordApi(root, options = {}) {
 
         clearExpiredState();
         const session = currentSession(req, host, authConfig);
+        if (requestPath === '/api/travel-auth/setup') {
+            send(409, {
+                service: 'travel-diary-writer-v1',
+                error: '访问密码已经创建，请直接输入现有密码。',
+                code: 'AUTH_SETUP_ALREADY_COMPLETE'
+            });
+            return;
+        }
         if (requestPath === '/api/travel-auth') {
             if (req.method === 'DELETE') {
                 const id = readCookie(req, 'travel_session');

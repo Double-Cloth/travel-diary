@@ -89,7 +89,7 @@ async function readAuthConfig(root, options = {}) {
         directoryStat = await fs.lstat(secretsDir);
     } catch (error) {
         if (error.code === 'ENOENT') {
-            throw authFailure('未找到 .secrets 目录。服务器启动时会自动创建该目录；请随后运行 npm run auth:set 创建 6 位数字访问密码。', 'AUTH_CONFIG_MISSING');
+            throw authFailure('未找到 .secrets 目录。服务器启动时会自动创建该目录；随后可在本机页面创建 6 位数字访问密码。', 'AUTH_CONFIG_MISSING');
         }
         throw authFailure('无法访问 .secrets 目录，请检查目录权限。', 'AUTH_CONFIG_UNREADABLE');
     }
@@ -102,7 +102,7 @@ async function readAuthConfig(root, options = {}) {
         fileStat = await fs.lstat(authFile);
     } catch (error) {
         if (error.code === 'ENOENT') {
-            throw authFailure('尚未创建 .secrets/auth.json。请在项目根目录运行 npm run auth:set 创建 6 位数字访问密码。', 'AUTH_CONFIG_MISSING');
+            throw authFailure('尚未创建 .secrets/auth.json。请先以 local 模式启动，并在本机页面创建 6 位数字访问密码。', 'AUTH_CONFIG_MISSING');
         }
         throw authFailure('无法访问 .secrets/auth.json，请检查文件权限。', 'AUTH_CONFIG_UNREADABLE');
     }
@@ -152,6 +152,41 @@ async function createAuthConfig(password) {
     };
 }
 
+async function initializeAuthConfig(root, password) {
+    const config = await createAuthConfig(password);
+    const secretsDir = path.join(root, '.secrets');
+    const authFile = path.join(secretsDir, 'auth.json');
+    await fs.mkdir(secretsDir, { recursive: true, mode: 0o700 });
+    const directoryStat = await fs.lstat(secretsDir);
+    if (directoryStat.isSymbolicLink() || !directoryStat.isDirectory()) {
+        throw authFailure('.secrets 必须是项目内的普通目录，不能是文件或符号链接。');
+    }
+    await fs.chmod(secretsDir, 0o700).catch(() => {});
+
+    let handle;
+    let created = false;
+    let writeError;
+    try {
+        handle = await fs.open(authFile, 'wx', 0o600);
+        created = true;
+        await handle.writeFile(`${JSON.stringify(config, null, 2)}\n`, 'utf8');
+        await handle.sync();
+    } catch (error) {
+        if (error.code === 'EEXIST') {
+            throw authFailure('访问密码已经创建，请直接输入现有密码。', 'AUTH_SETUP_ALREADY_COMPLETE');
+        }
+        writeError = error;
+    } finally {
+        if (handle) await handle.close().catch(() => {});
+    }
+    if (writeError) {
+        if (created) await fs.unlink(authFile).catch(() => {});
+        throw authFailure('无法创建 .secrets/auth.json，请检查目录权限和磁盘空间。', 'AUTH_CONFIG_UNREADABLE');
+    }
+    await fs.chmod(authFile, 0o600).catch(() => {});
+    return config;
+}
+
 async function verifyPassword(config, password) {
     const validConfig = validateAuthConfig(config);
     const salt = decodeBase64(validConfig.salt, 16, 'salt');
@@ -169,6 +204,7 @@ module.exports = {
     PASSWORD_LENGTH,
     SCRYPT_OPTIONS,
     createAuthConfig,
+    initializeAuthConfig,
     readAuthConfig,
     validateAuthConfig,
     validatePassword,

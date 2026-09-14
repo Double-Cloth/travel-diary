@@ -35,15 +35,16 @@ async function fixture(t, { configured = true, authSource } = {}) {
 }
 
 test('认证配置缺失或内容不完整时接口返回可直接展示的明确错误', async t => {
-    await t.test('缺少 auth.json 时提示创建密码', async t => {
+    await t.test('缺少 auth.json 时提示在页面创建密码', async t => {
         const { base, root } = await fixture(t, { configured: false });
         await fs.mkdir(path.join(root, '.secrets'));
         const response = await fetch(`${base}/api/travel-records`);
         const result = await response.json();
-        assert.equal(response.status, 503);
+        assert.equal(response.status, 409);
         assert.equal(result.service, 'travel-diary-writer-v1');
-        assert.equal(result.code, 'AUTH_CONFIG_MISSING');
-        assert.match(result.error, /npm run auth:set.*创建 6 位数字访问密码/);
+        assert.equal(result.code, 'AUTH_SETUP_REQUIRED');
+        assert.match(result.error, /当前页面创建新的 6 位数字密码/);
+        assert.doesNotMatch(result.error, /npm run auth:set/);
     });
 
     await t.test('缺少必填字段时列出字段名称', async t => {
@@ -66,6 +67,52 @@ test('认证配置缺失或内容不完整时接口返回可直接展示的明�
         assert.match(result.error, /不是有效的 JSON 文件/);
         assert.match(result.error, /npm run auth:set/);
     });
+});
+
+test('本机首次设置接口创建密码、登录会话且不覆盖已有配置', async t => {
+    const { base, root } = await fixture(t, { configured: false });
+    const password = '483920';
+    const setup = await fetch(`${base}/api/travel-auth/setup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: base },
+        body: JSON.stringify({ password })
+    });
+    const result = await setup.json();
+    assert.equal(setup.status, 201);
+    assert.equal(result.service, 'travel-diary-writer-v1');
+    assert.equal(result.authenticated, true);
+    assert.equal(result.token.length, 64);
+    assert.match(setup.headers.get('set-cookie'), /HttpOnly/);
+    const saved = JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8'));
+    assert.equal('password' in saved, false);
+
+    const repeated = await fetch(`${base}/api/travel-auth/setup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: base },
+        body: JSON.stringify({ password: '590247' })
+    });
+    assert.equal(repeated.status, 409);
+    assert.equal((await repeated.json()).code, 'AUTH_SETUP_ALREADY_COMPLETE');
+    assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, saved.hash);
+});
+
+test('首次设置接口拒绝弱密码和非同源页面', async t => {
+    const weakFixture = await fixture(t, { configured: false });
+    const weak = await fetch(`${weakFixture.base}/api/travel-auth/setup`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: weakFixture.base },
+        body: JSON.stringify({ password: '123456' })
+    });
+    assert.equal(weak.status, 400);
+    assert.equal((await weak.json()).code, 'PASSWORD_TOO_WEAK');
+    await assert.rejects(fs.access(path.join(weakFixture.root, '.secrets/auth.json')));
+
+    const originFixture = await fixture(t, { configured: false });
+    const withoutOrigin = await fetch(`${originFixture.base}/api/travel-auth/setup`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: '483920' })
+    });
+    assert.equal(withoutOrigin.status, 403);
+    await assert.rejects(fs.access(path.join(originFixture.root, '.secrets/auth.json')));
 });
 
 test('能力端点不再公开令牌，登录后签发受限 HttpOnly 会话', async t => {

@@ -90,7 +90,7 @@ async function exportDataArchive(root) {
         let authStat;
         try { authStat = await fs.lstat(authFile); }
         catch (error) {
-            if (error.code === 'ENOENT') throw failure(503, '缺少 .secrets/auth.json，请先运行 npm run auth:set 创建访问密码。', 'AUTH_NOT_CONFIGURED');
+            if (error.code === 'ENOENT') throw failure(503, '缺少 .secrets/auth.json，请先启动本机页面并执行任一写入操作创建访问密码。', 'AUTH_NOT_CONFIGURED');
             throw error;
         }
         if (authStat.isSymbolicLink() || !authStat.isFile()) {

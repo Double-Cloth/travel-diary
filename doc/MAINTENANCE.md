@@ -5,7 +5,7 @@
 | 命令 | 用途 | 是否需要联网 |
 | --- | --- | --- |
 | `npm start` | 以 `--local --write-mode=local` 默认值启动站点及数据服务。 | 否 |
-| `npm run auth:set` | 在交互式终端设置 6 位数字访问密码，并更新 `.secrets/auth.json` 的 `scrypt` 哈希。 | 否 |
+| `npm run auth:set` | 仅在认证配置损坏或需要强制恢复时，于交互式终端重建 `.secrets/auth.json`。首次设密直接在页面完成。 | 否 |
 | `npm test` | 运行全部 Node.js 测试。 | 否 |
 | `npm run data:archive` | 将当前 `data/` 生成到本地 `dist/travel-diary-data.zip`（不由 GitHub Pages 发布）。 | 否 |
 | `npm run fonts` | 从 TTF 生成完整 WOFF2 字体。 | 否，但需预装 `fonttools[woff]` |
@@ -15,7 +15,7 @@
 | `node js/server.js --port 8080 --network` | 监听局域网；写入仍保持默认 local 模式。 | 否 |
 | `node js/server.js --local --write-mode=remote --allowed-origin=https://diary.example.com` | 仅允许精确 HTTPS 白名单站点远程写入。 | 否 |
 
-普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份；若 `.secrets/` 缺失，启动会先创建目录并提示运行 `npm run auth:set`。尚未创建 `auth.json`，或文件存在 JSON 损坏、必填字段缺失、算法参数错误等问题时，页面执行写入操作会直接显示包含修复方法的密码配置弹窗，不会先要求输入一个注定无法验证的密码。`--local` / `--network` 只决定监听范围，`--write-mode=local|remote` 单独决定写入策略；默认始终是 local，因此 `--network` 本身不会开放写权限。启动日志会同时显示 Bind 与 Write mode，remote 模式还会输出明显安全警告。
+普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份；若 `.secrets/` 缺失，启动会先创建目录。local 模式尚未创建 `auth.json` 时，页面会在第一次写入操作前要求连续输入两次相同密码并创建配置；若文件已存在但 JSON 损坏、必填字段缺失或算法参数错误，则明确弹窗提示运行 `npm run auth:set` 修复，不会覆盖损坏文件。`--local` / `--network` 只决定监听范围，`--write-mode=local|remote` 单独决定写入策略；默认始终是 local，因此 `--network` 本身不会开放写权限。启动日志会同时显示 Bind 与 Write mode，remote 模式还会输出明显安全警告。
 
 首次启动缺少 `data/` 时，服务会自动创建空索引、`travel-diary/`、`photos/`、`profile/` 子目录和默认头像；已存在的索引与头像不会被覆盖。GitHub Pages 构建也会补齐同样的最小结构。
 
@@ -25,7 +25,7 @@ remote 模式要求 `.secrets/auth.json` 由当前后端工具生成，并必须
 
 ### 生产部署最小要求
 
-1. 在交互式终端运行 `npm run auth:set`，不要通过 CLI 参数、Shell 历史或聊天传递口令。
+1. 先以 local 模式启动并在本机页面完成首次设密；只有配置损坏或必须强制恢复时才在交互式终端运行 `npm run auth:set`。不要通过 CLI 参数、Shell 历史或聊天传递口令。
 2. 使用专门的低权限系统账户运行 Node；Linux 启动时会把 `.secrets/` 和 `auth.json` 权限收紧为 `0700` / `0600`。Windows 应通过 NTFS ACL 限制为运行账户和管理员可读。
 3. 反向代理只转发请求给 `127.0.0.1:9000`，不要另行把项目根目录作为静态目录发布；如果必须配置静态根目录，应显式拒绝所有点目录。
 4. 对外只开放 HTTPS，启用 HSTS，并保留浏览器看到的外部 Host。不要依据客户端提供的 `X-Forwarded-*` 放宽认证或同源判断。
@@ -97,7 +97,7 @@ remote 模式要求 `.secrets/auth.json` 由当前后端工具生成，并必须
    - `.secrets/auth.json`、大小写变体和指向该目录的链接是否都无法通过 HTTP 下载。
    - 未登录时能力端点不返回 token；错误口令限速、会话过期和导入后注销是否正常。
    - `--network` 未指定 remote write mode 时，局域网页面是否保持只读。
-   - 执行 `npm run auth:set` 后，`--write-mode=remote --allowed-origin=https://...` 下白名单页面是否可新增、修改、删除和导入；HTTP 与非白名单来源是否被拒绝。
+   - 在本机页面完成首次设密后，`--write-mode=remote --allowed-origin=https://...` 下白名单页面是否可新增、修改、删除和导入；HTTP 与非白名单来源是否被拒绝。
    - HTTPS 反向代理下，同站点 Origin 与 Host 是否可写，不匹配 Origin 是否被拒绝。
    - GitHub Pages 或普通静态托管是否免密码打开显式只读编辑器，且不能保存、删除或执行全部数据 ZIP 导入导出。
    - 写入服务存在时，新增、修改、删除和全部数据导入导出是否都要求密码；API 超时、连接失败、403 与异常响应是否都会中止而非降级。

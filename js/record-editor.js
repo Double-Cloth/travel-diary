@@ -4,7 +4,7 @@ import { readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
-import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-config-v3';
+import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20260913-select-placement-v3';
 import { confirmFeedback } from './feedback-dialog.js';
 

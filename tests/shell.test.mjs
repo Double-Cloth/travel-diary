@@ -207,15 +207,18 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
 });
 
 test('静态页面免密码打开只读编辑器，动态环境必须先通过服务端口令验证', () => {
-    assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260914-auth-config-v3';/);
+    assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260914-auth-setup-v1';/);
     assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability\)/);
     assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}\)/);
     assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}\)/);
     assert.match(appJs, /openRecordEditor = requestCreateAuthorization;/);
     assert.match(recordPasswordJs, /await probeWriterService\(\)/);
     assert.match(recordPasswordJs, /error\?\.code === 'STATIC_READONLY'/);
-    assert.match(recordPasswordJs, /title: error\.code === 'AUTH_CONFIG_MISSING' \? '请先创建访问密码' : '密码配置无效'/);
-    assert.match(recordPasswordJs, /showFeedback\(error\.message, feedback\)/);
+    assert.match(recordPasswordJs, /mode = setupRequired \? 'setup-first' : 'login'/);
+    assert.match(recordPasswordJs, /title: '再次输入密码'/);
+    assert.match(recordPasswordJs, /await initializeWriterPassword\(password\)/);
+    assert.match(recordPasswordJs, /npm run auth:set 重新创建密码配置/);
+    assert.match(recordPasswordJs, /showFeedback\(feedback\.message, feedback\)/);
     assert.doesNotMatch(recordPasswordJs, /WRITER_UNREACHABLE[\s\S]*?onStatic/);
     assert.match(writerCapabilityJs, /result\?\.service === 'travel-diary-static-v1' && result\.readonly === true/);
     assert.match(writerCapabilityJs, /'WRITER_UNREACHABLE'/);

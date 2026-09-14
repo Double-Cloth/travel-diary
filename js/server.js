@@ -103,13 +103,13 @@ Options:
   --help, -h    Show this help
 
 Authentication:
-  Run npm run auth:set to replace the 6-digit access password with a server-side scrypt hash.
+  On first local write, create and confirm the 6-digit password in the browser.
+  Run npm run auth:set only to repair or forcibly reset a damaged password configuration.
 
 Examples:
   node js/server.js
   node js/server.js --dir . --port 9000
   node js/server.js --network
-  npm run auth:set
   node js/server.js --local --write-mode=remote --allowed-origin=https://diary.example.com
 `;
 
@@ -291,7 +291,7 @@ function createHandler(rootDir, options = {}) {
     allowedOrigins: options.allowedOrigins || []
   });
   return async (req, res) => {
-    if (['/api/travel-auth', '/api/travel-records', '/api/travel-data', '/api/travel-profile'].includes(req.url.split('?')[0])) {
+    if (['/api/travel-auth', '/api/travel-auth/setup', '/api/travel-records', '/api/travel-data', '/api/travel-profile'].includes(req.url.split('?')[0])) {
       await recordApi(req, res);
       return;
     }
@@ -466,8 +466,8 @@ async function main() {
   console.log('Authentication: .secrets/auth.json (scrypt + server session)');
   if (!structure.authConfigured) {
     console.warn(structure.secretsCreated
-      ? '未发现 .secrets，已自动创建该目录；请运行 npm run auth:set 创建 6 位数字访问密码。'
-      : '尚未创建 .secrets/auth.json；请运行 npm run auth:set 创建 6 位数字访问密码。');
+      ? '未发现 .secrets，已自动创建该目录；首次执行写入操作时可在页面创建访问密码。'
+      : '尚未创建 .secrets/auth.json；首次执行写入操作时可在页面创建访问密码。');
   }
   console.log('-'.repeat(60));
   console.log(`Local: ${localhostUrl}`);

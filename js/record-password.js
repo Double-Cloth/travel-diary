@@ -1,14 +1,21 @@
 import { showFeedback } from './feedback-dialog.js';
-import { authenticateWriter, probeWriterService } from './writer-capability.js?v=20260914-auth-config-v3';
+import { authenticateWriter, initializeWriterPassword, probeWriterService } from './writer-capability.js?v=20260914-auth-setup-v1';
 
 const PASSWORD_LENGTH = 6;
 let passwordGateSequence = 0;
 
 function authConfigurationFeedback(error) {
     if (error?.code !== 'AUTH_NOT_PRODUCTION_READY' && !error?.code?.startsWith('AUTH_CONFIG_')) return null;
+    const repairHint = '请在项目根目录运行 npm run auth:set 重新创建密码配置。';
+    const needsRepair = error.code === 'AUTH_CONFIG_INVALID' || error.code === 'AUTH_NOT_PRODUCTION_READY';
     return {
         label: '密码配置',
-        title: error.code === 'AUTH_CONFIG_MISSING' ? '请先创建访问密码' : '密码配置无效'
+        title: error.code === 'AUTH_CONFIG_MISSING'
+            ? '密码配置缺失'
+            : (error.code === 'AUTH_CONFIG_UNREADABLE' ? '无法读取密码配置' : '密码配置无效'),
+        message: needsRepair && !error.message.includes('npm run auth:set')
+            ? `${error.message} ${repairHint}`
+            : error.message
     };
 }
 
@@ -58,11 +65,23 @@ export function createPasswordGate(onVerified, options = {}) {
     dialog.querySelector('[data-password-note]').textContent = copy.description;
 
     let enteredPassword = '';
+    let firstPassword = '';
+    let mode = 'login';
     let probing = false;
     let verifying = false;
     let trigger;
     let pendingContext;
     const status = message => { dialog.querySelector('[data-password-status]').textContent = message; };
+
+    function updatePrompt() {
+        const prompt = mode === 'setup-first'
+            ? { title: '创建访问密码', description: '请输入新的 6 位数字密码。' }
+            : mode === 'setup-confirm'
+                ? { title: '再次输入密码', description: '请再次输入相同的 6 位数字密码。' }
+                : copy;
+        dialog.querySelector(`#${titleId}`).textContent = prompt.title;
+        dialog.querySelector('[data-password-note]').textContent = prompt.description;
+    }
 
     function setControlsDisabled(disabled) {
         dialog.querySelectorAll('[data-password-key], [data-password-clear], [data-password-delete]')
@@ -95,6 +114,9 @@ export function createPasswordGate(onVerified, options = {}) {
         if (verifying) return;
         dialog.close();
         reset();
+        firstPassword = '';
+        mode = 'login';
+        updatePrompt();
         pendingContext = undefined;
         restoreTriggerFocus();
     }
@@ -108,12 +130,29 @@ export function createPasswordGate(onVerified, options = {}) {
     async function verify() {
         if (verifying || enteredPassword.length !== PASSWORD_LENGTH) return;
         const password = enteredPassword;
+        if (mode === 'setup-first') {
+            firstPassword = password;
+            mode = 'setup-confirm';
+            updatePrompt();
+            reset();
+            dialog.querySelector('[data-password-key]')?.focus();
+            return;
+        }
+        if (mode === 'setup-confirm' && password !== firstPassword) {
+            firstPassword = '';
+            mode = 'setup-first';
+            updatePrompt();
+            showError('两次输入的密码不一致，请重新设置。');
+            return;
+        }
         verifying = true;
         setControlsDisabled(true);
-        status(copy.verifying);
+        status(mode === 'setup-confirm' ? '正在安全创建访问密码…' : copy.verifying);
         let capability;
         try {
-            capability = await authenticateWriter(password);
+            capability = mode === 'setup-confirm'
+                ? await initializeWriterPassword(password)
+                : await authenticateWriter(password);
         } catch (error) {
             const feedback = authConfigurationFeedback(error);
             if (feedback) {
@@ -121,8 +160,13 @@ export function createPasswordGate(onVerified, options = {}) {
                 reset();
                 pendingContext = undefined;
                 restoreTriggerFocus();
-                void showFeedback(error.message, feedback);
+                void showFeedback(feedback.message, feedback);
                 return;
+            }
+            if (mode === 'setup-confirm') {
+                firstPassword = '';
+                mode = error?.code === 'AUTH_SETUP_ALREADY_COMPLETE' ? 'login' : 'setup-first';
+                updatePrompt();
             }
             showError(error?.message || '访问密码验证失败。');
             if (error?.code === 'WRITER_UNAVAILABLE') {
@@ -136,6 +180,9 @@ export function createPasswordGate(onVerified, options = {}) {
         }
         dialog.close();
         reset();
+        firstPassword = '';
+        mode = 'login';
+        updatePrompt();
         const verifiedContext = pendingContext;
         pendingContext = undefined;
         restoreTriggerFocus();
@@ -194,32 +241,40 @@ export function createPasswordGate(onVerified, options = {}) {
         if (dialog.open || probing || verifying) return;
         trigger = document.activeElement;
         probing = true;
+        let setupRequired = false;
         try {
             await probeWriterService();
         } catch (error) {
-            const feedback = authConfigurationFeedback(error);
-            if (feedback) {
-                void showFeedback(error.message, feedback);
-                return;
-            }
-            if (error?.code === 'STATIC_READONLY') {
-                if (typeof options.onStatic === 'function') {
-                    try { await options.onStatic(context); }
-                    catch (staticError) {
-                        void showFeedback(staticError?.message || copy.actionError, { label: '只读模式', title: '操作未完成' });
-                    }
-                } else {
-                    void showFeedback(copy.staticMessage, { label: '只读模式', title: '当前站点为静态页面' });
+            if (error?.code === 'AUTH_SETUP_REQUIRED') {
+                setupRequired = true;
+            } else {
+                const feedback = authConfigurationFeedback(error);
+                if (feedback) {
+                    void showFeedback(feedback.message, feedback);
+                    return;
                 }
+                if (error?.code === 'STATIC_READONLY') {
+                    if (typeof options.onStatic === 'function') {
+                        try { await options.onStatic(context); }
+                        catch (staticError) {
+                            void showFeedback(staticError?.message || copy.actionError, { label: '只读模式', title: '操作未完成' });
+                        }
+                    } else {
+                        void showFeedback(copy.staticMessage, { label: '只读模式', title: '当前站点为静态页面' });
+                    }
+                    return;
+                }
+                void showFeedback(error?.message || copy.actionError, { label: '访问验证', title: '服务暂不可用' });
                 return;
             }
-            void showFeedback(error?.message || copy.actionError, { label: '访问验证', title: '服务暂不可用' });
-            return;
         } finally {
             probing = false;
         }
         if (typeof options.beforePrompt === 'function' && !await options.beforePrompt(context)) return;
         pendingContext = context;
+        firstPassword = '';
+        mode = setupRequired ? 'setup-first' : 'login';
+        updatePrompt();
         reset();
         dialog.showModal();
         dialog.querySelector('[data-password-key]')?.focus();

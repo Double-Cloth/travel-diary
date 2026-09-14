@@ -10,7 +10,7 @@ npm start
 
 本机只需安装 Node.js，无需下载项目依赖。启动后默认打开 [http://localhost:9000](http://localhost:9000)；项目资源均保存在仓库内，可在断网状态下使用。
 
-如果首次启动时还没有 `data/`，服务器会创建 `data/travel_data.json`、`data/travel-diary/`、`data/photos/`、`data/profile/` 和一个可替换的默认头像。静态页面找不到旅行索引时也会进入可新增或导入的空档案界面，不会阻断其他页面。
+如果首次启动时还没有 `data/`，服务器会创建 `data/travel_data.json`、`data/travel-diary/`、`data/photos/`、`data/profile/` 和一个可替换的默认头像；缺少 `.secrets/` 时也会自动创建。首次点击任一需要写入的操作，页面会要求连续输入两次相同的 6 位数字密码并安全生成 `.secrets/auth.json`，无需运行命令。静态页面找不到旅行索引时也会进入可新增或导入的空档案界面，不会阻断其他页面。
 
 指定端口时运行：
 
@@ -24,10 +24,9 @@ node js/server.js --port 8080
 node js/server.js --network
 ```
 
-需要让 HTTPS 反向代理后的域名写入时，必须显式启用 remote write mode 并声明精确的允许来源。需要更换六位密码时，先在交互式终端运行 `npm run auth:set`：
+需要让 HTTPS 反向代理后的域名写入时，必须先在本机页面完成首次设密，再显式启用 remote write mode 并声明精确的允许来源：
 
 ```bash
-npm run auth:set
 node js/server.js --local --write-mode=remote --allowed-origin=https://diary.example.com
 ```
 
@@ -35,13 +34,13 @@ node js/server.js --local --write-mode=remote --allowed-origin=https://diary.exa
 
 反向代理与 Node 位于同一服务器时，推荐保持 `--local`，只让代理连接 Node；只有确实需要其他主机连接 Node 端口时才使用 `--network`。
 
-访问密码保持为 6 位数字，但设置工具会拒绝连续、重复和常见弱组合。普通页面不会直接读取认证配置；只有通过认证的动态完整备份会携带 `.secrets/auth.json`。密码只以带随机盐的 `scrypt` 哈希保存，并被静态服务永久拒绝。全局连续失败 5 次会锁定 15 分钟，避免轮换 IP 或 Host 穷举；会话与当前哈希绑定，换密后旧会话立即失效。Cookie 使用 `HttpOnly`、`SameSite=Strict`，remote 模式一律增加 `Secure`。
+访问密码保持为 6 位数字，页面首次设密会拒绝连续、重复和常见弱组合。只有 `.secrets/auth.json` 已损坏或需要强制恢复时，才在交互式终端运行 `npm run auth:set`；缺少配置时直接在本机页面创建。普通页面不会直接读取认证配置；只有通过认证的动态完整备份会携带 `.secrets/auth.json`。密码只以带随机盐的 `scrypt` 哈希保存，并被静态服务永久拒绝。全局连续失败 5 次会锁定 15 分钟，避免轮换 IP 或 Host 穷举；会话与当前哈希绑定，换密后旧会话立即失效。Cookie 使用 `HttpOnly`、`SameSite=Strict`，remote 模式一律增加 `Secure`。
 
 remote write mode 仍默认关闭。当前项目按部署需要跟踪 `.secrets/auth.json`，但哈希并非加密，六位数字只有 100 万种组合；仓库必须设为私有，并限制克隆和 Actions 日志权限。公网部署除 HTTPS 白名单外，仍应在上游增加 VPN、Zero Trust 或等效的独立访问控制。若仓库曾公开，应清理 Git 历史并立即换密。
 
 ## 管理旅行记录
 
-点击头部「＋」或旅行路径页的「新增旅行记录」即可开始整理内容：动态写入环境会先要求在数字键盘输入 6 位访问密码；明确的静态页面免密码打开只读编辑器。编辑器提供：
+点击头部「＋」或旅行路径页的「新增旅行记录」即可开始整理内容：动态写入环境尚无密码时会要求创建并再次确认 6 位密码，已有密码时要求验证；明确的静态页面免密码打开只读编辑器。编辑器提供：
 
 - 地点候选与空白字段补全；中国目的地会从内置省市区目录反查省份，旅行标识会自动生成，也可从最近 5 次已有行程中选择。
 - 带语法高亮的 Markdown 源码，以及可直接编辑的预览。

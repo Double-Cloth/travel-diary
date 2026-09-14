@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadBrowserModule } from './helpers/browser-modules.mjs';
 
-const { probeWriterService } = await loadBrowserModule(new URL('../js/writer-capability.js', import.meta.url));
+const { initializeWriterPassword, probeWriterService } = await loadBrowserModule(new URL('../js/writer-capability.js', import.meta.url));
 
 test('写入服务探测只把明确的静态标记识别为静态页面', async t => {
     const previous = { window: globalThis.window, fetch: globalThis.fetch };
@@ -54,14 +54,59 @@ test('写入服务认证配置异常时保留服务端错误码和明确提示',
         status: 503,
         json: async () => ({
             service: 'travel-diary-writer-v1',
-            code: 'AUTH_CONFIG_MISSING',
-            error: '尚未创建 .secrets/auth.json。请运行 npm run auth:set 创建密码。'
+            code: 'AUTH_CONFIG_INVALID',
+            error: '.secrets/auth.json 内容不完整，请运行 npm run auth:set 修复。'
         })
     });
 
     await assert.rejects(probeWriterService(), error => {
-        assert.equal(error.code, 'AUTH_CONFIG_MISSING');
+        assert.equal(error.code, 'AUTH_CONFIG_INVALID');
         assert.match(error.message, /npm run auth:set/);
         return true;
     });
+});
+
+test('写入服务未设置密码时保留首次设置状态', async t => {
+    const previous = { window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.window = { location: { href: 'http://localhost:9000/' } };
+    globalThis.fetch = async () => ({
+        ok: false,
+        status: 409,
+        json: async () => ({
+            service: 'travel-diary-writer-v1',
+            code: 'AUTH_SETUP_REQUIRED',
+            error: '尚未设置访问密码，请在当前页面创建。'
+        })
+    });
+    await assert.rejects(probeWriterService(), error => {
+        assert.equal(error.code, 'AUTH_SETUP_REQUIRED');
+        assert.doesNotMatch(error.message, /npm run auth:set/);
+        return true;
+    });
+});
+
+test('首次设置密码提交到专用同源接口并返回写入能力', async t => {
+    const previous = { window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.window = { location: { href: 'http://localhost:9000/#cover' } };
+    let request;
+    globalThis.fetch = async (endpoint, options) => {
+        request = { endpoint: endpoint.href, options };
+        return {
+            ok: true,
+            status: 201,
+            json: async () => ({
+                service: 'travel-diary-writer-v1', authenticated: true,
+                token: 'a'.repeat(64), methods: ['POST', 'PUT', 'DELETE'], writeMode: 'local'
+            })
+        };
+    };
+    const capability = await initializeWriterPassword('483920');
+    assert.equal(request.endpoint, 'http://localhost:9000/api/travel-auth/setup');
+    assert.equal(request.options.method, 'POST');
+    assert.equal(request.options.credentials, 'same-origin');
+    assert.deepEqual(JSON.parse(request.options.body), { password: '483920' });
+    assert.equal(capability.authenticated, true);
+    assert.equal(capability.token, 'a'.repeat(64));
 });

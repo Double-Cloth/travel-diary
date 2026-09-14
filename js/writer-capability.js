@@ -76,3 +76,26 @@ export async function authenticateWriter(password, timeout = 15000) {
     }
     return capabilityFrom(new URL('api/travel-records', window.location.href), result);
 }
+
+export async function initializeWriterPassword(password, timeout = 15000) {
+    const endpoint = new URL('api/travel-auth/setup', window.location.href);
+    let response;
+    try {
+        response = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password }),
+            cache: 'no-store',
+            credentials: 'same-origin',
+            signal: AbortSignal.timeout(timeout)
+        });
+    } catch {
+        throw writerError('当前站点未提供可用的首次密码设置服务。');
+    }
+    const result = await readResult(response);
+    if (!response.ok || result?.service !== 'travel-diary-writer-v1'
+        || !result.authenticated || !result.token) {
+        throw writerError(result?.error || '访问密码创建失败。', result?.code || 'AUTH_SETUP_FAILED');
+    }
+    return capabilityFrom(new URL('api/travel-records', window.location.href), result);
+}
