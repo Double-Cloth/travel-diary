@@ -65,7 +65,8 @@ test('索引夹层包含完整且唯一的高级筛选工作台', () => {
         assert.match(appJs, new RegExp(`renderLedgerSelect\\([^;]+['"]${key}['"]`));
     }
     assert.match(appJs, /filterToggleButton\('首次到访', 'visit'/);
-    assert.match(appJs, /filterToggleButton\('有照片', 'media'/);
+    assert.match(appJs, /filterToggleButton\('有图片', 'media'/);
+    assert.match(appJs, /filterToggleButton\('有视频', 'media'/);
     assert.match(appJs, /filterToggleButton\('有笔记', 'note'/);
     assert.match(appJs, /重置全部/);
     assert.doesNotMatch(appJs, /当前筛选|当前排序|切到最早优先|切回最新优先/);
@@ -179,9 +180,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260914-profile-upload-v2/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260914-empty-archive-v1/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260914-static-auth-v2/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260919-video-media-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260919-video-media-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-media-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
 });
@@ -264,7 +265,7 @@ test('切换记录前的未保存提示支持取消或立即清空编辑器', ()
 test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () => {
     assert.match(recordEditorJs, /import \{ confirmFeedback \} from '\.\/feedback-dialog\.js';/);
     assert.match(recordEditorJs, /data-editor-clear>清空编辑器/);
-    assert.match(recordEditorJs, /confirmFeedback\('当前编辑器中的表单、正文和待保存照片都会被清除/);
+    assert.match(recordEditorJs, /confirmFeedback\('当前编辑器中的表单、正文和待保存图片、视频都会被清除/);
     assert.match(recordEditorJs, /releasePhotoPreviews\(\);\s*uploads = \[\];/);
     assert.match(recordEditorJs, /for \(const key of RECORD_FIELDS\) field\(key\)\.value = ''/);
     assert.match(recordEditorJs, /data-editor-rich[\s\S]*?innerHTML = previewHtml\('', ''\)/);
@@ -516,10 +517,10 @@ test('地点详情页仅保留左页返回按钮', () => {
     assert.doesNotMatch(journalCss, /\.location-close/);
 });
 
-test('日记照片支持沉浸式查看与基础变换操作', () => {
+test('日记媒体支持沉浸式查看，图片保留基础变换操作', () => {
     assert.match(appJs, /function openPhotoViewer/);
     assert.match(appJs, /function renderPhotoViewer/);
-    assert.match(appJs, /data-action="open-photo-viewer"/);
+    assert.match(appJs, /data-action="open-media-viewer"/);
     assert.match(appJs, /data-action="photo-zoom-in"/);
     assert.match(appJs, /data-action="photo-zoom-out"/);
     assert.match(appJs, /data-action="photo-rotate-left"/);
@@ -533,7 +534,7 @@ test('日记照片支持沉浸式查看与基础变换操作', () => {
     assert.match(journalCss, /\.photo-viewer-image\s*{/);
 });
 
-test('日记页最多预览三行照片且提供全集照片页', () => {
+test('日记页最多预览三行媒体且提供全集媒体页', () => {
     assert.match(appJs, /const ENTRY_PHOTO_PREVIEW_ROWS = 3;/);
     assert.doesNotMatch(appJs, /ENTRY_PHOTO_PREVIEW_LIMIT|limit: ENTRY_PHOTO_PREVIEW_LIMIT/);
     assert.match(appJs, /case 'photos':[\s\S]*id: params\.get\('id'\) \|\| ''/);
@@ -547,10 +548,28 @@ test('日记页最多预览三行照片且提供全集照片页', () => {
     assert.match(appJs, /button\.hidden = index >= visibleLimit;/);
     assert.match(appJs, /photo-sleeve-preview/);
     assert.match(appJs, /data-action="view-all-photos"/);
-    assert.match(appJs, /查看全部照片/);
+    assert.match(appJs, /查看全部媒体/);
     assert.match(appJs, /function renderEntryPhotosRoute\(params = \{\}\)/);
     assert.match(appJs, /renderPhotoSleeve\(record\)/);
     assert.match(journalCss, /\.photo-sleeve-action\s*{/);
+});
+
+test('视频共用媒体入口并提供完整播放控制与键盘操作', () => {
+    assert.match(recordEditorJs, /选择图片或视频/);
+    assert.match(recordEditorJs, /accept="image\/jpeg,image\/png,image\/gif,image\/webp,video\/mp4,video\/webm,video\/ogg"/);
+    assert.match(recordEditorJs, /photo\.kind === 'image' \? await createPhotoPreviewUrl\(file\) : URL\.createObjectURL\(file\)/);
+    assert.match(appJs, /data-video-action="toggle-play"/);
+    assert.match(appJs, /data-video-action="rewind"/);
+    assert.match(appJs, /data-video-action="forward"/);
+    assert.match(appJs, /data-video-seek/);
+    assert.match(appJs, /data-video-volume/);
+    assert.match(appJs, /data-video-rate/);
+    assert.match(appJs, /data-video-action="fullscreen"/);
+    assert.match(appJs, /event\.key === 'Escape' && document\.fullscreenElement/);
+    assert.match(appJs, /event\.key === 'm' \|\| event\.key === 'M'/);
+    assert.match(appJs, /event\.key === 'f' \|\| event\.key === 'F'/);
+    assert.match(journalCss, /\.video-viewer-controls\s*{/);
+    assert.match(journalCss, /\.video-viewer-video\s*{/);
 });
 
 test('从照片全集页返回笔记不会把照片页保存为关闭后的背景页', () => {

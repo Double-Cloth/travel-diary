@@ -15,7 +15,7 @@ const CONFIG = {
 };
 
 const STATIC_SECURITY_HEADERS = Object.freeze({
-  'Content-Security-Policy': "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; img-src 'self' data: blob:; font-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
+  'Content-Security-Policy': "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
   'Referrer-Policy': 'no-referrer',
@@ -180,6 +180,13 @@ function guessContentType(filePath) {
       return 'image/gif';
     case '.webp':
       return 'image/webp';
+    case '.mp4':
+      return 'video/mp4';
+    case '.webm':
+      return 'video/webm';
+    case '.ogv':
+    case '.ogg':
+      return 'video/ogg';
     case '.ico':
       return 'image/x-icon';
     case '.woff':
@@ -189,6 +196,26 @@ function guessContentType(filePath) {
     default:
       return 'application/octet-stream';
   }
+}
+
+function parseByteRange(value, size) {
+  if (typeof value !== 'string' || !value.startsWith('bytes=') || value.includes(',') || size <= 0) return null;
+  const match = /^bytes=(\d*)-(\d*)$/.exec(value.trim());
+  if (!match || (!match[1] && !match[2])) return null;
+  let start;
+  let end;
+  if (!match[1]) {
+    const suffixLength = Number(match[2]);
+    if (!Number.isSafeInteger(suffixLength) || suffixLength <= 0) return null;
+    start = Math.max(0, size - suffixLength);
+    end = size - 1;
+  } else {
+    start = Number(match[1]);
+    end = match[2] ? Number(match[2]) : size - 1;
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || start >= size || end < start) return null;
+    end = Math.min(end, size - 1);
+  }
+  return { start, end };
 }
 
 function safeJoin(rootDir, requestPath) {
@@ -209,7 +236,7 @@ function isWithinRoot(rootDir, targetPath) {
 
 async function ensureDataStructure(rootDir) {
   const resolvedRoot = await fs.promises.realpath(rootDir);
-  const directories = ['.secrets', 'data', 'data/travel-diary', 'data/photos', 'data/profile'];
+  const directories = ['.secrets', 'data', 'data/travel-diary', 'data/photos', 'data/videos', 'data/profile'];
   let secretsCreated = false;
 
   for (const relativePath of directories) {
@@ -373,9 +400,24 @@ function createHandler(rootDir, options = {}) {
         return;
       }
 
-      res.writeHead(200, {
+      const requestedRange = req.headers.range;
+      const range = requestedRange ? parseByteRange(requestedRange, stats.size) : null;
+      if (requestedRange && !range) {
+        res.writeHead(416, {
+          'Content-Range': `bytes */${stats.size}`,
+          'Accept-Ranges': 'bytes',
+          ...STATIC_SECURITY_HEADERS
+        });
+        res.end();
+        return;
+      }
+      const responseStatus = range ? 206 : 200;
+      const contentLength = range ? range.end - range.start + 1 : stats.size;
+      res.writeHead(responseStatus, {
         'Content-Type': guessContentType(targetPath),
-        'Content-Length': stats.size,
+        'Content-Length': contentLength,
+        'Accept-Ranges': 'bytes',
+        ...(range ? { 'Content-Range': `bytes ${range.start}-${range.end}/${stats.size}` } : {}),
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         Pragma: 'no-cache',
         Expires: '0',
@@ -390,7 +432,7 @@ function createHandler(rootDir, options = {}) {
         return;
       }
 
-      const stream = fs.createReadStream(targetPath);
+      const stream = fs.createReadStream(targetPath, range ? { start: range.start, end: range.end } : undefined);
       stream.on('error', () => res.destroy());
       res.on('close', () => stream.destroy());
       stream.pipe(res);
@@ -503,4 +545,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createHandler, ensureDataStructure, parseArgs, safeJoin, listenWithRetries };
+module.exports = { createHandler, ensureDataStructure, parseArgs, safeJoin, listenWithRetries, parseByteRange };

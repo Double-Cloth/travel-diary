@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { loadBrowserModule } from './helpers/browser-modules.mjs';
-import { readUploads, storedPhotoNames } from '../js/photo-uploads.mjs';
-import { defaultMarkdownPath, recordSlug } from '../js/record-input.mjs';
+import { MAXIMUM_MEDIA_FILE_BYTES, readUploads, storedPhotoNames } from '../js/photo-uploads.mjs';
+import { DRAFT_FORMAT, defaultMarkdownPath, recordSlug } from '../js/record-input.mjs';
 import { createDraftArchive, readDraftArchive } from '../js/draft-archive.mjs';
 import { readZip } from '../js/zip-archive.mjs';
 
@@ -49,7 +49,7 @@ test('预览编辑保留相对链接及行内代码中的反引号与反斜线',
     assert.match(html, /<code>a`b\\c<\/code>/);
 });
 
-test('照片验证拒绝格式伪装与重复标识，但不限制上传数量或大小', () => {
+test('媒体验证支持常见图片与视频，并拒绝格式伪装、重复标识和超大文件', () => {
     const photo = { id: 'a'.repeat(32), name: 'image.png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=' };
     assert.equal(readUploads([photo])[0].extension, 'png');
     assert.throws(() => readUploads([photo, photo]));
@@ -57,6 +57,10 @@ test('照片验证拒绝格式伪装与重复标识，但不限制上传数量�
     assert.equal(readUploads(manyPhotos).length, manyPhotos.length);
     const largePhoto = { ...photo, id: 'b'.repeat(32), data: Buffer.concat([Buffer.from(photo.data, 'base64'), Buffer.alloc(11 * 1024 * 1024)]).toString('base64') };
     assert.ok(readUploads([largePhoto])[0].size > 10 * 1024 * 1024);
+    const mp4 = { id: 'c'.repeat(32), name: '湖边.mp4', data: Buffer.from('\0\0\0\x18ftypisom\0\0\0\0isommp42', 'binary').toString('base64') };
+    const { kind, extension, mimeType } = readUploads([mp4])[0];
+    assert.deepEqual({ kind, extension, mimeType }, { kind: 'video', extension: 'mp4', mimeType: 'video/mp4' });
+    assert.equal(MAXIMUM_MEDIA_FILE_BYTES, 96 * 1024 * 1024);
     assert.throws(() => readUploads([{ ...photo, data: 'invalid!' }]));
     assert.throws(() => readUploads([{ ...photo, data: Buffer.from('<html>not a photo</html>').toString('base64') }]));
 });
@@ -87,18 +91,21 @@ test('Markdown 源码高亮转义 HTML 并标记标题、列表、链接和代�
     assert.doesNotMatch(html, /<script>/);
 });
 
-test('草稿 ZIP 将照片保存为独立文件且可以无损导入', () => {
+test('草稿 ZIP 将图片和视频保存为独立文件且可以无损导入', () => {
     const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=';
+    const mp4 = Buffer.from('\0\0\0\x18ftypisom\0\0\0\0isommp42', 'binary').toString('base64');
     const value = {
-        format: 'travel-diary-draft-v3', requestId: 'a'.repeat(32),
-        input: { date: '2026-09-11', country_code: 'CN', country: '中国', admin_area: '江苏省', admin_area_type: '省', locality: '苏州市', locality_type: '城市', trip_id: '2026-09-江苏', title: '标题', body: '正文', desc_md: '', photo_folder: '', photos: [] },
-        uploads: [{ id: 'b'.repeat(32), name: '湖边.png', data: png }]
+        format: DRAFT_FORMAT, requestId: 'a'.repeat(32),
+        input: { date: '2026-09-11', country_code: 'CN', country: '中国', admin_area: '江苏省', admin_area_type: '省', locality: '苏州市', locality_type: '城市', trip_id: '2026-09-江苏', title: '标题', body: '正文', desc_md: '', photo_folder: '', photos: [], video_folder: '', videos: [] },
+        uploads: [{ id: 'b'.repeat(32), name: '湖边.png', data: png }, { id: 'c'.repeat(32), name: '街景.mp4', data: mp4 }]
     };
     const archive = createDraftArchive(value);
     const entries = readZip(archive);
     const metadata = JSON.parse(new TextDecoder().decode(entries.find(entry => entry.name === 'draft.json').data));
-    assert.equal(entries.some(entry => entry.name === 'photos/001-hubian.png'), true);
-    assert.equal(metadata.uploads[0].file, 'photos/001-hubian.png');
+    assert.equal(entries.some(entry => entry.name === 'media/001-hubian.png'), true);
+    assert.equal(entries.some(entry => entry.name === 'media/002-jiejing.mp4'), true);
+    assert.equal(metadata.uploads[0].file, 'media/001-hubian.png');
+    assert.equal(metadata.uploads[1].kind, 'video');
     assert.equal('data' in metadata.uploads[0], false);
     assert.equal(JSON.stringify(metadata).includes(png), false);
     assert.deepEqual(readDraftArchive(archive), value);

@@ -20,17 +20,17 @@ const draft = (id = 'a', input = {}) => ({
     format: DRAFT_FORMAT,
     requestId: id.repeat(32),
     uploads: [],
-    input: { date: '2026-09-10', country_code: 'CN', country: '', admin_area: '江苏省', admin_area_type: '', locality: `苏州市-${id}`, locality_type: '', trip_id: '', title: '沿河散步', body: '## 雨后\n\n石板路与茶馆。', desc_md: '', photo_folder: '', photos: [], ...input }
+    input: { date: '2026-09-10', country_code: 'CN', country: '', admin_area: '江苏省', admin_area_type: '', locality: `苏州市-${id}`, locality_type: '', trip_id: '', title: '沿河散步', body: '## 雨后\n\n石板路与茶馆。', desc_md: '', photo_folder: '', photos: [], video_folder: '', videos: [], ...input }
 });
 
 test('旧版草稿补齐可选字段，完整字段草稿保留照片顺序和类型信息', () => {
     const legacy = draft();
     legacy.format = 'travel-diary-draft-v1';
-    for (const key of ['country', 'admin_area_type', 'locality_type', 'desc_md', 'photo_folder', 'photos']) delete legacy.input[key];
+    for (const key of ['country', 'admin_area_type', 'locality_type', 'desc_md', 'photo_folder', 'photos', 'video_folder', 'videos']) delete legacy.input[key];
     assert.deepEqual(readDraft(legacy), draft());
-    const value = draft('f', { country: '中华人民共和国', admin_area_type: '省', locality_type: '城市', trip_id: 'jiangsu', desc_md: 'data/travel-diary/2026/2026-09-10-suzhou.md', photo_folder: 'data/photos/suzhou', photos: ['river.jpg', 'garden.png', 'river.jpg'] });
+    const value = draft('f', { country: '中华人民共和国', admin_area_type: '省', locality_type: '城市', trip_id: 'jiangsu', desc_md: 'data/travel-diary/2026/2026-09-10-suzhou.md', photo_folder: 'data/photos/suzhou', photos: ['river.jpg', 'garden.png', 'river.jpg'], video_folder: 'data/videos/suzhou', videos: ['walk.mp4'] });
     const { record } = prepareRecord(value, countries);
-    for (const key of ['country', 'admin_area_type', 'locality_type', 'trip_id', 'desc_md', 'photo_folder', 'photos']) assert.deepEqual(record[key], value.input[key]);
+    for (const key of ['country', 'admin_area_type', 'locality_type', 'trip_id', 'desc_md', 'photo_folder', 'photos', 'video_folder', 'videos']) assert.deepEqual(record[key], value.input[key]);
     for (const input of [
         { desc_md: 'data/travel-diary/2026/2026-09-10-../../escape.md' },
         { desc_md: 'data/travel-diary/2025/2026-09-10-suzhou.md' },
@@ -39,7 +39,10 @@ test('旧版草稿补齐可选字段，完整字段草稿保留照片顺序和�
         { photo_folder: 'data/photos/CON', photos: ['a.png'] },
         { photo_folder: 'data/photos/suzhou', photos: ['../a.png'] },
         { photo_folder: 'data/photos/suzhou', photos: ['a.png:secret'] },
-        { photos: ['a.png'] }, { photos: 'a.png' }
+        { photos: ['a.png'] }, { photos: 'a.png' },
+        { video_folder: 'data/videos/../profile', videos: ['a.mp4'] },
+        { video_folder: 'data/videos/suzhou', videos: ['../a.mp4'] },
+        { videos: ['a.mp4'] }, { videos: 'a.mp4' }
     ]) assert.throws(() => prepareRecord(draft('f', input), countries));
 });
 
@@ -251,6 +254,21 @@ test('上传照片自动建目录并写入原始字节，草稿重试校验照�
     assert.equal((await post({ ...value, uploads: [{ ...value.uploads[0], data: Buffer.concat([bytes, Buffer.from('改动')]).toString('base64') }] })).status, 409);
     const invalid = { ...draft('3'), uploads: [{ id: '4'.repeat(32), name: '伪装.png', data: Buffer.from('<svg onload="evil"/>').toString('base64') }] };
     assert.equal((await post(invalid)).status, 400);
+});
+
+test('上传视频自动建目录、保留原始字节并写入视频元数据', async () => {
+    const mp4Bytes = Buffer.from('\0\0\0\x18ftypisom\0\0\0\0isommp42', 'binary');
+    const value = {
+        ...draft('0', { date: '2026-09-14', locality: '厦门市' }),
+        uploads: [{ id: 'a'.repeat(32), name: '夜游.MOV', data: mp4Bytes.toString('base64') }]
+    };
+    const response = await post(value);
+    assert.equal(response.status, 201);
+    const record = (await response.json()).record;
+    assert.equal(record.video_folder, 'data/videos/xiamen');
+    assert.deepEqual(record.videos, ['yeyou.mp4']);
+    assert.deepEqual(await fs.readFile(path.join(root, record.video_folder, record.videos[0])), mp4Bytes);
+    assert.equal((await post(value)).status, 200);
 });
 
 test('上传与已有照片可以合并，索引提交失败会清理新照片和目录', async () => {

@@ -49,6 +49,10 @@ export async function loadTravelData(cacheKey = '') {
             photo_folder: typeof record.photo_folder === 'string' ? record.photo_folder.trim() : '',
             photos: Array.isArray(record.photos)
                 ? record.photos.filter(photo => typeof photo === 'string' && photo.trim()).map(photo => photo.trim())
+                : [],
+            video_folder: typeof record.video_folder === 'string' ? record.video_folder.trim() : '',
+            videos: Array.isArray(record.videos)
+                ? record.videos.filter(video => typeof video === 'string' && video.trim()).map(video => video.trim())
                 : []
         });
     });

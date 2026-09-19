@@ -33,23 +33,27 @@ test('完整 ZIP 包含 data 与认证配置，并可恢复访问密码', async 
     const root = await fixture(t);
     await fs.mkdir(path.join(root, 'data/travel-diary/2026'), { recursive: true });
     await fs.mkdir(path.join(root, 'data/photos/suzhou'), { recursive: true });
-    const record = { date: '2026-09-11', country: '中国', country_code: 'CN', admin_area: '江苏省', locality: '苏州市', desc_md: 'data/travel-diary/2026/2026-09-11-suzhou.md', photo_folder: 'data/photos/suzhou', photos: ['lake.png'] };
+    await fs.mkdir(path.join(root, 'data/videos/suzhou'), { recursive: true });
+    const record = { date: '2026-09-11', country: '中国', country_code: 'CN', admin_area: '江苏省', locality: '苏州市', desc_md: 'data/travel-diary/2026/2026-09-11-suzhou.md', photo_folder: 'data/photos/suzhou', photos: ['lake.png'], video_folder: 'data/videos/suzhou', videos: ['walk.mp4'] };
     await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify([record]));
     await fs.writeFile(path.join(root, record.desc_md), '# 苏州\n');
     await fs.writeFile(path.join(root, record.photo_folder, record.photos[0]), Buffer.from([1, 2, 3]));
+    await fs.writeFile(path.join(root, record.video_folder, record.videos[0]), Buffer.from([4, 5, 6]));
 
     const archive = await exportDataArchive(root);
     assert.deepEqual(readZip(archive).map(entry => entry.name).sort(), [
         '.secrets/auth.json',
         'data/photos/suzhou/lake.png',
         'data/travel-diary/2026/2026-09-11-suzhou.md',
-        'data/travel_data.json'
+        'data/travel_data.json',
+        'data/videos/suzhou/walk.mp4'
     ]);
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
     const result = await importDataArchive(root, archive, { requireProductionAuth: true });
-    assert.deepEqual(result, { files: 4, authPreserved: false });
+    assert.deepEqual(result, { files: 5, authPreserved: false });
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
     assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, record.photos[0])), Buffer.from([1, 2, 3]));
+    assert.deepEqual(await fs.readFile(path.join(root, record.video_folder, record.videos[0])), Buffer.from([4, 5, 6]));
     assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
     assert.equal((await fs.readdir(root)).some(name => name.startsWith('.travel-')), false);
 });

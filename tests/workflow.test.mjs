@@ -20,7 +20,7 @@ test('GitHub Pages workflow publishes prepared static files', () => {
     assert.match(workflow, /actions\/configure-pages@v[0-9]+/);
     assert.match(workflow, /npm run fonts/);
     assert.doesNotMatch(workflow, /build-data-backup|travel-diary-data\.zip/);
-    assert.match(workflow, /mkdir -p _site\/data\/travel-diary _site\/data\/photos _site\/data\/profile/);
+    assert.match(workflow, /mkdir -p _site\/data\/travel-diary _site\/data\/photos _site\/data\/videos _site\/data\/profile/);
     assert.match(workflow, /cp -R api assets css doc js _site\//);
     assert.deepEqual(staticCapability, { service: 'travel-diary-static-v1', readonly: true });
     assert.match(workflow, /if \[ -d data \]; then cp -R data\/\. _site\/data\/; fi/);

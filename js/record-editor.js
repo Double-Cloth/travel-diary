@@ -1,6 +1,6 @@
 import { escapeHtml } from './utils.js';
 import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
-import { readUploads } from './photo-uploads.mjs';
+import { MAXIMUM_MEDIA_FILE_BYTES, readUploads } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
@@ -52,8 +52,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         format: DRAFT_FORMAT,
         requestId,
         uploads: uploads.map(({ id, name, data }) => ({ id, name, data })),
-        input: Object.fromEntries(RECORD_FIELDS.map(key => [key, key === 'photos'
-            ? field(key).value.split(/\r?\n/).map(photo => photo.trim()).filter(Boolean)
+        input: Object.fromEntries(RECORD_FIELDS.map(key => [key, ['photos', 'videos'].includes(key)
+            ? field(key).value.split(/\r?\n/).map(name => name.trim()).filter(Boolean)
             : field(key).value]))
     });
 
@@ -72,26 +72,24 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             body: markdown.body || '',
             desc_md: record.desc_md || '',
             photo_folder: record.photo_folder || '',
-            photos: Array.isArray(record.photos) ? [...record.photos] : []
+            photos: Array.isArray(record.photos) ? [...record.photos] : [],
+            video_folder: record.video_folder || '',
+            videos: Array.isArray(record.videos) ? [...record.videos] : []
         };
     }
 
-    function photoMimeType(photo) {
-        return `image/${photo.extension === 'jpg' ? 'jpeg' : photo.extension}`;
-    }
-
-    function previewBlob(photo) {
-        const binary = atob(photo.data);
+    function previewBlob(media) {
+        const binary = atob(media.data);
         const bytes = new Uint8Array(binary.length);
         for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-        return new Blob([bytes], { type: photoMimeType(photo) });
+        return new Blob([bytes], { type: media.mimeType });
     }
 
-    function ensurePhotoPreviewUrl(photo) {
-        if (!photoPreviewUrls.has(photo.id)) {
-            photoPreviewUrls.set(photo.id, URL.createObjectURL(previewBlob(photo)));
+    function ensurePhotoPreviewUrl(media) {
+        if (!photoPreviewUrls.has(media.id)) {
+            photoPreviewUrls.set(media.id, URL.createObjectURL(previewBlob(media)));
         }
-        return photoPreviewUrls.get(photo.id);
+        return photoPreviewUrls.get(media.id);
     }
 
     async function createPhotoPreviewUrl(file) {
@@ -258,24 +256,26 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         </section>
                     </div>
                     <section class="record-editor-photos" aria-labelledby="${editorId('PhotosTitle')}">
-                        <h3 id="${editorId('PhotosTitle')}"><span>03</span> 旅行照片</h3>
+                        <h3 id="${editorId('PhotosTitle')}"><span>03</span> 旅行图片与视频</h3>
                         <div class="record-editor-upload-zone" data-editor-drop>
-                            <button class="paper-button" type="button" data-editor-upload>＋ 选择照片</button>
-                            <p>也可将照片拖到这里</p>
-                            <small>支持 JPEG / PNG / GIF / WebP</small>
-                            <input type="file" data-editor-photos accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden aria-label="选择旅行照片">
+                            <button class="paper-button" type="button" data-editor-upload>＋ 选择图片或视频</button>
+                            <p>也可将图片和视频一起拖到这里</p>
+                            <small>图片：JPEG / PNG / GIF / WebP · 视频：MP4 / WebM / Ogg · 单个不超过 96 MiB</small>
+                            <input type="file" data-editor-photos accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
                         </div>
-                        <div class="record-editor-photo-list" data-editor-photo-list aria-label="待保存照片"></div>
+                        <div class="record-editor-photo-list" data-editor-photo-list aria-label="待保存图片和视频"></div>
                     </section>
                     <details class="record-editor-files">
-                        <summary><span>文件设置</span><span>按需设置正文路径或引用已有照片</span></summary>
+                        <summary><span>文件设置</span><span>按需设置正文路径或引用已有媒体</span></summary>
                         <div class="record-editor-fields">
                             <label>正文路径 <span>自动填写 · 可修改</span><input name="desc_md" maxlength="200"></label>
                             <div class="record-editor-grid record-editor-files-grid">
                                 <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="${editorId('PhotoHelp')}"></label>
                                 <label>已有照片文件名 <span>选填 · 每行一个</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="${editorId('PhotoHelp')}"></textarea></label>
+                                <label>视频目录 <span>选填</span><input name="video_folder" maxlength="200" placeholder="data/videos/suzhou" aria-describedby="${editorId('PhotoHelp')}"></label>
+                                <label>已有视频文件名 <span>选填 · 每行一个</span><textarea name="videos" rows="3" maxlength="201000" placeholder="sunset.mp4&#10;street.webm" aria-describedby="${editorId('PhotoHelp')}"></textarea></label>
                             </div>
-                            <p class="record-editor-note" id="${editorId('PhotoHelp')}">这里仅填写项目内已有的照片；新添加的照片会自动保存到：<output data-editor-photo-path-preview></output></p>
+                            <p class="record-editor-note" id="${editorId('PhotoHelp')}">这里仅填写项目内已有的媒体；新图片保存到 <output data-editor-photo-path-preview></output>，新视频保存到 <output data-editor-video-path-preview></output>。</p>
                         </div>
                     </details>
                 </div>
@@ -301,8 +301,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         autoFilledValues.clear();
         const initialInput = editing ? getRecordInput(record) : { date, country_code: 'CN' };
         for (const key of RECORD_FIELDS) {
-            const value = initialInput[key] ?? (key === 'photos' ? [] : '');
-            field(key).value = key === 'photos' ? value.join('\n') : value;
+            const value = initialInput[key] ?? (['photos', 'videos'].includes(key) ? [] : '');
+            field(key).value = ['photos', 'videos'].includes(key) ? value.join('\n') : value;
         }
         if (editing) {
             for (const name of ['country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id']) {
@@ -313,7 +313,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             } else {
                 userEditedAutofillFields.add('desc_md');
             }
-            dialog.querySelector('.record-editor-files').open = Boolean(initialInput.desc_md || initialInput.photo_folder || initialInput.photos.length);
+            dialog.querySelector('.record-editor-files').open = Boolean(initialInput.desc_md || initialInput.photo_folder || initialInput.photos.length || initialInput.video_folder || initialInput.videos.length);
         }
         enhanceCustomSelects(dialog);
         updateCountry(!editing);
@@ -333,9 +333,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const locality = field('locality').value || '目的地';
         const markdownPath = defaultMarkdownPath(field('date').value || 'YYYY-MM-DD', locality);
         const photoPath = `data/photos/${recordSlug(locality)}`;
+        const videoPath = `data/videos/${recordSlug(locality)}`;
         field('desc_md').placeholder = markdownPath;
         field('photo_folder').placeholder = photoPath;
+        field('video_folder').placeholder = videoPath;
         dialog.querySelector('[data-editor-photo-path-preview]').textContent = photoPath;
+        dialog.querySelector('[data-editor-video-path-preview]').textContent = videoPath;
         field('trip_id').placeholder = suggestedTripId(getDraft().input) || '填写地点后自动生成';
     }
 
@@ -494,27 +497,30 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
 
     function createPhotoPreview(photo) {
         const figure = document.createElement('figure');
-        figure.className = 'record-editor-photo';
+        figure.className = `record-editor-photo record-editor-${photo.kind}`;
         figure.dataset.photoId = photo.id;
         figure.innerHTML = `
-            <img loading="lazy" decoding="async" fetchpriority="low" width="${PHOTO_PREVIEW_WIDTH}" height="${PHOTO_PREVIEW_HEIGHT}">
+            ${photo.kind === 'video'
+                ? '<video muted playsinline preload="metadata" aria-label="视频预览"></video><span class="record-editor-media-kind">视频</span>'
+                : `<img loading="lazy" decoding="async" fetchpriority="low" width="${PHOTO_PREVIEW_WIDTH}" height="${PHOTO_PREVIEW_HEIGHT}">`}
             <figcaption></figcaption>
             <div>
                 <button type="button" data-photo-move data-direction="-1">←</button>
                 <button type="button" data-photo-move data-direction="1">→</button>
                 <button type="button" data-photo-remove>移除</button>
             </div>`;
-        const image = figure.querySelector('img');
-        image.src = ensurePhotoPreviewUrl(photo);
+        const preview = figure.querySelector('img, video');
+        preview.src = ensurePhotoPreviewUrl(photo);
         return figure;
     }
 
     function updatePhotoPreview(figure, photo, index) {
-        const image = figure.querySelector('img');
+        const image = figure.querySelector('img, video');
         const caption = figure.querySelector('figcaption');
         const [previous, next] = figure.querySelectorAll('[data-photo-move]');
         const remove = figure.querySelector('[data-photo-remove]');
-        image.alt = photo.name;
+        if (image instanceof HTMLImageElement) image.alt = photo.name;
+        else image.setAttribute('aria-label', `视频预览：${photo.name}`);
         caption.textContent = photo.name;
         previous.dataset.photoMove = String(index);
         previous.disabled = index === 0 || saved;
@@ -544,12 +550,14 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function updatePhotoStatus() {
-        status(uploads.length ? `已选择 ${uploads.length} 张照片，保存记录或导出草稿时会一并处理。` : '');
+        const photoCount = uploads.filter(upload => upload.kind === 'image').length;
+        const videoCount = uploads.filter(upload => upload.kind === 'video').length;
+        status(uploads.length ? `已选择 ${photoCount} 张图片、${videoCount} 个视频，保存记录或导出草稿时会一并处理。` : '');
     }
 
     async function clearEditor() {
         if (busy || saved || readingPhotos) return;
-        const confirmed = await confirmFeedback('当前编辑器中的表单、正文和待保存照片都会被清除，操作无法撤销。', {
+        const confirmed = await confirmFeedback('当前编辑器中的表单、正文和待保存图片、视频都会被清除，操作无法撤销。', {
             label: '编辑器',
             title: '清空编辑器？',
             cancelLabel: '保留内容',
@@ -583,26 +591,27 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         readingPhotos = true;
         const saveButton = dialog.querySelector('[data-editor-save]');
         saveButton.disabled = true;
-        status('正在读取照片…');
+        status('正在读取图片和视频…');
         const pendingPreviews = [];
         try {
-            if (files.some(file => !file.size)) throw new Error('不能选择空图片文件。');
+            if (files.some(file => !file.size)) throw new Error('不能选择空媒体文件。');
+            if (files.some(file => file.size > MAXIMUM_MEDIA_FILE_BYTES)) throw new Error('单个图片或视频不能超过 96 MiB。');
             const pending = [];
             for (const file of files) {
-                let previewUrl;
-                try { previewUrl = await createPhotoPreviewUrl(file); }
-                catch (error) {
-                    throw new Error(error.message.startsWith('无法') ? error.message : `无法解码图片：${file.name}`);
-                }
                 const id = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
-                pendingPreviews.push([id, previewUrl]);
                 const data = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(String(reader.result).split(',')[1]);
-                    reader.onerror = () => reject(new Error('照片读取失败，请重新选择。'));
+                    reader.onerror = () => reject(new Error('媒体读取失败，请重新选择。'));
                     reader.readAsDataURL(file);
                 });
                 const photo = readUploads([{ id, name: file.name.slice(0, 200), data }])[0];
+                let previewUrl;
+                try { previewUrl = photo.kind === 'image' ? await createPhotoPreviewUrl(file) : URL.createObjectURL(file); }
+                catch (error) {
+                    throw new Error(error.message.startsWith('无法') ? error.message : `无法解码媒体：${file.name}`);
+                }
+                pendingPreviews.push([id, previewUrl]);
                 pending.push(photo);
             }
             pendingPreviews.forEach(([id, url]) => photoPreviewUrls.set(id, url));
@@ -795,7 +804,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (event.target.closest('[data-editor-download]')) {
             const input = getDraft().input;
             download(createDraftArchive(getDraft()), `travel-diary-draft-${input.date || 'undated'}-${recordSlug(input.locality || 'destination')}.zip`, 'application/zip');
-            status('草稿已开始下载，所选照片已一并打包。');
+            status('草稿已开始下载，所选图片和视频已一并打包。');
         }
         if (event.target.closest('[data-editor-clear]')) {
             void clearEditor();
@@ -835,7 +844,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             const draft = file.name.toLocaleLowerCase('en-US').endsWith('.zip')
                 ? readDraftArchive(await file.arrayBuffer())
                 : readDraft(JSON.parse(await file.text()));
-            for (const key of RECORD_FIELDS) field(key).value = key === 'photos' ? draft.input.photos.join('\n') : draft.input[key];
+            for (const key of RECORD_FIELDS) field(key).value = ['photos', 'videos'].includes(key) ? draft.input[key].join('\n') : draft.input[key];
             requestId = draft.requestId;
             uploads = readUploads(draft.uploads);
             dirty = true;
@@ -849,7 +858,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             updateAutofill();
             updateBodyView(bodyView);
             renderPhotos();
-            dialog.querySelector('.record-editor-files').open = Boolean(draft.input.desc_md || draft.input.photo_folder || draft.input.photos.length);
+            dialog.querySelector('.record-editor-files').open = Boolean(draft.input.desc_md || draft.input.photo_folder || draft.input.photos.length || draft.input.video_folder || draft.input.videos.length);
             status('草稿已导入，请核对内容后保存。');
         } catch (error) {
             status(error instanceof SyntaxError ? '文件不是有效的 JSON 草稿。' : error.message);

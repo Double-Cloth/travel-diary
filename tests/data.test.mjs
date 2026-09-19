@@ -73,10 +73,12 @@ test('数据入口拒绝损坏的记录与无效日期，并过滤异常照片�
         data = [invalid];
         await assert.rejects(loadTravelData(), /旅行记录第 1 项/);
     }
-    data = [{ ...record, photos: [null, 3, '', ' a.png '], photo_folder: ' data/photos ' }];
+    data = [{ ...record, photos: [null, 3, '', ' a.png '], photo_folder: ' data/photos ', videos: [null, '', ' walk.mp4 '], video_folder: ' data/videos ' }];
     const [loaded] = await loadTravelData();
     assert.deepEqual(loaded.photos, ['a.png']);
     assert.equal(loaded.photo_folder, 'data/photos');
+    assert.deepEqual(loaded.videos, ['walk.mp4']);
+    assert.equal(loaded.video_folder, 'data/videos');
     data = [];
     assert.deepEqual(await loadTravelData(), []);
 });

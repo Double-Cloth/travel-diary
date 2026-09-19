@@ -1,10 +1,11 @@
 import { isValidDateString } from './analytics.mjs';
-import { readUploads, storedPhotoNames } from './photo-uploads.mjs';
+import { readUploads, storedMediaNames } from './photo-uploads.mjs';
 import { isSafeAsciiFileName, pinyinSlug } from './slug.mjs';
 
-export const DRAFT_FORMAT = 'travel-diary-draft-v3';
-export const RECORD_FIELDS = ['date', 'country_code', 'country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'title', 'body', 'desc_md', 'photo_folder', 'photos'];
+export const DRAFT_FORMAT = 'travel-diary-draft-v4';
+export const RECORD_FIELDS = ['date', 'country_code', 'country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'title', 'body', 'desc_md', 'photo_folder', 'photos', 'video_folder', 'videos'];
 const LEGACY_FIELDS = ['date', 'country_code', 'admin_area', 'locality', 'trip_id', 'title', 'body'];
+const MEDIA_LIST_FIELDS = new Set(['photos', 'videos']);
 
 export function buildMarkdown(input) {
     return `# ${input.title.trim()}\n\n${input.body.trim().replace(/\r\n?/g, '\n')}\n`;
@@ -23,16 +24,18 @@ function isSafeFileName(name) {
 }
 
 export function readDraft(value) {
-    if (!value || ![DRAFT_FORMAT, 'travel-diary-draft-v2', 'travel-diary-draft-v1'].includes(value.format) || !value.input || typeof value.input !== 'object' || Array.isArray(value.input)) {
+    if (!value || ![DRAFT_FORMAT, 'travel-diary-draft-v3', 'travel-diary-draft-v2', 'travel-diary-draft-v1'].includes(value.format) || !value.input || typeof value.input !== 'object' || Array.isArray(value.input)) {
         throw new Error('请选择由本应用导出的草稿 JSON 文件。');
     }
     if (typeof value.requestId !== 'string' || !/^[a-f0-9]{32}$/.test(value.requestId)) throw new Error('草稿标识无效。');
     const input = {};
     for (const key of RECORD_FIELDS) {
-        const field = value.input[key] ?? (value.format === 'travel-diary-draft-v1' && !LEGACY_FIELDS.includes(key) ? (key === 'photos' ? [] : '') : undefined);
-        if (key === 'photos') {
-            if (!Array.isArray(field) || field.length > 1000 || field.some(photo => typeof photo !== 'string' || photo.length > 200)) {
-                throw new Error('照片列表必须是文件名数组，最多 1000 项，每项不超过 200 字符。');
+        const isOptionalVideoField = key === 'video_folder' || key === 'videos';
+        const isLegacyOptionalField = value.format !== DRAFT_FORMAT && (!LEGACY_FIELDS.includes(key) || key === 'photos');
+        const field = value.input[key] ?? (isOptionalVideoField || isLegacyOptionalField ? (MEDIA_LIST_FIELDS.has(key) ? [] : '') : undefined);
+        if (MEDIA_LIST_FIELDS.has(key)) {
+            if (!Array.isArray(field) || field.length > 1000 || field.some(name => typeof name !== 'string' || name.length > 200)) {
+                throw new Error('媒体列表必须是文件名数组，最多 1000 项，每项不超过 200 字符。');
             }
             input[key] = [...field];
             continue;
@@ -48,13 +51,13 @@ export function readDraft(value) {
 
 export function prepareRecord(value, countries) {
     const draft = readDraft(value);
-    const input = Object.fromEntries(RECORD_FIELDS.map(key => [key, key === 'photos' ? draft.input.photos.map(photo => photo.trim()) : draft.input[key].trim()]));
+    const input = Object.fromEntries(RECORD_FIELDS.map(key => [key, MEDIA_LIST_FIELDS.has(key) ? draft.input[key].map(name => name.trim()) : draft.input[key].trim()]));
     if (!isValidDateString(input.date)) throw new Error('请填写有效的旅行日期。');
     const country = countries.find(item => item.code === input.country_code);
     if (!country) throw new Error('请从目录中选择国家 / 地区。');
     if (!input.locality) throw new Error('请填写城市 / 目的地。');
     if (!input.title) throw new Error('请填写日记标题。');
-    for (const key of RECORD_FIELDS.filter(key => key !== 'body' && key !== 'photos')) {
+    for (const key of RECORD_FIELDS.filter(key => key !== 'body' && !MEDIA_LIST_FIELDS.has(key))) {
         if (/[\u0000-\u001f\u007f]/.test(input[key])) throw new Error('单行字段不能包含换行或控制字符。');
     }
     if (input.body.includes('\0')) throw new Error('正文不能包含空字符。');
@@ -69,6 +72,11 @@ export function prepareRecord(value, countries) {
     }
     if (input.photos.length && !input.photo_folder) throw new Error('填写照片列表时必须指定照片目录。');
     if (input.photos.some(photo => !isSafeFileName(photo))) throw new Error('照片列表每行填写一个文件名，不能包含子路径、特殊字符或空行。');
+    if (input.video_folder && (!input.video_folder.startsWith('data/videos/') || !input.video_folder.slice('data/videos/'.length).split('/').every(isSafeFileName))) {
+        throw new Error('视频目录须位于 data/videos/ 下，各级目录名仅使用 ASCII 字母、数字、连字符、下划线或点。');
+    }
+    if (input.videos.length && !input.video_folder) throw new Error('填写视频列表时必须指定视频目录。');
+    if (input.videos.some(video => !isSafeFileName(video))) throw new Error('视频列表每行填写一个文件名，不能包含子路径、特殊字符或空行。');
     const record = {
         date: input.date,
         country: input.country || country.name_zh,
@@ -80,12 +88,26 @@ export function prepareRecord(value, countries) {
         ...(input.trip_id ? { trip_id: pinyinSlug(input.trip_id, 'trip') } : {}),
         desc_md: markdownPath,
         photo_folder: input.photo_folder,
-        photos: input.photos
+        photos: input.photos,
+        ...(input.video_folder ? { video_folder: input.video_folder } : {}),
+        ...(input.videos.length ? { videos: input.videos } : {})
     };
     const uploads = readUploads(draft.uploads);
-    if (uploads.length) {
+    const photoUploads = uploads.filter(upload => upload.kind === 'image');
+    const videoUploads = uploads.filter(upload => upload.kind === 'video');
+    if (photoUploads.length) {
         record.photo_folder = `data/photos/${slug}`;
-        record.photos = storedPhotoNames(input.photos, uploads);
+        record.photos = storedMediaNames(input.photos, photoUploads, 'photo');
     }
-    return { record, markdown: buildMarkdown(input), uploads, sourcePhotos: { folder: input.photo_folder, names: input.photos } };
+    if (videoUploads.length) {
+        record.video_folder = `data/videos/${slug}`;
+        record.videos = storedMediaNames(input.videos, videoUploads, 'video');
+    }
+    return {
+        record,
+        markdown: buildMarkdown(input),
+        uploads,
+        sourcePhotos: { folder: input.photo_folder, names: input.photos },
+        sourceVideos: { folder: input.video_folder, names: input.videos }
+    };
 }

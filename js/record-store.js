@@ -9,7 +9,7 @@ const MAXIMUM_LOGIN_FAILURES = 5;
 const SESSION_LIFETIME = 8 * 60 * 60 * 1000;
 const MAXIMUM_SESSIONS = 64;
 const MAXIMUM_LOGIN_BYTES = 4096;
-const MAXIMUM_RECORD_BYTES = 128 * 1024 * 1024;
+const MAXIMUM_RECORD_BYTES = 384 * 1024 * 1024;
 const MAXIMUM_ARCHIVE_BYTES = 256 * 1024 * 1024;
 const MAXIMUM_PROFILE_BYTES = 8 * 1024 * 1024;
 const MAXIMUM_PROFILE_IMAGE_BYTES = 6 * 1024 * 1024;
@@ -269,65 +269,115 @@ async function replaceIndex(dataDir, indexFile, previous, records) {
     }
 }
 
-async function stageRecordPhotos(root, record, uploads, sourcePhotos) {
-    const createdPhotos = [];
-    let createdPhotoDir;
+async function stageRecordMediaType(root, record, uploads, sourceMedia, options) {
+    const createdFiles = [];
+    let createdMediaDir;
     const rollback = async () => {
-        for (const photo of createdPhotos) await fs.unlink(photo).catch(() => {});
-        if (createdPhotoDir) await fs.rmdir(createdPhotoDir).catch(() => {});
+        for (const file of createdFiles) await fs.unlink(file).catch(() => {});
+        if (createdMediaDir) await fs.rmdir(createdMediaDir).catch(() => {});
     };
+    const names = record[options.listField] || [];
+    const folder = record[options.folderField] || '';
 
     if (!uploads.length) {
-        if (!record.photos.length) return { rollback };
+        if (!names.length) return { rollback };
         try {
-            const photoDir = await checkedDirectory(root, record.photo_folder.split('/'));
-            for (const photo of record.photos) await checkedFile(path.join(photoDir, photo));
+            const mediaDir = await checkedDirectory(root, folder.split('/'));
+            for (const name of names) await checkedFile(path.join(mediaDir, name));
         } catch (error) {
             if (error.status) throw error;
-            throw failure(400, '照片目录或文件不存在、不可读。请先将照片放入项目对应目录，再保存记录。');
+            throw failure(400, `${options.label}目录或文件不存在、不可读。请先将${options.label}放入项目对应目录，再保存记录。`);
         }
         return { rollback };
     }
 
-    const photoContents = [];
-    if (sourcePhotos.names.length) {
-        const sourceDir = await checkedDirectory(root, sourcePhotos.folder.split('/'));
-        for (const name of sourcePhotos.names) {
+    const mediaContents = [];
+    if (sourceMedia.names.length) {
+        const sourceDir = await checkedDirectory(root, sourceMedia.folder.split('/'));
+        for (const name of sourceMedia.names) {
             await checkedFile(path.join(sourceDir, name));
-            photoContents.push(await fs.readFile(path.join(sourceDir, name)));
+            mediaContents.push(await fs.readFile(path.join(sourceDir, name)));
         }
     }
-    for (const photo of uploads) {
-        const buffer = Buffer.from(photo.data, 'base64');
-        if (buffer.toString('base64') !== photo.data) throw failure(400, '照片编码无效。');
-        photoContents.push(buffer);
+    for (const media of uploads) {
+        const buffer = Buffer.from(media.data, 'base64');
+        if (buffer.toString('base64') !== media.data) throw failure(400, `${options.label}编码无效。`);
+        mediaContents.push(buffer);
     }
 
-    const parent = await checkedDirectory(root, ['data', 'photos'], true);
-    const photoDir = path.join(parent, path.basename(record.photo_folder));
+    const parent = await checkedDirectory(root, ['data', options.storageDirectory], true);
+    const mediaDir = path.join(parent, path.basename(folder));
     try {
-        await fs.mkdir(photoDir);
-        createdPhotoDir = photoDir;
+        await fs.mkdir(mediaDir);
+        createdMediaDir = mediaDir;
     } catch (error) {
         if (error.code !== 'EEXIST') throw error;
-        await checkedDirectory(root, record.photo_folder.split('/'));
+        await checkedDirectory(root, folder.split('/'));
     }
 
     try {
-        for (let index = 0; index < record.photos.length; index += 1) {
-            if (index < sourcePhotos.names.length && sourcePhotos.folder === record.photo_folder
-                && record.photos[index] === sourcePhotos.names[index]) continue;
-            const photoPath = path.join(photoDir, record.photos[index]);
-            const handle = await fs.open(photoPath, 'wx');
-            createdPhotos.push(photoPath);
-            try { await handle.writeFile(photoContents[index]); await handle.sync(); }
+        for (let index = 0; index < names.length; index += 1) {
+            if (index < sourceMedia.names.length && sourceMedia.folder === folder
+                && names[index] === sourceMedia.names[index]) continue;
+            const mediaPath = path.join(mediaDir, names[index]);
+            const handle = await fs.open(mediaPath, 'wx');
+            createdFiles.push(mediaPath);
+            try { await handle.writeFile(mediaContents[index]); await handle.sync(); }
             finally { await handle.close(); }
         }
         return { rollback };
     } catch (error) {
         await rollback();
-        if (error.code === 'EEXIST') throw failure(409, '目标照片文件已存在，未覆盖。请调整照片文件名后重试。');
+        if (error.code === 'EEXIST') throw failure(409, `目标${options.label}文件已存在，未覆盖。请调整文件名后重试。`);
         throw error;
+    }
+}
+
+async function stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos) {
+    const stages = [];
+    const rollback = async () => {
+        for (const stage of [...stages].reverse()) await stage.rollback();
+    };
+    try {
+        stages.push(await stageRecordMediaType(root, record, uploads.filter(upload => upload.kind === 'image'), sourcePhotos, {
+            label: '照片', storageDirectory: 'photos', folderField: 'photo_folder', listField: 'photos'
+        }));
+        stages.push(await stageRecordMediaType(root, record, uploads.filter(upload => upload.kind === 'video'), sourceVideos, {
+            label: '视频', storageDirectory: 'videos', folderField: 'video_folder', listField: 'videos'
+        }));
+        return { rollback };
+    } catch (error) {
+        await rollback();
+        throw error;
+    }
+}
+
+async function readMediaContents(root, uploads, sourceMedia, label) {
+    const contents = [];
+    if (sourceMedia.names.length) {
+        const sourceDir = await checkedDirectory(root, sourceMedia.folder.split('/'));
+        for (const name of sourceMedia.names) {
+            await checkedFile(path.join(sourceDir, name));
+            contents.push(await fs.readFile(path.join(sourceDir, name)));
+        }
+    }
+    for (const media of uploads) {
+        const buffer = Buffer.from(media.data, 'base64');
+        if (buffer.toString('base64') !== media.data) throw failure(400, `${label}编码无效。`);
+        contents.push(buffer);
+    }
+    return contents;
+}
+
+async function verifySavedMedia(root, record, contents, options) {
+    if (!contents.length) return;
+    const mediaDir = await checkedDirectory(root, record[options.folderField].split('/'));
+    for (let index = 0; index < record[options.listField].length; index += 1) {
+        const mediaPath = path.join(mediaDir, record[options.listField][index]);
+        await checkedFile(mediaPath);
+        if (!(await fs.readFile(mediaPath)).equals(contents[index])) {
+            throw failure(409, `已保存${options.label}与本次所选内容不同，未覆盖现有文件。`);
+        }
     }
 }
 
@@ -340,15 +390,15 @@ async function saveRecord(root, payload) {
     } catch (error) {
         throw failure(400, error.message);
     }
-    const { record, markdown, uploads, sourcePhotos } = prepared;
-    const photoContents = [];
+    const { record, markdown, uploads, sourcePhotos, sourceVideos } = prepared;
+    const photoUploads = uploads.filter(upload => upload.kind === 'image');
+    const videoUploads = uploads.filter(upload => upload.kind === 'video');
     const dataDir = await checkedDirectory(root, ['data']);
     const indexFile = path.join(dataDir, 'travel_data.json');
     const releaseLock = await acquireDataLock(root);
     let temporaryFile;
     let createdMarkdown;
-    let createdPhotoDir;
-    const createdPhotos = [];
+    let mediaStage;
     try {
         await checkedFile(indexFile);
         const previous = await fs.readFile(indexFile, 'utf8');
@@ -360,62 +410,16 @@ async function saveRecord(root, payload) {
         }
         const diaryDir = await checkedDirectory(root, ['data', 'travel-diary', record.date.slice(0, 4)], true);
         const diaryFile = path.join(diaryDir, path.basename(record.desc_md));
-        if (uploads.length) {
-            if (sourcePhotos.names.length) {
-                const sourceDir = await checkedDirectory(root, sourcePhotos.folder.split('/'));
-                for (const name of sourcePhotos.names) {
-                    await checkedFile(path.join(sourceDir, name));
-                    photoContents.push(await fs.readFile(path.join(sourceDir, name)));
-                }
-            }
-            for (const photo of uploads) {
-                const buffer = Buffer.from(photo.data, 'base64');
-                if (buffer.toString('base64') !== photo.data) throw failure(400, '照片编码无效。');
-                photoContents.push(buffer);
-            }
-        }
         if (existing) {
             await checkedFile(diaryFile);
             if (await fs.readFile(diaryFile, 'utf8') !== markdown) throw failure(409, '这份草稿已保存，但正文已改变，未覆盖现有文件。');
-            if (uploads.length) {
-                const photoDir = await checkedDirectory(root, record.photo_folder.split('/'));
-                for (let index = 0; index < record.photos.length; index += 1) {
-                    const photoPath = path.join(photoDir, record.photos[index]);
-                    await checkedFile(photoPath);
-                    if (!(await fs.readFile(photoPath)).equals(photoContents[index])) throw failure(409, '已保存照片与本次所选内容不同，未覆盖现有文件。');
-                }
-            }
+            const photoContents = await readMediaContents(root, photoUploads, sourcePhotos, '照片');
+            const videoContents = await readMediaContents(root, videoUploads, sourceVideos, '视频');
+            await verifySavedMedia(root, record, photoContents, { label: '照片', folderField: 'photo_folder', listField: 'photos' });
+            await verifySavedMedia(root, record, videoContents, { label: '视频', folderField: 'video_folder', listField: 'videos' });
             return { record, alreadySaved: true };
         }
-        if (uploads.length) {
-            const parent = await checkedDirectory(root, ['data', 'photos'], true);
-            const photoDir = path.join(parent, path.basename(record.photo_folder));
-            try {
-                await fs.mkdir(photoDir);
-                createdPhotoDir = photoDir;
-            }
-            catch (error) {
-                if (error.code !== 'EEXIST') throw error;
-                await checkedDirectory(root, record.photo_folder.split('/'));
-            }
-            for (let index = 0; index < record.photos.length; index += 1) {
-                if (index < sourcePhotos.names.length && sourcePhotos.folder === record.photo_folder
-                    && record.photos[index] === sourcePhotos.names[index]) continue;
-                const photoPath = path.join(photoDir, record.photos[index]);
-                const handle = await fs.open(photoPath, 'wx');
-                createdPhotos.push(photoPath);
-                try { await handle.writeFile(photoContents[index]); await handle.sync(); }
-                finally { await handle.close(); }
-            }
-        } else if (record.photos.length) {
-            try {
-                const photoDir = await checkedDirectory(root, record.photo_folder.split('/'));
-                for (const photo of record.photos) await checkedFile(path.join(photoDir, photo));
-            } catch (error) {
-                if (error.status) throw error;
-                throw failure(400, '照片目录或文件不存在、不可读。请先将照片放入项目对应目录，再保存记录。');
-            }
-        }
+        mediaStage = await stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos);
         try {
             // 先独占创建文件，只有创建成功才允许失败时回滚。
             const handle = await fs.open(diaryFile, 'wx');
@@ -437,14 +441,12 @@ async function saveRecord(root, payload) {
         await fs.rename(temporaryFile, indexFile);
         temporaryFile = null;
         createdMarkdown = null;
-        createdPhotos.length = 0;
-        createdPhotoDir = null;
+        mediaStage = null;
         return { record, alreadySaved: false };
     } finally {
         if (temporaryFile) await fs.unlink(temporaryFile).catch(() => {});
         if (createdMarkdown) await fs.unlink(createdMarkdown).catch(() => {});
-        for (const photo of createdPhotos) await fs.unlink(photo).catch(() => {});
-        if (createdPhotoDir) await fs.rmdir(createdPhotoDir).catch(() => {});
+        if (mediaStage) await mediaStage.rollback();
         await releaseLock();
     }
 }
@@ -463,11 +465,11 @@ async function updateRecord(root, payload) {
         throw failure(400, error.message);
     }
 
-    const { record, markdown, uploads, sourcePhotos } = prepared;
+    const { record, markdown, uploads, sourcePhotos, sourceVideos } = prepared;
     const dataDir = await checkedDirectory(root, ['data']);
     const indexFile = path.join(dataDir, 'travel_data.json');
     const releaseLock = await acquireDataLock(root);
-    let photoStage;
+    let mediaStage;
     let temporaryMarkdown;
     let backupMarkdown;
     let createdMarkdown;
@@ -488,7 +490,7 @@ async function updateRecord(root, payload) {
         if (conflicting) throw failure(409, '目标正文路径已被另一条旅行记录使用。');
         const recordFields = new Set([
             'date', 'country', 'country_code', 'admin_area', 'admin_area_type', 'locality',
-            'locality_type', 'trip_id', 'desc_md', 'photo_folder', 'photos'
+            'locality_type', 'trip_id', 'desc_md', 'photo_folder', 'photos', 'video_folder', 'videos'
         ]);
         const preserved = Object.fromEntries(Object.entries(existing).filter(([key]) => !recordFields.has(key)));
         const updatedRecord = { ...preserved, ...record };
@@ -500,7 +502,7 @@ async function updateRecord(root, payload) {
             return { record: updatedRecord, alreadySaved: true };
         }
 
-        photoStage = await stageRecordPhotos(root, record, uploads, sourcePhotos);
+        mediaStage = await stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos);
         if (newDiaryFile === oldDiaryFile) {
             if (oldMarkdown !== markdown) {
                 temporaryMarkdown = path.join(path.dirname(newDiaryFile), `.travel-edit-${randomBytes(16).toString('hex')}.tmp`);
@@ -539,7 +541,7 @@ async function updateRecord(root, payload) {
                 await fs.rename(backupMarkdown, oldDiaryFile).catch(() => {});
             }
             if (createdMarkdown) await fs.unlink(createdMarkdown).catch(() => {});
-            if (photoStage) await photoStage.rollback();
+            if (mediaStage) await mediaStage.rollback();
         }
         await releaseLock();
     }

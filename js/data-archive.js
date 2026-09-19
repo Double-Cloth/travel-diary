@@ -170,6 +170,24 @@ async function validateImportedRecords(entries) {
                 throw failure(400, `备份中的旅行记录第 ${recordNumber} 项缺少照片文件或照片文件名无效。`);
             }
         }
+
+        const videoFolder = record.video_folder == null ? '' : validateTextField(record, recordNumber, 'video_folder');
+        if (videoFolder && (!videoFolder.startsWith('data/videos/')
+            || !videoFolder.slice('data/videos/'.length).split('/').every(isSafeAsciiFileName))) {
+            throw failure(400, `备份中的旅行记录第 ${recordNumber} 项视频目录无效。`);
+        }
+        const videos = record.videos == null ? [] : record.videos;
+        if (!Array.isArray(videos) || videos.length > 1000) {
+            throw failure(400, `备份中的旅行记录第 ${recordNumber} 项视频列表无效。`);
+        }
+        if (videos.length && !videoFolder) {
+            throw failure(400, `备份中的旅行记录第 ${recordNumber} 项包含视频但未设置视频目录。`);
+        }
+        for (const video of videos) {
+            if (!isSafeAsciiFileName(video) || !files.has(`${videoFolder}/${video}`)) {
+                throw failure(400, `备份中的旅行记录第 ${recordNumber} 项缺少视频文件或视频文件名无效。`);
+            }
+        }
     });
 }
 

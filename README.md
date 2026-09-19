@@ -10,7 +10,7 @@ npm start
 
 本机只需安装 Node.js，无需下载项目依赖。启动后默认打开 [http://localhost:9000](http://localhost:9000)；项目资源均保存在仓库内，可在断网状态下使用。
 
-如果首次启动时还没有 `data/`，服务器会创建 `data/travel_data.json`、`data/travel-diary/`、`data/photos/`、`data/profile/` 和一个可替换的默认头像；缺少 `.secrets/` 时也会自动创建。首次点击任一需要写入的操作，页面会要求连续输入两次相同的 6 位数字密码并安全生成 `.secrets/auth.json`，无需运行命令。静态页面找不到旅行索引时也会进入可新增或导入的空档案界面，不会阻断其他页面。
+如果首次启动时还没有 `data/`，服务器会创建 `data/travel_data.json`、`data/travel-diary/`、`data/photos/`、`data/videos/`、`data/profile/` 和一个可替换的默认头像；缺少 `.secrets/` 时也会自动创建。首次点击任一需要写入的操作，页面会要求连续输入两次相同的 6 位数字密码并安全生成 `.secrets/auth.json`，无需运行命令。静态页面找不到旅行索引时也会进入可新增或导入的空档案界面，不会阻断其他页面。
 
 指定端口时运行：
 

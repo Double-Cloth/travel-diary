@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260914-static-auth-v2';
+import { createRecordEditor } from './record-editor.js?v=20260919-video-media-v1';
 import { createPasswordGate } from './record-password.js?v=20260914-auth-setup-v1';
 import { createDataTransfer } from './data-transfer.js?v=20260914-static-transfer-feedback-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
@@ -1060,11 +1060,12 @@ function renderLedgerFilterWorkbench(params) {
                 ${filterToggleButton('首次到访', 'visit', 'first', params.visit)}
                 ${filterToggleButton('再次到访', 'visit', 'repeat', params.visit)}
             </div>
-            <span class="field-label">照片状态</span>
-            <div class="index-segment-group" aria-label="照片状态">
+            <span class="field-label">媒体状态</span>
+            <div class="index-segment-group" aria-label="媒体状态">
                 ${filterToggleButton('全部', 'media', 'all', params.media)}
-                ${filterToggleButton('有照片', 'media', 'photos', params.media)}
-                ${filterToggleButton('无照片', 'media', 'none', params.media)}
+                ${filterToggleButton('有图片', 'media', 'photos', params.media)}
+                ${filterToggleButton('有视频', 'media', 'videos', params.media)}
+                ${filterToggleButton('无媒体', 'media', 'none', params.media)}
             </div>
             <span class="field-label">笔记内容</span>
             <div class="index-segment-group" aria-label="笔记内容">
@@ -1387,11 +1388,11 @@ function renderEntryPhotosRoute(params = {}) {
         setPages(`
             <div class="place-page">
                 <a class="ribbon-back" href="#ledger">返回路线档案</a>
-                <p class="journal-label">照片附件</p>
+                <p class="journal-label">媒体附件</p>
                 <h1>没有找到这篇日记</h1>
             </div>
         `, `
-            <div class="photo-note">无法加载对应的照片附件。</div>
+            <div class="photo-note">无法加载对应的图片或视频附件。</div>
         `, 'dossier-page place-detail-page');
         return;
     }
@@ -1399,13 +1400,13 @@ function renderEntryPhotosRoute(params = {}) {
     setPages(`
         <div class="place-page">
             <a class="ribbon-back" href="${serializeRoute({ name: 'entry', params: { id: record.id } })}">返回笔记</a>
-            <p class="journal-label">照片附件</p>
+            <p class="journal-label">媒体附件</p>
             <h1>${escapeHtml(record.title)}</h1>
-            <p class="place-count">${escapeHtml(getLocationText(record))} · ${record.photos?.length || 0} 张照片</p>
+            <p class="place-count">${escapeHtml(getLocationText(record))} · ${record.photos?.length || 0} 张图片 · ${record.videos?.length || 0} 个视频</p>
         </div>
     `, `
         <div class="place-records entry-photos-page">
-            <p class="journal-label">全部照片</p>
+            <p class="journal-label">全部图片与视频</p>
             ${renderPhotoSleeve(record)}
         </div>
     `, 'dossier-page place-detail-page');
@@ -1593,7 +1594,10 @@ function openPhotoViewer(photos, index = 0) {
         initialScale: 1,
         rotation: 0,
         translateX: 0,
-        translateY: 0
+        translateY: 0,
+        videoVolume: 0.8,
+        videoMuted: false,
+        videoRate: 1
     };
     photoGestureState = createPhotoGestureState();
     renderPhotoViewer();
@@ -1607,39 +1611,60 @@ function renderPhotoViewer() {
     }
 
     const photo = photoViewerState.photos[photoViewerState.index];
+    const isVideo = photo.kind === 'video';
     const position = `${photoViewerState.index + 1} / ${photoViewerState.photos.length}`;
 
     root.insertAdjacentHTML('beforeend', `
         <div class="photo-viewer" data-photo-viewer>
             <div class="photo-viewer-backdrop" data-action="close-photo-viewer"></div>
-            <section class="photo-viewer-panel" role="dialog" aria-modal="true" aria-label="照片查看器" tabindex="-1">
+            <section class="photo-viewer-panel${isVideo ? ' has-video' : ''}" role="dialog" aria-modal="true" aria-label="媒体查看器" tabindex="-1">
                 <div class="photo-viewer-toolbar">
-                    <div class="photo-viewer-nav-group photo-viewer-control-group" aria-label="照片切换">
-                        <button class="photo-viewer-control" type="button" data-action="photo-prev" data-photo-action="prev" aria-label="上一张照片">‹</button>
+                    <div class="photo-viewer-nav-group photo-viewer-control-group" aria-label="媒体切换">
+                        <button class="photo-viewer-control" type="button" data-action="photo-prev" data-photo-action="prev" aria-label="上一项媒体">‹</button>
                         <span class="photo-viewer-count">${escapeHtml(position)}</span>
-                        <button class="photo-viewer-control" type="button" data-action="photo-next" data-photo-action="next" aria-label="下一张照片">›</button>
+                        <button class="photo-viewer-control" type="button" data-action="photo-next" data-photo-action="next" aria-label="下一项媒体">›</button>
                     </div>
-                    <div class="photo-viewer-zoom-group photo-viewer-control-group" aria-label="照片缩放">
+                    ${isVideo ? '' : `<div class="photo-viewer-zoom-group photo-viewer-control-group" aria-label="图片缩放">
                         <button class="photo-viewer-control" type="button" data-action="photo-zoom-out" data-photo-action="zoom-out" aria-label="缩小">−</button>
                         <span class="photo-viewer-zoom" data-photo-viewer-zoom>100%</span>
                         <button class="photo-viewer-control" type="button" data-action="photo-zoom-in" data-photo-action="zoom-in" aria-label="放大">+</button>
                         <button class="photo-viewer-control" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="恢复到初始适配比例">原比例</button>
                     </div>
-                    <div class="photo-viewer-rotate-group photo-viewer-control-group" aria-label="照片旋转">
+                    <div class="photo-viewer-rotate-group photo-viewer-control-group" aria-label="图片旋转">
                         <button class="photo-viewer-control" type="button" data-action="photo-rotate-left" data-photo-action="rotate-left" aria-label="向左旋转">↺</button>
                         <button class="photo-viewer-control" type="button" data-action="photo-rotate-right" data-photo-action="rotate-right" aria-label="向右旋转">↻</button>
-                    </div>
+                    </div>`}
                 </div>
-                <button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer" aria-label="关闭照片查看器">×</button>
+                <button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer" aria-label="关闭媒体查看器">×</button>
                 <div class="photo-viewer-stage" data-photo-viewer-stage>
-                    <div class="photo-viewer-image-frame" data-photo-viewer-frame>
-                        <img class="photo-viewer-image" data-photo-viewer-image src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" decoding="async" draggable="false">
-                    </div>
+                    ${isVideo
+                        ? `<video class="video-viewer-video" data-video-viewer-video src="${escapeHtml(photo.src)}" preload="metadata" playsinline aria-label="${escapeHtml(photo.alt)}"></video>
+                           <button class="video-viewer-big-play" type="button" data-video-action="toggle-play" aria-label="播放视频">▶</button>`
+                        : `<div class="photo-viewer-image-frame" data-photo-viewer-frame>
+                            <img class="photo-viewer-image" data-photo-viewer-image src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" decoding="async" draggable="false">
+                        </div>`}
                 </div>
+                ${isVideo ? renderVideoControls() : ''}
                 <p class="photo-viewer-caption">${escapeHtml(photo.alt)}</p>
             </section>
         </div>
     `);
+
+    if (isVideo) {
+        const video = getViewerVideo();
+        if (video) {
+            video.volume = photoViewerState.videoVolume;
+            video.muted = photoViewerState.videoMuted;
+            video.playbackRate = photoViewerState.videoRate;
+            for (const eventName of ['loadedmetadata', 'durationchange', 'timeupdate', 'play', 'pause', 'ended', 'volumechange', 'ratechange']) {
+                video.addEventListener(eventName, syncVideoViewerControls);
+            }
+            video.addEventListener('error', showVideoPlaybackError, { once: true });
+            syncVideoViewerControls();
+        }
+        requestAnimationFrame(() => getPhotoViewerRoot()?.querySelector('.photo-viewer-panel')?.focus({ preventScroll: true }));
+        return;
+    }
 
     const image = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]');
     if (image?.complete) {
@@ -1673,11 +1698,31 @@ function getPhotoViewerRoot() {
 }
 
 function getPhotoViewerItems(button) {
-    const buttons = Array.from(button.closest('.photo-sleeve')?.querySelectorAll('[data-action="open-photo-viewer"]:not([hidden])') || [button]);
+    const buttons = Array.from(button.closest('.photo-sleeve')?.querySelectorAll('[data-action="open-media-viewer"]:not([hidden])') || [button]);
     return buttons.map(item => ({
-        src: item.dataset.photoSrc || '',
-        alt: item.dataset.photoAlt || '旅行照片'
+        kind: item.dataset.mediaKind === 'video' ? 'video' : 'image',
+        src: item.dataset.mediaSrc || '',
+        alt: item.dataset.mediaAlt || '旅行媒体'
     })).filter(item => item.src);
+}
+
+function renderVideoControls() {
+    return `
+        <div class="video-viewer-controls" aria-label="视频播放控制">
+            <div class="video-viewer-primary-controls">
+                <button class="photo-viewer-control" type="button" data-video-action="rewind" aria-label="后退 10 秒">−10s</button>
+                <button class="photo-viewer-control video-viewer-play" type="button" data-video-action="toggle-play" data-video-play aria-label="播放视频">播放</button>
+                <button class="photo-viewer-control" type="button" data-video-action="forward" aria-label="前进 10 秒">+10s</button>
+            </div>
+            <label class="video-viewer-seek-label"><span class="sr-only">播放进度</span><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek></label>
+            <output class="video-viewer-time" data-video-time>00:00 / --:--</output>
+            <div class="video-viewer-secondary-controls">
+                <button class="photo-viewer-control" type="button" data-video-action="toggle-mute" data-video-mute aria-label="静音">声音</button>
+                <label class="video-viewer-volume-label"><span class="sr-only">音量</span><input class="video-viewer-range video-viewer-volume" type="range" min="0" max="1" step="0.05" value="0.8" data-video-volume></label>
+                <label class="video-viewer-rate-label"><span>倍速</span><select data-video-rate aria-label="播放速度"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
+                <button class="photo-viewer-control" type="button" data-video-action="fullscreen" aria-label="全屏播放">全屏</button>
+            </div>
+        </div>`;
 }
 
 function handlePhotoViewerAction(action) {
@@ -1710,6 +1755,103 @@ function handlePhotoViewerAction(action) {
         default:
             break;
     }
+}
+
+function getViewerVideo() {
+    return getPhotoViewerRoot()?.querySelector('[data-video-viewer-video]') || null;
+}
+
+function handleVideoViewerAction(action) {
+    const video = getViewerVideo();
+    if (!video) return;
+    switch (action) {
+        case 'toggle-play':
+            if (video.paused || video.ended) void video.play().catch(showVideoPlaybackError);
+            else video.pause();
+            break;
+        case 'rewind':
+            video.currentTime = clamp(video.currentTime - 10, 0, Number.isFinite(video.duration) ? video.duration : video.currentTime);
+            break;
+        case 'forward':
+            video.currentTime = clamp(video.currentTime + 10, 0, Number.isFinite(video.duration) ? video.duration : video.currentTime + 10);
+            break;
+        case 'toggle-mute':
+            video.muted = !video.muted;
+            photoViewerState.videoMuted = video.muted;
+            break;
+        case 'fullscreen':
+            void toggleVideoFullscreen().catch(showVideoPlaybackError);
+            break;
+        default:
+            break;
+    }
+    syncVideoViewerControls();
+}
+
+async function toggleVideoFullscreen() {
+    if (document.fullscreenElement) {
+        await document.exitFullscreen?.();
+        return;
+    }
+    const stage = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-stage]');
+    await stage?.requestFullscreen?.();
+}
+
+function syncVideoViewerControls() {
+    const video = getViewerVideo();
+    const root = getPhotoViewerRoot();
+    if (!video || !root) return;
+    const duration = Number.isFinite(video.duration) ? video.duration : 0;
+    const seek = root.querySelector('[data-video-seek]');
+    if (seek && document.activeElement !== seek) {
+        seek.max = String(duration);
+        seek.value = String(Math.min(video.currentTime || 0, duration || 0));
+    }
+    const volume = root.querySelector('[data-video-volume]');
+    if (volume && document.activeElement !== volume) volume.value = String(video.volume);
+    const rate = root.querySelector('[data-video-rate]');
+    if (rate && document.activeElement !== rate) rate.value = String(video.playbackRate);
+    const play = root.querySelector('[data-video-play]');
+    const bigPlay = root.querySelector('.video-viewer-big-play');
+    const isPlaying = !video.paused && !video.ended;
+    if (play) {
+        play.textContent = isPlaying ? '暂停' : '播放';
+        play.setAttribute('aria-label', isPlaying ? '暂停视频' : '播放视频');
+        play.setAttribute('aria-pressed', String(isPlaying));
+    }
+    if (bigPlay) {
+        bigPlay.hidden = isPlaying;
+        bigPlay.setAttribute('aria-label', video.ended ? '重新播放视频' : '播放视频');
+    }
+    const mute = root.querySelector('[data-video-mute]');
+    const isMuted = video.muted || video.volume === 0;
+    if (mute) {
+        mute.textContent = isMuted ? '静音' : '声音';
+        mute.setAttribute('aria-label', isMuted ? '恢复声音' : '静音');
+        mute.setAttribute('aria-pressed', String(isMuted));
+    }
+    const time = root.querySelector('[data-video-time]');
+    if (time) time.textContent = `${formatVideoTime(video.currentTime)} / ${duration ? formatVideoTime(duration) : '--:--'}`;
+    if (photoViewerState) {
+        photoViewerState.videoVolume = video.volume;
+        photoViewerState.videoMuted = video.muted;
+        photoViewerState.videoRate = video.playbackRate;
+    }
+}
+
+function formatVideoTime(value) {
+    const seconds = Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remainder = seconds % 60;
+    return hours
+        ? `${hours}:${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`
+        : `${String(minutes).padStart(2, '0')}:${String(remainder).padStart(2, '0')}`;
+}
+
+function showVideoPlaybackError() {
+    const caption = getPhotoViewerRoot()?.querySelector('.photo-viewer-caption');
+    if (caption) caption.textContent = '视频无法播放；请确认浏览器支持该文件的编码格式。';
 }
 
 function showPhotoAt(index) {
@@ -1914,7 +2056,8 @@ function clearPhotoRotationTimer() {
 
 function handlePhotoPointerDown(event) {
     const stage = event.target.closest?.('[data-photo-viewer-stage]');
-    if (!stage || !photoViewerState || (event.pointerType === 'mouse' && event.button !== 0)) {
+    if (!stage || !photoViewerState || photoViewerState.photos[photoViewerState.index]?.kind === 'video'
+        || (event.pointerType === 'mouse' && event.button !== 0)) {
         return;
     }
 
@@ -1971,7 +2114,7 @@ function handlePhotoPointerEnd(event) {
 }
 
 function handlePhotoWheel(event) {
-    if (!photoViewerState || !event.target.closest?.('[data-photo-viewer]')) {
+    if (!photoViewerState || photoViewerState.photos[photoViewerState.index]?.kind === 'video' || !event.target.closest?.('[data-photo-viewer]')) {
         return;
     }
 
@@ -1985,7 +2128,7 @@ function handlePhotoWheel(event) {
 }
 
 function handlePhotoDoubleClick(event) {
-    if (!photoViewerState || !event.target.closest?.('[data-photo-viewer-stage]')) {
+    if (!photoViewerState || photoViewerState.photos[photoViewerState.index]?.kind === 'video' || !event.target.closest?.('[data-photo-viewer-stage]')) {
         return;
     }
 
@@ -2186,11 +2329,24 @@ function handleDocumentClick(event) {
         return;
     }
 
-    const openPhoto = event.target.closest('[data-action="open-photo-viewer"]');
+    const openPhoto = event.target.closest('[data-action="open-media-viewer"]');
     if (openPhoto) {
         event.preventDefault();
         const photos = getPhotoViewerItems(openPhoto);
-        openPhotoViewer(photos, Number(openPhoto.dataset.photoIndex || 0));
+        openPhotoViewer(photos, Number(openPhoto.dataset.mediaIndex || 0));
+        return;
+    }
+
+    const videoAction = event.target.closest('[data-video-action]');
+    if (videoAction) {
+        event.preventDefault();
+        handleVideoViewerAction(videoAction.dataset.videoAction);
+        return;
+    }
+
+    if (event.target.closest('[data-video-viewer-video]')) {
+        event.preventDefault();
+        handleVideoViewerAction('toggle-play');
         return;
     }
 
@@ -2281,9 +2437,46 @@ function getEntryBackgroundHash() {
 
 function handleDocumentKeydown(event) {
     if (isPhotoViewerOpen()) {
+        if (event.key === 'Escape' && document.fullscreenElement) {
+            return;
+        }
         if (event.key === 'Escape') {
             event.preventDefault();
             closePhotoViewerDialog();
+            return;
+        }
+
+        const video = getViewerVideo();
+        if (video) {
+            if (event.target.matches('input, select, button') && !['k', 'K', 'm', 'M', 'f', 'F'].includes(event.key)) return;
+            if (event.key === ' ' || event.key === 'k' || event.key === 'K') {
+                event.preventDefault();
+                handleVideoViewerAction('toggle-play');
+                return;
+            }
+            if (event.key === 'ArrowLeft' || event.key === 'ArrowRight') {
+                event.preventDefault();
+                const delta = event.key === 'ArrowLeft' ? -5 : 5;
+                video.currentTime = clamp(video.currentTime + delta, 0, Number.isFinite(video.duration) ? video.duration : video.currentTime + Math.max(delta, 0));
+                syncVideoViewerControls();
+                return;
+            }
+            if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
+                event.preventDefault();
+                video.volume = clamp(video.volume + (event.key === 'ArrowUp' ? 0.05 : -0.05), 0, 1);
+                video.muted = false;
+                syncVideoViewerControls();
+                return;
+            }
+            if (event.key === 'm' || event.key === 'M') {
+                event.preventDefault();
+                handleVideoViewerAction('toggle-mute');
+                return;
+            }
+            if (event.key === 'f' || event.key === 'F') {
+                event.preventDefault();
+                handleVideoViewerAction('fullscreen');
+            }
             return;
         }
 
@@ -2373,6 +2566,18 @@ function restoreReadingScrollPosition() {
 }
 
 function handleDocumentInput(event) {
+    const video = getViewerVideo();
+    if (video && event.target.matches('[data-video-seek]')) {
+        video.currentTime = clamp(Number(event.target.value), 0, Number.isFinite(video.duration) ? video.duration : 0);
+        syncVideoViewerControls();
+        return;
+    }
+    if (video && event.target.matches('[data-video-volume]')) {
+        video.volume = clamp(Number(event.target.value), 0, 1);
+        video.muted = false;
+        syncVideoViewerControls();
+        return;
+    }
     if (!isSearchInput(event.target)) {
         return;
     }
@@ -2387,6 +2592,12 @@ function handleDocumentInput(event) {
 function handleDocumentChange(event) {
     if (event.target === refs.profilePictureInput) {
         void handleProfilePictureSelection(event.target);
+        return;
+    }
+    const video = getViewerVideo();
+    if (video && event.target.matches('[data-video-rate]')) {
+        video.playbackRate = clamp(Number(event.target.value), 0.5, 2);
+        syncVideoViewerControls();
         return;
     }
     const filter = event.target.closest('[data-ledger-filter]');
@@ -2661,7 +2872,10 @@ function getLedgerRecords(params) {
         const localityMatch = normalized.locality === 'all' || record.locationKey === normalized.locality;
         const visitMatch = normalized.visit === 'all' || (normalized.visit === 'repeat' ? record.isRepeated : !record.isRepeated);
         const hasPhotos = Array.isArray(record.photos) && record.photos.length > 0;
-        const mediaMatch = normalized.media === 'all' || (normalized.media === 'photos' ? hasPhotos : !hasPhotos);
+        const hasVideos = Array.isArray(record.videos) && record.videos.length > 0;
+        const hasMedia = hasPhotos || hasVideos;
+        const mediaMatch = normalized.media === 'all'
+            || (normalized.media === 'photos' ? hasPhotos : normalized.media === 'videos' ? hasVideos : !hasMedia);
         const hasNote = hasRecordNoteContent(record);
         const noteMatch = normalized.note === 'all' || (normalized.note === 'filled' ? hasNote : !hasNote);
         const searchMatch = !query || record.searchText.includes(query);
@@ -2831,33 +3045,40 @@ function renderLuggageTag(area) {
 }
 
 function renderPhotoSleeve(record, options = {}) {
-    if (!record.photo_folder || !Array.isArray(record.photos) || record.photos.length === 0) {
-        return '<p class="photo-note">这篇记录没有照片附件。</p>';
-    }
+    const media = getRecordMedia(record);
+    if (!media.length) return '<p class="photo-note">这篇记录没有图片或视频附件。</p>';
 
     const { previewRows = 0, showViewAll = false } = options;
     const isPreview = Number.isFinite(previewRows) && previewRows > 0;
-    const shouldRenderViewAll = showViewAll && isPreview && record.photos.length > previewRows;
+    const shouldRenderViewAll = showViewAll && isPreview && media.length > previewRows;
 
     return `
-        <div class="photo-sleeve${isPreview ? ' photo-sleeve-preview' : ''}"${isPreview ? ` data-preview-rows="${previewRows}"` : ''} aria-label="照片附件">
-            ${record.photos.map((photo, index) => {
-                const src = `${record.photo_folder}/${photo}`;
-                const alt = `${record.title} · ${photo}`;
-                return `
-                <button class="photo-sleeve-button" type="button" data-action="open-photo-viewer" data-photo-index="${index}" data-photo-src="${escapeHtml(src)}" data-photo-alt="${escapeHtml(alt)}" aria-label="打开照片 ${escapeHtml(photo)}">
-                    <img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async" fetchpriority="low">
-                    <span>${escapeHtml(String(index + 1).padStart(2, '0'))}</span>
+        <div class="photo-sleeve${isPreview ? ' photo-sleeve-preview' : ''}"${isPreview ? ` data-preview-rows="${previewRows}"` : ''} aria-label="图片与视频附件">
+            ${media.map((item, index) => `
+                <button class="photo-sleeve-button${item.kind === 'video' ? ' photo-sleeve-video' : ''}" type="button" data-action="open-media-viewer" data-media-index="${index}" data-media-kind="${item.kind}" data-media-src="${escapeHtml(item.src)}" data-media-alt="${escapeHtml(item.alt)}" aria-label="打开${item.kind === 'video' ? '视频' : '图片'} ${escapeHtml(item.name)}">
+                    ${item.kind === 'video'
+                        ? `<video src="${escapeHtml(item.src)}#t=0.1" muted playsinline preload="metadata" aria-hidden="true" tabindex="-1"></video><span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>`
+                        : `<img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.alt)}" loading="lazy" decoding="async" fetchpriority="low">`}
+                    <span class="photo-sleeve-index">${escapeHtml(String(index + 1).padStart(2, '0'))}</span>
                 </button>
-            `;
-            }).join('')}
+            `).join('')}
             ${shouldRenderViewAll ? `
                 <a class="paper-button photo-sleeve-action" href="${serializeRoute({ name: 'photos', params: { id: record.id } })}" data-action="view-all-photos">
-                    查看全部照片（${record.photos.length} 张）
+                    查看全部媒体（${media.length} 项）
                 </a>
             ` : ''}
         </div>
     `;
+}
+
+function getRecordMedia(record) {
+    const photos = record.photo_folder && Array.isArray(record.photos)
+        ? record.photos.map(name => ({ kind: 'image', name, src: `${record.photo_folder}/${name}`, alt: `${record.title} · ${name}` }))
+        : [];
+    const videos = record.video_folder && Array.isArray(record.videos)
+        ? record.videos.map(name => ({ kind: 'video', name, src: `${record.video_folder}/${name}`, alt: `${record.title} · ${name}` }))
+        : [];
+    return [...photos, ...videos];
 }
 
 function syncPhotoSleevePreviewRows() {
@@ -3009,7 +3230,7 @@ function normalizeVisit(visit) {
 }
 
 function normalizeMedia(media) {
-    return media === 'photos' || media === 'none' ? media : 'all';
+    return media === 'photos' || media === 'videos' || media === 'none' ? media : 'all';
 }
 
 function normalizeNote(note) {

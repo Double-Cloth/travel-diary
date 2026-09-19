@@ -80,7 +80,7 @@ jobs:
 
       - name: Prepare static site
         run: |
-          mkdir -p _site/data/travel-diary _site/data/photos _site/data/profile
+          mkdir -p _site/data/travel-diary _site/data/photos _site/data/videos _site/data/profile
           cp index.html _site/
           cp -R api assets css doc js _site/
           if [ -d data ]; then cp -R data/. _site/data/; fi

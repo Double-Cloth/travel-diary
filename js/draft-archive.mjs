@@ -3,7 +3,7 @@ import { readUploads } from './photo-uploads.mjs';
 import { pinyinSlug } from './slug.mjs';
 import { createZip, readZip } from './zip-archive.mjs';
 
-export const DRAFT_ARCHIVE_FORMAT = 'travel-diary-draft-archive-v1';
+export const DRAFT_ARCHIVE_FORMAT = 'travel-diary-draft-archive-v2';
 const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { fatal: true });
 
@@ -26,11 +26,11 @@ export function createDraftArchive(value) {
     const draft = readDraft(value);
     const uploads = readUploads(draft.uploads);
     const entries = [];
-    const packageUploads = uploads.map((photo, index) => {
-        const stem = pinyinSlug(photo.name.replace(/\.[^.]*$/, ''), `photo-${String(index + 1).padStart(3, '0')}`, { keepPlaceSuffix: true });
-        const file = `photos/${String(index + 1).padStart(3, '0')}-${stem}.${photo.extension}`;
-        entries.push({ name: file, data: base64ToBytes(photo.data) });
-        return { id: photo.id, name: photo.name, file };
+    const packageUploads = uploads.map((media, index) => {
+        const stem = pinyinSlug(media.name.replace(/\.[^.]*$/, ''), `${media.kind}-${String(index + 1).padStart(3, '0')}`, { keepPlaceSuffix: true });
+        const file = `media/${String(index + 1).padStart(3, '0')}-${stem}.${media.extension}`;
+        entries.push({ name: file, data: base64ToBytes(media.data) });
+        return { id: media.id, name: media.name, kind: media.kind, file };
     });
     const metadata = {
         format: DRAFT_ARCHIVE_FORMAT,
@@ -49,19 +49,19 @@ export function readDraftArchive(value) {
     let metadata;
     try { metadata = JSON.parse(decoder.decode(metadataBytes)); }
     catch { throw new Error('draft.json 不是有效的 JSON 文件。'); }
-    if (!metadata || metadata.format !== DRAFT_ARCHIVE_FORMAT || !Array.isArray(metadata.uploads)) {
+    if (!metadata || ![DRAFT_ARCHIVE_FORMAT, 'travel-diary-draft-archive-v1'].includes(metadata.format) || !Array.isArray(metadata.uploads)) {
         throw new Error('请选择由本应用导出的 ZIP 草稿。');
     }
     const usedFiles = new Set(['draft.json']);
-    const uploads = metadata.uploads.map(photo => {
-        if (!photo || typeof photo.id !== 'string' || typeof photo.name !== 'string' || typeof photo.file !== 'string'
-            || !/^photos\/[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(photo.file) || usedFiles.has(photo.file)) {
-            throw new Error('草稿中的照片清单无效。');
+    const uploads = metadata.uploads.map(media => {
+        if (!media || typeof media.id !== 'string' || typeof media.name !== 'string' || typeof media.file !== 'string'
+            || !/^(?:photos|media)\/[A-Za-z0-9][A-Za-z0-9._/-]*$/.test(media.file) || usedFiles.has(media.file)) {
+            throw new Error('草稿中的媒体清单无效。');
         }
-        const data = files.get(photo.file);
-        if (!data) throw new Error(`草稿缺少照片文件：${photo.file}`);
-        usedFiles.add(photo.file);
-        return { id: photo.id, name: photo.name, data: bytesToBase64(data) };
+        const data = files.get(media.file);
+        if (!data) throw new Error(`草稿缺少媒体文件：${media.file}`);
+        usedFiles.add(media.file);
+        return { id: media.id, name: media.name, data: bytesToBase64(data) };
     });
     if (files.size !== usedFiles.size) throw new Error('草稿压缩包包含未在清单中声明的文件。');
     return readDraft({ format: DRAFT_FORMAT, requestId: metadata.requestId, input: metadata.input, uploads });

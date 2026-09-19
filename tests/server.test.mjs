@@ -24,6 +24,7 @@ before(async () => {
     await writeFile(path.join(root, '100%.txt'), '百分号');
     await writeFile(path.join(root, '%2e.txt'), '编码名称');
     await writeFile(path.join(root, 'module.mjs'), 'export {};');
+    await writeFile(path.join(root, 'clip.mp4'), Buffer.from('0123456789'));
     await writeFile(path.join(root, '.secrets/auth.json'), '{"hash":"never public"}');
     await writeFile(path.join(fixture, 'site-other', 'secret.txt'), '目录外内容');
     await symlink(path.join(fixture, 'site-other'), path.join(root, 'outside'), process.platform === 'win32' ? 'junction' : 'dir');
@@ -43,9 +44,9 @@ after(async () => {
     }
 });
 
-function request(url, method = 'GET') {
+function request(url, method = 'GET', headers = {}) {
     return new Promise((resolve, reject) => {
-        const req = http.request({ host: '127.0.0.1', port: server.address().port, path: url, method }, res => {
+        const req = http.request({ host: '127.0.0.1', port: server.address().port, path: url, method, headers }, res => {
             let body = '';
             res.setEncoding('utf8');
             res.on('data', chunk => { body += chunk; });
@@ -71,7 +72,7 @@ test('缺少 data 时创建可用的最小目录结构且不覆盖已有索引',
     assert.equal((await stat(path.join(emptyRoot, '.secrets'))).isDirectory(), true);
     assert.equal(await readFile(path.join(emptyRoot, 'data/travel_data.json'), 'utf8'), '[]\n');
     assert.ok((await stat(path.join(emptyRoot, 'data/profile/profile-picture.png'))).size > 0);
-    for (const directory of ['travel-diary', 'photos', 'profile']) {
+    for (const directory of ['travel-diary', 'photos', 'videos', 'profile']) {
         assert.equal((await stat(path.join(emptyRoot, 'data', directory))).isDirectory(), true);
     }
     await writeFile(path.join(emptyRoot, 'data/travel_data.json'), '[{"kept":true}]\n');
@@ -110,6 +111,21 @@ test('目录跳转保留查询参数，HEAD 与 GET 的资源元数据一致', a
     assert.equal((await request('/missing')).status, 404);
     assert.equal((await request('/', 'POST')).status, 405);
     assert.equal((await request('/', 'OPTIONS')).headers['access-control-allow-methods'], 'GET, HEAD, OPTIONS');
+});
+
+test('视频使用正确 MIME 并支持单段 Range 请求与进度拖动', async () => {
+    const range = await request('/clip.mp4', 'GET', { Range: 'bytes=2-5' });
+    assert.equal(range.status, 206);
+    assert.equal(range.body, '2345');
+    assert.equal(range.headers['content-type'], 'video/mp4');
+    assert.equal(range.headers['accept-ranges'], 'bytes');
+    assert.equal(range.headers['content-range'], 'bytes 2-5/10');
+    assert.equal(range.headers['content-length'], '4');
+    const suffix = await request('/clip.mp4', 'GET', { Range: 'bytes=-3' });
+    assert.equal(suffix.body, '789');
+    const invalid = await request('/clip.mp4', 'GET', { Range: 'bytes=20-30' });
+    assert.equal(invalid.status, 416);
+    assert.equal(invalid.headers['content-range'], 'bytes */10');
 });
 
 test('端口参数不能越界且被占用时自动尝试后续端口', async () => {
