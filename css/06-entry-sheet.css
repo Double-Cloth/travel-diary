@@ -390,13 +390,12 @@
     place-items: center;
     width: 72px;
     height: 72px;
-    padding: 0 0 0 5px;
+    padding: 0;
     border: 1px solid rgba(255, 247, 223, 0.72);
     border-radius: 50%;
     cursor: pointer;
     color: #fff7df;
     background: rgba(35, 23, 14, 0.78);
-    font: 28px var(--font-serif);
     box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
     transform: translate(-50%, -50%);
 }
@@ -432,9 +431,12 @@
     gap: 8px 12px;
 }
 
-.video-viewer-controls .photo-viewer-zoom-group {
+.video-viewer-transform-controls {
     grid-column: 1;
     grid-row: 1;
+    display: flex;
+    gap: 8px;
+    align-items: center;
 }
 
 .video-viewer-primary-controls {
@@ -466,7 +468,23 @@
     align-items: center;
 }
 
-.video-viewer-play { min-width: 54px; }
+.video-viewer-play {
+    width: 42px;
+    min-width: 42px;
+    padding: 0;
+}
+
+.video-viewer-play-icon {
+    display: block;
+    width: 20px;
+    height: 20px;
+    fill: currentColor;
+}
+
+.video-viewer-big-play .video-viewer-play-icon {
+    width: 32px;
+    height: 32px;
+}
 .video-viewer-seek-label { min-width: 0; }
 
 .video-viewer-range {
@@ -491,14 +509,37 @@
     font-size: 12px;
 }
 
-.video-viewer-rate-label select {
-    height: 36px;
-    padding: 0 24px 0 8px;
-    border: 1px solid rgba(245, 219, 167, 0.26);
+.video-viewer-rate-label .custom-select {
+    width: 82px;
+}
+
+.video-viewer-rate-label .custom-select-trigger {
+    min-height: 36px;
+    padding: 7px 28px 7px 9px;
+    border-color: rgba(245, 219, 167, 0.26);
     border-radius: 6px;
     color: #fff7df;
     background: #513821;
     font: 13px var(--font-serif);
+}
+
+.video-viewer-rate-label .custom-select-trigger:hover,
+.video-viewer-rate-label .custom-select-trigger:focus-visible,
+.video-viewer-rate-label .custom-select.is-open .custom-select-trigger {
+    border-color: rgba(245, 219, 167, 0.54);
+    background: #6b492b;
+    box-shadow: 0 0 0 3px rgba(195, 152, 82, 0.18);
+}
+
+.video-viewer-rate-label .custom-select-chevron {
+    right: 11px;
+    border-color: rgba(255, 247, 223, 0.8);
+}
+
+.video-viewer-rate-label .custom-select-menu {
+    width: 100%;
+    min-width: 96px;
+    max-width: 160px;
 }
 
 .photo-viewer-caption {

@@ -492,10 +492,12 @@
     .video-viewer-seek-label { grid-column: 1 / -1; grid-row: 1; }
     .video-viewer-time { grid-column: 2; grid-row: 2; }
     .video-viewer-primary-controls { grid-column: 1; grid-row: 2; justify-content: flex-start; }
-    .video-viewer-controls .photo-viewer-zoom-group { grid-column: 1 / -1; grid-row: 3; justify-content: center; }
+    .video-viewer-transform-controls { grid-column: 1 / -1; grid-row: 3; justify-content: center; flex-wrap: wrap; }
     .video-viewer-secondary-controls { grid-column: 1 / -1; grid-row: 4; flex-wrap: wrap; justify-content: center; }
+    .video-viewer-skip,
+    .video-viewer-mute { display: none; }
     .video-viewer-volume { width: min(28vw, 110px); }
-    .video-viewer-big-play { width: 60px; height: 60px; font-size: 24px; }
+    .video-viewer-big-play { width: 60px; height: 60px; }
 
     .sheet-nav-button,
     .sheet-nav-button:first-child,

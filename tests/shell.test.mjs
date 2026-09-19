@@ -180,8 +180,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260919-media-viewer-v2/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260919-media-viewer-v2/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260919-media-viewer-v3/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260919-media-viewer-v3/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -575,6 +575,14 @@ test('视频共用媒体入口并提供完整播放控制与键盘操作', () =>
     assert.match(journalCss, /\.video-viewer-video\s*{/);
     assert.match(journalCss, /\.video-viewer-big-play\[hidden\]\s*{\s*display: none;/);
     assert.match(appJs, /bigPlay\.hidden = isPlaying;/);
+    assert.match(appJs, /renderRotateControls\('视频旋转'\)/);
+    assert.match(appJs, /VIDEO_PLAY_ICON_PATH[\s\S]*VIDEO_PAUSE_ICON_PATH/);
+    assert.match(appJs, /class="video-viewer-play-icon"[\s\S]*data-video-play-icon/);
+    assert.match(appJs, /play\.querySelector\('\[data-video-play-icon\]'\)\?\.setAttribute\('d', isPlaying \? VIDEO_PAUSE_ICON_PATH : VIDEO_PLAY_ICON_PATH\)/);
+    assert.doesNotMatch(appJs, /data-video-play aria-label="播放视频">播放<\/button>/);
+    assert.match(appJs, /<select id="videoPlaybackRate" data-custom-select data-video-rate/);
+    assert.match(appJs, /enhanceCustomSelects\(root\.querySelector\('\[data-photo-viewer\]'\)\)/);
+    assert.match(journalCss, /\.video-viewer-rate-label \.custom-select-trigger\s*{/);
 });
 
 test('从照片全集页返回笔记不会把照片页保存为关闭后的背景页', () => {
@@ -634,8 +642,12 @@ test('移动端媒体查看器按进度、播放、缩放和辅助控件分行�
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-toolbar\s*{[\s\S]*padding: 8px 48px 8px 8px;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-close\s*{[\s\S]*top: 8px;[\s\S]*right: 8px;[\s\S]*height: 36px;[\s\S]*padding: 0;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-seek-label \{ grid-column: 1 \/ -1; grid-row: 1; \}/);
-    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-controls \.photo-viewer-zoom-group \{ grid-column: 1 \/ -1; grid-row: 3;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-transform-controls \{ grid-column: 1 \/ -1; grid-row: 3;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-secondary-controls \{ grid-column: 1 \/ -1; grid-row: 4; flex-wrap: wrap;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-skip,\s*\.video-viewer-mute \{ display: none; \}/);
+    assert.match(appJs, /class="photo-viewer-control video-viewer-skip"[\s\S]*data-video-action="rewind"/);
+    assert.match(appJs, /class="photo-viewer-control video-viewer-mute"[\s\S]*data-video-action="toggle-mute"/);
+    assert.match(appJs, /class="video-viewer-range video-viewer-volume"[\s\S]*data-video-volume/);
 });
 
 test('文件设置在常见手机宽度下改为单列并保持可读字号', () => {

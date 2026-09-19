@@ -58,6 +58,8 @@ const ROUTE_MAP_SLOTS = [
     { ticket: 'ticket-f', stamp: 'stamp-f', label: '06' }
 ];
 const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
+const VIDEO_PLAY_ICON_PATH = 'M8 5.5v13l10-6.5z';
+const VIDEO_PAUSE_ICON_PATH = 'M7 5h4v14H7zm6 0h4v14h-4z';
 
 const refs = {};
 let openRecordEditor;
@@ -1631,7 +1633,7 @@ function renderPhotoViewer() {
                         ? `<div class="photo-viewer-media-frame" data-photo-viewer-frame>
                             <video class="photo-viewer-media video-viewer-video" data-photo-viewer-media data-video-viewer-video src="${escapeHtml(photo.src)}" preload="metadata" playsinline aria-label="${escapeHtml(photo.alt)}"></video>
                            </div>
-                           <button class="video-viewer-big-play" type="button" data-video-action="toggle-play" aria-label="播放视频">▶</button>`
+                           <button class="video-viewer-big-play" type="button" data-video-action="toggle-play" aria-label="播放视频">${renderVideoPlaybackIcon()}</button>`
                         : `<div class="photo-viewer-media-frame photo-viewer-image-frame" data-photo-viewer-frame>
                             <img class="photo-viewer-media photo-viewer-image" data-photo-viewer-media data-photo-viewer-image src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" decoding="async" draggable="false">
                         </div>`}
@@ -1641,6 +1643,8 @@ function renderPhotoViewer() {
             </section>
         </div>
     `);
+
+    enhanceCustomSelects(root.querySelector('[data-photo-viewer]'));
 
     if (isVideo) {
         const video = getViewerVideo();
@@ -1708,18 +1712,21 @@ function getPhotoViewerItems(button) {
 function renderVideoControls() {
     return `
         <div class="photo-viewer-controls video-viewer-controls" aria-label="视频播放与画面控制">
-            ${renderZoomControls('视频缩放')}
+            <div class="video-viewer-transform-controls">
+                ${renderZoomControls('视频缩放')}
+                ${renderRotateControls('视频旋转')}
+            </div>
             <div class="video-viewer-primary-controls">
-                <button class="photo-viewer-control" type="button" data-video-action="rewind" aria-label="后退 10 秒">−10s</button>
-                <button class="photo-viewer-control video-viewer-play" type="button" data-video-action="toggle-play" data-video-play aria-label="播放视频">播放</button>
-                <button class="photo-viewer-control" type="button" data-video-action="forward" aria-label="前进 10 秒">+10s</button>
+                <button class="photo-viewer-control video-viewer-skip" type="button" data-video-action="rewind" aria-label="后退 10 秒">−10s</button>
+                <button class="photo-viewer-control video-viewer-play" type="button" data-video-action="toggle-play" data-video-play aria-label="播放视频">${renderVideoPlaybackIcon()}</button>
+                <button class="photo-viewer-control video-viewer-skip" type="button" data-video-action="forward" aria-label="前进 10 秒">+10s</button>
             </div>
             <label class="video-viewer-seek-label"><span class="sr-only">播放进度</span><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek></label>
             <output class="video-viewer-time" data-video-time>00:00 / --:--</output>
             <div class="video-viewer-secondary-controls">
-                <button class="photo-viewer-control" type="button" data-video-action="toggle-mute" data-video-mute aria-label="静音">声音</button>
+                <button class="photo-viewer-control video-viewer-mute" type="button" data-video-action="toggle-mute" data-video-mute aria-label="静音">静音</button>
                 <label class="video-viewer-volume-label"><span class="sr-only">音量</span><input class="video-viewer-range video-viewer-volume" type="range" min="0" max="1" step="0.05" value="0.8" data-video-volume></label>
-                <label class="video-viewer-rate-label"><span>倍速</span><select data-video-rate aria-label="播放速度"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
+                <label class="video-viewer-rate-label"><span>倍速</span><select id="videoPlaybackRate" data-custom-select data-video-rate aria-label="播放速度"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
                 <button class="photo-viewer-control" type="button" data-video-action="fullscreen" aria-label="全屏播放">全屏</button>
             </div>
         </div>`;
@@ -1729,11 +1736,19 @@ function renderPhotoControls() {
     return `
         <div class="photo-viewer-controls" aria-label="图片显示控制">
             ${renderZoomControls('图片缩放')}
-            <div class="photo-viewer-rotate-group photo-viewer-control-group" aria-label="图片旋转">
-                <button class="photo-viewer-control" type="button" data-action="photo-rotate-left" data-photo-action="rotate-left" aria-label="向左旋转">↺</button>
-                <button class="photo-viewer-control" type="button" data-action="photo-rotate-right" data-photo-action="rotate-right" aria-label="向右旋转">↻</button>
-            </div>
+            ${renderRotateControls('图片旋转')}
         </div>`;
+}
+
+function renderRotateControls(label) {
+    return `<div class="photo-viewer-rotate-group photo-viewer-control-group" aria-label="${label}">
+        <button class="photo-viewer-control" type="button" data-action="photo-rotate-left" data-photo-action="rotate-left" aria-label="向左旋转">↺</button>
+        <button class="photo-viewer-control" type="button" data-action="photo-rotate-right" data-photo-action="rotate-right" aria-label="向右旋转">↻</button>
+    </div>`;
+}
+
+function renderVideoPlaybackIcon(isPlaying = false) {
+    return `<svg class="video-viewer-play-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path data-video-play-icon d="${isPlaying ? VIDEO_PAUSE_ICON_PATH : VIDEO_PLAY_ICON_PATH}"></path></svg>`;
 }
 
 function renderZoomControls(label) {
@@ -1835,7 +1850,7 @@ function syncVideoViewerControls() {
     const bigPlay = root.querySelector('.video-viewer-big-play');
     const isPlaying = !video.paused && !video.ended;
     if (play) {
-        play.textContent = isPlaying ? '暂停' : '播放';
+        play.querySelector('[data-video-play-icon]')?.setAttribute('d', isPlaying ? VIDEO_PAUSE_ICON_PATH : VIDEO_PLAY_ICON_PATH);
         play.setAttribute('aria-label', isPlaying ? '暂停视频' : '播放视频');
         play.setAttribute('aria-pressed', String(isPlaying));
     }
