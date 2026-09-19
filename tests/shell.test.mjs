@@ -180,8 +180,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260919-video-upload-v2/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260919-video-media-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260919-media-viewer-v2/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260919-media-viewer-v2/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -517,7 +517,7 @@ test('地点详情页仅保留左页返回按钮', () => {
     assert.doesNotMatch(journalCss, /\.location-close/);
 });
 
-test('日记媒体支持沉浸式查看，图片保留基础变换操作', () => {
+test('日记媒体支持沉浸式查看，图片与视频共用基础变换操作', () => {
     assert.match(appJs, /function openPhotoViewer/);
     assert.match(appJs, /function renderPhotoViewer/);
     assert.match(appJs, /data-action="open-media-viewer"/);
@@ -526,6 +526,7 @@ test('日记媒体支持沉浸式查看，图片保留基础变换操作', () =>
     assert.match(appJs, /data-action="photo-rotate-left"/);
     assert.match(appJs, /data-action="photo-rotate-right"/);
     assert.match(appJs, /data-photo-viewer-image/);
+    assert.match(appJs, /data-photo-viewer-media data-video-viewer-video/);
     assert.match(appJs, /handlePhotoPointerDown/);
     assert.match(appJs, /handlePhotoPointerMove/);
     assert.match(appJs, /handlePhotoWheel/);
@@ -572,6 +573,8 @@ test('视频共用媒体入口并提供完整播放控制与键盘操作', () =>
     assert.match(appJs, /event\.key === 'f' \|\| event\.key === 'F'/);
     assert.match(journalCss, /\.video-viewer-controls\s*{/);
     assert.match(journalCss, /\.video-viewer-video\s*{/);
+    assert.match(journalCss, /\.video-viewer-big-play\[hidden\]\s*{\s*display: none;/);
+    assert.match(appJs, /bigPlay\.hidden = isPlaying;/);
 });
 
 test('从照片全集页返回笔记不会把照片页保存为关闭后的背景页', () => {
@@ -599,21 +602,26 @@ test('移动端照片缩略图保持双列且旋转角度连续递增', () => {
     assert.doesNotMatch(appJs, /photoViewerState\.rotation = normalizeRotation\(photoViewerState\.rotation \+ delta\);/);
 });
 
-test('照片查看器工具栏按功能分组且原图以自然尺寸显示', () => {
+test('媒体查看器顶部只保留切换，图片与视频控件统一放在底部', () => {
     for (const group of ['photo-viewer-nav-group', 'photo-viewer-zoom-group', 'photo-viewer-rotate-group']) {
         assert.match(appJs, new RegExp(`class="${group} photo-viewer-control-group"`));
     }
+    assert.match(appJs, /class="photo-viewer-toolbar">[\s\S]*class="photo-viewer-nav-group[\s\S]*<\/div>\s*<\/div>\s*<button class="photo-viewer-control photo-viewer-close"/);
+    assert.match(appJs, /<\/div>\s*\$\{isVideo \? renderVideoControls\(\) : renderPhotoControls\(\)\}\s*<p class="photo-viewer-caption">/);
+    assert.match(appJs, /class="photo-viewer-controls video-viewer-controls"/);
+    assert.match(appJs, /function renderPhotoControls\(\)[\s\S]*class="photo-viewer-controls"/);
+    assert.match(appJs, /function renderVideoControls\(\)[\s\S]*renderZoomControls\('视频缩放'\)/);
     assert.match(appJs, /<\/div>\s*<button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer"/);
     assert.match(appJs, /data-action="photo-reset"[\s\S]*aria-label="恢复到初始适配比例"[\s\S]*>原比例<\/button>/);
     assert.match(appJs, /photoViewerState\.scale = photoViewerState\.initialScale \|\| 1;/);
-    assert.match(journalCss, /\.photo-viewer-toolbar\s*{[\s\S]*display: grid;/);
-    assert.match(journalCss, /\.photo-viewer-toolbar\s*{[\s\S]*grid-template-columns: repeat\(3, max-content\);/);
+    assert.match(journalCss, /\.photo-viewer-toolbar\s*{[\s\S]*display: flex;/);
+    assert.match(journalCss, /\.photo-viewer-controls\s*{[\s\S]*display: flex;/);
     assert.match(journalCss, /\.photo-viewer-control-group\s*{[\s\S]*display: inline-flex;/);
     assert.match(journalCss, /\.photo-viewer-control\s*{[\s\S]*font-family: var\(--font-serif\);/);
     assert.match(journalCss, /\.photo-viewer-close\s*{[\s\S]*position: absolute;[\s\S]*top: 8px;[\s\S]*right: 8px;[\s\S]*width: 38px;[\s\S]*height: 36px;/);
     assert.doesNotMatch(appJs, /photo-viewer-separator/);
-    assert.match(journalCss, /\.photo-viewer-image\s*{[\s\S]*width: auto;[\s\S]*height: auto;[\s\S]*max-width: none;[\s\S]*max-height: none;/);
-    assert.doesNotMatch(journalCss, /\.photo-viewer-image\s*{[\s\S]*max-width: min/);
+    assert.match(journalCss, /\.photo-viewer-media\s*{[\s\S]*width: auto;[\s\S]*height: auto;[\s\S]*max-width: none;[\s\S]*max-height: none;/);
+    assert.doesNotMatch(journalCss, /\.photo-viewer-media\s*{[\s\S]*max-width: min/);
 });
 
 test('移动端照片查看器充分利用上下空间', () => {
@@ -622,11 +630,12 @@ test('移动端照片查看器充分利用上下空间', () => {
     assert.doesNotMatch(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-panel\s*{[\s\S]*height: min\(720px, 100%\);/);
 });
 
-test('移动端照片查看器工具栏可换行且关闭按钮不继承横向内边距', () => {
-    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-toolbar\s*{[\s\S]*display: flex;[\s\S]*flex-wrap: wrap;[\s\S]*overflow-x: visible;/);
+test('移动端媒体查看器按进度、播放、缩放和辅助控件分行排列', () => {
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-toolbar\s*{[\s\S]*padding: 8px 48px 8px 8px;/);
-    assert.doesNotMatch(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-toolbar\s*{[\s\S]*grid-template-columns: repeat\(3, max-content\);/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-close\s*{[\s\S]*top: 8px;[\s\S]*right: 8px;[\s\S]*height: 36px;[\s\S]*padding: 0;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-seek-label \{ grid-column: 1 \/ -1; grid-row: 1; \}/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-controls \.photo-viewer-zoom-group \{ grid-column: 1 \/ -1; grid-row: 3;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-secondary-controls \{ grid-column: 1 \/ -1; grid-row: 4; flex-wrap: wrap;/);
 });
 
 test('文件设置在常见手机宽度下改为单列并保持可读字号', () => {
@@ -635,7 +644,7 @@ test('文件设置在常见手机宽度下改为单列并保持可读字号', ()
     assert.match(journalCss, /@media \(max-width: 540px\)[\s\S]*\.record-editor-files input:not\(\[type="file"\]\),[\s\S]*\.record-editor-files textarea\s*{[\s\S]*font-size: 16px;/);
 });
 
-test('照片初始居中适配舞台且平移不会完全移出屏幕', () => {
+test('图片与视频初始居中适配舞台且平移不会完全移出屏幕', () => {
     assert.match(appJs, /function fitPhotoToStage/);
     assert.match(appJs, /function getInitialPhotoScale/);
     assert.match(appJs, /function getMinimumPhotoScale/);
@@ -646,7 +655,7 @@ test('照片初始居中适配舞台且平移不会完全移出屏幕', () => {
     assert.match(photoViewerTransformJs, /function getPhotoViewerRenderMetrics/);
     assert.match(appJs, /image\.addEventListener\('load', \(\) => \{\s*if \(image === getPhotoViewerRoot\(\)\?\.querySelector\('\[data-photo-viewer-image\]'\)\) fitPhotoToStage\(\);\s*\}, \{ once: true \}\)/);
     assert.match(photoViewerTransformJs, /Math\.min\(1, stageWidth \/ naturalWidth, stageHeight \/ naturalHeight\)/);
-    assert.match(appJs, /photoViewerState\.scale = getInitialPhotoScale\(stage, image\);/);
+    assert.match(appJs, /photoViewerState\.scale = getInitialPhotoScale\(stage, media\);/);
     assert.match(appJs, /photoViewerState\.initialScale = photoViewerState\.scale;/);
     assert.match(photoViewerTransformJs, /return Math\.min\(PHOTO_VIEWER_MIN_SCALE_BASE, initialScale \* PHOTO_VIEWER_MIN_SCALE_RATIO\);/);
     assert.match(photoViewerTransformJs, /return Math\.max\(PHOTO_VIEWER_MAX_SCALE_BASE, initialScale \* PHOTO_VIEWER_MAX_SCALE_RATIO\);/);
@@ -658,7 +667,11 @@ test('照片初始居中适配舞台且平移不会完全移出屏幕', () => {
     assert.match(appJs, /photoViewerState\.translateX = 0;[\s\S]*photoViewerState\.translateY = 0;/);
     assert.match(photoViewerTransformJs, /imageSize <= stageSize[\s\S]*return 0;/);
     assert.match(photoViewerTransformJs, /return \(imageSize - stageSize\) \/ 2;/);
-    assert.match(appJs, /getPhotoViewerRenderMetrics\(\{[\s\S]*naturalWidth: image\.naturalWidth,[\s\S]*naturalHeight: image\.naturalHeight,[\s\S]*scale: photoViewerState\.scale/);
+    assert.match(appJs, /function getViewerMediaSourceSize\([\s\S]*media\.videoWidth[\s\S]*media\.naturalWidth/);
+    assert.match(appJs, /getPhotoViewerRenderMetrics\(\{[\s\S]*naturalWidth: sourceSize\.width,[\s\S]*naturalHeight: sourceSize\.height,[\s\S]*scale: photoViewerState\.scale/);
+    assert.match(appJs, /function handlePhotoWheel\(event\) \{\s*if \(!photoViewerState \|\| !event\.target\.closest\?\.\('\[data-photo-viewer-stage\]'\)\) \{/);
+    assert.match(appJs, /photoGestureState\.suppressClick = true;[\s\S]*updatePhotoViewerTransform\(\);/);
+    assert.match(appJs, /if \(photoGestureState\.suppressClick\) \{[\s\S]*photoGestureState\.suppressClick = false;[\s\S]*return;/);
     assert.match(photoViewerTransformJs, /const renderScale = scale > 0 && scale < 1 \? scale : 1;/);
     assert.match(photoViewerTransformJs, /width: naturalWidth \* renderScale,/);
     assert.match(photoViewerTransformJs, /height: naturalHeight \* renderScale,/);

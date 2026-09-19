@@ -449,12 +449,7 @@
     }
 
     .photo-viewer-toolbar {
-        display: flex;
-        flex-wrap: wrap;
-        align-content: start;
-        gap: 8px 10px;
-        justify-content: center;
-        overflow-x: visible;
+        min-height: 50px;
         padding: 8px 48px 8px 8px;
     }
 
@@ -484,17 +479,21 @@
         min-width: 48px;
     }
 
-    .video-viewer-controls {
-        grid-template-columns: 1fr auto;
-        gap: 8px;
+    .photo-viewer-controls {
+        gap: 7px 8px;
         padding: 8px;
     }
 
-    .video-viewer-primary-controls { justify-content: flex-start; }
+    .video-viewer-controls {
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+    }
+
     .video-viewer-seek-label { grid-column: 1 / -1; grid-row: 1; }
     .video-viewer-time { grid-column: 2; grid-row: 2; }
-    .video-viewer-primary-controls { grid-column: 1; grid-row: 2; }
-    .video-viewer-secondary-controls { grid-column: 1 / -1; grid-row: 3; flex-wrap: wrap; }
+    .video-viewer-primary-controls { grid-column: 1; grid-row: 2; justify-content: flex-start; }
+    .video-viewer-controls .photo-viewer-zoom-group { grid-column: 1 / -1; grid-row: 3; justify-content: center; }
+    .video-viewer-secondary-controls { grid-column: 1 / -1; grid-row: 4; flex-wrap: wrap; justify-content: center; }
     .video-viewer-volume { width: min(28vw, 110px); }
     .video-viewer-big-play { width: 60px; height: 60px; font-size: 24px; }
 

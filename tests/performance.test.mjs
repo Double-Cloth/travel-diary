@@ -62,5 +62,5 @@ test('多图预览不把 Base64 写入 DOM，并降低移动端重绘开销', ()
 
 test('日记照片缩略图使用原生懒加载、异步解码和低请求优先级', () => {
     assert.match(appJs, /<img src="\$\{escapeHtml\(item\.src\)\}" alt="\$\{escapeHtml\(item\.alt\)\}" loading="lazy" decoding="async" fetchpriority="low">/);
-    assert.match(appJs, /class="photo-viewer-image"[\s\S]*decoding="async"/);
+    assert.match(appJs, /class="photo-viewer-media photo-viewer-image"[\s\S]*decoding="async"/);
 });

@@ -1624,27 +1624,19 @@ function renderPhotoViewer() {
                         <span class="photo-viewer-count">${escapeHtml(position)}</span>
                         <button class="photo-viewer-control" type="button" data-action="photo-next" data-photo-action="next" aria-label="下一项媒体">›</button>
                     </div>
-                    ${isVideo ? '' : `<div class="photo-viewer-zoom-group photo-viewer-control-group" aria-label="图片缩放">
-                        <button class="photo-viewer-control" type="button" data-action="photo-zoom-out" data-photo-action="zoom-out" aria-label="缩小">−</button>
-                        <span class="photo-viewer-zoom" data-photo-viewer-zoom>100%</span>
-                        <button class="photo-viewer-control" type="button" data-action="photo-zoom-in" data-photo-action="zoom-in" aria-label="放大">+</button>
-                        <button class="photo-viewer-control" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="恢复到初始适配比例">原比例</button>
-                    </div>
-                    <div class="photo-viewer-rotate-group photo-viewer-control-group" aria-label="图片旋转">
-                        <button class="photo-viewer-control" type="button" data-action="photo-rotate-left" data-photo-action="rotate-left" aria-label="向左旋转">↺</button>
-                        <button class="photo-viewer-control" type="button" data-action="photo-rotate-right" data-photo-action="rotate-right" aria-label="向右旋转">↻</button>
-                    </div>`}
                 </div>
                 <button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer" aria-label="关闭媒体查看器">×</button>
                 <div class="photo-viewer-stage" data-photo-viewer-stage>
                     ${isVideo
-                        ? `<video class="video-viewer-video" data-video-viewer-video src="${escapeHtml(photo.src)}" preload="metadata" playsinline aria-label="${escapeHtml(photo.alt)}"></video>
+                        ? `<div class="photo-viewer-media-frame" data-photo-viewer-frame>
+                            <video class="photo-viewer-media video-viewer-video" data-photo-viewer-media data-video-viewer-video src="${escapeHtml(photo.src)}" preload="metadata" playsinline aria-label="${escapeHtml(photo.alt)}"></video>
+                           </div>
                            <button class="video-viewer-big-play" type="button" data-video-action="toggle-play" aria-label="播放视频">▶</button>`
-                        : `<div class="photo-viewer-image-frame" data-photo-viewer-frame>
-                            <img class="photo-viewer-image" data-photo-viewer-image src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" decoding="async" draggable="false">
+                        : `<div class="photo-viewer-media-frame photo-viewer-image-frame" data-photo-viewer-frame>
+                            <img class="photo-viewer-media photo-viewer-image" data-photo-viewer-media data-photo-viewer-image src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" decoding="async" draggable="false">
                         </div>`}
                 </div>
-                ${isVideo ? renderVideoControls() : ''}
+                ${isVideo ? renderVideoControls() : renderPhotoControls()}
                 <p class="photo-viewer-caption">${escapeHtml(photo.alt)}</p>
             </section>
         </div>
@@ -1656,10 +1648,17 @@ function renderPhotoViewer() {
             video.volume = photoViewerState.videoVolume;
             video.muted = photoViewerState.videoMuted;
             video.playbackRate = photoViewerState.videoRate;
-            for (const eventName of ['loadedmetadata', 'durationchange', 'timeupdate', 'play', 'pause', 'ended', 'volumechange', 'ratechange']) {
+            for (const eventName of ['durationchange', 'timeupdate', 'play', 'pause', 'ended', 'volumechange', 'ratechange']) {
                 video.addEventListener(eventName, syncVideoViewerControls);
             }
+            video.addEventListener('loadedmetadata', () => {
+                if (video !== getViewerVideo()) return;
+                fitPhotoToStage();
+                syncVideoViewerControls();
+            });
             video.addEventListener('error', showVideoPlaybackError, { once: true });
+            if (video.readyState >= 1) fitPhotoToStage();
+            else updatePhotoViewerTransform();
             syncVideoViewerControls();
         }
         requestAnimationFrame(() => getPhotoViewerRoot()?.querySelector('.photo-viewer-panel')?.focus({ preventScroll: true }));
@@ -1708,7 +1707,8 @@ function getPhotoViewerItems(button) {
 
 function renderVideoControls() {
     return `
-        <div class="video-viewer-controls" aria-label="视频播放控制">
+        <div class="photo-viewer-controls video-viewer-controls" aria-label="视频播放与画面控制">
+            ${renderZoomControls('视频缩放')}
             <div class="video-viewer-primary-controls">
                 <button class="photo-viewer-control" type="button" data-video-action="rewind" aria-label="后退 10 秒">−10s</button>
                 <button class="photo-viewer-control video-viewer-play" type="button" data-video-action="toggle-play" data-video-play aria-label="播放视频">播放</button>
@@ -1723,6 +1723,26 @@ function renderVideoControls() {
                 <button class="photo-viewer-control" type="button" data-video-action="fullscreen" aria-label="全屏播放">全屏</button>
             </div>
         </div>`;
+}
+
+function renderPhotoControls() {
+    return `
+        <div class="photo-viewer-controls" aria-label="图片显示控制">
+            ${renderZoomControls('图片缩放')}
+            <div class="photo-viewer-rotate-group photo-viewer-control-group" aria-label="图片旋转">
+                <button class="photo-viewer-control" type="button" data-action="photo-rotate-left" data-photo-action="rotate-left" aria-label="向左旋转">↺</button>
+                <button class="photo-viewer-control" type="button" data-action="photo-rotate-right" data-photo-action="rotate-right" aria-label="向右旋转">↻</button>
+            </div>
+        </div>`;
+}
+
+function renderZoomControls(label) {
+    return `<div class="photo-viewer-zoom-group photo-viewer-control-group" aria-label="${label}">
+        <button class="photo-viewer-control" type="button" data-action="photo-zoom-out" data-photo-action="zoom-out" aria-label="缩小">−</button>
+        <span class="photo-viewer-zoom" data-photo-viewer-zoom>100%</span>
+        <button class="photo-viewer-control" type="button" data-action="photo-zoom-in" data-photo-action="zoom-in" aria-label="放大">+</button>
+        <button class="photo-viewer-control" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="恢复到初始适配比例">原比例</button>
+    </div>`;
 }
 
 function handlePhotoViewerAction(action) {
@@ -1870,26 +1890,39 @@ function fitPhotoToStage() {
     }
 
     const stage = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-stage]');
-    const image = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]');
-    if (!stage || !image) {
+    const media = getViewerMedia();
+    if (!stage || !media) {
         return;
     }
 
-    photoViewerState.scale = getInitialPhotoScale(stage, image);
+    photoViewerState.scale = getInitialPhotoScale(stage, media);
     photoViewerState.initialScale = photoViewerState.scale;
     photoViewerState.translateX = 0;
     photoViewerState.translateY = 0;
     updatePhotoViewerTransform();
 }
 
-function getInitialPhotoScale(stage, image) {
+function getInitialPhotoScale(stage, media) {
     const stageRect = stage.getBoundingClientRect();
+    const { width, height } = getViewerMediaSourceSize(media);
     return calculateInitialPhotoScale({
         stageWidth: stageRect.width,
         stageHeight: stageRect.height,
-        naturalWidth: image.naturalWidth,
-        naturalHeight: image.naturalHeight
+        naturalWidth: width,
+        naturalHeight: height
     });
+}
+
+function getViewerMedia() {
+    return getPhotoViewerRoot()?.querySelector('[data-photo-viewer-media]') || null;
+}
+
+function getViewerMediaSourceSize(media = getViewerMedia()) {
+    if (!media) return { width: 0, height: 0 };
+    if (media.matches('[data-video-viewer-video]')) {
+        return { width: media.videoWidth || 0, height: media.videoHeight || 0 };
+    }
+    return { width: media.naturalWidth || 0, height: media.naturalHeight || 0 };
 }
 
 function zoomPhoto(factor, focalPoint) {
@@ -1959,7 +1992,7 @@ function updatePhotoViewerTransform(options = {}) {
         return;
     }
 
-    const image = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]');
+    const image = getViewerMedia();
     const frame = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-frame]');
     if (!image || !frame) {
         return;
@@ -1978,9 +2011,10 @@ function updatePhotoViewerTransform(options = {}) {
         }, PHOTO_ROTATION_ANIMATION_MS);
     }
 
+    const sourceSize = getViewerMediaSourceSize(image);
     const renderMetrics = getPhotoViewerRenderMetrics({
-        naturalWidth: image.naturalWidth,
-        naturalHeight: image.naturalHeight,
+        naturalWidth: sourceSize.width,
+        naturalHeight: sourceSize.height,
         scale: photoViewerState.scale
     });
     const visualScale = renderMetrics?.transformScale || photoViewerState.scale;
@@ -2023,14 +2057,15 @@ function getPhotoViewerBounds() {
     }
 
     const stage = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-stage]');
-    const image = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]');
+    const image = getViewerMedia();
     if (!stage || !image) {
         return null;
     }
 
     const stageRect = stage.getBoundingClientRect();
-    const sourceWidth = image.naturalWidth || image.width;
-    const sourceHeight = image.naturalHeight || image.height;
+    const sourceSize = getViewerMediaSourceSize(image);
+    const sourceWidth = sourceSize.width || image.width;
+    const sourceHeight = sourceSize.height || image.height;
     if (!stageRect.width || !stageRect.height || !sourceWidth || !sourceHeight) {
         return null;
     }
@@ -2056,12 +2091,16 @@ function clearPhotoRotationTimer() {
 
 function handlePhotoPointerDown(event) {
     const stage = event.target.closest?.('[data-photo-viewer-stage]');
-    if (!stage || !photoViewerState || photoViewerState.photos[photoViewerState.index]?.kind === 'video'
-        || (event.pointerType === 'mouse' && event.button !== 0)) {
+    if (!stage || !photoViewerState || (event.pointerType === 'mouse' && event.button !== 0)) {
+        return;
+    }
+    if (event.target.closest?.('button, input, select, label')) {
+        photoGestureState.suppressClick = false;
         return;
     }
 
     event.preventDefault();
+    if (photoGestureState.pointers.size === 0) photoGestureState.suppressClick = false;
     stage.setPointerCapture?.(event.pointerId);
     photoGestureState.pointers.set(event.pointerId, getPointerPoint(event));
     syncPhotoGestureStart();
@@ -2077,6 +2116,7 @@ function handlePhotoPointerMove(event) {
     const points = Array.from(photoGestureState.pointers.values());
 
     if (points.length >= 2 && photoGestureState.pinchStart) {
+        photoGestureState.suppressClick = true;
         const current = getGestureMetrics(points[0], points[1]);
         const start = photoGestureState.pinchStart;
         const nextScale = clamp(start.scale * (current.distance / Math.max(start.distance, 1)), getMinimumPhotoScale(), getMaximumPhotoScale());
@@ -2098,6 +2138,9 @@ function handlePhotoPointerMove(event) {
 
     if (points.length === 1 && photoGestureState.dragStart) {
         const point = points[0];
+        if (Math.hypot(point.x - photoGestureState.dragStart.x, point.y - photoGestureState.dragStart.y) > 4) {
+            photoGestureState.suppressClick = true;
+        }
         photoViewerState.translateX = photoGestureState.dragStart.translateX + point.x - photoGestureState.dragStart.x;
         photoViewerState.translateY = photoGestureState.dragStart.translateY + point.y - photoGestureState.dragStart.y;
         updatePhotoViewerTransform();
@@ -2114,7 +2157,7 @@ function handlePhotoPointerEnd(event) {
 }
 
 function handlePhotoWheel(event) {
-    if (!photoViewerState || photoViewerState.photos[photoViewerState.index]?.kind === 'video' || !event.target.closest?.('[data-photo-viewer]')) {
+    if (!photoViewerState || !event.target.closest?.('[data-photo-viewer-stage]')) {
         return;
     }
 
@@ -2175,7 +2218,8 @@ function createPhotoGestureState() {
     return {
         pointers: new Map(),
         dragStart: null,
-        pinchStart: null
+        pinchStart: null,
+        suppressClick: false
     };
 }
 
@@ -2346,6 +2390,10 @@ function handleDocumentClick(event) {
 
     if (event.target.closest('[data-video-viewer-video]')) {
         event.preventDefault();
+        if (photoGestureState.suppressClick) {
+            photoGestureState.suppressClick = false;
+            return;
+        }
         handleVideoViewerAction('toggle-play');
         return;
     }
