@@ -4,13 +4,14 @@ const PHOTO_VIEWER_MAX_SCALE_BASE = 5;
 const PHOTO_VIEWER_MAX_SCALE_RATIO = 5;
 const PHOTO_VIEWER_FIT_MIN_SCALE = 0.08;
 
-export function getInitialPhotoScale({ stageWidth, stageHeight, naturalWidth, naturalHeight }) {
+export function getInitialPhotoScale({ stageWidth, stageHeight, naturalWidth, naturalHeight, allowUpscale = false }) {
     if (!naturalWidth || !naturalHeight || !stageWidth || !stageHeight) {
         return 1;
     }
 
-    const fitScale = Math.min(1, stageWidth / naturalWidth, stageHeight / naturalHeight);
-    return Math.max(PHOTO_VIEWER_FIT_MIN_SCALE, fitScale);
+    const fitScale = Math.min(stageWidth / naturalWidth, stageHeight / naturalHeight);
+    const containedScale = allowUpscale ? fitScale : Math.min(1, fitScale);
+    return Math.max(PHOTO_VIEWER_FIT_MIN_SCALE, containedScale);
 }
 
 export function getMinimumPhotoScale(initialScale = 1) {

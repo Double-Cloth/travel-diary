@@ -499,6 +499,14 @@
     .video-viewer-volume { width: min(28vw, 110px); }
     .video-viewer-big-play { width: 60px; height: 60px; }
 
+    .photo-viewer-transform-controls {
+        gap: 6px;
+    }
+
+    .photo-viewer-control-divider {
+        margin-inline: 0;
+    }
+
     .sheet-nav-button,
     .sheet-nav-button:first-child,
     .sheet-nav-button:last-child {

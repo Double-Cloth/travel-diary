@@ -1712,17 +1712,14 @@ function getPhotoViewerItems(button) {
 function renderVideoControls() {
     return `
         <div class="photo-viewer-controls video-viewer-controls" aria-label="视频播放与画面控制">
-            <div class="video-viewer-transform-controls">
-                ${renderZoomControls('视频缩放')}
-                ${renderRotateControls('视频旋转')}
-            </div>
+            <label class="video-viewer-seek-label"><span class="sr-only">播放进度</span><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek></label>
+            <output class="video-viewer-time" data-video-time>00:00 / --:--</output>
             <div class="video-viewer-primary-controls">
                 <button class="photo-viewer-control video-viewer-skip" type="button" data-video-action="rewind" aria-label="后退 10 秒">−10s</button>
                 <button class="photo-viewer-control video-viewer-play" type="button" data-video-action="toggle-play" data-video-play aria-label="播放视频">${renderVideoPlaybackIcon()}</button>
                 <button class="photo-viewer-control video-viewer-skip" type="button" data-video-action="forward" aria-label="前进 10 秒">+10s</button>
             </div>
-            <label class="video-viewer-seek-label"><span class="sr-only">播放进度</span><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek></label>
-            <output class="video-viewer-time" data-video-time>00:00 / --:--</output>
+            ${renderTransformControls('视频', 'video-viewer-transform-controls')}
             <div class="video-viewer-secondary-controls">
                 <button class="photo-viewer-control video-viewer-mute" type="button" data-video-action="toggle-mute" data-video-mute aria-label="静音">静音</button>
                 <label class="video-viewer-volume-label"><span class="sr-only">音量</span><input class="video-viewer-range video-viewer-volume" type="range" min="0" max="1" step="0.05" value="0.8" data-video-volume></label>
@@ -1735,9 +1732,17 @@ function renderVideoControls() {
 function renderPhotoControls() {
     return `
         <div class="photo-viewer-controls" aria-label="图片显示控制">
-            ${renderZoomControls('图片缩放')}
-            ${renderRotateControls('图片旋转')}
+            ${renderTransformControls('图片')}
         </div>`;
+}
+
+function renderTransformControls(mediaLabel, className = '') {
+    return `<div class="photo-viewer-transform-controls${className ? ` ${className}` : ''}" aria-label="${mediaLabel}画面控制">
+        ${renderZoomControls(`${mediaLabel}缩放`)}
+        <span class="photo-viewer-control-divider" aria-hidden="true"></span>
+        ${renderRotateControls(`${mediaLabel}旋转`)}
+        <button class="photo-viewer-control photo-viewer-reset" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="恢复到初始适配比例">适应</button>
+    </div>`;
 }
 
 function renderRotateControls(label) {
@@ -1756,7 +1761,6 @@ function renderZoomControls(label) {
         <button class="photo-viewer-control" type="button" data-action="photo-zoom-out" data-photo-action="zoom-out" aria-label="缩小">−</button>
         <span class="photo-viewer-zoom" data-photo-viewer-zoom>100%</span>
         <button class="photo-viewer-control" type="button" data-action="photo-zoom-in" data-photo-action="zoom-in" aria-label="放大">+</button>
-        <button class="photo-viewer-control" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="恢复到初始适配比例">原比例</button>
     </div>`;
 }
 
@@ -1924,7 +1928,8 @@ function getInitialPhotoScale(stage, media) {
         stageWidth: stageRect.width,
         stageHeight: stageRect.height,
         naturalWidth: width,
-        naturalHeight: height
+        naturalHeight: height,
+        allowUpscale: media.matches('[data-video-viewer-video]')
     });
 }
 

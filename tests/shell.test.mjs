@@ -180,8 +180,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260919-media-viewer-v3/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260919-media-viewer-v3/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260919-media-viewer-v4/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260919-media-viewer-v4/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -575,7 +575,7 @@ test('视频共用媒体入口并提供完整播放控制与键盘操作', () =>
     assert.match(journalCss, /\.video-viewer-video\s*{/);
     assert.match(journalCss, /\.video-viewer-big-play\[hidden\]\s*{\s*display: none;/);
     assert.match(appJs, /bigPlay\.hidden = isPlaying;/);
-    assert.match(appJs, /renderRotateControls\('视频旋转'\)/);
+    assert.match(appJs, /renderRotateControls\(`\$\{mediaLabel\}旋转`\)/);
     assert.match(appJs, /VIDEO_PLAY_ICON_PATH[\s\S]*VIDEO_PAUSE_ICON_PATH/);
     assert.match(appJs, /class="video-viewer-play-icon"[\s\S]*data-video-play-icon/);
     assert.match(appJs, /play\.querySelector\('\[data-video-play-icon\]'\)\?\.setAttribute\('d', isPlaying \? VIDEO_PAUSE_ICON_PATH : VIDEO_PLAY_ICON_PATH\)/);
@@ -583,6 +583,8 @@ test('视频共用媒体入口并提供完整播放控制与键盘操作', () =>
     assert.match(appJs, /<select id="videoPlaybackRate" data-custom-select data-video-rate/);
     assert.match(appJs, /enhanceCustomSelects\(root\.querySelector\('\[data-photo-viewer\]'\)\)/);
     assert.match(journalCss, /\.video-viewer-rate-label \.custom-select-trigger\s*{/);
+    assert.match(journalCss, /\.video-viewer-rate-label \.custom-select-trigger > \[data-custom-select-label\]\s*{[\s\S]*?text-overflow: clip;/);
+    assert.match(journalCss, /\.video-viewer-rate-label \.custom-select\.is-open \.custom-select-chevron/);
 });
 
 test('从照片全集页返回笔记不会把照片页保存为关闭后的背景页', () => {
@@ -618,9 +620,9 @@ test('媒体查看器顶部只保留切换，图片与视频控件统一放在�
     assert.match(appJs, /<\/div>\s*\$\{isVideo \? renderVideoControls\(\) : renderPhotoControls\(\)\}\s*<p class="photo-viewer-caption">/);
     assert.match(appJs, /class="photo-viewer-controls video-viewer-controls"/);
     assert.match(appJs, /function renderPhotoControls\(\)[\s\S]*class="photo-viewer-controls"/);
-    assert.match(appJs, /function renderVideoControls\(\)[\s\S]*renderZoomControls\('视频缩放'\)/);
+    assert.match(appJs, /function renderVideoControls\(\)[\s\S]*renderTransformControls\('视频', 'video-viewer-transform-controls'\)/);
     assert.match(appJs, /<\/div>\s*<button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer"/);
-    assert.match(appJs, /data-action="photo-reset"[\s\S]*aria-label="恢复到初始适配比例"[\s\S]*>原比例<\/button>/);
+    assert.match(appJs, /data-action="photo-reset"[\s\S]*aria-label="恢复到初始适配比例"[\s\S]*>适应<\/button>/);
     assert.match(appJs, /photoViewerState\.scale = photoViewerState\.initialScale \|\| 1;/);
     assert.match(journalCss, /\.photo-viewer-toolbar\s*{[\s\S]*display: flex;/);
     assert.match(journalCss, /\.photo-viewer-controls\s*{[\s\S]*display: flex;/);
@@ -666,7 +668,9 @@ test('图片与视频初始居中适配舞台且平移不会完全移出屏幕',
     assert.match(photoViewerTransformJs, /function getPhotoViewerAxisTranslateLimit/);
     assert.match(photoViewerTransformJs, /function getPhotoViewerRenderMetrics/);
     assert.match(appJs, /image\.addEventListener\('load', \(\) => \{\s*if \(image === getPhotoViewerRoot\(\)\?\.querySelector\('\[data-photo-viewer-image\]'\)\) fitPhotoToStage\(\);\s*\}, \{ once: true \}\)/);
-    assert.match(photoViewerTransformJs, /Math\.min\(1, stageWidth \/ naturalWidth, stageHeight \/ naturalHeight\)/);
+    assert.match(photoViewerTransformJs, /const fitScale = Math\.min\(stageWidth \/ naturalWidth, stageHeight \/ naturalHeight\);/);
+    assert.match(photoViewerTransformJs, /const containedScale = allowUpscale \? fitScale : Math\.min\(1, fitScale\);/);
+    assert.match(appJs, /allowUpscale: media\.matches\('\[data-video-viewer-video\]'\)/);
     assert.match(appJs, /photoViewerState\.scale = getInitialPhotoScale\(stage, media\);/);
     assert.match(appJs, /photoViewerState\.initialScale = photoViewerState\.scale;/);
     assert.match(photoViewerTransformJs, /return Math\.min\(PHOTO_VIEWER_MIN_SCALE_BASE, initialScale \* PHOTO_VIEWER_MIN_SCALE_RATIO\);/);

@@ -1,10 +1,34 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
+    getInitialPhotoScale,
     getPhotoViewerZoomTranslate,
     constrainPhotoViewerTranslate,
     getPhotoViewerRenderMetrics
 } from '../js/photo-viewer-transform.mjs';
+
+test('视频可以按图片的等比适配规则放大到舞台边界', () => {
+    const result = getInitialPhotoScale({
+        stageWidth: 988,
+        stageHeight: 549,
+        naturalWidth: 572,
+        naturalHeight: 326,
+        allowUpscale: true
+    });
+
+    assert.equal(result, Math.min(988 / 572, 549 / 326));
+});
+
+test('图片初始适配仍不会超过原始尺寸', () => {
+    const result = getInitialPhotoScale({
+        stageWidth: 988,
+        stageHeight: 549,
+        naturalWidth: 414,
+        naturalHeight: 300
+    });
+
+    assert.equal(result, 1);
+});
 
 test('缩小到小于舞台时照片平移会回到中心', () => {
     const result = constrainPhotoViewerTranslate({
