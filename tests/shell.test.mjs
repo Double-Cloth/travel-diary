@@ -180,9 +180,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260919-video-media-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260919-video-upload-v2/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260919-video-media-v1/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-media-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
 });
@@ -556,7 +556,9 @@ test('日记页最多预览三行媒体且提供全集媒体页', () => {
 
 test('视频共用媒体入口并提供完整播放控制与键盘操作', () => {
     assert.match(recordEditorJs, /选择图片或视频/);
-    assert.match(recordEditorJs, /accept="image\/jpeg,image\/png,image\/gif,image\/webp,video\/mp4,video\/webm,video\/ogg"/);
+    assert.match(recordEditorJs, /accept="\.mp4,\.m4v,\.mov,\.webm,\.ogv,\.ogg,[^"]*video\/quicktime/);
+    assert.match(recordEditorJs, /AbortSignal\.timeout\(15 \* 60 \* 1000\)/);
+    assert.match(recordStoreJs, /const MAXIMUM_RECORD_BYTES = 768 \* 1024 \* 1024/);
     assert.match(recordEditorJs, /photo\.kind === 'image' \? await createPhotoPreviewUrl\(file\) : URL\.createObjectURL\(file\)/);
     assert.match(appJs, /data-video-action="toggle-play"/);
     assert.match(appJs, /data-video-action="rewind"/);

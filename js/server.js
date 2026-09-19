@@ -181,7 +181,10 @@ function guessContentType(filePath) {
     case '.webp':
       return 'image/webp';
     case '.mp4':
+    case '.m4v':
       return 'video/mp4';
+    case '.mov':
+      return 'video/quicktime';
     case '.webm':
       return 'video/webm';
     case '.ogv':

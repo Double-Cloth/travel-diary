@@ -2,7 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { loadBrowserModule } from './helpers/browser-modules.mjs';
-import { MAXIMUM_MEDIA_FILE_BYTES, readUploads, storedPhotoNames } from '../js/photo-uploads.mjs';
+import {
+    MAXIMUM_IMAGE_FILE_BYTES,
+    MAXIMUM_MEDIA_BATCH_BYTES,
+    MAXIMUM_MEDIA_FILE_BYTES,
+    MAXIMUM_VIDEO_FILE_BYTES,
+    readUploads,
+    storedPhotoNames
+} from '../js/photo-uploads.mjs';
 import { DRAFT_FORMAT, defaultMarkdownPath, recordSlug } from '../js/record-input.mjs';
 import { createDraftArchive, readDraftArchive } from '../js/draft-archive.mjs';
 import { readZip } from '../js/zip-archive.mjs';
@@ -60,7 +67,14 @@ test('媒体验证支持常见图片与视频，并拒绝格式伪装、重复�
     const mp4 = { id: 'c'.repeat(32), name: '湖边.mp4', data: Buffer.from('\0\0\0\x18ftypisom\0\0\0\0isommp42', 'binary').toString('base64') };
     const { kind, extension, mimeType } = readUploads([mp4])[0];
     assert.deepEqual({ kind, extension, mimeType }, { kind: 'video', extension: 'mp4', mimeType: 'video/mp4' });
-    assert.equal(MAXIMUM_MEDIA_FILE_BYTES, 96 * 1024 * 1024);
+    const mov = { id: 'd'.repeat(32), name: '湖边.mov', data: Buffer.from('\0\0\0\x18ftypqt  \0\0\0\0qt  ', 'binary').toString('base64') };
+    assert.deepEqual(readUploads([mov])[0], {
+        ...mov, kind: 'video', extension: 'mov', mimeType: 'video/quicktime', size: Buffer.from(mov.data, 'base64').length
+    });
+    assert.equal(MAXIMUM_IMAGE_FILE_BYTES, 96 * 1024 * 1024);
+    assert.equal(MAXIMUM_VIDEO_FILE_BYTES, 512 * 1024 * 1024);
+    assert.equal(MAXIMUM_MEDIA_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES);
+    assert.equal(MAXIMUM_MEDIA_BATCH_BYTES, MAXIMUM_VIDEO_FILE_BYTES);
     assert.throws(() => readUploads([{ ...photo, data: 'invalid!' }]));
     assert.throws(() => readUploads([{ ...photo, data: Buffer.from('<html>not a photo</html>').toString('base64') }]));
 });

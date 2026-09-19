@@ -25,6 +25,7 @@ before(async () => {
     await writeFile(path.join(root, '%2e.txt'), '编码名称');
     await writeFile(path.join(root, 'module.mjs'), 'export {};');
     await writeFile(path.join(root, 'clip.mp4'), Buffer.from('0123456789'));
+    await writeFile(path.join(root, 'clip.mov'), Buffer.from('quicktime'));
     await writeFile(path.join(root, '.secrets/auth.json'), '{"hash":"never public"}');
     await writeFile(path.join(fixture, 'site-other', 'secret.txt'), '目录外内容');
     await symlink(path.join(fixture, 'site-other'), path.join(root, 'outside'), process.platform === 'win32' ? 'junction' : 'dir');
@@ -126,6 +127,8 @@ test('视频使用正确 MIME 并支持单段 Range 请求与进度拖动', asyn
     const invalid = await request('/clip.mp4', 'GET', { Range: 'bytes=20-30' });
     assert.equal(invalid.status, 416);
     assert.equal(invalid.headers['content-range'], 'bytes */10');
+    const quicktime = await request('/clip.mov');
+    assert.equal(quicktime.headers['content-type'], 'video/quicktime');
 });
 
 test('端口参数不能越界且被占用时自动尝试后续端口', async () => {

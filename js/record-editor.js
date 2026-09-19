@@ -1,6 +1,12 @@
 import { escapeHtml } from './utils.js';
 import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
-import { MAXIMUM_MEDIA_FILE_BYTES, readUploads } from './photo-uploads.mjs';
+import {
+    MAXIMUM_IMAGE_FILE_BYTES,
+    MAXIMUM_MEDIA_BATCH_BYTES,
+    MAXIMUM_MEDIA_FILE_BYTES,
+    MAXIMUM_VIDEO_FILE_BYTES,
+    readUploads
+} from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
 import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
@@ -260,8 +266,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <div class="record-editor-upload-zone" data-editor-drop>
                             <button class="paper-button" type="button" data-editor-upload>＋ 选择图片或视频</button>
                             <p>也可将图片和视频一起拖到这里</p>
-                            <small>图片：JPEG / PNG / GIF / WebP · 视频：MP4 / WebM / Ogg · 单个不超过 96 MiB</small>
-                            <input type="file" data-editor-photos accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
+                            <small>图片：JPEG / PNG / GIF / WebP，单张最大 ${MAXIMUM_IMAGE_FILE_BYTES / 1024 / 1024} MiB · 视频：MP4 / M4V / MOV / WebM / Ogg，单个最大 ${MAXIMUM_VIDEO_FILE_BYTES / 1024 / 1024} MiB</small>
+                            <input type="file" data-editor-photos accept=".mp4,.m4v,.mov,.webm,.ogv,.ogg,image/jpeg,image/png,image/gif,image/webp,video/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
                         </div>
                         <div class="record-editor-photo-list" data-editor-photo-list aria-label="待保存图片和视频"></div>
                     </section>
@@ -595,14 +601,28 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const pendingPreviews = [];
         try {
             if (files.some(file => !file.size)) throw new Error('不能选择空媒体文件。');
-            if (files.some(file => file.size > MAXIMUM_MEDIA_FILE_BYTES)) throw new Error('单个图片或视频不能超过 96 MiB。');
+            if (files.some(file => file.size > MAXIMUM_MEDIA_FILE_BYTES)) {
+                throw new Error(`单个视频不能超过 ${MAXIMUM_VIDEO_FILE_BYTES / 1024 / 1024} MiB。`);
+            }
+            if (files.some(file => file.type.startsWith('image/') && file.size > MAXIMUM_IMAGE_FILE_BYTES)) {
+                throw new Error(`单张图片不能超过 ${MAXIMUM_IMAGE_FILE_BYTES / 1024 / 1024} MiB。`);
+            }
+            const selectedBytes = files.reduce((total, file) => total + file.size, 0);
+            const pendingBytes = uploads.reduce((total, media) => total + media.size, 0);
+            if (selectedBytes + pendingBytes > MAXIMUM_MEDIA_BATCH_BYTES) {
+                throw new Error(`待保存的图片和视频合计不能超过 ${MAXIMUM_MEDIA_BATCH_BYTES / 1024 / 1024} MiB。`);
+            }
             const pending = [];
-            for (const file of files) {
+            for (const [fileIndex, file] of files.entries()) {
                 const id = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
                 const data = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
                     reader.onload = () => resolve(String(reader.result).split(',')[1]);
                     reader.onerror = () => reject(new Error('媒体读取失败，请重新选择。'));
+                    reader.onprogress = progress => {
+                        if (!progress.lengthComputable) return;
+                        status(`正在读取 ${fileIndex + 1}/${files.length}：${file.name} ${Math.round(progress.loaded / progress.total * 100)}%`);
+                    };
                     reader.readAsDataURL(file);
                 });
                 const photo = readUploads([{ id, name: file.name.slice(0, 200), data }])[0];
@@ -888,7 +908,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 method: editingRecord ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token },
                 credentials: 'same-origin',
                 body: JSON.stringify(editingRecord ? { originalDescMd: editingRecord.desc_md, draft } : draft),
-                signal: AbortSignal.timeout(60000)
+                signal: AbortSignal.timeout(15 * 60 * 1000)
             });
             const result = await response.json();
             if (!response.ok || !result.saved) throw new Error(result.error || '未收到服务器的成功响应。');
