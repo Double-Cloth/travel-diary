@@ -1653,6 +1653,7 @@ function renderPhotoViewer() {
     observePhotoViewerStage();
 
     if (isVideo) {
+        syncVideoMoreControlsLayout();
         const video = getViewerVideo();
         if (video) {
             video.volume = photoViewerState.videoVolume;
@@ -1720,13 +1721,17 @@ function getPhotoViewerItems(button) {
 function renderVideoControls() {
     return `
         <div class="photo-viewer-controls video-viewer-controls" aria-label="视频播放与画面控制">
-            <label class="video-viewer-seek-label"><span class="sr-only">播放进度</span><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek></label>
-            <output class="video-viewer-time" data-video-time>00:00 / --:--</output>
             <div class="video-viewer-primary-controls">
                 <button class="photo-viewer-control video-viewer-skip" type="button" data-video-action="rewind" aria-label="后退 10 秒">−10s</button>
                 <button class="photo-viewer-control video-viewer-play" type="button" data-video-action="toggle-play" data-video-play aria-label="播放视频">${renderVideoPlaybackIcon()}</button>
                 <button class="photo-viewer-control video-viewer-skip" type="button" data-video-action="forward" aria-label="前进 10 秒">+10s</button>
             </div>
+            <label class="video-viewer-seek-label"><span class="sr-only">播放进度</span><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek></label>
+            <button class="photo-viewer-control video-viewer-more-toggle" type="button" data-video-action="toggle-controls" data-video-more-toggle aria-expanded="false" aria-label="展开更多视频控制">
+                <span>更多</span>
+                <svg class="video-viewer-more-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5l5-5"></path></svg>
+            </button>
+            <output class="video-viewer-time" data-video-time>00:00 / --:--</output>
             ${renderTransformControls('视频', 'video-viewer-transform-controls')}
             <div class="video-viewer-secondary-controls">
                 <button class="photo-viewer-control video-viewer-mute" type="button" data-video-action="toggle-mute" data-video-mute aria-label="静音">静音</button>
@@ -1735,6 +1740,25 @@ function renderVideoControls() {
                 <button class="photo-viewer-control video-viewer-fullscreen" type="button" data-video-action="fullscreen" aria-label="全屏播放">全屏</button>
             </div>
         </div>`;
+}
+
+function syncVideoMoreControlsLayout() {
+    const controls = getPhotoViewerRoot()?.querySelector('.video-viewer-controls');
+    if (!controls) return;
+    const layout = isMobileLayout() ? 'mobile' : 'desktop';
+    if (controls.dataset.videoControlsLayout === layout) return;
+    if (layout === 'mobile') setVideoMoreControlsOpen(false);
+    controls.dataset.videoControlsLayout = layout;
+}
+
+function setVideoMoreControlsOpen(isOpen) {
+    const controls = getPhotoViewerRoot()?.querySelector('.video-viewer-controls');
+    const toggle = controls?.querySelector('[data-video-more-toggle]');
+    if (!controls || !toggle) return;
+    controls.classList.toggle('is-more-open', isOpen);
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    toggle.setAttribute('aria-label', isOpen ? '收起更多视频控制' : '展开更多视频控制');
+    schedulePhotoViewerFit();
 }
 
 function renderPhotoControls() {
@@ -1825,6 +1849,9 @@ function handleVideoViewerAction(action) {
         case 'toggle-mute':
             video.muted = !video.muted;
             photoViewerState.videoMuted = video.muted;
+            break;
+        case 'toggle-controls':
+            setVideoMoreControlsOpen(!getPhotoViewerRoot()?.querySelector('.video-viewer-controls')?.classList.contains('is-more-open'));
             break;
         case 'fullscreen':
             void toggleVideoFullscreen().catch(showVideoPlaybackError);
@@ -2799,6 +2826,7 @@ function clearSearchRouteTimer() {
 
 function handleViewportResize() {
     syncMobileContextPanelState();
+    syncVideoMoreControlsLayout();
     queuePhotoSleevePreviewSync();
     schedulePhotoViewerFit();
 

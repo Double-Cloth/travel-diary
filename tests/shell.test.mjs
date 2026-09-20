@@ -180,8 +180,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260920-mobile-volume-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260920-mobile-volume-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260920-mobile-controls-v2/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260920-mobile-controls-v2/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -644,10 +644,18 @@ test('移动端照片查看器充分利用上下空间', () => {
     assert.doesNotMatch(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-panel\s*{[\s\S]*height: min\(720px, 100%\);/);
 });
 
-test('移动端媒体查看器按进度、播放、缩放和辅助控件分行排列', () => {
+test('移动端视频查看器同排显示播放和进度并可折叠其余控件', () => {
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-toolbar\s*{[\s\S]*padding: 8px 48px 8px 8px;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-close\s*{[\s\S]*top: 8px;[\s\S]*right: 8px;[\s\S]*height: 36px;[\s\S]*padding: 0;/);
-    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-seek-label \{ grid-column: 1 \/ -1; grid-row: 1; \}/);
+    assert.match(appJs, /data-video-action="toggle-controls" data-video-more-toggle aria-expanded="false" aria-label="展开更多视频控制"/);
+    assert.match(appJs, /function syncVideoMoreControlsLayout\(\)[\s\S]*if \(layout === 'mobile'\) setVideoMoreControlsOpen\(false\);/);
+    assert.match(appJs, /function setVideoMoreControlsOpen\(isOpen\)[\s\S]*classList\.toggle\('is-more-open', isOpen\)[\s\S]*schedulePhotoViewerFit\(\);/);
+    assert.match(appJs, /case 'toggle-controls':[\s\S]*setVideoMoreControlsOpen/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-controls\s*{[\s\S]*grid-template-columns: auto minmax\(0, 1fr\) auto;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-primary-controls \{ grid-column: 1; grid-row: 1; \}/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-seek-label \{ grid-column: 2; grid-row: 1;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-more-toggle\s*{[\s\S]*grid-column: 3;[\s\S]*grid-row: 1;[\s\S]*display: inline-grid;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-controls:not\(\.is-more-open\) \.video-viewer-time,[\s\S]*\.video-viewer-controls:not\(\.is-more-open\) \.video-viewer-secondary-controls { display: none; }/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-transform-controls \{ grid-column: 1 \/ -1; grid-row: 3;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-secondary-controls\s*\{[\s\S]*grid-column: 1 \/ -1;[\s\S]*grid-row: 4;[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-skip,\s*\.video-viewer-mute \{ display: none; \}/);

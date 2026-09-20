@@ -450,6 +450,21 @@
     gap: 8px 12px;
 }
 
+.video-viewer-more-toggle {
+    display: none;
+}
+
+.video-viewer-more-icon {
+    width: 12px;
+    height: 8px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.8;
+    transition: transform 0.18s ease;
+}
+
 .video-viewer-transform-controls {
     grid-column: 2;
     grid-row: 2;
