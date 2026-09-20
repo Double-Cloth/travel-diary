@@ -180,8 +180,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260919-media-viewer-v5/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260919-media-viewer-v5/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260920-mobile-volume-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260920-mobile-volume-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -649,11 +649,14 @@ test('移动端媒体查看器按进度、播放、缩放和辅助控件分行�
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-close\s*{[\s\S]*top: 8px;[\s\S]*right: 8px;[\s\S]*height: 36px;[\s\S]*padding: 0;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-seek-label \{ grid-column: 1 \/ -1; grid-row: 1; \}/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-transform-controls \{ grid-column: 1 \/ -1; grid-row: 3;/);
-    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-secondary-controls \{ grid-column: 1 \/ -1; grid-row: 4; flex-wrap: wrap;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-secondary-controls\s*\{[\s\S]*grid-column: 1 \/ -1;[\s\S]*grid-row: 4;[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-skip,\s*\.video-viewer-mute \{ display: none; \}/);
     assert.match(appJs, /class="photo-viewer-control video-viewer-skip"[\s\S]*data-video-action="rewind"/);
     assert.match(appJs, /class="photo-viewer-control video-viewer-mute"[\s\S]*data-video-action="toggle-mute"/);
-    assert.match(appJs, /class="video-viewer-range video-viewer-volume"[\s\S]*data-video-volume/);
+    assert.match(appJs, /class="video-viewer-volume-text" aria-hidden="true">音量<\/span>[\s\S]*class="video-viewer-range video-viewer-volume"[\s\S]*data-video-volume aria-label="音量"/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-volume-label\s*\{[\s\S]*grid-column: 1 \/ -1;[\s\S]*grid-template-columns: auto minmax\(0, 1fr\);/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.video-viewer-volume-text \{ display: inline; \}/);
+    assert.match(appJs, /class="photo-viewer-control video-viewer-fullscreen"[\s\S]*data-video-action="fullscreen"/);
 });
 
 test('文件设置在常见手机宽度下改为单列并保持可读字号', () => {

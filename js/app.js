@@ -1730,9 +1730,9 @@ function renderVideoControls() {
             ${renderTransformControls('视频', 'video-viewer-transform-controls')}
             <div class="video-viewer-secondary-controls">
                 <button class="photo-viewer-control video-viewer-mute" type="button" data-video-action="toggle-mute" data-video-mute aria-label="静音">静音</button>
-                <label class="video-viewer-volume-label"><span class="sr-only">音量</span><input class="video-viewer-range video-viewer-volume" type="range" min="0" max="1" step="0.05" value="0.8" data-video-volume></label>
+                <label class="video-viewer-volume-label"><span class="video-viewer-volume-text" aria-hidden="true">音量</span><input class="video-viewer-range video-viewer-volume" type="range" min="0" max="1" step="0.05" value="0.8" data-video-volume aria-label="音量"></label>
                 <label class="video-viewer-rate-label"><span>倍速</span><select id="videoPlaybackRate" data-custom-select data-video-rate aria-label="播放速度"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
-                <button class="photo-viewer-control" type="button" data-video-action="fullscreen" aria-label="全屏播放">全屏</button>
+                <button class="photo-viewer-control video-viewer-fullscreen" type="button" data-video-action="fullscreen" aria-label="全屏播放">全屏</button>
             </div>
         </div>`;
 }

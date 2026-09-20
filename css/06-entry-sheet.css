@@ -513,6 +513,20 @@
 
 .video-viewer-volume { width: 76px; }
 
+.video-viewer-volume-label {
+    display: flex;
+    min-width: 0;
+    gap: 6px;
+    align-items: center;
+}
+
+.video-viewer-volume-text {
+    display: none;
+    color: rgba(255, 247, 223, 0.72);
+    font-size: 12px;
+    white-space: nowrap;
+}
+
 .video-viewer-time {
     min-width: 106px;
     color: rgba(255, 247, 223, 0.82);
