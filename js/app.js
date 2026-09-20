@@ -58,6 +58,7 @@ const ROUTE_MAP_SLOTS = [
     { ticket: 'ticket-f', stamp: 'stamp-f', label: '06' }
 ];
 const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
+const DEFAULT_VIDEO_VOLUME = 0.8;
 const VIDEO_PLAY_ICON_PATH = 'M8 5.5v13l10-6.5z';
 const VIDEO_PAUSE_ICON_PATH = 'M7 5h4v14H7zm6 0h4v14h-4z';
 
@@ -271,6 +272,7 @@ async function handleProfilePictureSelection(input) {
 
 function bindGlobalEvents() {
     document.addEventListener('click', handleDocumentClick);
+    document.addEventListener('error', handleMediaLoadError, true);
     document.addEventListener('keydown', handleDocumentKeydown);
     document.addEventListener('input', handleDocumentInput);
     document.addEventListener('change', handleDocumentChange);
@@ -1068,6 +1070,7 @@ function renderLedgerFilterWorkbench(params) {
             <span class="field-label">媒体状态</span>
             <div class="index-segment-group" aria-label="媒体状态">
                 ${filterToggleButton('全部', 'media', 'all', params.media)}
+                ${filterToggleButton('有媒体', 'media', 'any', params.media)}
                 ${filterToggleButton('有图片', 'media', 'photos', params.media)}
                 ${filterToggleButton('有视频', 'media', 'videos', params.media)}
                 ${filterToggleButton('无媒体', 'media', 'none', params.media)}
@@ -1601,7 +1604,7 @@ function openPhotoViewer(photos, index = 0) {
         rotation: 0,
         translateX: 0,
         translateY: 0,
-        videoVolume: 0.8,
+        videoVolume: DEFAULT_VIDEO_VOLUME,
         videoMuted: false,
         videoRate: 1
     };
@@ -1636,12 +1639,13 @@ function renderPhotoViewer() {
                 <div class="photo-viewer-stage" data-photo-viewer-stage>
                     ${isVideo
                         ? `<div class="photo-viewer-media-frame" data-photo-viewer-frame>
-                            <video class="photo-viewer-media video-viewer-video" data-photo-viewer-media data-video-viewer-video src="${escapeHtml(photo.src)}" preload="metadata" playsinline aria-label="${escapeHtml(photo.alt)}"></video>
+                            <video class="photo-viewer-media video-viewer-video" data-photo-viewer-media data-video-viewer-video data-media-name="${escapeHtml(photo.name || '')}" src="${escapeHtml(photo.src)}" preload="metadata" playsinline aria-label="${escapeHtml(photo.alt)}"></video>
                            </div>
                            <button class="video-viewer-big-play" type="button" data-video-action="toggle-play" aria-label="播放视频">${renderVideoPlaybackIcon()}</button>`
                         : `<div class="photo-viewer-media-frame photo-viewer-image-frame" data-photo-viewer-frame>
-                            <img class="photo-viewer-media photo-viewer-image" data-photo-viewer-media data-photo-viewer-image src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" decoding="async" draggable="false">
+                            <img class="photo-viewer-media photo-viewer-image" data-photo-viewer-media data-photo-viewer-image data-media-name="${escapeHtml(photo.name || '')}" src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" decoding="async" draggable="false">
                         </div>`}
+                    <div class="photo-viewer-media-error" data-photo-viewer-media-error role="status" hidden></div>
                 </div>
                 ${isVideo ? renderVideoControls() : renderPhotoControls()}
                 <p class="photo-viewer-caption">${escapeHtml(photo.alt)}</p>
@@ -1713,6 +1717,7 @@ function getPhotoViewerItems(button) {
     const buttons = Array.from(button.closest('.photo-sleeve')?.querySelectorAll('[data-action="open-media-viewer"]:not([hidden])') || [button]);
     return buttons.map(item => ({
         kind: item.dataset.mediaKind === 'video' ? 'video' : 'image',
+        name: item.dataset.mediaName || '',
         src: item.dataset.mediaSrc || '',
         alt: item.dataset.mediaAlt || '旅行媒体'
     })).filter(item => item.src);
@@ -1735,7 +1740,7 @@ function renderVideoControls() {
             ${renderTransformControls('视频', 'video-viewer-transform-controls')}
             <div class="video-viewer-secondary-controls">
                 <button class="photo-viewer-control video-viewer-mute" type="button" data-video-action="toggle-mute" data-video-mute aria-label="静音">静音</button>
-                <label class="video-viewer-volume-label"><span class="video-viewer-volume-text" aria-hidden="true">音量</span><input class="video-viewer-range video-viewer-volume" type="range" min="0" max="1" step="0.05" value="0.8" data-video-volume aria-label="音量"></label>
+                <label class="video-viewer-volume-label"><span class="video-viewer-volume-text" aria-hidden="true">音量</span><input class="video-viewer-range video-viewer-volume" type="range" min="0" max="1" step="0.05" value="${DEFAULT_VIDEO_VOLUME}" data-video-volume aria-label="音量"></label>
                 <label class="video-viewer-rate-label"><span>倍速</span><select id="videoPlaybackRate" data-custom-select data-video-rate aria-label="播放速度"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
                 <button class="photo-viewer-control video-viewer-fullscreen" type="button" data-video-action="fullscreen" aria-label="全屏播放">全屏</button>
             </div>
@@ -1934,8 +1939,93 @@ function formatVideoTime(value) {
 }
 
 function showVideoPlaybackError() {
+    const video = getViewerVideo();
+    if (video?.error) {
+        showViewerMediaError(video);
+        return;
+    }
     const caption = getPhotoViewerRoot()?.querySelector('.photo-viewer-caption');
-    if (caption) caption.textContent = '视频无法播放；请确认浏览器支持该文件的编码格式。';
+    if (caption) caption.textContent = '视频暂时无法播放；请重试，或确认浏览器支持该文件的编码格式。';
+}
+
+function handleMediaLoadError(event) {
+    const media = event.target;
+    if (!media?.matches?.('.photo-sleeve-button img, .photo-sleeve-button video, [data-photo-viewer-media]')) return;
+
+    const sleeveButton = media.closest?.('.photo-sleeve-button');
+    if (sleeveButton) {
+        const kind = sleeveButton.dataset.mediaKind === 'video' ? 'video' : 'image';
+        const message = formatMediaReferenceError({
+            kind,
+            name: sleeveButton.dataset.mediaName,
+            src: sleeveButton.dataset.mediaSrc
+        });
+        sleeveButton.classList.add('is-media-error');
+        sleeveButton.setAttribute('aria-label', message);
+        sleeveButton.title = message;
+        sleeveButton.querySelector('.photo-sleeve-media-error')?.removeAttribute('hidden');
+        return;
+    }
+
+    showViewerMediaError(media);
+}
+
+function showViewerMediaError(media) {
+    const current = photoViewerState?.photos?.[photoViewerState.index] || {};
+    const kind = media?.matches?.('video') ? 'video' : 'image';
+    const message = formatMediaReferenceError({
+        kind,
+        name: media?.dataset?.mediaName || current.name,
+        src: media?.currentSrc || media?.src || current.src
+    });
+    const root = getPhotoViewerRoot();
+    const notice = root?.querySelector('[data-photo-viewer-media-error]');
+    const frame = root?.querySelector('[data-photo-viewer-frame]');
+    const stage = root?.querySelector('[data-photo-viewer-stage]');
+    const controls = root?.querySelector('.photo-viewer-controls');
+    const caption = root?.querySelector('.photo-viewer-caption');
+    if (frame) frame.hidden = true;
+    if (stage) stage.classList.add('is-media-error');
+    if (controls) controls.hidden = true;
+    const bigPlay = root?.querySelector('.video-viewer-big-play');
+    if (bigPlay) bigPlay.hidden = true;
+    if (notice) {
+        notice.textContent = message;
+        notice.hidden = false;
+    }
+    if (caption) {
+        caption.textContent = message;
+        caption.hidden = true;
+    }
+}
+
+function formatMediaReferenceError({ kind = 'image', name = '', src = '' } = {}) {
+    const isVideo = kind === 'video';
+    const label = isVideo ? '视频' : '图片';
+    const listField = isVideo ? 'videos' : 'photos';
+    const folderField = isVideo ? 'video_folder' : 'photo_folder';
+    const fileName = String(name || '').trim() || getMediaFileName(src) || '未命名文件';
+    const path = getDisplayMediaPath(src);
+    const reason = isVideo ? '不存在、无法读取或编码不受支持' : '不存在或无法读取';
+    return `${label}文件“${fileName}”${reason}。请检查 travel_data.json 中 ${folderField} 与 ${listField} 的引用${path ? `（当前路径：${path}）` : ''}。`;
+}
+
+function getMediaFileName(src) {
+    const path = getDisplayMediaPath(src);
+    const fileName = path.split('/').filter(Boolean).at(-1) || '';
+    try { return decodeURIComponent(fileName); }
+    catch { return fileName; }
+}
+
+function getDisplayMediaPath(src) {
+    const value = String(src || '').trim();
+    if (!value) return '';
+    try {
+        const url = new URL(value, window.location.href);
+        return decodeURIComponent(url.pathname.replace(/^\//, ''));
+    } catch {
+        return value.split('#')[0].split('?')[0];
+    }
 }
 
 function showPhotoAt(index) {
@@ -3022,11 +3112,7 @@ function getLedgerRecords(params) {
         const adminAreaMatch = normalized.area === 'all' || record.adminAreaKey === normalized.area;
         const localityMatch = normalized.locality === 'all' || record.locationKey === normalized.locality;
         const visitMatch = normalized.visit === 'all' || (normalized.visit === 'repeat' ? record.isRepeated : !record.isRepeated);
-        const hasPhotos = Array.isArray(record.photos) && record.photos.length > 0;
-        const hasVideos = Array.isArray(record.videos) && record.videos.length > 0;
-        const hasMedia = hasPhotos || hasVideos;
-        const mediaMatch = normalized.media === 'all'
-            || (normalized.media === 'photos' ? hasPhotos : normalized.media === 'videos' ? hasVideos : !hasMedia);
+        const mediaMatch = matchesMediaFilter(record, normalized.media);
         const hasNote = hasRecordNoteContent(record);
         const noteMatch = normalized.note === 'all' || (normalized.note === 'filled' ? hasNote : !hasNote);
         const searchMatch = !query || record.searchText.includes(query);
@@ -3034,6 +3120,17 @@ function getLedgerRecords(params) {
     });
 
     return records.sort((a, b) => compareLedgerRecords(a, b, normalized.sort));
+}
+
+function matchesMediaFilter(record, media = 'all') {
+    const hasPhotos = Array.isArray(record?.photos) && record.photos.length > 0;
+    const hasVideos = Array.isArray(record?.videos) && record.videos.length > 0;
+    const hasMedia = hasPhotos || hasVideos;
+    if (media === 'any') return hasMedia;
+    if (media === 'photos') return hasPhotos;
+    if (media === 'videos') return hasVideos;
+    if (media === 'none') return !hasMedia;
+    return true;
 }
 
 function compareLedgerRecords(a, b, sort) {
@@ -3206,10 +3303,11 @@ function renderPhotoSleeve(record, options = {}) {
     return `
         <div class="photo-sleeve${isPreview ? ' photo-sleeve-preview' : ''}"${isPreview ? ` data-preview-rows="${previewRows}"` : ''} aria-label="图片与视频附件">
             ${media.map((item, index) => `
-                <button class="photo-sleeve-button${item.kind === 'video' ? ' photo-sleeve-video' : ''}" type="button" data-action="open-media-viewer" data-media-index="${index}" data-media-kind="${item.kind}" data-media-src="${escapeHtml(item.src)}" data-media-alt="${escapeHtml(item.alt)}" aria-label="打开${item.kind === 'video' ? '视频' : '图片'} ${escapeHtml(item.name)}">
+                <button class="photo-sleeve-button${item.kind === 'video' ? ' photo-sleeve-video' : ''}" type="button" data-action="open-media-viewer" data-media-index="${index}" data-media-kind="${item.kind}" data-media-name="${escapeHtml(item.name)}" data-media-src="${escapeHtml(item.src)}" data-media-alt="${escapeHtml(item.alt)}" aria-label="打开${item.kind === 'video' ? '视频' : '图片'} ${escapeHtml(item.name)}">
                     ${item.kind === 'video'
                         ? `<video src="${escapeHtml(item.src)}#t=0.1" muted playsinline preload="metadata" aria-hidden="true" tabindex="-1"></video><span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>`
                         : `<img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.alt)}" loading="lazy" decoding="async" fetchpriority="low">`}
+                    <span class="photo-sleeve-media-error" role="status" hidden><strong>${item.kind === 'video' ? '视频不可用' : '图片不可用'}</strong><span>${escapeHtml(item.name)}</span><small>检查 travel_data.json</small></span>
                     <span class="photo-sleeve-index">${escapeHtml(String(index + 1).padStart(2, '0'))}</span>
                 </button>
             `).join('')}
@@ -3381,7 +3479,7 @@ function normalizeVisit(visit) {
 }
 
 function normalizeMedia(media) {
-    return media === 'photos' || media === 'videos' || media === 'none' ? media : 'all';
+    return media === 'any' || media === 'photos' || media === 'videos' || media === 'none' ? media : 'all';
 }
 
 function normalizeNote(note) {

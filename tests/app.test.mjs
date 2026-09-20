@@ -8,7 +8,7 @@ const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
     renderWithPageTurn, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
-    deleteTravelRecord, renderEmptyArchiveState };
+    deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError };
 export function setTestState(values) {
     if (values.spread) refs.spread = values.spread;
     if (values.route) activeRoute = values.route;
@@ -72,6 +72,27 @@ test('正文加载失败不会被识别为有笔记', () => {
     assert.equal(app.hasRecordNoteContent({ descLoadFailed: true, descBodyHtml: '<p>加载失败</p>' }), false);
     assert.equal(app.hasRecordNoteContent({ descMarkdown: '# 标题\n\n正文' }), true);
     assert.equal(app.hasRecordNoteContent({ descMarkdown: '# 标题' }), false);
+});
+
+test('有媒体筛选同时匹配图片或视频记录', () => {
+    assert.equal(app.matchesMediaFilter({ photos: ['a.jpg'], videos: [] }, 'any'), true);
+    assert.equal(app.matchesMediaFilter({ photos: [], videos: ['a.mp4'] }, 'any'), true);
+    assert.equal(app.matchesMediaFilter({ photos: [], videos: [] }, 'any'), false);
+    assert.equal(app.matchesMediaFilter({ photos: ['a.jpg'], videos: [] }, 'videos'), false);
+    assert.equal(app.matchesMediaFilter({ photos: [], videos: [] }, 'none'), true);
+});
+
+test('媒体引用错误指出文件、索引字段与实际路径', () => {
+    globalThis.window = { location: { href: 'https://diary.example/' } };
+    assert.equal(
+        app.formatMediaReferenceError({ kind: 'image', name: 'missing.jpg', src: 'data/photos/test/missing.jpg' }),
+        '图片文件“missing.jpg”不存在或无法读取。请检查 travel_data.json 中 photo_folder 与 photos 的引用（当前路径：data/photos/test/missing.jpg）。'
+    );
+    assert.match(
+        app.formatMediaReferenceError({ kind: 'video', name: 'missing.mp4', src: 'data/videos/test/missing.mp4' }),
+        /视频文件“missing\.mp4”不存在、无法读取或编码不受支持.*video_folder 与 videos/
+    );
+    delete globalThis.window;
 });
 
 test('异常照片索引回退且循环切换始终得到整数下标', () => {

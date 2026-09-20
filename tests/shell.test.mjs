@@ -65,6 +65,7 @@ test('索引夹层包含完整且唯一的高级筛选工作台', () => {
         assert.match(appJs, new RegExp(`renderLedgerSelect\\([^;]+['"]${key}['"]`));
     }
     assert.match(appJs, /filterToggleButton\('首次到访', 'visit'/);
+    assert.match(appJs, /filterToggleButton\('有媒体', 'media', 'any'/);
     assert.match(appJs, /filterToggleButton\('有图片', 'media'/);
     assert.match(appJs, /filterToggleButton\('有视频', 'media'/);
     assert.match(appJs, /filterToggleButton\('有笔记', 'note'/);
@@ -180,8 +181,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260920-mobile-controls-v2/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260920-mobile-controls-v2/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260920-media-errors-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260920-media-errors-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -553,6 +554,19 @@ test('日记页最多预览三行媒体且提供全集媒体页', () => {
     assert.match(appJs, /function renderEntryPhotosRoute\(params = \{\}\)/);
     assert.match(appJs, /renderPhotoSleeve\(record\)/);
     assert.match(journalCss, /\.photo-sleeve-action\s*{/);
+});
+
+test('不存在的媒体引用显示可定位到 travel_data.json 字段的错误', () => {
+    assert.match(appJs, /document\.addEventListener\('error', handleMediaLoadError, true\)/);
+    assert.match(appJs, /data-media-name="\$\{escapeHtml\(item\.name\)\}"/);
+    assert.match(appJs, /class="photo-sleeve-media-error" role="status" hidden/);
+    assert.match(appJs, /photo_folder.*photos/);
+    assert.match(appJs, /video_folder.*videos/);
+    assert.match(appJs, /data-photo-viewer-media-error role="status" hidden/);
+    assert.match(appJs, /if \(controls\) controls\.hidden = true;/);
+    assert.match(appJs, /caption\.hidden = true;/);
+    assert.match(journalCss, /\.photo-sleeve-media-error\s*{/);
+    assert.match(journalCss, /\.photo-viewer-media-error\s*{/);
 });
 
 test('视频共用媒体入口并提供完整播放控制与键盘操作', () => {
