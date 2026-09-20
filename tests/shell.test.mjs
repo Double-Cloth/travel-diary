@@ -185,8 +185,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260920-video-more-arrow-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260920-video-more-arrow-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260920-photo-fullscreen-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260920-photo-fullscreen-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -598,6 +598,7 @@ test('视频共用媒体入口并提供完整播放控制与键盘操作', () =>
     assert.match(appJs, /data-video-volume/);
     assert.match(appJs, /data-video-rate/);
     assert.match(appJs, /data-video-action="fullscreen"/);
+    assert.match(appJs, /void toggleViewerFullscreen\(\)\.catch\(showViewerFullscreenError\);/);
     assert.match(appJs, /video\.addEventListener\('click', handleViewerVideoClick\)/);
     assert.match(appJs, /function handleViewerVideoClick\(event\)[\s\S]*handleVideoViewerAction\('toggle-play'\);/);
     assert.match(appJs, /photoGestureState\.videoTapPointerId = event\.target\.closest\?\.\('\[data-video-viewer-video\]'\)/);
@@ -650,10 +651,14 @@ test('媒体查看器顶部只保留切换，图片与视频控件统一放在�
     for (const group of ['photo-viewer-nav-group', 'photo-viewer-zoom-group', 'photo-viewer-rotate-group']) {
         assert.match(appJs, new RegExp(`class="${group} photo-viewer-control-group"`));
     }
+    assert.match(journalCss, /\.photo-viewer-fullscreen\s*\{[\s\S]*min-width: 52px;/);
     assert.match(appJs, /class="photo-viewer-toolbar">[\s\S]*class="photo-viewer-nav-group[\s\S]*<\/div>\s*<\/div>\s*<button class="photo-viewer-control photo-viewer-close"/);
     assert.match(appJs, /<\/div>\s*\$\{isVideo \? renderVideoControls\(\) : renderPhotoControls\(\)\}\s*<p class="photo-viewer-caption">/);
     assert.match(appJs, /class="photo-viewer-controls video-viewer-controls"/);
     assert.match(appJs, /function renderPhotoControls\(\)[\s\S]*class="photo-viewer-controls"/);
+    assert.match(appJs, /data-action="photo-fullscreen" data-photo-action="fullscreen" aria-label="全屏查看图片"/);
+    assert.match(appJs, /case 'fullscreen':[\s\S]*toggleViewerFullscreen\(\)/);
+    assert.match(appJs, /handlePhotoViewerAction\('fullscreen'\);/);
     assert.match(appJs, /function renderVideoControls\(\)[\s\S]*renderTransformControls\('视频', 'video-viewer-transform-controls'\)/);
     assert.match(appJs, /<\/div>\s*<button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer"/);
     assert.match(appJs, /data-action="photo-reset"[\s\S]*aria-label="恢复到初始适配比例"[\s\S]*>适应<\/button>/);

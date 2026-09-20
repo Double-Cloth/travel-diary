@@ -1804,6 +1804,8 @@ function renderPhotoControls() {
     return `
         <div class="photo-viewer-controls" aria-label="图片显示控制">
             ${renderTransformControls('图片')}
+            <span class="photo-viewer-control-divider" aria-hidden="true"></span>
+            <button class="photo-viewer-control photo-viewer-fullscreen" type="button" data-action="photo-fullscreen" data-photo-action="fullscreen" aria-label="全屏查看图片">全屏</button>
         </div>`;
 }
 
@@ -1862,6 +1864,9 @@ function handlePhotoViewerAction(action) {
         case 'rotate-right':
             rotatePhoto(90);
             break;
+        case 'fullscreen':
+            void toggleViewerFullscreen().catch(showViewerFullscreenError);
+            break;
         default:
             break;
     }
@@ -1893,7 +1898,7 @@ function handleVideoViewerAction(action) {
             setVideoMoreControlsOpen(!getPhotoViewerRoot()?.querySelector('.video-viewer-controls')?.classList.contains('is-more-open'));
             break;
         case 'fullscreen':
-            void toggleVideoFullscreen().catch(showVideoPlaybackError);
+            void toggleViewerFullscreen().catch(showViewerFullscreenError);
             break;
         default:
             break;
@@ -1901,13 +1906,18 @@ function handleVideoViewerAction(action) {
     syncVideoViewerControls();
 }
 
-async function toggleVideoFullscreen() {
+async function toggleViewerFullscreen() {
     if (document.fullscreenElement) {
         await document.exitFullscreen?.();
         return;
     }
     const stage = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-stage]');
     await stage?.requestFullscreen?.();
+}
+
+function showViewerFullscreenError() {
+    const caption = getPhotoViewerRoot()?.querySelector('.photo-viewer-caption');
+    if (caption) caption.textContent = '当前浏览器无法进入全屏模式，请检查浏览器权限设置后重试。';
 }
 
 function handleViewerVideoClick(event) {
@@ -2755,6 +2765,12 @@ function handleDocumentKeydown(event) {
                 event.preventDefault();
                 handleVideoViewerAction('fullscreen');
             }
+            return;
+        }
+
+        if (event.key === 'f' || event.key === 'F') {
+            event.preventDefault();
+            handlePhotoViewerAction('fullscreen');
             return;
         }
 

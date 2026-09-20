@@ -490,6 +490,10 @@
     min-width: 52px;
 }
 
+.photo-viewer-fullscreen {
+    min-width: 52px;
+}
+
 .video-viewer-controls {
     display: grid;
     grid-template-columns: auto minmax(240px, 1fr) auto;
