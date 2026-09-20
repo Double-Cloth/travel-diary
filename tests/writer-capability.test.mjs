@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadBrowserModule } from './helpers/browser-modules.mjs';
 
-const { initializeWriterPassword, probeWriterService } = await loadBrowserModule(new URL('../js/writer-capability.js', import.meta.url));
+const { changeWriterPassword, initializeWriterPassword, probeWriterService } = await loadBrowserModule(new URL('../js/writer-capability.js', import.meta.url));
 
 test('写入服务探测只把明确的静态标记识别为静态页面', async t => {
     const previous = { window: globalThis.window, fetch: globalThis.fetch };
@@ -109,4 +109,32 @@ test('首次设置密码提交到专用同源接口并返回写入能力', async
     assert.deepEqual(JSON.parse(request.options.body), { password: '483920' });
     assert.equal(capability.authenticated, true);
     assert.equal(capability.token, 'a'.repeat(64));
+});
+
+test('修改密码使用现有会话令牌并接收更新后的写入能力', async t => {
+    const previous = { window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.window = { location: { href: 'http://localhost:9000/#archive' } };
+    let request;
+    globalThis.fetch = async (endpoint, options) => {
+        request = { endpoint: endpoint.href, options };
+        return {
+            ok: true,
+            status: 200,
+            json: async () => ({
+                service: 'travel-diary-writer-v1', authenticated: true, changed: true,
+                token: 'b'.repeat(64), methods: ['POST', 'PUT', 'DELETE'], writeMode: 'local'
+            })
+        };
+    };
+    const capability = await changeWriterPassword('590247', {
+        authenticated: true,
+        token: 'a'.repeat(64)
+    });
+    assert.equal(request.endpoint, 'http://localhost:9000/api/travel-auth');
+    assert.equal(request.options.method, 'PUT');
+    assert.equal(request.options.headers['X-Travel-Token'], 'a'.repeat(64));
+    assert.equal(request.options.credentials, 'same-origin');
+    assert.deepEqual(JSON.parse(request.options.body), { password: '590247' });
+    assert.equal(capability.token, 'b'.repeat(64));
 });

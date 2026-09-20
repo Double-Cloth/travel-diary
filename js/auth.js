@@ -187,6 +187,76 @@ async function initializeAuthConfig(root, password) {
     return config;
 }
 
+async function writeAuthConfig(root, config) {
+    validateAuthConfig(config);
+    const secretsDir = path.join(root, '.secrets');
+    const target = path.join(secretsDir, 'auth.json');
+    const suffix = `${process.pid}-${randomBytes(8).toString('hex')}`;
+    const temporary = path.join(secretsDir, `.auth-${suffix}.tmp`);
+    const backup = path.join(secretsDir, `.auth-${suffix}.bak`);
+    let movedExisting = false;
+    let installed = false;
+
+    await fs.mkdir(secretsDir, { recursive: true, mode: 0o700 });
+    const directoryStat = await fs.lstat(secretsDir);
+    if (directoryStat.isSymbolicLink() || !directoryStat.isDirectory()) {
+        throw authFailure('.secrets 必须是项目内的普通目录，不能是文件或符号链接。');
+    }
+    await fs.chmod(secretsDir, 0o700).catch(() => {});
+
+    try {
+        try {
+            const targetStat = await fs.lstat(target);
+            if (targetStat.isSymbolicLink() || !targetStat.isFile()) {
+                throw authFailure('.secrets/auth.json 必须是普通文件，不能是链接。');
+            }
+        } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+        }
+
+        const handle = await fs.open(temporary, 'wx', 0o600);
+        try {
+            await handle.writeFile(`${JSON.stringify(config, null, 2)}\n`, 'utf8');
+            await handle.sync();
+        } finally {
+            await handle.close();
+        }
+
+        try {
+            await fs.rename(target, backup);
+            movedExisting = true;
+        } catch (error) {
+            if (error.code !== 'ENOENT') throw error;
+        }
+        await fs.rename(temporary, target);
+        installed = true;
+        await fs.chmod(target, 0o600).catch(() => {});
+        if (movedExisting) {
+            await fs.unlink(backup).catch(() => {});
+            movedExisting = false;
+        }
+    } catch (error) {
+        if (movedExisting && !installed) {
+            try {
+                await fs.rename(backup, target);
+                movedExisting = false;
+            } catch (restoreError) {
+                throw new AggregateError([error, restoreError], '认证配置更新失败，且旧配置自动恢复失败。');
+            }
+        }
+        throw error;
+    } finally {
+        await fs.unlink(temporary).catch(() => {});
+        if (!movedExisting) await fs.unlink(backup).catch(() => {});
+    }
+}
+
+async function replaceAuthConfig(root, password) {
+    const config = await createAuthConfig(password);
+    await writeAuthConfig(root, config);
+    return config;
+}
+
 async function verifyPassword(config, password) {
     const validConfig = validateAuthConfig(config);
     const salt = decodeBase64(validConfig.salt, 16, 'salt');
@@ -206,7 +276,9 @@ module.exports = {
     createAuthConfig,
     initializeAuthConfig,
     readAuthConfig,
+    replaceAuthConfig,
     validateAuthConfig,
     validatePassword,
-    verifyPassword
+    verifyPassword,
+    writeAuthConfig
 };

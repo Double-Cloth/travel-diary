@@ -179,6 +179,75 @@ test('换密后旧会话立即失效', async t => {
     assert.equal(capability.status, 401);
 });
 
+test('登录后可修改密码，自动签发新会话并使其他旧会话失效', async t => {
+    const { base, root } = await fixture(t);
+    const current = await login(base);
+    const other = await login(base);
+    const changed = await fetch(`${base}/api/travel-auth`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            Origin: base,
+            Cookie: current.cookie,
+            'X-Travel-Token': current.token
+        },
+        body: JSON.stringify({ password: '590247' })
+    });
+    const result = await changed.json();
+    assert.equal(changed.status, 200);
+    assert.equal(result.changed, true);
+    assert.equal(result.authenticated, true);
+    assert.equal(result.token.length, 64);
+    const changedCookie = changed.headers.get('set-cookie')?.split(';', 1)[0] || '';
+    assert.notEqual(changedCookie, current.cookie);
+    assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Cookie: other.cookie } })).status, 401);
+    assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Cookie: current.cookie } })).status, 401);
+    assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Cookie: changedCookie } })).status, 200);
+
+    const saved = JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8'));
+    assert.equal('password' in saved, false);
+    const oldLogin = await fetch(`${base}/api/travel-auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: base },
+        body: JSON.stringify({ password: AUTH_PASSWORD })
+    });
+    assert.equal(oldLogin.status, 401);
+    const newLogin = await fetch(`${base}/api/travel-auth`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Origin: base },
+        body: JSON.stringify({ password: '590247' })
+    });
+    assert.equal(newLogin.status, 200);
+});
+
+test('修改密码拒绝缺少会话、无效令牌、弱密码和当前密码', async t => {
+    const { base } = await fixture(t);
+    const authenticated = await login(base);
+    const request = (password, headers = {}) => fetch(`${base}/api/travel-auth`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json', Origin: base,
+            Cookie: authenticated.cookie,
+            'X-Travel-Token': authenticated.token,
+            ...headers
+        },
+        body: JSON.stringify({ password })
+    });
+    const anonymous = await fetch(`${base}/api/travel-auth`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', Origin: base },
+        body: JSON.stringify({ password: '590247' })
+    });
+    assert.equal(anonymous.status, 401);
+    assert.equal((await request('590247', { 'X-Travel-Token': 'invalid' })).status, 403);
+    const weak = await request('123456');
+    assert.equal(weak.status, 400);
+    assert.equal((await weak.json()).code, 'PASSWORD_TOO_WEAK');
+    const unchanged = await request(AUTH_PASSWORD);
+    assert.equal(unchanged.status, 400);
+    assert.equal((await unchanged.json()).code, 'PASSWORD_UNCHANGED');
+});
+
 test('认证接口兼容带 charset 的 JSON，并在读取前拒绝超大请求', async t => {
     const { base } = await fixture(t);
     const valid = await fetch(`${base}/api/travel-auth`, {

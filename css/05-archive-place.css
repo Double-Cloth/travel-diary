@@ -85,6 +85,18 @@
 
 .archive-data-transfer .archive-data-status:empty { display: none; }
 
+.archive-access-security > p {
+    margin: 0;
+    color: var(--ink-muted);
+    font-size: 12px;
+    line-height: 1.65;
+}
+
+.archive-access-security .paper-button {
+    width: 100%;
+    font-size: 12px;
+}
+
 .overview-location-list {
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 10px;

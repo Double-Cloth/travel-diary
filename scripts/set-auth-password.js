@@ -1,7 +1,6 @@
-const fs = require('fs/promises');
-const path = require('path');
 const readline = require('readline');
-const { createAuthConfig, PASSWORD_LENGTH } = require('../js/auth.js');
+const path = require('path');
+const { createAuthConfig, PASSWORD_LENGTH, writeAuthConfig } = require('../js/auth.js');
 
 function readSecret(prompt) {
     if (!process.stdin.isTTY || !process.stdout.isTTY) {
@@ -38,55 +37,6 @@ function readSecret(prompt) {
         };
         process.stdin.on('keypress', onKeypress);
     });
-}
-
-async function writeAuthConfig(root, config) {
-    const secretsDir = path.join(root, '.secrets');
-    await fs.mkdir(secretsDir, { recursive: true });
-    const directoryStat = await fs.lstat(secretsDir);
-    if (directoryStat.isSymbolicLink() || !directoryStat.isDirectory()) throw new Error('.secrets 必须是项目内的普通目录。');
-    await fs.chmod(secretsDir, 0o700).catch(() => {});
-    const target = path.join(secretsDir, 'auth.json');
-    const suffix = `${process.pid}-${Date.now()}`;
-    const temporary = path.join(secretsDir, `.auth-${suffix}.tmp`);
-    const backup = path.join(secretsDir, `.auth-${suffix}.bak`);
-    let movedExisting = false;
-    let installed = false;
-    try {
-        try {
-            const targetStat = await fs.lstat(target);
-            if (targetStat.isSymbolicLink() || !targetStat.isFile()) {
-                throw new Error('.secrets/auth.json 必须是普通文件，不能是链接。');
-            }
-        } catch (error) {
-            if (error.code !== 'ENOENT') throw error;
-        }
-        await fs.writeFile(temporary, `${JSON.stringify(config, null, 2)}\n`, { flag: 'wx', mode: 0o600 });
-        try {
-            await fs.rename(target, backup);
-            movedExisting = true;
-        } catch (error) {
-            if (error.code !== 'ENOENT') throw error;
-        }
-        await fs.rename(temporary, target);
-        installed = true;
-        await fs.chmod(target, 0o600).catch(() => {});
-        if (movedExisting) {
-            await fs.unlink(backup).catch(() => {});
-            movedExisting = false;
-        }
-    } catch (error) {
-        if (movedExisting && !installed) {
-            try { await fs.rename(backup, target); }
-            catch (restoreError) {
-                throw new AggregateError([error, restoreError], '认证配置更新失败，且旧配置自动恢复失败。');
-            }
-            movedExisting = false;
-        }
-        throw error;
-    } finally {
-        await fs.unlink(temporary).catch(() => {});
-    }
 }
 
 async function main() {

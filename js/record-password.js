@@ -1,5 +1,5 @@
 import { showFeedback } from './feedback-dialog.js';
-import { authenticateWriter, initializeWriterPassword, probeWriterService } from './writer-capability.js?v=20260914-auth-setup-v1';
+import { authenticateWriter, changeWriterPassword, initializeWriterPassword, probeWriterService } from './writer-capability.js?v=20260920-password-change-v1';
 
 const PASSWORD_LENGTH = 6;
 let passwordGateSequence = 0;
@@ -274,6 +274,182 @@ export function createPasswordGate(onVerified, options = {}) {
         pendingContext = context;
         firstPassword = '';
         mode = setupRequired ? 'setup-first' : 'login';
+        updatePrompt();
+        reset();
+        dialog.showModal();
+        dialog.querySelector('[data-password-key]')?.focus();
+    };
+}
+
+export function createPasswordChangeDialog(onChanged) {
+    const titleId = `passwordChangeTitle${passwordGateSequence += 1}`;
+    const dialog = document.createElement('dialog');
+    dialog.className = 'record-password entry-sheet';
+    dialog.setAttribute('aria-labelledby', titleId);
+    dialog.innerHTML = passwordKeypadMarkup(titleId);
+    document.body.append(dialog);
+
+    let enteredPassword = '';
+    let firstPassword = '';
+    let capability;
+    let trigger;
+    let mode = 'new';
+    let submitting = false;
+    const title = dialog.querySelector(`#${titleId}`);
+    const note = dialog.querySelector('[data-password-note]');
+    const status = message => { dialog.querySelector('[data-password-status]').textContent = message; };
+
+    function updatePrompt() {
+        const prompt = mode === 'confirm'
+            ? { title: '再次输入新密码', description: '输入到第 6 位后将自动提交修改。' }
+            : { title: '设置新访问密码', description: '请输入新的 6 位数字密码，不能使用连续、重复或常见组合。' };
+        title.textContent = prompt.title;
+        note.textContent = prompt.description;
+    }
+
+    function updateDigits() {
+        dialog.querySelectorAll('[data-password-digit]').forEach((slot, index) => {
+            slot.classList.toggle('is-filled', index < enteredPassword.length);
+        });
+        dialog.querySelector('[data-password-digits]').setAttribute(
+            'aria-label',
+            enteredPassword.length ? `已输入 ${enteredPassword.length} 位新密码` : '尚未输入新密码'
+        );
+    }
+
+    function setControlsDisabled(disabled) {
+        dialog.querySelectorAll('[data-password-key], [data-password-clear], [data-password-delete]')
+            .forEach(button => { button.disabled = disabled; });
+    }
+
+    function reset(message = '') {
+        enteredPassword = '';
+        dialog.classList.remove('record-password-error');
+        status(message);
+        updateDigits();
+    }
+
+    function showError(message) {
+        reset(message || '访问密码修改失败，请重试。');
+        dialog.classList.remove('record-password-error');
+        requestAnimationFrame(() => dialog.classList.add('record-password-error'));
+    }
+
+    function restoreTriggerFocus() {
+        if (trigger?.isConnected) trigger.focus();
+        else document.querySelector('[data-action="change-password"]')?.focus();
+    }
+
+    function close() {
+        if (submitting) return;
+        dialog.close();
+        reset();
+        firstPassword = '';
+        capability = undefined;
+        mode = 'new';
+        updatePrompt();
+        restoreTriggerFocus();
+    }
+
+    async function submit() {
+        if (submitting || enteredPassword.length !== PASSWORD_LENGTH) return;
+        const password = enteredPassword;
+        if (mode === 'new') {
+            firstPassword = password;
+            mode = 'confirm';
+            updatePrompt();
+            reset();
+            dialog.querySelector('[data-password-key]')?.focus();
+            return;
+        }
+        if (password !== firstPassword) {
+            firstPassword = '';
+            mode = 'new';
+            updatePrompt();
+            showError('两次输入的新密码不一致，请重新设置。');
+            return;
+        }
+
+        submitting = true;
+        setControlsDisabled(true);
+        status('正在安全更新访问密码…');
+        try {
+            const nextCapability = await changeWriterPassword(password, capability);
+            dialog.close();
+            reset();
+            firstPassword = '';
+            capability = undefined;
+            mode = 'new';
+            updatePrompt();
+            restoreTriggerFocus();
+            await onChanged(nextCapability);
+        } catch (error) {
+            firstPassword = '';
+            mode = 'new';
+            updatePrompt();
+            showError(error?.message || '访问密码修改失败，请重试。');
+        } finally {
+            submitting = false;
+            setControlsDisabled(false);
+            if (dialog.open) dialog.querySelector('[data-password-key]')?.focus();
+        }
+    }
+
+    function enterDigit(digit) {
+        if (submitting || enteredPassword.length >= PASSWORD_LENGTH) return;
+        dialog.classList.remove('record-password-error');
+        status('');
+        enteredPassword += digit;
+        updateDigits();
+        if (enteredPassword.length === PASSWORD_LENGTH) void submit();
+    }
+
+    function deleteDigit() {
+        if (submitting || !enteredPassword.length) return;
+        dialog.classList.remove('record-password-error');
+        status('');
+        enteredPassword = enteredPassword.slice(0, -1);
+        updateDigits();
+    }
+
+    dialog.addEventListener('cancel', event => {
+        event.preventDefault();
+        close();
+    });
+
+    dialog.addEventListener('click', event => {
+        const digitButton = event.target.closest('[data-password-key]');
+        if (digitButton) enterDigit(digitButton.dataset.passwordKey);
+        if (event.target.closest('[data-password-delete]')) deleteDigit();
+        if (event.target.closest('[data-password-clear]')) reset();
+        if (event.target.closest('[data-password-close]')) close();
+    });
+
+    dialog.addEventListener('keydown', event => {
+        if (/^\d$/.test(event.key)) {
+            event.preventDefault();
+            enterDigit(event.key);
+        } else if (event.key === 'Backspace' || event.key === 'Delete') {
+            event.preventDefault();
+            deleteDigit();
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            void submit();
+        }
+        event.stopPropagation();
+    });
+
+    updatePrompt();
+    return authenticatedCapability => {
+        if (dialog.open || submitting) return;
+        if (!authenticatedCapability?.authenticated || !authenticatedCapability.token) {
+            void showFeedback('登录会话已失效，请重新输入当前密码。', { label: '修改密码', title: '需要重新验证' });
+            return;
+        }
+        trigger = document.activeElement;
+        capability = authenticatedCapability;
+        firstPassword = '';
+        mode = 'new';
         updatePrompt();
         reset();
         dialog.showModal();

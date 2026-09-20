@@ -213,7 +213,7 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
 });
 
 test('静态页面免密码打开只读编辑器，动态环境必须先通过服务端口令验证', () => {
-    assert.match(appJs, /import \{ createPasswordGate \} from '\.\/record-password\.js\?v=20260914-auth-setup-v1';/);
+    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20260920-password-change-v1';/);
     assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability\)/);
     assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}\)/);
     assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}\)/);
@@ -378,6 +378,22 @@ test('全部数据导入保留当前认证且不传输密码头', () => {
     assert.match(recordStoreJs, /readBody\(req, MAXIMUM_ARCHIVE_BYTES\)/);
     assert.match(authJs, /algorithm: 'scrypt'/);
     assert.match(authJs, /PASSWORD_LENGTH = 6/);
+});
+
+test('个人主页可验证当前密码并在新密码确认满六位后自动提交换密', () => {
+    assert.match(appJs, /data-action="change-password"/);
+    assert.match(appJs, /const showPasswordChange = createPasswordChangeDialog/);
+    assert.match(appJs, /openPasswordChange = createPasswordGate/);
+    assert.match(appJs, /请先输入当前的 6 位数字密码/);
+    assert.match(recordPasswordJs, /export function createPasswordChangeDialog/);
+    assert.match(recordPasswordJs, /输入到第 6 位后将自动提交修改/);
+    assert.match(recordPasswordJs, /if \(enteredPassword\.length === PASSWORD_LENGTH\) void submit\(\);/);
+    assert.match(writerCapabilityJs, /export async function changeWriterPassword/);
+    assert.match(writerCapabilityJs, /method: 'PUT'/);
+    assert.match(recordStoreJs, /new密码不能与当前密码相同|新密码不能与当前密码相同/);
+    assert.match(recordStoreJs, /await replaceAuthConfig\(root, password\)/);
+    assert.match(recordStoreJs, /sessions\.clear\(\);/);
+    assert.match(journalCss, /\.archive-access-security \.paper-button\s*{/);
 });
 
 test('个人主页提供经二次确认和密码验证保护的全部数据清空功能', () => {

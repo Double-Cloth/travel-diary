@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { createAuthConfig, validateAuthConfig, validatePassword, verifyPassword } = require('../js/auth.js');
+const { createAuthConfig, replaceAuthConfig, validateAuthConfig, validatePassword, verifyPassword } = require('../js/auth.js');
 const { writeAuthConfig } = require('../scripts/set-auth-password.js');
 
 test('六位数字密码使用带随机盐的 scrypt 哈希且不保存明文', async () => {
@@ -31,6 +31,21 @@ test('换密工具可以原子替换已有配置', async t => {
     await writeAuthConfig(root, second);
     const saved = JSON.parse(await readFile(path.join(root, '.secrets/auth.json'), 'utf8'));
     assert.equal(saved.hash, second.hash);
+    assert.deepEqual(await readdir(path.join(root, '.secrets')), ['auth.json']);
+});
+
+test('应用内换密会生成新的盐和哈希并清理临时文件', async t => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'travel-diary-password-change-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const original = await createAuthConfig('483920');
+    await writeAuthConfig(root, original);
+    const replacement = await replaceAuthConfig(root, '590247');
+    const saved = JSON.parse(await readFile(path.join(root, '.secrets/auth.json'), 'utf8'));
+    assert.notEqual(saved.salt, original.salt);
+    assert.notEqual(saved.hash, original.hash);
+    assert.equal(saved.hash, replacement.hash);
+    assert.equal(await verifyPassword(saved, '590247'), true);
+    assert.equal(await verifyPassword(saved, '483920'), false);
     assert.deepEqual(await readdir(path.join(root, '.secrets')), ['auth.json']);
 });
 

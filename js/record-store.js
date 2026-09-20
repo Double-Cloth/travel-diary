@@ -2,7 +2,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const { randomBytes, timingSafeEqual } = require('crypto');
 const { acquireDataLock, clearTravelData, exportDataArchive, importDataArchive } = require('./data-archive.js');
-const { initializeAuthConfig, readAuthConfig, verifyPassword } = require('./auth.js');
+const { initializeAuthConfig, readAuthConfig, replaceAuthConfig, verifyPassword } = require('./auth.js');
 
 const LOGIN_FAILURE_WINDOW = 15 * 60 * 1000;
 const MAXIMUM_LOGIN_FAILURES = 5;
@@ -750,6 +750,68 @@ function createRecordApi(root, options = {}) {
             return;
         }
         if (requestPath === '/api/travel-auth') {
+            if (req.method === 'PUT') {
+                if (!session) {
+                    send(401, { error: '登录会话已失效，请重新输入当前密码。', code: 'AUTH_REQUIRED' });
+                    return;
+                }
+                if (!equalCredential(req.headers['x-travel-token'], session.token)) {
+                    send(403, { error: '换密凭据无效，请重新验证当前密码。' });
+                    return;
+                }
+                if (!hasMediaType(req, 'application/json')) {
+                    send(415, { error: '修改密码请求必须使用 application/json。' });
+                    return;
+                }
+                if (!req.headers.origin) {
+                    send(403, { error: '修改密码请求必须来自当前站点页面。' });
+                    return;
+                }
+
+                let releaseLock;
+                try {
+                    const payload = await readJsonBody(req, MAXIMUM_LOGIN_BYTES);
+                    const password = typeof payload?.password === 'string' ? payload.password : '';
+                    releaseLock = await acquireDataLock(root);
+                    const currentConfig = await readAuthConfig(root, { requireProduction: writeMode === 'remote' });
+                    const current = currentSession(req, host, currentConfig);
+                    if (!current || !equalCredential(req.headers['x-travel-token'], current.token)) {
+                        send(401, { error: '登录会话已失效，请重新输入当前密码。', code: 'AUTH_REQUIRED' });
+                        return;
+                    }
+                    if (await verifyPassword(currentConfig, password)) {
+                        send(400, { error: '新密码不能与当前密码相同。', code: 'PASSWORD_UNCHANGED' });
+                        return;
+                    }
+                    const replacement = await replaceAuthConfig(root, password);
+                    sessions.clear();
+                    failures.clear();
+                    const id = randomBytes(32).toString('hex');
+                    const token = randomBytes(32).toString('hex');
+                    storeSession(id, {
+                        host, token, authRevision: replacement.hash, expiresAt: Date.now() + SESSION_LIFETIME
+                    });
+                    const secure = writeMode === 'remote' || req.headers.origin.startsWith('https://');
+                    send(200, {
+                        service: 'travel-diary-writer-v1', authenticated: true, changed: true, token,
+                        methods: ['POST', 'PUT', 'DELETE'], writeMode, expiresIn: SESSION_LIFETIME / 1000
+                    }, { 'Set-Cookie': sessionCookie(id, secure) });
+                } catch (error) {
+                    const status = ['PASSWORD_POLICY_INVALID', 'PASSWORD_TOO_WEAK'].includes(error.code)
+                        ? 400
+                        : (error.code === 'AUTH_NOT_PRODUCTION_READY' || error.code?.startsWith('AUTH_CONFIG_')
+                            ? 503
+                            : (error.status || 500));
+                    send(status, {
+                        service: 'travel-diary-writer-v1',
+                        error: error.message || '访问密码修改失败，请检查目录权限和磁盘空间。',
+                        ...(error.code ? { code: error.code } : {})
+                    });
+                } finally {
+                    if (releaseLock) await releaseLock();
+                }
+                return;
+            }
             if (req.method === 'DELETE') {
                 const id = readCookie(req, 'travel_session');
                 if (id) sessions.delete(id);
@@ -758,7 +820,7 @@ function createRecordApi(root, options = {}) {
                 return;
             }
             if (req.method !== 'POST') {
-                send(405, { error: '认证接口仅支持 JSON 登录请求。' }, { Allow: 'POST, DELETE' });
+                send(405, { error: '认证接口仅支持登录、修改密码或退出请求。' }, { Allow: 'POST, PUT, DELETE' });
                 return;
             }
             if (!hasMediaType(req, 'application/json')) {

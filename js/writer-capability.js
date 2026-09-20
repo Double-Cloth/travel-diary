@@ -99,3 +99,32 @@ export async function initializeWriterPassword(password, timeout = 15000) {
     }
     return capabilityFrom(new URL('api/travel-records', window.location.href), result);
 }
+
+export async function changeWriterPassword(password, capability, timeout = 15000) {
+    if (!capability?.authenticated || !capability.token) {
+        throw writerError('登录会话已失效，请重新输入当前密码。', 'AUTH_REQUIRED');
+    }
+    const endpoint = new URL('api/travel-auth', window.location.href);
+    let response;
+    try {
+        response = await fetch(endpoint, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Travel-Token': capability.token
+            },
+            body: JSON.stringify({ password }),
+            cache: 'no-store',
+            credentials: 'same-origin',
+            signal: AbortSignal.timeout(timeout)
+        });
+    } catch {
+        throw writerError('访问密码修改请求未能完成，请检查网络后重试。');
+    }
+    const result = await readResult(response);
+    if (!response.ok || result?.service !== 'travel-diary-writer-v1'
+        || !result.changed || !result.authenticated || !result.token) {
+        throw writerError(result?.error || '访问密码修改失败。', result?.code || 'AUTH_CHANGE_FAILED');
+    }
+    return capabilityFrom(new URL('api/travel-records', window.location.href), result);
+}

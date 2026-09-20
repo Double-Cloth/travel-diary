@@ -1,6 +1,6 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
 import { createRecordEditor } from './record-editor.js?v=20260919-video-upload-v2';
-import { createPasswordGate } from './record-password.js?v=20260914-auth-setup-v1';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20260920-password-change-v1';
 import { createDataTransfer } from './data-transfer.js?v=20260920-import-missing-media-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
@@ -69,6 +69,7 @@ let openDeleteRecord;
 let openDataExport;
 let openDataClear;
 let openProfilePictureUpload;
+let openPasswordChange;
 let profilePictureCapability = null;
 let dataTransfer;
 let travelModel = null;
@@ -212,6 +213,19 @@ async function initApp() {
         verifying: '正在验证并打开文件选择器…',
         actionError: '无法打开头像选择器，请重试。',
         staticMessage: '当前站点为静态只读页面，不支持更换头像。'
+    });
+    const showPasswordChange = createPasswordChangeDialog(async () => {
+        await showFeedback(
+            '访问密码已安全更新，其他设备上的旧登录会话已失效。',
+            { label: '访问安全', title: '密码修改成功' }
+        );
+    });
+    openPasswordChange = createPasswordGate(capability => showPasswordChange(capability), {
+        title: '修改密码验证',
+        description: '请先输入当前的 6 位数字密码。',
+        verifying: '正在验证当前密码…',
+        actionError: '无法开始修改密码，请重试。',
+        staticMessage: '当前站点为静态只读页面，不支持修改访问密码。'
     });
     renderLoading();
 
@@ -1222,6 +1236,11 @@ function renderArchive(params = {}) {
                     <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
                 </div>
                 <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
+            </section>
+            <section class="archive-overview-block archive-access-security" aria-labelledby="archiveSecurityTitle">
+                <h3 id="archiveSecurityTitle">访问安全</h3>
+                <p>验证当前密码后设置新的 6 位数字密码；再次输入到第 6 位时会自动提交。</p>
+                <button class="paper-button" type="button" data-action="change-password">修改访问密码</button>
             </section>
     `, 'dossier-page context-panel');
 }
@@ -2555,6 +2574,11 @@ function handleDocumentClick(event) {
     if (event.target.closest('[data-action="clear-all-data"]')) {
         event.preventDefault();
         void openDataClear().catch(error => showFeedback(error.message));
+        return;
+    }
+    if (event.target.closest('[data-action="change-password"]')) {
+        event.preventDefault();
+        void openPasswordChange().catch(error => showFeedback(error.message));
         return;
     }
     if (event.target.closest('[data-action="upload-profile-picture"]')) {

@@ -34,7 +34,7 @@ node js/server.js --local --write-mode=remote --allowed-origin=https://diary.exa
 
 反向代理与 Node 位于同一服务器时，推荐保持 `--local`，只让代理连接 Node；只有确实需要其他主机连接 Node 端口时才使用 `--network`。
 
-访问密码保持为 6 位数字，页面首次设密会拒绝连续、重复和常见弱组合。只有 `.secrets/auth.json` 已损坏或需要强制恢复时，才在交互式终端运行 `npm run auth:set`；缺少配置时直接在本机页面创建。普通页面不会直接读取认证配置；只有通过认证的动态完整备份会携带 `.secrets/auth.json`。密码只以带随机盐的 `scrypt` 哈希保存，并被静态服务永久拒绝。全局连续失败 5 次会锁定 15 分钟，避免轮换 IP 或 Host 穷举；会话与当前哈希绑定，换密后旧会话立即失效。Cookie 使用 `HttpOnly`、`SameSite=Strict`，remote 模式一律增加 `Secure`。
+访问密码保持为 6 位数字，页面首次设密会拒绝连续、重复和常见弱组合。需要日常换密时，在个人主页的「访问安全」中验证当前密码并两次输入新密码；第二次输入满 6 位会自动提交。只有 `.secrets/auth.json` 已损坏或需要强制恢复时，才在交互式终端运行 `npm run auth:set`；缺少配置时直接在本机页面创建。普通页面不会直接读取认证配置；只有通过认证的动态完整备份会携带 `.secrets/auth.json`。密码只以带随机盐的 `scrypt` 哈希保存，并被静态服务永久拒绝。全局连续失败 5 次会锁定 15 分钟，避免轮换 IP 或 Host 穷举；会话与当前哈希绑定，换密后其他旧会话立即失效，当前页面会取得新会话。Cookie 使用 `HttpOnly`、`SameSite=Strict`，remote 模式一律增加 `Secure`。
 
 remote write mode 仍默认关闭。当前项目按部署需要跟踪 `.secrets/auth.json`，但哈希并非加密，六位数字只有 100 万种组合；仓库必须设为私有，并限制克隆和 Actions 日志权限。公网部署除 HTTPS 白名单外，仍应在上游增加 VPN、Zero Trust 或等效的独立访问控制。若仓库曾公开，应清理 Git 历史并立即换密。
 

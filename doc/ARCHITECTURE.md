@@ -34,7 +34,7 @@ index.html
        └─ js/utils.js
 ```
 
-运行 `js/server.js` 时，服务提供静态文件和正确的 MIME 类型，并将 `/api/travel-auth`、`/api/travel-auth/setup`、`/api/travel-records`、`/api/travel-profile` 与 `/api/travel-data` 交给零安装依赖的数据服务，分别用于认证、首次设密、记录的新增修改删除、头像更新及 `data/` 与 `.secrets/auth.json` 的动态 ZIP 导入导出。GitHub Pages 与普通静态托管仍不具备认证或写入端点。
+运行 `js/server.js` 时，服务提供静态文件和正确的 MIME 类型，并将 `/api/travel-auth`、`/api/travel-auth/setup`、`/api/travel-records`、`/api/travel-profile` 与 `/api/travel-data` 交给零安装依赖的数据服务，分别用于认证与换密、首次设密、记录的新增修改删除、头像更新及 `data/` 与 `.secrets/auth.json` 的动态 ZIP 导入导出。GitHub Pages 与普通静态托管仍不具备认证或写入端点。
 
 监听配置与写入策略相互独立：`--local` / `--network` 决定绑定 `127.0.0.1` 还是 `0.0.0.0`，`--write-mode=local|remote` 决定哪些请求可以取得写入能力。默认 write mode 为 `local`，所以单独使用 `--network` 不会开放远程写入。remote 模式还必须通过可重复的 `--allowed-origin=https://...` 声明精确的 HTTPS 来源白名单。
 
@@ -135,7 +135,7 @@ data/travel_data.json ────────────────→ getRec
 
 ## 服务端认证与记录管理的数据流
 
-新增、修改、删除及动态数据导入导出共用服务端认证。`record-password.js` 保留六格指示器与数字键盘，但不读取任何配置文件；缺少配置时只在浏览器内比较两次输入是否一致，再通过相对 URL 提交到 `POST /api/travel-auth/setup`，已有配置时提交到 `POST /api/travel-auth`。服务端负责密码策略校验、生成随机盐与 `scrypt` 哈希；首次设置仅允许 local 写入模式的 localhost 同源页面，并以 `wx` 排他创建避免覆盖现有或损坏配置。普通验证以固定参数 `scrypt` 计算候选哈希并用 `timingSafeEqual` 比较，再执行登录失败限速。remote 模式启动前必须已有可用于远程写入的六位数字配置。
+新增、修改、删除及动态数据导入导出共用服务端认证。`record-password.js` 保留六格指示器与数字键盘，但不读取任何配置文件；缺少配置时只在浏览器内比较两次输入是否一致，再通过相对 URL 提交到 `POST /api/travel-auth/setup`，已有配置时提交到 `POST /api/travel-auth`。个人主页换密先复用登录流程验证当前密码，再收集两次新密码；确认输入满 6 位时自动向 `PUT /api/travel-auth` 提交新密码及当前写入令牌。服务端负责密码策略校验、生成随机盐与 `scrypt` 哈希；首次设置仅允许 local 写入模式的 localhost 同源页面，并以 `wx` 排他创建避免覆盖现有或损坏配置。换密在数据锁内原子替换认证配置、清空旧会话并为当前页面重新签发会话。普通验证以固定参数 `scrypt` 计算候选哈希并用 `timingSafeEqual` 比较，再执行登录失败限速。remote 模式启动前必须已有可用于远程写入的六位数字配置。
 
 任何来源合计在 15 分钟内连续失败 5 次后全局限速，并在验证前预留并发名额，避免轮换 IP/Host 或并发绕过。认证成功会创建有上限的内存会话和独立 CSRF/写入 token：Cookie 限制为 `/api`、`HttpOnly`、`SameSite=Strict`、最长 8 小时，remote 模式始终添加 `Secure`。会话绑定签发时的认证哈希，换密后旧会话在下一次请求立即失效。所有修改请求必须同时通过 Host/Origin 写入策略、会话和 `X-Travel-Token`。
 
