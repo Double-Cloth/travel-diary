@@ -1,7 +1,7 @@
 const fs = require('fs/promises');
 const path = require('path');
 const { randomBytes, timingSafeEqual } = require('crypto');
-const { acquireDataLock, exportDataArchive, importDataArchive } = require('./data-archive.js');
+const { acquireDataLock, clearTravelData, exportDataArchive, importDataArchive } = require('./data-archive.js');
 const { initializeAuthConfig, readAuthConfig, verifyPassword } = require('./auth.js');
 
 const LOGIN_FAILURE_WINDOW = 15 * 60 * 1000;
@@ -866,7 +866,16 @@ function createRecordApi(root, options = {}) {
                     send(200, { imported: true, ...result });
                     return;
                 }
-                send(req.method === 'POST' ? 415 : 405, { error: '数据备份仅支持 ZIP 导入与导出。' });
+                if (req.method === 'DELETE') {
+                    const result = await clearTravelData(root);
+                    send(200, { cleared: true, ...result });
+                    return;
+                }
+                if (req.method === 'POST') {
+                    send(415, { error: '全部数据导入必须使用 ZIP 文件。' });
+                    return;
+                }
+                send(405, { error: '全部数据接口仅支持导入、导出或清空。' }, { Allow: 'GET, HEAD, POST, DELETE' });
             } catch (error) {
                 send(error.status || 500, {
                     error: error.status ? error.message : '全部数据操作失败，请检查目录权限、磁盘空间和备份文件。',

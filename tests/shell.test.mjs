@@ -282,7 +282,7 @@ test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () =>
 });
 
 test('运行时提示全部使用站内反馈弹窗而不是浏览器 alert', () => {
-    assert.match(appJs, /import \{ showFeedback \} from '\.\/feedback-dialog\.js';/);
+    assert.match(appJs, /import \{ confirmFeedback, showFeedback \} from '\.\/feedback-dialog\.js';/);
     assert.match(appJs, /\.catch\(error => showFeedback\(error\.message\)\)/);
     assert.match(appJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据导出。'/);
     assert.match(dataTransferJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据导入。'/);
@@ -378,6 +378,18 @@ test('全部数据导入保留当前认证且不传输密码头', () => {
     assert.match(recordStoreJs, /readBody\(req, MAXIMUM_ARCHIVE_BYTES\)/);
     assert.match(authJs, /algorithm: 'scrypt'/);
     assert.match(authJs, /PASSWORD_LENGTH = 6/);
+});
+
+test('个人主页提供经二次确认和密码验证保护的全部数据清空功能', () => {
+    assert.match(appJs, /data-action="clear-all-data"/);
+    assert.match(appJs, /const result = await dataTransfer\.clearAll\(capability\)/);
+    assert.match(appJs, /beforePrompt: \(\) => confirmFeedback\(/);
+    assert.match(appJs, /建议先导出完整备份/);
+    assert.match(appJs, /访问密码会保留/);
+    assert.match(dataTransferJs, /method: 'DELETE'/);
+    assert.match(dataTransferJs, /result\.cleared/);
+    assert.match(recordStoreJs, /if \(req\.method === 'DELETE'\) \{\s*const result = await clearTravelData\(root\)/);
+    assert.match(journalCss, /\.archive-data-transfer \.archive-data-clear\s*{/);
 });
 
 test('全部数据导入先建立服务端会话并提交双重写入凭据', () => {

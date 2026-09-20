@@ -97,3 +97,27 @@ test('新旧数据备份按内容恢复或保留认证配置', async () => {
     assert.equal(response.status, 400);
     assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
 });
+
+test('清空全部数据要求会话与写入令牌，并保留访问密码', async () => {
+    await fs.mkdir(path.join(root, 'data/travel-diary/2026'), { recursive: true });
+    await fs.mkdir(path.join(root, 'data/photos/temporary'), { recursive: true });
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify([record]));
+    await fs.writeFile(path.join(root, record.desc_md), '# 苏州\n');
+    await fs.writeFile(path.join(root, 'data/photos/temporary/photo.png'), 'photo');
+    const authBefore = await fs.readFile(path.join(root, '.secrets/auth.json'));
+    const { cookie, token } = await login(base);
+
+    assert.equal((await fetch(`${base}/api/travel-data`, { method: 'DELETE' })).status, 401);
+    assert.equal((await fetch(`${base}/api/travel-data`, {
+        method: 'DELETE', headers: { Cookie: cookie, Origin: base }
+    })).status, 403);
+    const response = await fetch(`${base}/api/travel-data`, {
+        method: 'DELETE', headers: { Cookie: cookie, Origin: base, 'X-Travel-Token': token }
+    });
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { cleared: true, authPreserved: true });
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), []);
+    await assert.rejects(fs.access(path.join(root, record.desc_md)));
+    await assert.rejects(fs.access(path.join(root, 'data/photos/temporary/photo.png')));
+    assert.deepEqual(await fs.readFile(path.join(root, '.secrets/auth.json')), authBefore);
+});

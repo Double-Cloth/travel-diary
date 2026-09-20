@@ -87,6 +87,37 @@ export function createDataTransfer(onImported) {
         noteExportStarted();
     }
 
+    async function clearAll(authenticatedCapability) {
+        if (busy) throw new Error('另一项全部数据操作正在进行，请稍后重试。');
+        busy = true;
+        setStatus('正在清空全部旅行数据…');
+        try {
+            const response = await fetch(new URL('api/travel-data', window.location.href), {
+                method: 'DELETE',
+                headers: { 'X-Travel-Token': writerToken(authenticatedCapability) },
+                credentials: 'same-origin',
+                signal: AbortSignal.timeout(120000)
+            });
+            let result;
+            try { result = await response.json(); }
+            catch { throw new Error('清空全部数据返回了无法识别的结果。'); }
+            if (!response.ok || !result.cleared) throw new Error(result.error || '全部数据未能清空。');
+            try { await onImported(); }
+            catch {
+                const message = '全部数据已清空，页面刷新失败。请手动刷新后查看。';
+                setStatus(message);
+                return { refreshFailed: true };
+            }
+            setStatus('');
+            return { refreshFailed: false };
+        } catch (error) {
+            setStatus(error?.message || '全部数据未能清空。');
+            throw error;
+        } finally {
+            busy = false;
+        }
+    }
+
     function chooseImportWithAuthorization(capability) {
         if (busy) return;
         importCapability = capability;
@@ -228,5 +259,5 @@ export function createDataTransfer(onImported) {
         }
     });
 
-    return { chooseImport, exportAll, getExportHref, noteExportStarted };
+    return { chooseImport, clearAll, exportAll, getExportHref, noteExportStarted };
 }

@@ -8,7 +8,7 @@ import { createZip, readZip } from '../js/zip-archive.mjs';
 import { AUTH_CONFIG, installAuth } from './helpers/auth.mjs';
 
 const require = createRequire(import.meta.url);
-const { exportDataArchive, importDataArchive } = require('../js/data-archive.js');
+const { clearTravelData, exportDataArchive, importDataArchive } = require('../js/data-archive.js');
 const { writeDataBackup } = require('../scripts/build-data-backup.js');
 
 async function fixture(t, prefix = 'travel-diary-archive-') {
@@ -55,6 +55,46 @@ test('完整 ZIP 包含 data 与认证配置，并可恢复访问密码', async 
     assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, record.photos[0])), Buffer.from([1, 2, 3]));
     assert.deepEqual(await fs.readFile(path.join(root, record.video_folder, record.videos[0])), Buffer.from([4, 5, 6]));
     assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
+    assert.equal((await fs.readdir(root)).some(name => name.startsWith('.travel-')), false);
+});
+
+test('清空全部数据会重建空目录与默认头像并保留认证配置', async t => {
+    const root = await fixture(t, 'travel-diary-clear-all-');
+    await fs.mkdir(path.join(root, 'data/travel-diary/2026'), { recursive: true });
+    await fs.mkdir(path.join(root, 'data/photos/suzhou'), { recursive: true });
+    await fs.mkdir(path.join(root, 'data/videos/suzhou'), { recursive: true });
+    await fs.mkdir(path.join(root, 'data/profile'), { recursive: true });
+    await fs.writeFile(path.join(root, 'data/travel-diary/2026/diary.md'), '# 日记');
+    await fs.writeFile(path.join(root, 'data/photos/suzhou/photo.png'), 'photo');
+    await fs.writeFile(path.join(root, 'data/videos/suzhou/video.mp4'), 'video');
+    await fs.writeFile(path.join(root, 'data/profile/profile-picture.png'), 'custom');
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), '[{"kept":false}]');
+    const authBefore = await fs.readFile(path.join(root, '.secrets/auth.json'));
+
+    assert.deepEqual(await clearTravelData(root), { authPreserved: true });
+    assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]\n');
+    for (const directory of ['travel-diary', 'photos', 'videos', 'profile']) {
+        assert.equal((await fs.stat(path.join(root, 'data', directory))).isDirectory(), true);
+    }
+    assert.deepEqual(await fs.readdir(path.join(root, 'data/travel-diary')), []);
+    assert.deepEqual(await fs.readdir(path.join(root, 'data/photos')), []);
+    assert.deepEqual(await fs.readdir(path.join(root, 'data/videos')), []);
+    assert.ok((await fs.stat(path.join(root, 'data/profile/profile-picture.png'))).size > 0);
+    assert.deepEqual(await fs.readFile(path.join(root, '.secrets/auth.json')), authBefore);
+    assert.equal((await fs.readdir(root)).some(name => name.startsWith('.travel-')), false);
+});
+
+test('Windows 中文件仍被页面读取时也能清空全部数据', { skip: process.platform !== 'win32' }, async t => {
+    const root = await fixture(t, 'travel-diary-clear-open-file-');
+    const photo = path.join(root, 'data/photos/open/photo.png');
+    await fs.mkdir(path.dirname(photo), { recursive: true });
+    await fs.writeFile(photo, 'photo');
+    const handle = await fs.open(photo, 'r');
+    t.after(() => handle.close());
+
+    assert.deepEqual(await clearTravelData(root), { authPreserved: true });
+    await assert.rejects(fs.access(photo));
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), []);
     assert.equal((await fs.readdir(root)).some(name => name.startsWith('.travel-')), false);
 });
 

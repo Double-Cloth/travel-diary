@@ -4,7 +4,7 @@ import { createPasswordGate } from './record-password.js?v=20260914-auth-setup-v
 import { createDataTransfer } from './data-transfer.js?v=20260920-import-missing-media-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
-import { showFeedback } from './feedback-dialog.js';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js';
 import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20260914-profile-upload-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
@@ -58,7 +58,7 @@ const ROUTE_MAP_SLOTS = [
     { ticket: 'ticket-f', stamp: 'stamp-f', label: '06' }
 ];
 const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
-const DEFAULT_VIDEO_VOLUME = 0.8;
+const DEFAULT_VIDEO_VOLUME = 0.85;
 const VIDEO_PLAY_ICON_PATH = 'M8 5.5v13l10-6.5z';
 const VIDEO_PAUSE_ICON_PATH = 'M7 5h4v14H7zm6 0h4v14h-4z';
 
@@ -67,6 +67,7 @@ let openRecordEditor;
 let openEditRecord;
 let openDeleteRecord;
 let openDataExport;
+let openDataClear;
 let openProfilePictureUpload;
 let profilePictureCapability = null;
 let dataTransfer;
@@ -170,13 +171,38 @@ async function initApp() {
         capability => dataTransfer.exportAll(`travel-diary-data-${getTodayDate()}.zip`, capability),
         {
             title: '导出数据验证',
-            description: '输入 6 位数字密码后导出全部旅行数据（不包含认证配置）。',
+            description: '输入 6 位数字密码后导出全部旅行数据和认证配置。',
             verifying: '正在验证并准备下载…',
             actionError: '无法导出全部数据，请重试。',
             staticMessage: '当前站点为静态只读页面，不提供全部数据导出。'
         }
     );
     openDataExport = requestDataExportAuthorization;
+    openDataClear = createPasswordGate(async capability => {
+        const result = await dataTransfer.clearAll(capability);
+        resetProfilePicture();
+        void showFeedback(
+            result.refreshFailed
+                ? '全部旅行数据已清空，但页面刷新失败。请手动刷新后查看。'
+                : '所有旅行记录、正文、照片、视频和自定义头像均已清空，访问密码保持不变。',
+            { label: '数据管理', title: '全部数据已清空' }
+        );
+    }, {
+        title: '清空数据验证',
+        description: '输入 6 位数字密码后永久清空全部旅行数据。',
+        verifying: '正在验证并清空数据…',
+        actionError: '无法清空全部数据，请重试。',
+        staticMessage: '当前站点为静态只读页面，不支持清空全部数据。',
+        beforePrompt: () => confirmFeedback(
+            '所有旅行记录、正文、照片、视频和自定义头像都将被永久删除，且无法撤销。访问密码会保留。建议先导出完整备份。',
+            {
+                label: '危险操作',
+                title: '确定清空全部数据？',
+                cancelLabel: '暂不清空',
+                confirmLabel: '继续验证'
+            }
+        )
+    });
     openProfilePictureUpload = createPasswordGate(capability => {
         profilePictureCapability = capability;
         refs.profilePictureInput?.click();
@@ -237,6 +263,13 @@ function refreshProfilePicture() {
         profilePicture.hidden = false;
     }, { once: true });
     profilePicture.src = profilePictureUrl.href;
+}
+
+function resetProfilePicture() {
+    const profilePicture = refs.profilePictureButton?.querySelector('img');
+    if (!profilePicture) return;
+    profilePicture.hidden = true;
+    profilePicture.removeAttribute('src');
 }
 
 async function handleProfilePictureSelection(input) {
@@ -1186,6 +1219,7 @@ function renderArchive(params = {}) {
                 <div>
                     <button class="paper-button" type="button" data-action="export-all-data">导出全部数据</button>
                     <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
+                    <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
                 </div>
                 <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
             </section>
@@ -2506,6 +2540,11 @@ function handleDocumentClick(event) {
     if (event.target.closest('[data-action="import-all-data"]')) {
         event.preventDefault();
         void dataTransfer.chooseImport();
+        return;
+    }
+    if (event.target.closest('[data-action="clear-all-data"]')) {
+        event.preventDefault();
+        void openDataClear().catch(error => showFeedback(error.message));
         return;
     }
     if (event.target.closest('[data-action="upload-profile-picture"]')) {

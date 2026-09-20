@@ -180,3 +180,44 @@ test('导入缺少媒体文件的备份后提示缺失数量但保留旅行数�
     assert.match(success.querySelector('#dataImportSuccessDescription').textContent, /2 个图片或视频引用缺少对应文件/);
     assert.equal(output.textContent, '');
 });
+
+test('清空全部数据使用认证令牌并在服务端成功后刷新页面数据', async t => {
+    const output = { textContent: '' };
+    function node() {
+        const children = new Map();
+        return {
+            events: {}, open: false,
+            classList: { add() {}, remove() {}, toggle() {} },
+            setAttribute() {}, focus() {}, click() {},
+            addEventListener(name, handler) { this.events[name] = handler; },
+            querySelectorAll() { return []; },
+            querySelector(selector) {
+                if (!children.has(selector)) children.set(selector, node());
+                return children.get(selector);
+            },
+            showModal() { this.open = true; }, close() { this.open = false; }
+        };
+    }
+    const previous = { document: globalThis.document, window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.document = {
+        createElement: () => node(),
+        body: { append() {} },
+        querySelector: () => output,
+        activeElement: null
+    };
+    globalThis.window = { location: { href: 'https://diary.example/' } };
+    let refreshed = 0;
+    globalThis.fetch = async (url, options) => {
+        assert.equal(url.href, 'https://diary.example/api/travel-data');
+        assert.equal(options.method, 'DELETE');
+        assert.equal(options.headers['X-Travel-Token'], 'clear-token');
+        return { ok: true, json: async () => ({ cleared: true }) };
+    };
+
+    const result = await createDataTransfer(async () => { refreshed += 1; })
+        .clearAll({ authenticated: true, token: 'clear-token' });
+    assert.deepEqual(result, { refreshFailed: false });
+    assert.equal(refreshed, 1);
+    assert.equal(output.textContent, '');
+});

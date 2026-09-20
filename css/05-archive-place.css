@@ -63,6 +63,19 @@
     font-size: 12px;
 }
 
+.archive-data-transfer .archive-data-clear {
+    grid-column: 1 / -1;
+    color: var(--stamp);
+    border-color: rgba(143, 53, 39, 0.38);
+}
+
+.archive-data-transfer .archive-data-clear:hover,
+.archive-data-transfer .archive-data-clear:focus-visible {
+    color: var(--paper-50);
+    border-color: rgba(91, 27, 20, 0.58);
+    background: linear-gradient(180deg, #a84a39, #76271e);
+}
+
 .archive-data-transfer .archive-data-status {
     min-height: 1.5em;
     margin: 10px 0 0;

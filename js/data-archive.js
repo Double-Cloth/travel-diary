@@ -3,6 +3,11 @@ const path = require('path');
 const { randomBytes } = require('crypto');
 const { AUTH_RELATIVE_PATH, validateAuthConfig } = require('./auth.js');
 
+const DEFAULT_PROFILE_PICTURE = Buffer.from(
+    'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=',
+    'base64'
+);
+
 function failure(status, message, code) {
     return Object.assign(new Error(message), { status, ...(code ? { code } : {}) });
 }
@@ -319,4 +324,125 @@ async function importDataArchive(root, archive, options = {}) {
     }
 }
 
-module.exports = { acquireDataLock, exportDataArchive, importDataArchive };
+async function collectMovableEntries(directory, relativePath = '') {
+    const directories = [];
+    const leaves = [];
+    for (const item of await fs.readdir(directory, { withFileTypes: true })) {
+        const itemRelativePath = relativePath ? path.join(relativePath, item.name) : item.name;
+        const itemPath = path.join(directory, item.name);
+        const stat = await fs.lstat(itemPath);
+        if (stat.isDirectory() && !stat.isSymbolicLink()) {
+            directories.push(itemRelativePath);
+            const nested = await collectMovableEntries(itemPath, itemRelativePath);
+            directories.push(...nested.directories);
+            leaves.push(...nested.leaves);
+        } else {
+            leaves.push(itemRelativePath);
+        }
+    }
+    return { directories, leaves };
+}
+
+async function moveDirectoryContents(sourceRoot, targetRoot) {
+    const { directories, leaves } = await collectMovableEntries(sourceRoot);
+    const movedLeaves = [];
+    await fs.mkdir(targetRoot, { recursive: true });
+    try {
+        for (const directory of directories) {
+            await fs.mkdir(path.join(targetRoot, directory), { recursive: true });
+        }
+        for (const leaf of leaves) {
+            await fs.rename(path.join(sourceRoot, leaf), path.join(targetRoot, leaf));
+            movedLeaves.push(leaf);
+        }
+        for (const directory of [...directories].sort((a, b) => b.length - a.length)) {
+            await fs.rmdir(path.join(sourceRoot, directory));
+        }
+    } catch (error) {
+        for (const leaf of movedLeaves.reverse()) {
+            await fs.mkdir(path.dirname(path.join(sourceRoot, leaf)), { recursive: true }).catch(() => {});
+            await fs.rename(path.join(targetRoot, leaf), path.join(sourceRoot, leaf)).catch(() => {});
+        }
+        for (const directory of [...directories].sort((a, b) => b.length - a.length)) {
+            await fs.rmdir(path.join(targetRoot, directory)).catch(() => {});
+        }
+        throw error;
+    }
+}
+
+function isWindowsRenameContention(error) {
+    return process.platform === 'win32' && ['EACCES', 'EBUSY', 'EPERM'].includes(error?.code);
+}
+
+async function pathExists(target) {
+    try {
+        await fs.stat(target);
+        return true;
+    } catch (error) {
+        if (error.code === 'ENOENT') return false;
+        throw error;
+    }
+}
+
+async function clearTravelData(root) {
+    const release = await acquireDataLock(root);
+    const id = randomBytes(16).toString('hex');
+    const stageRoot = path.join(root, `.travel-data-clear-${id}`);
+    const stageData = path.join(stageRoot, 'data');
+    const currentData = path.join(root, 'data');
+    const backupData = path.join(root, `.travel-data-backup-${id}`);
+    let movedData = false;
+    try {
+        const currentStat = await fs.lstat(currentData);
+        if (currentStat.isSymbolicLink() || !currentStat.isDirectory()) {
+            throw failure(403, '当前 data 必须是项目内的普通目录。');
+        }
+
+        await Promise.all([
+            fs.mkdir(path.join(stageData, 'travel-diary'), { recursive: true }),
+            fs.mkdir(path.join(stageData, 'photos'), { recursive: true }),
+            fs.mkdir(path.join(stageData, 'videos'), { recursive: true }),
+            fs.mkdir(path.join(stageData, 'profile'), { recursive: true })
+        ]);
+        await Promise.all([
+            fs.writeFile(path.join(stageData, 'travel_data.json'), '[]\n', { flag: 'wx' }),
+            fs.writeFile(path.join(stageData, 'profile', 'profile-picture.png'), DEFAULT_PROFILE_PICTURE, { flag: 'wx' })
+        ]);
+
+        try {
+            await fs.rename(currentData, backupData);
+            movedData = true;
+        } catch (error) {
+            if (!isWindowsRenameContention(error)) throw error;
+            // Windows 会在图片或视频仍被浏览器读取时拒绝重命名父目录；逐文件搬移可保留回滚能力。
+            await moveDirectoryContents(currentData, backupData);
+            movedData = true;
+        }
+        try {
+            if (await pathExists(currentData)) {
+                await moveDirectoryContents(stageData, currentData);
+            } else {
+                await fs.rename(stageData, currentData);
+            }
+        } catch (error) {
+            const currentExists = await pathExists(currentData);
+            if (currentExists) await moveDirectoryContents(backupData, currentData);
+            else await fs.rename(backupData, currentData);
+            movedData = false;
+            throw error;
+        }
+        movedData = false;
+        await fs.rm(backupData, { recursive: true, force: true }).catch(() => {});
+        return { authPreserved: true };
+    } finally {
+        if (movedData) {
+            const currentExists = await pathExists(currentData);
+            if (currentExists) await moveDirectoryContents(backupData, currentData).catch(() => {});
+            else await fs.rename(backupData, currentData).catch(() => {});
+        }
+        await fs.rm(stageRoot, { recursive: true, force: true }).catch(() => {});
+        await release();
+    }
+}
+
+module.exports = { acquireDataLock, clearTravelData, exportDataArchive, importDataArchive };
