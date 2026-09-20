@@ -68,6 +68,10 @@ test('索引夹层包含完整且唯一的高级筛选工作台', () => {
     assert.match(appJs, /filterToggleButton\('有媒体', 'media', 'any'/);
     assert.match(appJs, /filterToggleButton\('有图片', 'media'/);
     assert.match(appJs, /filterToggleButton\('有视频', 'media'/);
+    assert.match(
+        appJs,
+        /filterToggleButton\('全部', 'media', 'all'[^]*filterToggleButton\('有媒体', 'media', 'any'[^]*filterToggleButton\('无媒体', 'media', 'none'[^]*filterToggleButton\('有图片', 'media', 'photos'[^]*filterToggleButton\('有视频', 'media', 'videos'/
+    );
     assert.match(appJs, /filterToggleButton\('有笔记', 'note'/);
     assert.match(appJs, /重置全部/);
     assert.doesNotMatch(appJs, /当前筛选|当前排序|切到最早优先|切回最新优先/);
@@ -181,7 +185,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260920-media-errors-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260920-media-filter-order-v1/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260920-media-errors-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);

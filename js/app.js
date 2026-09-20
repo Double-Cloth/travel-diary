@@ -1071,9 +1071,9 @@ function renderLedgerFilterWorkbench(params) {
             <div class="index-segment-group" aria-label="媒体状态">
                 ${filterToggleButton('全部', 'media', 'all', params.media)}
                 ${filterToggleButton('有媒体', 'media', 'any', params.media)}
+                ${filterToggleButton('无媒体', 'media', 'none', params.media)}
                 ${filterToggleButton('有图片', 'media', 'photos', params.media)}
                 ${filterToggleButton('有视频', 'media', 'videos', params.media)}
-                ${filterToggleButton('无媒体', 'media', 'none', params.media)}
             </div>
             <span class="field-label">笔记内容</span>
             <div class="index-segment-group" aria-label="笔记内容">
