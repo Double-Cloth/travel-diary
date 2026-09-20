@@ -1768,7 +1768,7 @@ function renderVideoControls() {
             <label class="video-viewer-seek-label"><span class="sr-only">播放进度</span><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek></label>
             <button class="photo-viewer-control video-viewer-more-toggle" type="button" data-video-action="toggle-controls" data-video-more-toggle aria-expanded="false" aria-label="展开更多视频控制">
                 <span>更多</span>
-                <svg class="video-viewer-more-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 1.5 6 6.5l5-5"></path></svg>
+                <svg class="video-viewer-more-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 6.5 6 1.5l5 5"></path></svg>
             </button>
             <output class="video-viewer-time" data-video-time>00:00 / --:--</output>
             ${renderTransformControls('视频', 'video-viewer-transform-controls')}

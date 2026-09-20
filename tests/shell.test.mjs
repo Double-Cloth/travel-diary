@@ -185,8 +185,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260920-import-missing-media-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260920-import-missing-media-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260920-video-more-arrow-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260920-video-more-arrow-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -678,6 +678,7 @@ test('移动端视频查看器同排显示播放和进度并可折叠其余控�
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-toolbar\s*{[\s\S]*padding: 8px 48px 8px 8px;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-close\s*{[\s\S]*top: 8px;[\s\S]*right: 8px;[\s\S]*height: 36px;[\s\S]*padding: 0;/);
     assert.match(appJs, /data-video-action="toggle-controls" data-video-more-toggle aria-expanded="false" aria-label="展开更多视频控制"/);
+    assert.match(appJs, /class="video-viewer-more-icon"[^>]*><path d="M1 6\.5 6 1\.5l5 5"><\/path>/);
     assert.match(appJs, /function syncVideoMoreControlsLayout\(\)[\s\S]*if \(layout === 'mobile'\) setVideoMoreControlsOpen\(false\);/);
     assert.match(appJs, /function setVideoMoreControlsOpen\(isOpen\)[\s\S]*classList\.toggle\('is-more-open', isOpen\)[\s\S]*schedulePhotoViewerFit\(\);/);
     assert.match(appJs, /case 'toggle-controls':[\s\S]*setVideoMoreControlsOpen/);
