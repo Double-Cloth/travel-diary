@@ -41,8 +41,7 @@ const LEDGER_FILTER_DEFAULTS = {
     q: '',
     sort: DEFAULT_LEDGER_SORT
 };
-const PAGE_TURN_MS = 480;
-const PAGE_TURN_SWAP_MS = 140;
+const PAGE_TURN_MS = 1050;
 const SEARCH_UPDATE_DELAY_MS = 180;
 const COVER_RECENT_RECORD_LIMIT = 7;
 const COVER_RECENT_RECORD_MIN = 2;
@@ -75,7 +74,10 @@ let dataTransfer;
 let travelModel = null;
 let activeRoute = null;
 let pageTurnTimer = null;
+let pageTurnCleanup = null;
 let lastReadingHash = '#ledger';
+let renderedPageHash = '';
+let entryReturnFocus = null;
 let lastEntryFocusId = '';
 let lastReadingScrollPosition = null;
 let searchRouteTimer = null;
@@ -104,6 +106,7 @@ function getRefreshKey() {
 }
 
 async function refreshTravelModel(cacheKey = '') {
+    renderedPageHash = '';
     travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData(cacheKey), cacheKey));
 }
 
@@ -478,16 +481,28 @@ function renderRoute(route, options = {}) {
     const previousRoute = activeRoute;
     const shouldRestoreReadingScroll = isReturningToReadingBackground(previousRoute, route);
     activeRoute = route;
-    refs.shell.dataset.route = route.name;
-    document.body.dataset.route = route.name;
-    updateChapterTabs(route.name);
 
     if (route.name !== 'entry') {
         closeEntrySheet({ restoreHash: false });
     }
 
-    const direction = getTurnDirection(previousRoute, route);
+    // 详情是一张独立阅读纸，打开、换篇和合上时复用底下的书页。
+    if (route.name === 'entry') {
+        clearPageTurn();
+        renderEntryRoute(route.params);
+        return;
+    }
+    if (shouldRestoreReadingScroll && renderedPageHash === serializeRoute(route)) {
+        clearPageTurn();
+        restoreReadingScrollPosition();
+        restoreFocus(options.focusId);
+        return;
+    }
+    const isSameChapter = previousRoute?.name === route.name && ['cover', 'ledger', 'archive'].includes(route.name);
     renderWithPageTurn(() => {
+        refs.shell.dataset.route = route.name;
+        document.body.dataset.route = route.name;
+        updateChapterTabs(route.name);
         switch (route.name) {
             case 'cover':
                 renderCover();
@@ -510,11 +525,12 @@ function renderRoute(route, options = {}) {
             default:
                 renderCover();
         }
+        renderedPageHash = serializeRoute(route);
         if (shouldRestoreReadingScroll) {
             restoreReadingScrollPosition();
         }
         restoreFocus(options.focusId);
-    }, { direction, animate: options.animate !== false && !options.initial });
+    }, { animate: options.animate !== false && !options.initial && !isSameChapter });
 }
 
 function deriveTravelModel(records) {
@@ -1427,8 +1443,17 @@ function renderPlace(params = {}) {
 
 function renderEntryRoute(params = {}) {
     const record = travelModel.recordsById.get(params.id);
+    if (renderedPageHash === lastReadingHash) {
+        openEntrySheet(record);
+        return;
+    }
     const backgroundRoute = parseRoute(lastReadingHash);
-    if (backgroundRoute.name === 'place') {
+    refs.shell.dataset.route = backgroundRoute.name;
+    document.body.dataset.route = backgroundRoute.name;
+    updateChapterTabs(backgroundRoute.name);
+    if (backgroundRoute.name === 'cover') {
+        renderCover();
+    } else if (backgroundRoute.name === 'place') {
         renderPlace(backgroundRoute.params);
     } else if (backgroundRoute.name === 'archive') {
         renderArchive(backgroundRoute.params);
@@ -1438,6 +1463,7 @@ function renderEntryRoute(params = {}) {
             : (record ? { year: record.year, q: '', sort: DEFAULT_LEDGER_SORT } : { year: 'all', q: '', sort: DEFAULT_LEDGER_SORT });
         renderLedger(ledgerParams);
     }
+    renderedPageHash = lastReadingHash;
     restoreReadingScrollPosition();
     openEntrySheet(record);
 }
@@ -1511,6 +1537,10 @@ function openEntrySheet(record) {
     if (!refs.sheet) return;
     closePhotoViewerDialog();
 
+    if (!refs.sheet.classList.contains('entry-sheet-root-open')) {
+        entryReturnFocus = document.activeElement;
+    }
+    refs.shell.inert = true;
     refs.sheet.setAttribute('aria-hidden', 'false');
     refs.sheet.classList.add('entry-sheet-root-open');
 
@@ -1607,10 +1637,14 @@ function closeEntrySheet(options = {}) {
     photoGestureState = createPhotoGestureState();
     clearPhotoRotationTimer();
     document.querySelector('[data-photo-viewer]')?.remove();
+    refs.shell.inert = false;
+    const wasOpen = refs.sheet.classList.contains('entry-sheet-root-open');
     refs.sheet.classList.remove('entry-sheet-root-open');
     refs.sheet.setAttribute('aria-hidden', 'true');
     refs.sheet.innerHTML = '';
     syncPhotoSleevePreviewRows();
+    if (wasOpen && entryReturnFocus?.isConnected) entryReturnFocus.focus({ preventScroll: true });
+    entryReturnFocus = null;
 
     if (options.restoreHash) {
         navigateTo(lastReadingHash || '#ledger', { replace: true, focusId: lastEntryFocusId, animate: false });
@@ -2535,24 +2569,162 @@ function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
 
-function renderWithPageTurn(renderFn, options = {}) {
+function clearPageTurn() {
     clearTimeout(pageTurnTimer);
     pageTurnTimer = null;
-    refs.spread?.classList.remove('turn-forward', 'turn-back', 'turn-in');
+    pageTurnCleanup?.();
+    pageTurnCleanup = null;
+    refs.spread?.classList.remove('turn-forward', 'turn-back', 'turn-mobile', 'book-turn-preparing');
+}
+
+function cloneTurningPage(page) {
+    const clone = page.cloneNode(true);
+    clone.removeAttribute('id');
+    clone.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
+    clone.setAttribute('aria-hidden', 'true');
+    clone.inert = true;
+    // 固定旧页的纸张背景，防止路由切换后套用新章节的背景。
+    clone.style.background = getComputedStyle(page).background;
+    // 副本只绘制可见内容；屏外记录保留等高占位，避免重复复制整本档案。
+    const bounds = page.getBoundingClientRect();
+    const selector = '.ledger-entry, .cover-record, .photo-sleeve-button';
+    const originals = page.querySelectorAll(selector);
+    clone.querySelectorAll(selector).forEach((node, index) => {
+        const rect = originals[index].getBoundingClientRect();
+        if (rect.bottom >= bounds.top - 24 && rect.top <= bounds.bottom + 24) return;
+        node.replaceChildren();
+        node.style.height = `${rect.height}px`;
+        node.style.minHeight = `${rect.height}px`;
+        node.style.boxSizing = 'border-box';
+        node.style.visibility = 'hidden';
+    });
+    clone.classList.add('book-page-copy');
+    return clone;
+}
+
+// 沿纸张宽度积分局部切线：每片的终点连接下一片，页边先卷起，书脊随后转动。
+function createPageCurlFrames(width, backwards, count = 12) {
+    const frames = Array.from({ length: count }, () => []);
+    const step = width / count;
+    const direction = backwards ? -1 : 1;
+    for (let frame = 0; frame <= 40; frame += 1) {
+        const time = frame / 40;
+        // 前 18% 仅掀起外侧下角，随后曲率由页边传向书脊。
+        const travel = Math.max(0, (time - 0.18) / 0.82);
+        const progress = (1 - Math.cos(Math.PI * travel)) / 2;
+        const flex = Math.sin(Math.PI * progress);
+        let x = backwards ? width : 0;
+        let z = 0;
+        for (let index = 0; index < count; index += 1) {
+            const position = (index + 0.5) / count;
+            const angle = direction * (-Math.PI * progress + 0.95 * flex * (1 - 2 * position));
+            frames[index].push({
+                offset: time,
+                transform: `translate3d(${x - (backwards ? step : 0)}px, 0, ${z}px) rotateY(${angle}rad)`
+            });
+            x += direction * Math.cos(angle) * step;
+            z -= direction * Math.sin(angle) * step;
+        }
+    }
+    return frames;
+}
+
+function renderWithPageTurn(renderFn, options = {}) {
+    clearPageTurn();
 
     if (!refs.spread || options.animate === false || prefersReducedMotion()) {
         renderFn();
         return;
     }
 
-    refs.spread.classList.add(options.direction === 'back' ? 'turn-back' : 'turn-forward');
-
-    pageTurnTimer = setTimeout(() => {
+    if (isMobileLayout()) {
         renderFn();
-        refs.spread.classList.remove('turn-forward', 'turn-back');
-        refs.spread.classList.add('turn-in');
-        pageTurnTimer = setTimeout(() => refs.spread.classList.remove('turn-in'), PAGE_TURN_MS);
-    }, PAGE_TURN_SWAP_MS);
+        refs.spread.classList.add('turn-mobile');
+        pageTurnTimer = setTimeout(clearPageTurn, 300);
+        return;
+    }
+
+    // 所有章节都从左页左下角向右翻，路由顺序不再改变物理方向。
+    const backwards = true;
+    const turningPage = backwards ? refs.leftPage : refs.rightPage;
+    const restingPage = backwards ? refs.rightPage : refs.leftPage;
+    const { width, height } = turningPage.getBoundingClientRect();
+    const front = cloneTurningPage(turningPage);
+    const resting = cloneTurningPage(restingPage);
+    const frontScroll = turningPage.scrollTop;
+    const restingScroll = restingPage.scrollTop;
+    renderFn();
+    const reversePage = backwards ? refs.rightPage : refs.leftPage;
+    const back = cloneTurningPage(reversePage);
+    const leaf = document.createElement('div');
+    leaf.className = 'book-turn-leaf';
+    leaf.setAttribute('aria-hidden', 'true');
+    leaf.inert = true;
+    resting.classList.add('book-turn-resting');
+    const frames = createPageCurlFrames(width, backwards);
+    const stripWidth = width / frames.length;
+    const animations = [];
+    const surfaces = [];
+    frames.forEach((keyframes, index) => {
+        const strip = document.createElement('div');
+        strip.className = 'book-curl-strip';
+        // 亚像素重叠覆盖透视栅格的细缝，不改变纸面的连续几何位置。
+        strip.style.width = `${stripWidth + 0.6}px`;
+        strip.style.transformOrigin = backwards ? `${stripWidth}px center` : 'left center';
+        strip.style.transform = keyframes[0].transform;
+        strip.style.setProperty('--curl-shade', String(0.12 + 0.12 * Math.sin(Math.PI * (index + 0.5) / frames.length)));
+        const frontIndex = backwards ? frames.length - index - 1 : index;
+        [front, back].forEach((source, side) => {
+            const face = document.createElement('div');
+            face.className = `book-curl-face${side ? ' book-curl-back' : ' book-curl-front'}`;
+            const copy = source.cloneNode(true);
+            const sampleIndex = side ? frames.length - frontIndex - 1 : frontIndex;
+            copy.style.width = `${width}px`;
+            copy.style.height = `${height}px`;
+            copy.style.left = `${-sampleIndex * stripWidth}px`;
+            face.append(copy);
+            strip.append(face);
+            surfaces.push({ copy, scroll: side ? reversePage.scrollTop : frontScroll });
+        });
+        leaf.append(strip);
+    });
+    const shadow = document.createElement('div');
+    shadow.className = 'book-turn-shadow';
+    const corner = document.createElement('div');
+    corner.className = 'book-corner-lift';
+    leaf.append(corner);
+    refs.spread.classList.add('book-turn-preparing');
+    refs.spread.append(resting, shadow, leaf);
+    resting.scrollTop = restingScroll;
+    surfaces.forEach(({ copy, scroll }) => { copy.scrollTop = scroll; });
+    refs.spread.style.setProperty('--page-turn-ms', `${PAGE_TURN_MS}ms`);
+    refs.spread.classList.add(backwards ? 'turn-back' : 'turn-forward');
+    const timing = { duration: PAGE_TURN_MS, fill: 'both', easing: 'linear' };
+    Array.from(leaf.children).slice(0, frames.length).forEach((strip, index) => {
+        animations.push(strip.animate(frames[index].map(({ offset, transform }) => ({ offset, transform })), timing));
+    });
+    animations.forEach(animation => animation.pause());
+    let startFrame = null;
+    let cancelled = false;
+    // 保留旧的对页直到纸张落稳，避免翻至中途时底页突然跳变。
+    pageTurnCleanup = () => {
+        cancelled = true;
+        cancelAnimationFrame(startFrame);
+        animations.forEach(animation => animation.cancel());
+        leaf.remove();
+        resting.remove();
+        shadow.remove();
+    };
+    // 先完成首帧栅格化，再开始掀角，防止建层耗时吃掉动画开头。
+    startFrame = requestAnimationFrame(() => {
+        if (cancelled) return;
+        startFrame = requestAnimationFrame(() => {
+            if (cancelled) return;
+            refs.spread.classList.remove('book-turn-preparing');
+            animations.forEach(animation => animation.play());
+            pageTurnTimer = setTimeout(clearPageTurn, PAGE_TURN_MS);
+        });
+    });
 }
 
 function handleDocumentClick(event) {
@@ -2829,18 +3001,29 @@ function handleDocumentKeydown(event) {
         }
     }
 
-    if (event.key === 'Escape') {
-        if (isMobileContextPanelOpen) {
+    const readingSheetOpen = refs.sheet?.classList.contains('entry-sheet-root-open');
+    // 原生编辑和确认弹窗优先处理自己的键盘事件。
+    if (readingSheetOpen && !document.querySelector('dialog[open]') && !isPhotoViewerOpen()) {
+        if (event.key === 'Escape') {
             event.preventDefault();
-            closeMobileContextPanel();
-            return;
-        }
-
-        if (refs.sheet?.classList.contains('entry-sheet-root-open')) {
             closeEntrySheet({ restoreHash: true });
             return;
         }
-
+        if (event.key === 'Tab') {
+            const controls = Array.from(refs.sheet.querySelectorAll('a[href], button:not(:disabled), [tabindex="0"]'))
+                .filter(node => node.getClientRects().length && !node.closest('[hidden]'));
+            const first = controls[0];
+            const last = controls.at(-1);
+            const outsideControls = !controls.includes(document.activeElement);
+            if (first && (outsideControls || (event.shiftKey ? document.activeElement === first : document.activeElement === last))) {
+                event.preventDefault();
+                (event.shiftKey ? last : first).focus();
+            }
+        }
+    }
+    if (event.key === 'Escape' && !readingSheetOpen && isMobileContextPanelOpen) {
+        event.preventDefault();
+        closeMobileContextPanel();
         return;
     }
 
@@ -2994,6 +3177,7 @@ function clearSearchRouteTimer() {
 }
 
 function handleViewportResize() {
+    clearPageTurn();
     syncMobileContextPanelState();
     syncVideoMoreControlsLayout();
     queuePhotoSleevePreviewSync();
@@ -3384,7 +3568,7 @@ function renderPhotoSleeve(record, options = {}) {
             ${media.map((item, index) => `
                 <button class="photo-sleeve-button${item.kind === 'video' ? ' photo-sleeve-video' : ''}" type="button" data-action="open-media-viewer" data-media-index="${index}" data-media-kind="${item.kind}" data-media-name="${escapeHtml(item.name)}" data-media-src="${escapeHtml(item.src)}" data-media-alt="${escapeHtml(item.alt)}" aria-label="打开${item.kind === 'video' ? '视频' : '图片'} ${escapeHtml(item.name)}">
                     ${item.kind === 'video'
-                        ? `<video src="${escapeHtml(item.src)}#t=0.1" muted playsinline preload="metadata" aria-hidden="true" tabindex="-1"></video><span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>`
+                        ? `<video src="${escapeHtml(item.src)}#t=0.1" muted playsinline preload="none" aria-hidden="true" tabindex="-1"></video><span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>`
                         : `<img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.alt)}" loading="lazy" decoding="async" fetchpriority="low">`}
                     <span class="photo-sleeve-media-error" role="status" hidden><strong>${item.kind === 'video' ? '视频不可用' : '图片不可用'}</strong><span>${escapeHtml(item.name)}</span><small>检查 travel_data.json</small></span>
                     <span class="photo-sleeve-index">${escapeHtml(String(index + 1).padStart(2, '0'))}</span>
@@ -3625,16 +3809,6 @@ function resolveLocalityFilterValue(value, country = 'all', area = 'all', fallba
 
 function hasLegacyLocationQuery(hash = '') {
     return /[?&](?:province|city)=/.test(hash) || /[?&]sort=province(?:&|$)/.test(hash);
-}
-
-function getTurnDirection(previousRoute, nextRoute) {
-    if (!previousRoute) return 'forward';
-
-    const order = ['cover', 'ledger', 'archive', 'place', 'entry', 'photos'];
-    const previousIndex = order.indexOf(previousRoute.name);
-    const nextIndex = order.indexOf(nextRoute.name);
-
-    return nextIndex < previousIndex ? 'back' : 'forward';
 }
 
 function getPlaceLabel(params, matching = []) {

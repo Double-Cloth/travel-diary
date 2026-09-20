@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Travel Diary</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232b160f'/%3E%3Cpath d='M32 7l5.6 18.7L57 32l-19.4 6.3L32 57l-5.6-18.7L7 32l19.4-6.3L32 7z' fill='%23d8b467'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="css/journal.css?v=20260920-password-change-photo-fullscreen-v1">
+    <link rel="stylesheet" href="css/journal.css?v=20260921-left-curl-v4">
 </head>
 <body>
     <a class="skip-link" href="#journalStage">跳到档案内容</a>
@@ -51,6 +51,13 @@
 
         <main class="journal-stage" id="journalStage" tabindex="-1">
             <section class="notebook" aria-live="polite">
+                <span class="book-corner-hardware book-corner-top-left" aria-hidden="true"></span>
+                <span class="book-corner-hardware book-corner-top-right" aria-hidden="true"></span>
+                <span class="book-corner-hardware book-corner-bottom-left" aria-hidden="true"></span>
+                <span class="book-corner-hardware book-corner-bottom-right" aria-hidden="true"></span>
+                <div class="book-page-stack book-page-stack-left" aria-hidden="true"></div>
+                <div class="book-page-stack book-page-stack-right" aria-hidden="true"></div>
+                <div class="book-ribbon" aria-hidden="true"></div>
                 <div class="page-spread" id="pageSpread">
                     <section class="paper-page paper-page-left" id="leftPage" aria-label="左页"></section>
                     <section class="paper-page paper-page-right" id="rightPage" aria-label="右页"></section>
@@ -61,6 +68,6 @@
 
     <div class="entry-sheet-root" id="sheetRoot" aria-hidden="true"></div>
 
-    <script type="module" src="js/app.js?v=20260920-password-change-photo-fullscreen-v1"></script>
+    <script type="module" src="js/app.js?v=20260921-left-curl-v4"></script>
 </body>
 </html>

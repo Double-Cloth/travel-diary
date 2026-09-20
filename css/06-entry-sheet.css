@@ -21,14 +21,15 @@
     position: absolute;
     inset: 0;
     background: rgba(17, 9, 4, 0.68);
-    backdrop-filter: blur(5px);
+    /* 静态暗幕避免打开详情时重新模糊整本书。 */
 }
 
 .entry-sheet-frame {
     position: relative;
     width: min(760px, 100%);
     max-height: min(88vh, 760px);
-    transform: translateY(10px) scale(0.98);
+    transform-origin: left bottom;
+    transform: translateY(8px) rotate(-0.6deg);
     animation: sheetIn 0.22s ease forwards;
 }
 
@@ -688,31 +689,136 @@
     white-space: nowrap;
 }
 
-.turn-forward {
-    animation: turnForward 0.26s ease both;
+/* 翻动层只包含不可交互的纸页副本，真实页面与导航始终可用。 */
+.paper-page.book-page-copy {
+    position: absolute;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    margin: 0;
+    pointer-events: none;
+    scrollbar-color: transparent transparent;
 }
 
-.turn-back {
-    animation: turnBack 0.26s ease both;
+.paper-page.book-page-copy::-webkit-scrollbar-thumb { background: transparent; }
+.book-turn-resting { z-index: 2; }
+.turn-forward > .book-turn-resting { left: 0; }
+.turn-back > .book-turn-resting { right: 0; }
+
+.book-turn-leaf {
+    position: absolute;
+    z-index: 100;
+    top: 0;
+    width: 50%;
+    height: 100%;
+    transform-style: preserve-3d;
+    pointer-events: none;
 }
 
-.turn-in {
-    animation: turnIn 0.32s ease both;
+.turn-forward > .book-turn-leaf { left: 50%; }
+.turn-back > .book-turn-leaf { left: 0; }
+
+.book-curl-strip {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    transform-style: preserve-3d;
+    will-change: transform;
 }
 
-@keyframes turnForward {
-    0% { transform: translateX(0) rotateY(0); opacity: 1; }
-    100% { transform: translateX(-12px) rotateY(-5deg); opacity: 0.42; }
+.book-curl-face {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    backface-visibility: hidden;
+    background: #f3e7ca;
 }
 
-@keyframes turnBack {
-    0% { transform: translateX(0) rotateY(0); opacity: 1; }
-    100% { transform: translateX(12px) rotateY(5deg); opacity: 0.42; }
+.book-curl-back { transform: rotateY(180deg); }
+
+.book-curl-face > .paper-page.book-page-copy {
+    top: 0;
+    border-radius: 0;
+    box-shadow: none;
 }
 
-@keyframes turnIn {
-    0% { transform: translateY(8px); opacity: 0.58; }
-    100% { transform: translateY(0); opacity: 1; }
+/* 只改变窄片的合成变换与遮光层透明度，避免逐帧滤镜重绘。 */
+.book-curl-face::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: #49331c;
+    animation: bookPaperShade var(--page-turn-ms) ease-in-out both;
+}
+
+@keyframes bookPaperShade {
+    0%, 18%, 100% { opacity: 0; }
+    52% { opacity: var(--curl-shade); }
+}
+
+.book-corner-lift {
+    position: absolute;
+    z-index: 6;
+    bottom: 0;
+    left: 0;
+    width: 112px;
+    height: 112px;
+    transform-origin: left bottom;
+    translate: 0 0 4px;
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+    background: linear-gradient(45deg, #a88e64, #e2cda6 14%, #fff7e2 40%, #f4e7c9 65%, #c3aa7a);
+    filter: drop-shadow(-3px -3px 3px #48301655);
+    box-shadow: inset 2px 2px 4px #fff9e7;
+    animation: bookCornerLift var(--page-turn-ms) linear both;
+    pointer-events: none;
+}
+
+.book-turn-preparing .book-curl-face::after,
+.book-turn-preparing .book-curl-front > .book-page-copy,
+.book-turn-preparing .book-corner-lift,
+.book-turn-preparing .book-turn-shadow { animation-play-state: paused; }
+
+.book-curl-front > .book-page-copy {
+    animation: bookCornerCutBack var(--page-turn-ms) linear both;
+}
+
+@keyframes bookCornerLift {
+    0% { transform: scale(0); opacity: 0; }
+    5% { opacity: 1; }
+    18% { transform: translate(5px, -5px) scale(1) rotate(4deg); opacity: 1; }
+    30%, 100% { transform: scale(0.85); opacity: 0; }
+}
+
+@keyframes bookCornerCutBack {
+    0%, 30%, 100% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 100%); }
+    18% { clip-path: polygon(0 0, 100% 0, 100% 100%, 112px 100%, 0 calc(100% - 112px)); }
+}
+
+.book-turn-shadow {
+    position: absolute;
+    z-index: 3;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(90deg, transparent 8%, #35210b38 42%, #35210b66 50%, #35210b38 58%, transparent 92%);
+    transform-origin: center;
+    animation: bookCurlShadow var(--page-turn-ms) ease-in-out both;
+}
+
+@keyframes bookCurlShadow {
+    0%, 100% { opacity: 0; transform: scaleX(0.15); }
+    35%, 65% { opacity: 1; transform: scaleX(1); }
+}
+
+.turn-mobile > .paper-page-left {
+    transform-origin: left bottom;
+    animation: bookMobileIn 0.3s ease-out both;
+}
+
+@keyframes bookMobileIn {
+    from { transform: perspective(1000px) rotateY(4deg) rotateZ(-0.5deg); opacity: 0.65; }
+    to { transform: perspective(1000px) rotateY(0); opacity: 1; }
 }
 
 @keyframes sheetIn {

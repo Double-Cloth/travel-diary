@@ -185,8 +185,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260920-password-change-photo-fullscreen-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260920-password-change-photo-fullscreen-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260921-left-curl-v4/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260921-left-curl-v4/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -207,7 +207,7 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
     assert.match(journalCss, /\.custom-select\.is-open\.is-open-upward \.custom-select-chevron\s*\{\s*transform: translateY\(-65%\) rotate\(45deg\);\s*\}/);
     assert.match(journalCss, /.custom-select\.is-open-upward \.custom-select-menu\s*\{\s*inset: auto 0 calc\(100% \+ 8px\);\s*\}/);
     assert.match(appJs, /class="index-filter-field\$\{visuallyHiddenLabel \? ' index-sort-field' : ''\}"/);
-    assert.match(journalEntryCss, /08-custom-select\.css\?v=20260913-select-placement-v5/);
+    assert.match(journalEntryCss, /08-custom-select\.css\?v=20260921-left-curl-v4/);
     assert.doesNotMatch(journalCss, /\.index-sort-field \.custom-select-chevron\s*\{/);
     assert.doesNotMatch(journalCss, /\.index-filter-section:last-child\s*\{\s*padding-bottom:/);
 });
@@ -506,16 +506,11 @@ test('旅行档案仅使用项目本地字体族', () => {
     assert.doesNotMatch(journalCss, /STKaiti|KaiTi|Courier New|Roboto|Google Sans|Segoe UI|Arial|JetBrains Mono|ui-monospace|SFMono-Regular|Menlo|Consolas/);
 });
 
-test('头部方块控件在书脊栏中显式垂直居中', () => {
-    for (const selector of ['brand-lockup', 'chapter-tabs', 'spine-tools']) {
-        assert.match(journalCss, new RegExp(`\\.${selector}\\s*{[\\s\\S]*?align-self: center;`));
-    }
-    assert.match(journalCss, /\.brand-lockup\s*{[^}]*height: 76px;/);
-    assert.match(journalCss, /\.brand-lockup > span\s*{[^}]*display: grid;[^}]*place-items: center;/);
-    assert.match(journalCss, /\.brand-lockup > span\s*{[^}]*height: 100%;/);
-    assert.match(journalCss, /--brand-rivet-y:\s*12px;/);
-    assert.doesNotMatch(journalCss, /circle at calc\(50% [-+] 1px\) 7px|circle at calc\(50% [-+] 1px\) 9px/);
-    assert.doesNotMatch(journalCss, /\\.chapter-tab-active\\s*{[\\s\\S]*?transform: translateY\\(1px\\);/);
+test('章节书签保留语义导航并贴合书页上沿', () => {
+    assert.match(indexHtml, /<nav class="chapter-tabs"[^>]*aria-label="章节导航"/);
+    assert.match(journalCss, /\.journal-spine\s*{[^}]*align-items: center;/);
+    assert.match(journalCss, /\.chapter-tabs\s*{[^}]*align-self: end;/);
+    assert.match(journalCss, /\.page-spread\s*{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*gap: 0;/);
 });
 
 test('空数据目录使用内置头像并仅在自定义头像存在时替换', () => {

@@ -4,12 +4,11 @@
     }
 
     .journal-spine {
-        grid-template-columns: auto minmax(360px, 1fr) auto;
+        grid-template-columns: minmax(160px, 1fr) auto auto;
         gap: 16px;
     }
 
     .brand-lockup {
-        height: 66px;
         min-width: 0;
     }
 
@@ -56,19 +55,20 @@
 
     .journal-spine {
         position: sticky;
-        top: 10px;
+        top: 0;
         z-index: 50;
         grid-template-columns: auto minmax(0, 1fr);
         gap: 10px;
         min-height: 0;
-        height: 76px;
-        padding: 10px;
+        height: 66px;
+        padding: 0 6px;
+        border-radius: 6px 6px 0 0;
+        background: #3c291e;
     }
 
     .brand-lockup {
-        height: 54px;
-        min-width: 44px;
-        padding: 8px 10px;
+        min-width: 36px;
+        padding: 8px 4px;
     }
 
     .brand-lockup small {
@@ -83,8 +83,8 @@
 
     .brand-lockup strong::after {
         content: "TD";
-        color: #24170d;
-        font-size: 18px;
+        color: #efdfbd;
+        font-size: 21px;
         letter-spacing: 0.04em;
     }
 
@@ -96,13 +96,13 @@
     .chapter-tabs {
         grid-template-columns: repeat(3, minmax(76px, 1fr));
         min-height: 50px;
-        padding: 5px;
-        overflow-x: auto;
+        gap: 5px;
+        padding: 0;
     }
 
     .chapter-tab {
         min-height: 40px;
-        padding: 7px 8px;
+        padding: 12px 6px 16px;
         font-size: 13px;
         white-space: nowrap;
     }
@@ -117,11 +117,18 @@
     }
 
     .notebook {
-        min-height: calc(100dvh - 104px);
+        min-height: calc(100dvh - 86px);
         height: auto;
         overflow: visible;
-        padding: 10px;
+        padding: 7px 7px 18px;
     }
+
+    .notebook::after,
+    .book-corner-hardware,
+    .book-page-stack,
+    .book-ribbon,
+    .page-spread::before,
+    .page-spread::after { display: none; }
 
     .page-spread {
         grid-template-columns: 1fr;
@@ -139,14 +146,12 @@
         scrollbar-width: auto;
         scrollbar-color: auto;
         padding: 20px;
-        border-radius: 10px;
+        border-radius: 3px 3px 6px 6px;
+        box-shadow: inset 8px 0 12px -12px #61451f99;
     }
 
     .paper-page-right {
-        background:
-            linear-gradient(180deg, rgba(255, 253, 237, 0.42), rgba(215, 187, 133, 0.22)),
-            url("../assets/textures/paper-grain.png"),
-            linear-gradient(135deg, #f4e2bd, #d7ba7e);
+        background: url("../assets/textures/paper-grain.png"), #f1e4c5;
     }
 
     .paper-page-right.map-pocket,

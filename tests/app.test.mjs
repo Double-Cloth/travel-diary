@@ -6,11 +6,47 @@ import { normalizeTravelLocation } from '../js/location.mjs';
 globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
-    renderWithPageTurn, scheduleSearchRouteUpdate, syncRouteFromHash,
+    renderWithPageTurn, cloneTurningPage, createPageCurlFrames, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError };
+export function stubReadingRoutes() {
+    const originals = { renderLedger, renderCover, renderEntryPhotosRoute, openEntrySheet,
+        closeEntrySheet, renderWithPageTurn, clearPageTurn, updateChapterTabs, restoreFocus,
+        restoreReadingScrollPosition, travelModel, activeRoute, renderedPageHash, lastReadingHash,
+        shell: refs.shell };
+    const calls = [];
+    renderLedger = () => calls.push('ledger');
+    renderCover = () => calls.push('cover');
+    renderEntryPhotosRoute = () => calls.push('photos');
+    openEntrySheet = record => calls.push('entry:' + record.id);
+    closeEntrySheet = () => {};
+    clearPageTurn = () => {};
+    updateChapterTabs = () => {};
+    restoreFocus = () => {};
+    restoreReadingScrollPosition = () => {};
+    renderWithPageTurn = (render, options) => { calls.push(options.animate ? 'turn' : 'direct'); render(); };
+    refs.shell = { dataset: {} };
+    travelModel = { recordsById: new Map([['a', { id: 'a' }], ['b', { id: 'b' }]]) };
+    activeRoute = null;
+    renderedPageHash = '';
+    lastReadingHash = '#ledger';
+    return {
+        calls,
+        render: renderRoute,
+        invalidate: () => { renderedPageHash = ''; },
+        restore() {
+            ({ renderLedger, renderCover, renderEntryPhotosRoute, openEntrySheet, closeEntrySheet,
+                renderWithPageTurn, clearPageTurn, updateChapterTabs, restoreFocus,
+                restoreReadingScrollPosition, travelModel, activeRoute, renderedPageHash,
+                lastReadingHash } = originals);
+            refs.shell = originals.shell;
+        }
+    };
+}
 export function setTestState(values) {
     if (values.spread) refs.spread = values.spread;
+    if (values.leftPage) refs.leftPage = values.leftPage;
+    if (values.rightPage) refs.rightPage = values.rightPage;
     if (values.route) activeRoute = values.route;
     if (values.observer) photoSleeveResizeObserver = values.observer;
     if (values.sleeve) observedPhotoSleeves.add(values.sleeve);
@@ -103,21 +139,116 @@ test('异常照片索引回退且循环切换始终得到整数下标', () => {
     assert.equal(app.normalizePhotoIndex(1, 0), 0);
 });
 
-test('取消翻页动画时清除旧动画类且只渲染新页面', async () => {
-    const classes = new Set();
+test('快速切换与取消翻页会清理旧副本并保持最后一次渲染', t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const previous = { window: globalThis.window, document: globalThis.document, getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.requestAnimationFrame = callback => { callback(); return 1; };
+    globalThis.cancelAnimationFrame = () => {};
+    const copies = new Set();
+    const animations = [];
+    const createNode = () => ({
+        classList: {
+            values: new Set(),
+            add(...names) { names.forEach(name => this.values.add(name)); },
+            remove(...names) { names.forEach(name => this.values.delete(name)); }
+        },
+        style: { setProperty() {} },
+        scrollTop: 45,
+        children: [],
+        getBoundingClientRect: () => ({ width: 600, height: 800 }),
+        animate() {
+            const animation = { cancelled: false, pause() {}, play() {}, cancel() { this.cancelled = true; } };
+            animations.push(animation);
+            return animation;
+        },
+        cloneNode: createNode,
+        querySelectorAll: () => [],
+        setAttribute() {},
+        removeAttribute() {},
+        append(...nodes) { this.children.push(...nodes); nodes.forEach(node => copies.add(node)); },
+        remove() { copies.delete(this); }
+    });
+    const spread = createNode();
+    globalThis.document = { createElement: createNode };
+    globalThis.getComputedStyle = () => ({ background: '#fff' });
     globalThis.window = { matchMedia: () => ({ matches: false }) };
-    app.setTestState({ spread: { classList: {
-        add: name => classes.add(name),
-        remove: (...names) => names.forEach(name => classes.delete(name))
-    } } });
+    app.setTestState({ spread, leftPage: createNode(), rightPage: createNode() });
     let rendered = '';
-    app.renderWithPageTurn(() => { rendered = '旧页面'; });
-    assert.equal(classes.has('turn-forward'), true);
-    app.renderWithPageTurn(() => { rendered = '新页面'; }, { animate: false });
-    await new Promise(resolve => setTimeout(resolve, 180));
-    assert.equal(rendered, '新页面');
-    assert.equal(classes.size, 0);
-    delete globalThis.window;
+    app.renderWithPageTurn(() => { rendered = '第一页'; });
+    assert.equal(spread.classList.values.has('turn-back'), true);
+    const firstLeaf = [...copies].find(node => node.className === 'book-turn-leaf');
+    assert.equal(firstLeaf.inert, true);
+    t.mock.timers.tick(100);
+    app.renderWithPageTurn(() => { rendered = '第二页'; }, { direction: 'back' });
+    assert.equal(copies.has(firstLeaf), false);
+    assert.equal(animations.slice(0, 12).every(animation => animation.cancelled), true);
+    assert.equal(spread.classList.values.has('turn-back'), true);
+    const secondLeaf = [...copies].find(node => node.className === 'book-turn-leaf');
+    t.mock.timers.tick(620);
+    assert.equal(copies.has(secondLeaf), true);
+    app.renderWithPageTurn(() => { rendered = '最后一页'; }, { animate: false });
+    t.mock.timers.tick(1000);
+    assert.equal(rendered, '最后一页');
+    assert.equal(copies.has(secondLeaf), false);
+    assert.equal(spread.classList.values.size, 0);
+    globalThis.window.matchMedia = () => ({ matches: true });
+    app.renderWithPageTurn(() => { rendered = '减少动态效果'; });
+    assert.equal(rendered, '减少动态效果');
+    assert.equal(spread.classList.values.size, 0);
+    globalThis.window.matchMedia = () => ({ matches: false });
+    const pendingFrames = [];
+    globalThis.requestAnimationFrame = callback => { pendingFrames.push(callback); return 2; };
+    app.renderWithPageTurn(() => { rendered = '等待首帧'; });
+    app.renderWithPageTurn(() => { rendered = '取消待开始的翻页'; }, { animate: false });
+    pendingFrames.forEach(callback => callback());
+    t.mock.timers.tick(2000);
+    assert.equal(rendered, '取消待开始的翻页');
+    assert.equal(spread.classList.values.size, 0);
+    assert.equal(animations.every(animation => animation.cancelled), true);
+});
+
+test('翻页副本清除屏外记录内容但保持占位，不修改真实记录', t => {
+    const previous = globalThis.getComputedStyle;
+    t.after(() => { globalThis.getComputedStyle = previous; });
+    globalThis.getComputedStyle = () => ({ background: '#fff' });
+    const visible = { style: {}, replaceChildren() { this.cleared = true; } };
+    const outside = { style: {}, replaceChildren() { this.cleared = true; } };
+    const copy = { style: {}, removeAttribute() {}, setAttribute() {}, classList: { add() {} },
+        querySelectorAll: selector => selector === '[id]' ? [] : [visible, outside] };
+    const source = { cloneNode: () => copy, getBoundingClientRect: () => ({ top: 100, bottom: 900 }),
+        querySelectorAll: () => [
+            { getBoundingClientRect: () => ({ top: 850, bottom: 970, height: 120 }) },
+            { getBoundingClientRect: () => ({ top: 1100, bottom: 1250, height: 150 }) }
+        ] };
+    assert.equal(app.cloneTurningPage(source), copy);
+    assert.equal(visible.cleared, undefined, '跨越可视边界的记录仍需保留');
+    assert.equal(outside.cleared, true);
+    assert.equal(outside.style.height, '150px');
+    assert.equal(outside.style.visibility, 'hidden');
+    assert.equal(copy.inert, true);
+});
+
+test('柔软纸页保持中缝锚点、连续曲面和正反向落页位置', () => {
+    for (const backwards of [false, true]) {
+        const frames = app.createPageCurlFrames(600, backwards);
+        const parse = frame => frame.transform.match(/-?[\d.]+(?:e[+-]?\d+)?/g).slice(1).map(Number);
+        const start = parse(frames[0][0]);
+        const finish = parse(frames[0].at(-1));
+        assert.equal(start[0], backwards ? 550 : 0);
+        assert.equal(finish[0], start[0]);
+        assert.equal(finish[2], 0);
+        assert.ok(Math.abs(Math.abs(finish[3]) - Math.PI) < 1e-10);
+        assert.deepEqual(frames[0][0].transform, frames[0][6].transform, '掀角期间书脊保持静止');
+        const middle = frames.map(strip => parse(strip[24]));
+        assert.ok(middle.at(-1)[2] > 400, '纸张中途拱起');
+        assert.ok(Math.abs(middle[0][3] - middle.at(-1)[3]) > 1.5, '不同位置的角度应呈曲线而非平板');
+        for (let index = 0; index < middle.length - 1; index += 1) {
+            const direction = backwards ? -1 : 1;
+            assert.ok(Math.abs(middle[index + 1][0] - middle[index][0] - direction * Math.cos(middle[index][3]) * 50) < 1e-8);
+            assert.ok(Math.abs(middle[index + 1][2] - middle[index][2] + direction * Math.sin(middle[index][3]) * 50) < 1e-8);
+        }
+    }
 });
 
 test('外部路由变化取消搜索定时器并忽略离开页面后的搜索回调', () => {
@@ -152,4 +283,24 @@ test('照片预览同步时释放已移除节点并保留仍连接的节点', ()
     app.syncPhotoSleevePreviewRows();
     assert.deepEqual(unobserved, [removed]);
     delete globalThis.document;
+});
+
+
+test('详情打开、换篇和关闭复用列表；附件返回或数据刷新后重建背景', t => {
+    const previousDocument = globalThis.document;
+    globalThis.document = { body: { dataset: {} } };
+    const scenario = app.stubReadingRoutes();
+    t.after(() => { scenario.restore(); globalThis.document = previousDocument; });
+    const ledger = app.parseRoute('#ledger');
+    scenario.render(ledger, { initial: true });
+    scenario.render(app.parseRoute('#entry?id=a'));
+    scenario.render(app.parseRoute('#entry?id=b'));
+    scenario.render(ledger);
+    assert.deepEqual(scenario.calls, ['direct', 'ledger', 'entry:a', 'entry:b']);
+    scenario.render(app.parseRoute('#photos?id=b'));
+    scenario.render(app.parseRoute('#entry?id=b'));
+    assert.deepEqual(scenario.calls.slice(-4), ['turn', 'photos', 'ledger', 'entry:b']);
+    scenario.invalidate();
+    scenario.render(app.parseRoute('#entry?id=a'));
+    assert.deepEqual(scenario.calls.slice(-2), ['ledger', 'entry:a']);
 });

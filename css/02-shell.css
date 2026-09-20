@@ -2,246 +2,113 @@
     position: relative;
     z-index: 1;
     display: grid;
-    grid-template-rows: auto auto;
-    gap: 14px;
+    grid-template-rows: auto minmax(0, 1fr);
+    gap: 0;
     width: min(100%, 1520px);
     min-height: 100dvh;
-    height: auto;
     margin: 0 auto;
-    padding: 18px 44px 28px;
+    padding: 18px 44px 32px;
 }
 
 .journal-spine {
-    position: sticky;
-    top: clamp(8px, 1.2vw, 18px);
+    position: relative;
     z-index: 80;
     display: grid;
-    grid-template-columns: minmax(270px, 0.9fr) minmax(430px, 1.3fr) minmax(150px, 0.45fr);
+    grid-template-columns: minmax(220px, 1fr) auto minmax(120px, 1fr);
     align-items: center;
-    gap: 28px;
-    min-height: 0;
-    height: 108px;
-    padding: 15px 28px;
-    border: 1px solid rgba(213, 178, 111, 0.26);
-    border-radius: 12px;
+    gap: 24px;
+    height: 88px;
+    padding: 0 24px;
     color: var(--paper-50);
-    background:
-        linear-gradient(180deg, rgba(255, 226, 167, 0.1), rgba(0, 0, 0, 0.18)),
-        repeating-linear-gradient(105deg, rgba(255, 255, 255, 0.028) 0 1px, transparent 1px 9px),
-        linear-gradient(90deg, #2a1c13, #1a120d 42%, #332116);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 235, 184, 0.13),
-        inset 0 -10px 20px rgba(0, 0, 0, 0.34),
-        var(--deep-shadow);
-}
-
-.journal-spine::before,
-.journal-spine::after {
-    content: "";
-    position: absolute;
-    left: 14px;
-    right: 14px;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(225, 185, 112, 0.28), transparent);
-}
-
-.journal-spine::before {
-    top: 9px;
-}
-
-.journal-spine::after {
-    bottom: 9px;
 }
 
 .brand-lockup {
-    --brand-rivet-y: 12px;
-
-    position: relative;
-    align-self: center;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    align-items: center;
-    justify-items: center;
+    display: block;
     width: fit-content;
-    min-width: 250px;
-    height: 76px;
-    padding: 0 28px;
-    border: 1px solid rgba(104, 66, 31, 0.7);
-    border-radius: 8px;
-    color: #2b1d12;
-    text-align: center;
-    background:
-        linear-gradient(135deg, rgba(255, 248, 217, 0.5), transparent 42%),
-        repeating-linear-gradient(90deg, rgba(87, 53, 24, 0.05) 0 1px, transparent 1px 7px),
-        linear-gradient(180deg, #dbc07b, #a6783d);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.38),
-        inset 0 -3px 7px rgba(86, 51, 20, 0.26),
-        0 8px 18px rgba(0, 0, 0, 0.28);
-}
-
-.brand-lockup > span {
-    display: grid;
-    place-items: center;
-    align-content: center;
-    height: 100%;
-    min-height: 100%;
-}
-
-.brand-lockup::before,
-.brand-lockup::after {
-    content: "";
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 9px;
-    background:
-        radial-gradient(circle at calc(50% - 1px) var(--brand-rivet-y), rgba(255, 255, 232, 0.92) 0 0.8px, transparent 1.3px),
-        radial-gradient(circle at calc(50% - 1px) calc(100% - var(--brand-rivet-y)), rgba(255, 255, 232, 0.92) 0 0.8px, transparent 1.3px),
-        radial-gradient(circle at calc(50% + 1px) var(--brand-rivet-y), rgba(54, 31, 12, 0.34) 0 1.1px, transparent 1.7px),
-        radial-gradient(circle at calc(50% + 1px) calc(100% - var(--brand-rivet-y)), rgba(54, 31, 12, 0.34) 0 1.1px, transparent 1.7px),
-        radial-gradient(circle at 50% var(--brand-rivet-y), rgba(255, 246, 199, 0.96) 0 1px, rgba(225, 176, 83, 0.96) 1.2px 2.8px, rgba(139, 83, 35, 0.96) 3.1px 4.2px, rgba(49, 30, 12, 0.4) 4.5px 5px, transparent 5.3px),
-        radial-gradient(circle at 50% calc(100% - var(--brand-rivet-y)), rgba(255, 246, 199, 0.96) 0 1px, rgba(225, 176, 83, 0.96) 1.2px 2.8px, rgba(139, 83, 35, 0.96) 3.1px 4.2px, rgba(49, 30, 12, 0.4) 4.5px 5px, transparent 5.3px);
-    background-repeat: no-repeat;
-    filter: drop-shadow(0 1px 0 rgba(255, 238, 173, 0.32)) drop-shadow(0 1px 1.5px rgba(36, 21, 9, 0.38));
-    opacity: 0.94;
-    pointer-events: none;
-}
-
-.brand-lockup::before {
-    left: 13px;
-}
-
-.brand-lockup::after {
-    right: 13px;
+    padding: 0;
+    color: #f0dfb9;
 }
 
 .brand-lockup strong {
     display: block;
-    color: #24170d;
-    font-size: clamp(28px, 2.4vw, 38px);
-    line-height: 0.94;
-    letter-spacing: 0;
-    text-shadow: 0 1px 0 rgba(255, 237, 181, 0.35);
+    font-size: clamp(26px, 2.4vw, 34px);
+    line-height: 1.1;
+    font-weight: 400;
+    letter-spacing: -0.04em;
+    text-shadow: 0 1px 0 #fff0b533, 0 -1px 1px #100804, 0 3px 4px #160c08;
 }
 
 .brand-lockup small {
     display: block;
-    margin-top: 4px;
-    color: rgba(49, 31, 15, 0.76);
-    font-family: var(--font-code);
-    font-size: 12px;
-    letter-spacing: 0.04em;
+    margin-top: 6px;
+    color: #cdbb96;
+    font-size: 11px;
+    letter-spacing: 0.12em;
 }
 
+/* 章节像夹在书里的布书签，选中项自然垂入书口。 */
 .chapter-tabs {
-    position: relative;
-    align-self: center;
+    align-self: end;
     display: grid;
-    grid-template-columns: repeat(3, minmax(128px, 1fr));
-    align-items: center;
-    min-height: 66px;
-    padding: 9px;
-    border: 1px solid rgba(224, 188, 117, 0.18);
-    border-radius: 7px;
-    background:
-        linear-gradient(180deg, rgba(255, 241, 191, 0.07), transparent 36%),
-        linear-gradient(180deg, #1b1713, #0f0c0a);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 237, 189, 0.12),
-        inset 0 -1px 0 rgba(0, 0, 0, 0.55),
-        0 10px 20px rgba(0, 0, 0, 0.24);
+    grid-template-columns: repeat(3, minmax(104px, 1fr));
+    align-items: end;
+    gap: 9px;
+    padding: 0 0 2px;
 }
 
 .chapter-tab {
     position: relative;
-    z-index: 1;
     display: grid;
-    grid-template-columns: auto;
     place-items: center;
-    min-height: 48px;
-    padding: 9px 18px;
-    border-radius: 2px;
-    color: rgba(244, 226, 184, 0.86);
-    font-size: 20px;
-    font-weight: 700;
-    line-height: 1.1;
-    text-align: center;
+    min-height: 55px;
+    padding: 12px 18px 17px;
+    border: 1px solid rgba(244, 224, 178, 0.2);
+    border-bottom: 0;
+    border-radius: 4px 4px 0 0;
+    color: #eee0c4;
+    background: linear-gradient(90deg, #5e664e, #72795f 50%, #596149);
+    box-shadow: inset 0 2px 0 #ffffff33, inset 2px 0 2px #ffffff12, inset -2px 0 2px #1a100533, 0 -3px 12px #100a0526;
+    font-size: 17px;
+    line-height: 1.25;
     white-space: nowrap;
-    transition: color 0.16s ease, background 0.16s ease, box-shadow 0.16s ease, transform 0.16s ease;
+    transition: padding 0.2s ease, color 0.2s ease, filter 0.2s ease;
 }
 
-.chapter-tab + .chapter-tab::before {
+.chapter-tab:nth-child(2) {
+    background: linear-gradient(90deg, #8f6847, #a17d57 50%, #846044);
+}
+
+.chapter-tab:nth-child(3) {
+    background: linear-gradient(90deg, #755145, #916657 50%, #704b40);
+}
+
+.chapter-tab::before {
     content: "";
     position: absolute;
-    left: -1px;
-    top: 50%;
-    width: 1px;
-    height: 30px;
-    background: linear-gradient(180deg, transparent, rgba(231, 194, 122, 0.42), transparent);
-    transform: translateY(-50%);
+    inset: 4px 5px 0;
+    border: 1px dashed #f0e1c133;
+    border-bottom: 0;
+    pointer-events: none;
 }
 
 .chapter-tab:hover {
-    color: #fff1c4;
-    background: rgba(255, 231, 175, 0.05);
-}
-
-.chapter-tab:active {
-    transform: translateY(1px);
+    filter: brightness(1.14);
 }
 
 .chapter-tab-active {
-    color: #2a1c11;
-    background:
-        linear-gradient(180deg, rgba(255, 248, 221, 0.9), rgba(205, 176, 112, 0.86)),
-        url("../assets/textures/paper-grain.png"),
-        #ead49c;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.55),
-        inset 0 -3px 8px rgba(108, 75, 32, 0.2),
-        0 8px 15px rgba(0, 0, 0, 0.34);
-}
-
-.chapter-tab-active:hover,
-.chapter-tab-active:focus-visible {
-    color: #2a1c11;
-    background:
-        linear-gradient(180deg, rgba(255, 250, 228, 0.94), rgba(211, 182, 116, 0.9)),
-        url("../assets/textures/paper-grain.png"),
-        #ead49c;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.62),
-        inset 0 -3px 8px rgba(108, 75, 32, 0.18),
-        0 10px 16px rgba(0, 0, 0, 0.36);
-}
-
-.chapter-tab-active:active {
-    color: #2a1c11;
-    background:
-        linear-gradient(180deg, rgba(215, 188, 126, 0.9), rgba(242, 222, 168, 0.84)),
-        url("../assets/textures/paper-grain.png"),
-        #ead49c;
-    box-shadow:
-        inset 0 2px 6px rgba(84, 57, 24, 0.24),
-        0 5px 10px rgba(0, 0, 0, 0.28);
-}
-
-.chapter-tab-active span:last-child {
-    color: #24180e;
-    text-shadow: 0 1px 0 rgba(255, 247, 214, 0.38);
+    padding-top: 23px;
+    padding-bottom: 22px;
+    color: #fff5de;
+    text-shadow: 0 -1px 0 #422b19, 0 1px 1px #fff0ce44;
 }
 
 .chapter-tab-active::after {
     content: "";
     position: absolute;
-    left: 50%;
-    bottom: -9px;
-    width: 44px;
-    height: 4px;
-    border-radius: 999px;
-    background: rgba(244, 225, 172, 0.62);
-    transform: translateX(-50%);
+    bottom: 8px;
+    width: 22px;
+    height: 2px;
+    background: #ecdbaf;
 }
 
 .chapter-icon {
@@ -406,47 +273,166 @@
 }
 
 .notebook {
-    --notebook-top-offset: 168px;
+    --notebook-top-offset: 138px;
     position: relative;
-    min-height: 0;
+    min-height: 360px;
     height: calc(100dvh - var(--notebook-top-offset));
-    overflow: hidden;
-    padding: 16px 18px 18px;
-    border: 1px solid rgba(220, 183, 113, 0.28);
-    border-radius: 10px;
+    padding: 16px 20px 35px;
+    border: 1px solid #9d7547;
+    border-radius: 14px 14px 20px 20px;
     background:
-        linear-gradient(180deg, rgba(255, 231, 179, 0.08), transparent 16%),
-        linear-gradient(90deg, #17110c, #281b12 50%, #17110c);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 236, 188, 0.11),
-        inset 0 0 0 10px rgba(10, 6, 3, 0.36),
-        var(--deep-shadow);
+        repeating-linear-gradient(35deg, #edca8505 0 1px, transparent 1px 3px),
+        repeating-linear-gradient(125deg, #140b0733 0 1px, transparent 1px 4px),
+        linear-gradient(90deg, #64432e, #38271d 49.5%, #6d4b32 50.5%, #523723);
+    box-shadow: inset 0 0 0 3px #352219, inset 0 0 0 4px #c1955a55,
+        0 3px 0 #2b1b12, 0 18px 24px #10090480, 0 35px 65px #10090466;
 }
 
+/* 左右书芯分别下垂，层叠书口与皮封之间留出真实厚度。 */
 .notebook::before {
     content: "";
     position: absolute;
-    inset: 12px;
-    border: 1px solid rgba(217, 180, 111, 0.12);
-    border-radius: 7px;
+    inset: 5px;
+    border: 1px solid #d5ab6555;
+    border-radius: 9px 9px 15px 15px;
+    box-shadow: inset 0 0 0 2px #26190d55;
+    pointer-events: none;
+}
+
+/* 黄铜包角、铆钉与皮革压线保留早期桌面软件的实体材质层次。 */
+.book-corner-hardware {
+    position: absolute;
+    z-index: 7;
+    width: 37px;
+    height: 37px;
+    border: 1px solid #4c331c;
+    border-radius: 10px 2px 8px 2px;
+    background: linear-gradient(135deg, #f2dea6, #ac8348 20%, #dbc18a 34%, #71512c 53%, #c19d5d 77%, #6b4928);
+    box-shadow: inset 1px 1px 0 #fff0bd99, inset -1px -1px 0 #35241380, 1px 2px 3px #21150d88;
+    clip-path: polygon(0 0, 100% 0, 100% 24%, 30% 30%, 24% 100%, 0 100%);
+    pointer-events: none;
+}
+
+.book-corner-hardware::after {
+    content: "";
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ffedb8, #80582e);
+    box-shadow: 0 1px 1px #2e1b0c;
+}
+
+.book-corner-top-left { top: 3px; left: 3px; }
+.book-corner-top-right { top: 3px; right: 3px; transform: rotate(90deg); }
+.book-corner-bottom-left { bottom: 3px; left: 3px; transform: rotate(-90deg); }
+.book-corner-bottom-right { bottom: 3px; right: 3px; transform: rotate(180deg); }
+
+.book-page-stack {
+    position: absolute;
+    top: 22px;
+    bottom: 17px;
+    width: calc(50% - 17px);
+    background: repeating-linear-gradient(0deg, #bba47a 0 1px, #eee0bd 1px 3px, #d9c59b 3px 4px);
+    border: 1px solid #b59b70;
+    box-shadow: 0 3px 0 #c2ab81, 0 5px 0 #eee0bd, 0 7px 0 #a78b61, 0 10px 9px #1c110d80;
+    pointer-events: none;
+}
+
+.book-page-stack-left {
+    left: 17px;
+    border-radius: 5px 28px 45% 7px / 4px 12px 12px 6px;
+    transform: rotate(-0.35deg);
+    transform-origin: right center;
+}
+
+.book-page-stack-right {
+    right: 17px;
+    border-radius: 28px 5px 7px 45% / 12px 4px 6px 12px;
+    transform: rotate(0.35deg);
+    transform-origin: left center;
+}
+
+.notebook::after {
+    content: "";
+    position: absolute;
+    z-index: 5;
+    top: 17px;
+    bottom: 24px;
+    left: calc(50% - 46px);
+    width: 92px;
+    background: linear-gradient(90deg, transparent, #7653280c 15%, #4b321c26 35%,
+        #35231352 47%, #27180c80 49.5%, #fff4d45c 51%, #4b321c30 55%, #7653280c 78%, transparent);
+    border-radius: 45%;
+    pointer-events: none;
+}
+
+.book-ribbon {
+    position: absolute;
+    z-index: 1;
+    bottom: -22px;
+    left: calc(50% + 38px);
+    width: 24px;
+    height: 70px;
+    background: linear-gradient(90deg, #65362a, #aa6050 18%, #7c4033 78%, #50261e);
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 88%, 0 100%);
+    transform: rotate(-6deg);
     pointer-events: none;
 }
 
 .page-spread {
     position: relative;
     display: grid;
-    grid-template-columns: minmax(0, 0.94fr) minmax(0, 1.12fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: stretch;
-    gap: 14px;
+    gap: 0;
     height: 100%;
     min-height: 0;
-    overflow: hidden;
-    perspective: 1300px;
-    transform-origin: center;
+    perspective: 2600px;
+    perspective-origin: 50% 42%;
+    isolation: isolate;
+}
+
+/* 翻页期间整个书页层高于包角、书脊与书签，内部纸面再覆盖静态控件。 */
+.page-spread:is(.turn-back, .turn-forward) { z-index: 10; }
+.journal-shell:has(.book-turn-leaf) .journal-stage { position: relative; z-index: 90; }
+.page-spread:is(.turn-back, .turn-forward) > .paper-page:not(.book-page-copy) { pointer-events: none; }
+
+.page-spread::before,
+.page-spread::after {
+    content: "";
+    position: absolute;
+    z-index: 1;
+    top: 0;
+    bottom: 0;
+    width: 50%;
+    pointer-events: none;
+}
+
+.page-spread::before {
+    left: 0;
+    border-radius: 5px 36px 28px 7px / 4px 12px 10px 6px;
+    background: linear-gradient(90deg, #8b66311a, transparent 4%, #fff9e91a 65%, #fff9e938 87%, #5c3b1b2e 99%);
+    box-shadow: inset 0 1px #fff7df, inset 0 -1px #ae915b80;
+}
+
+.page-spread::after {
+    right: 0;
+    border-radius: 36px 5px 7px 28px / 12px 4px 6px 10px;
+    background: linear-gradient(90deg, #5c3b1b30, #fff9e945 12%, transparent 38%, transparent 96%, #8b663120);
+    box-shadow: inset 0 1px #fff7df, inset 0 -1px #ae915b80;
+}
+
+@media (min-width: 761px) {
+    .page-spread > .paper-page-left { border-radius: 5px 36px 28px 7px / 4px 12px 10px 6px; }
+    .page-spread > .paper-page-right { border-radius: 36px 5px 7px 28px / 12px 4px 6px 10px; }
 }
 
 .paper-page {
     position: relative;
+    isolation: isolate;
     min-width: 0;
     min-height: 0;
     overflow-x: hidden;
@@ -455,8 +441,8 @@
     scrollbar-gutter: stable;
     scrollbar-width: thin;
     scrollbar-color: rgba(117, 73, 40, 0.52) transparent;
-    padding: clamp(22px, 2.4vw, 34px);
-    border: 1px solid rgba(74, 47, 23, 0.26);
+    padding: clamp(24px, 2.6vw, 40px);
+    border: 0;
     color: var(--ink);
     background:
         linear-gradient(180deg, rgba(255, 253, 237, 0.54), rgba(246, 232, 197, 0.26)),
@@ -465,8 +451,7 @@
         linear-gradient(135deg, #f9edcf, #dfc895);
     box-shadow:
         inset 0 1px 0 rgba(255, 255, 255, 0.64),
-        inset 0 0 0 10px rgba(122, 82, 38, 0.06),
-        var(--paper-shadow);
+        inset 0 -1px 0 rgba(122, 82, 38, 0.12);
 }
 
 .paper-page::-webkit-scrollbar {
@@ -516,9 +501,10 @@
 .paper-page-left {
     --left-page-bg-image: url("../assets/images/pages/left-page-cover-travel-diary.png");
 
-    border-radius: 12px 5px 5px 12px;
+    border-radius: 5px 1px 0 8px;
+    box-shadow: inset -20px 0 28px -22px #61451f99;
     background:
-        linear-gradient(180deg, rgba(255, 252, 238, 0.78), rgba(240, 219, 174, 0.56)),
+        linear-gradient(180deg, rgba(255, 252, 238, 0.92), rgba(248, 235, 204, 0.86)),
         radial-gradient(ellipse at 50% 24%, rgba(255, 249, 225, 0.38), transparent 44%),
         var(--left-page-bg-image),
         url("../assets/textures/paper-grain.png"),
@@ -543,11 +529,12 @@ body[data-route="archive"] .paper-page-left {
 }
 
 .paper-page-right {
-    border-radius: 5px 12px 12px 5px;
+    border-radius: 1px 5px 8px 0;
     background:
-        linear-gradient(180deg, rgba(255, 253, 237, 0.42), rgba(215, 187, 133, 0.22)),
+        linear-gradient(90deg, #a4824330, transparent 9%, #ffffff0d 85%, #a4824312),
         url("../assets/textures/paper-grain.png"),
-        linear-gradient(135deg, #d9bb7f, #aa7c45);
+        #f1e4c5;
+    box-shadow: inset 20px 0 28px -22px #61451f99;
 }
 
 .entry-sheet::-webkit-scrollbar {
@@ -565,7 +552,7 @@ body[data-route="archive"] .paper-page-left {
     margin: 0 0 14px;
     padding: 6px 12px;
     border: 1px solid rgba(92, 59, 29, 0.28);
-    border-radius: 999px;
+    border-radius: 2px;
     color: var(--stamp);
     background: rgba(255, 246, 222, 0.58);
     font-family: var(--font-serif);

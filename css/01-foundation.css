@@ -65,7 +65,7 @@
     --deep-shadow: 0 28px 52px rgba(9, 4, 2, 0.48);
     --soft-shadow: 0 10px 22px rgba(30, 18, 10, 0.2);
     --ring: 0 0 0 3px rgba(229, 197, 123, 0.34);
-    --page-turn-ms: 480ms;
+    --page-turn-ms: 1050ms;
 }
 
 * {
