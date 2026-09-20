@@ -180,8 +180,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260919-media-viewer-v4/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260919-media-viewer-v4/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260919-media-viewer-v5/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260919-media-viewer-v5/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -568,6 +568,10 @@ test('视频共用媒体入口并提供完整播放控制与键盘操作', () =>
     assert.match(appJs, /data-video-volume/);
     assert.match(appJs, /data-video-rate/);
     assert.match(appJs, /data-video-action="fullscreen"/);
+    assert.match(appJs, /video\.addEventListener\('click', handleViewerVideoClick\)/);
+    assert.match(appJs, /function handleViewerVideoClick\(event\)[\s\S]*handleVideoViewerAction\('toggle-play'\);/);
+    assert.match(appJs, /photoGestureState\.videoTapPointerId = event\.target\.closest\?\.\('\[data-video-viewer-video\]'\)/);
+    assert.match(appJs, /const shouldToggleVideo = event\.type === 'pointerup'[\s\S]*photoGestureState\.videoTapPointerId === event\.pointerId[\s\S]*handleVideoViewerAction\('toggle-play'\);/);
     assert.match(appJs, /event\.key === 'Escape' && document\.fullscreenElement/);
     assert.match(appJs, /event\.key === 'm' \|\| event\.key === 'M'/);
     assert.match(appJs, /event\.key === 'f' \|\| event\.key === 'F'/);
@@ -673,6 +677,10 @@ test('图片与视频初始居中适配舞台且平移不会完全移出屏幕',
     assert.match(appJs, /allowUpscale: media\.matches\('\[data-video-viewer-video\]'\)/);
     assert.match(appJs, /photoViewerState\.scale = getInitialPhotoScale\(stage, media\);/);
     assert.match(appJs, /photoViewerState\.initialScale = photoViewerState\.scale;/);
+    assert.match(appJs, /document\.addEventListener\('fullscreenchange', handlePhotoViewerFullscreenChange\);/);
+    assert.match(appJs, /function handleViewportResize\(\)[\s\S]*schedulePhotoViewerFit\(\);/);
+    assert.match(appJs, /new ResizeObserver\(\(\) => schedulePhotoViewerFit\(\)\)/);
+    assert.match(appJs, /function stopObservingPhotoViewerStage\(\)[\s\S]*photoViewerStageResizeObserver\?\.disconnect\(\);/);
     assert.match(photoViewerTransformJs, /return Math\.min\(PHOTO_VIEWER_MIN_SCALE_BASE, initialScale \* PHOTO_VIEWER_MIN_SCALE_RATIO\);/);
     assert.match(photoViewerTransformJs, /return Math\.max\(PHOTO_VIEWER_MAX_SCALE_BASE, initialScale \* PHOTO_VIEWER_MAX_SCALE_RATIO\);/);
     assert.doesNotMatch(appJs, /const PHOTO_VIEWER_MIN_SCALE = 0\.5;/);

@@ -89,6 +89,8 @@ const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
 let photoGestureState = createPhotoGestureState();
 let photoRotationTimer = null;
+let photoViewerFitFrame = null;
+let photoViewerStageResizeObserver = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     void initApp();
@@ -280,6 +282,7 @@ function bindGlobalEvents() {
     document.addEventListener('pointercancel', handlePhotoPointerEnd);
     document.addEventListener('dblclick', handlePhotoDoubleClick);
     document.addEventListener('wheel', handlePhotoWheel, { passive: false });
+    document.addEventListener('fullscreenchange', handlePhotoViewerFullscreenChange);
     window.addEventListener('hashchange', () => syncRouteFromHash());
     window.addEventListener('resize', handleViewportResize);
 }
@@ -1543,6 +1546,7 @@ function renderEntrySheetNav(navigation) {
 function closeEntrySheet(options = {}) {
     if (!refs.sheet) return;
 
+    stopObservingPhotoViewerStage();
     photoViewerState = null;
     photoGestureState = createPhotoGestureState();
     clearPhotoRotationTimer();
@@ -1606,6 +1610,7 @@ function openPhotoViewer(photos, index = 0) {
 }
 
 function renderPhotoViewer() {
+    stopObservingPhotoViewerStage();
     document.querySelector('[data-photo-viewer]')?.remove();
     const root = getPhotoViewerRoot();
     if (!photoViewerState || !root) {
@@ -1645,6 +1650,7 @@ function renderPhotoViewer() {
     `);
 
     enhanceCustomSelects(root.querySelector('[data-photo-viewer]'));
+    observePhotoViewerStage();
 
     if (isVideo) {
         const video = getViewerVideo();
@@ -1655,6 +1661,7 @@ function renderPhotoViewer() {
             for (const eventName of ['durationchange', 'timeupdate', 'play', 'pause', 'ended', 'volumechange', 'ratechange']) {
                 video.addEventListener(eventName, syncVideoViewerControls);
             }
+            video.addEventListener('click', handleViewerVideoClick);
             video.addEventListener('loadedmetadata', () => {
                 if (video !== getViewerVideo()) return;
                 fitPhotoToStage();
@@ -1686,6 +1693,7 @@ function renderPhotoViewer() {
 }
 
 function closePhotoViewerDialog() {
+    stopObservingPhotoViewerStage();
     document.querySelector('[data-photo-viewer]')?.remove();
     photoViewerState = null;
     photoGestureState = createPhotoGestureState();
@@ -1836,6 +1844,16 @@ async function toggleVideoFullscreen() {
     await stage?.requestFullscreen?.();
 }
 
+function handleViewerVideoClick(event) {
+    event.preventDefault();
+    event.stopPropagation();
+    if (photoGestureState.suppressClick) {
+        photoGestureState.suppressClick = false;
+        return;
+    }
+    handleVideoViewerAction('toggle-play');
+}
+
 function syncVideoViewerControls() {
     const video = getViewerVideo();
     const root = getPhotoViewerRoot();
@@ -1919,6 +1937,35 @@ function fitPhotoToStage() {
     photoViewerState.translateX = 0;
     photoViewerState.translateY = 0;
     updatePhotoViewerTransform();
+}
+
+function schedulePhotoViewerFit() {
+    if (!photoViewerState || !isPhotoViewerOpen()) return;
+    if (photoViewerFitFrame !== null) window.cancelAnimationFrame(photoViewerFitFrame);
+    photoViewerFitFrame = window.requestAnimationFrame(() => {
+        photoViewerFitFrame = null;
+        fitPhotoToStage();
+    });
+}
+
+function observePhotoViewerStage() {
+    const stage = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-stage]');
+    if (!stage || !('ResizeObserver' in window)) return;
+    photoViewerStageResizeObserver = new ResizeObserver(() => schedulePhotoViewerFit());
+    photoViewerStageResizeObserver.observe(stage);
+}
+
+function stopObservingPhotoViewerStage() {
+    photoViewerStageResizeObserver?.disconnect();
+    photoViewerStageResizeObserver = null;
+    if (photoViewerFitFrame !== null) {
+        window.cancelAnimationFrame(photoViewerFitFrame);
+        photoViewerFitFrame = null;
+    }
+}
+
+function handlePhotoViewerFullscreenChange() {
+    schedulePhotoViewerFit();
 }
 
 function getInitialPhotoScale(stage, media) {
@@ -2120,7 +2167,14 @@ function handlePhotoPointerDown(event) {
     }
 
     event.preventDefault();
-    if (photoGestureState.pointers.size === 0) photoGestureState.suppressClick = false;
+    if (photoGestureState.pointers.size === 0) {
+        photoGestureState.suppressClick = false;
+        photoGestureState.videoTapPointerId = event.target.closest?.('[data-video-viewer-video]')
+            ? event.pointerId
+            : null;
+    } else {
+        photoGestureState.videoTapPointerId = null;
+    }
     stage.setPointerCapture?.(event.pointerId);
     photoGestureState.pointers.set(event.pointerId, getPointerPoint(event));
     syncPhotoGestureStart();
@@ -2172,8 +2226,17 @@ function handlePhotoPointerEnd(event) {
         return;
     }
 
+    const shouldToggleVideo = event.type === 'pointerup'
+        && photoGestureState.videoTapPointerId === event.pointerId
+        && photoGestureState.pointers.size === 1
+        && !photoGestureState.suppressClick;
     photoGestureState.pointers.delete(event.pointerId);
+    photoGestureState.videoTapPointerId = null;
     syncPhotoGestureStart();
+    if (shouldToggleVideo) {
+        photoGestureState.suppressClick = true;
+        handleVideoViewerAction('toggle-play');
+    }
 }
 
 function handlePhotoWheel(event) {
@@ -2239,7 +2302,8 @@ function createPhotoGestureState() {
         pointers: new Map(),
         dragStart: null,
         pinchStart: null,
-        suppressClick: false
+        suppressClick: false,
+        videoTapPointerId: null
     };
 }
 
@@ -2405,16 +2469,6 @@ function handleDocumentClick(event) {
     if (videoAction) {
         event.preventDefault();
         handleVideoViewerAction(videoAction.dataset.videoAction);
-        return;
-    }
-
-    if (event.target.closest('[data-video-viewer-video]')) {
-        event.preventDefault();
-        if (photoGestureState.suppressClick) {
-            photoGestureState.suppressClick = false;
-            return;
-        }
-        handleVideoViewerAction('toggle-play');
         return;
     }
 
@@ -2746,6 +2800,7 @@ function clearSearchRouteTimer() {
 function handleViewportResize() {
     syncMobileContextPanelState();
     queuePhotoSleevePreviewSync();
+    schedulePhotoViewerFit();
 
     if (activeRoute?.name !== 'cover') {
         return;
