@@ -120,6 +120,7 @@ async function validateImportedRecords(entries) {
     if (!Array.isArray(records)) throw failure(400, '备份中的旅行索引必须是数组。');
     if (records.length > 10000) throw failure(400, '备份中的旅行记录不能超过 10000 条。');
     const markdownPaths = new Set();
+    let missingMediaReferences = 0;
     records.forEach((record, indexValue) => {
         const recordNumber = indexValue + 1;
         if (!record || typeof record !== 'object' || Array.isArray(record)) {
@@ -166,9 +167,10 @@ async function validateImportedRecords(entries) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项包含照片但未设置照片目录。`);
         }
         for (const photo of record.photos) {
-            if (!isSafeAsciiFileName(photo) || !files.has(`${photoFolder}/${photo}`)) {
-                throw failure(400, `备份中的旅行记录第 ${recordNumber} 项缺少照片文件或照片文件名无效。`);
+            if (!isSafeAsciiFileName(photo)) {
+                throw failure(400, `备份中的旅行记录第 ${recordNumber} 项照片文件名无效。`);
             }
+            if (!files.has(`${photoFolder}/${photo}`)) missingMediaReferences += 1;
         }
 
         const videoFolder = record.video_folder == null ? '' : validateTextField(record, recordNumber, 'video_folder');
@@ -184,11 +186,13 @@ async function validateImportedRecords(entries) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项包含视频但未设置视频目录。`);
         }
         for (const video of videos) {
-            if (!isSafeAsciiFileName(video) || !files.has(`${videoFolder}/${video}`)) {
-                throw failure(400, `备份中的旅行记录第 ${recordNumber} 项缺少视频文件或视频文件名无效。`);
+            if (!isSafeAsciiFileName(video)) {
+                throw failure(400, `备份中的旅行记录第 ${recordNumber} 项视频文件名无效。`);
             }
+            if (!files.has(`${videoFolder}/${video}`)) missingMediaReferences += 1;
         }
     });
+    return { missingMediaReferences };
 }
 
 async function validateCurrentAuth(root, options = {}) {
@@ -239,7 +243,7 @@ async function importDataArchive(root, archive, options = {}) {
                 portablePaths.set(key, { name, isFile });
             }
         }
-        await validateImportedRecords(entries);
+        const validation = await validateImportedRecords(entries);
         if (authEntry) {
             try {
                 validateAuthConfig(parseJsonFile(authEntry.data, AUTH_RELATIVE_PATH), {
@@ -307,7 +311,7 @@ async function importDataArchive(root, archive, options = {}) {
         movedSecrets = false;
         await fs.rm(backupData, { recursive: true, force: true }).catch(() => {});
         await fs.rm(backupSecrets, { recursive: true, force: true }).catch(() => {});
-        return { files: entries.length, authPreserved: !authEntry };
+        return { files: entries.length, authPreserved: !authEntry, ...validation };
     } finally {
         if (movedData) await fs.rename(backupData, currentData).catch(() => {});
         await fs.rm(stageRoot, { recursive: true, force: true }).catch(() => {});

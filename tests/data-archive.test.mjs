@@ -50,7 +50,7 @@ test('完整 ZIP 包含 data 与认证配置，并可恢复访问密码', async 
     ]);
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
     const result = await importDataArchive(root, archive, { requireProductionAuth: true });
-    assert.deepEqual(result, { files: 5, authPreserved: false });
+    assert.deepEqual(result, { files: 5, authPreserved: false, missingMediaReferences: 0 });
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
     assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, record.photos[0])), Buffer.from([1, 2, 3]));
     assert.deepEqual(await fs.readFile(path.join(root, record.video_folder, record.videos[0])), Buffer.from([4, 5, 6]));
@@ -65,7 +65,7 @@ test('旧备份没有认证配置时保留当前认证，旧明文密码不会�
         { name: 'data/password.json', data: '{"password":"123456"}' }
     ]);
     const result = await importDataArchive(root, archive, { requireProductionAuth: true });
-    assert.deepEqual(result, { files: 1, authPreserved: true });
+    assert.deepEqual(result, { files: 1, authPreserved: true, missingMediaReferences: 0 });
     await assert.rejects(fs.access(path.join(root, 'data/password.json')));
     assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
 });
@@ -85,6 +85,40 @@ test('导入拒绝越界路径、缺失正文及伪造认证路径', async t => 
         { name: '.SECRETS/auth.json', data: JSON.stringify(AUTH_CONFIG) }
     ])), /认证配置路径无效/);
     assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]');
+});
+
+test('导入保留缺少图片或视频附件的旅行记录并报告缺失引用', async t => {
+    const root = await fixture(t, 'travel-diary-archive-missing-media-');
+    const record = {
+        date: '2026-09-11', country: '中国', country_code: 'CN', admin_area: '江苏省', locality: '苏州市',
+        desc_md: 'data/travel-diary/2026/2026-09-11-suzhou.md',
+        photo_folder: 'data/photos/suzhou', photos: ['missing.png'],
+        video_folder: 'data/videos/suzhou', videos: ['missing.mp4']
+    };
+    const archive = createZip([
+        { name: 'data/travel_data.json', data: JSON.stringify([record]) },
+        { name: record.desc_md, data: '# 苏州\n' }
+    ]);
+
+    const result = await importDataArchive(root, archive);
+
+    assert.deepEqual(result, { files: 2, authPreserved: true, missingMediaReferences: 2 });
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
+});
+
+test('导入仍拒绝不安全的媒体文件名', async t => {
+    const root = await fixture(t, 'travel-diary-archive-invalid-media-name-');
+    const record = {
+        date: '2026-09-11', country: '中国', country_code: 'CN', admin_area: '江苏省', locality: '苏州市',
+        desc_md: 'data/travel-diary/2026/2026-09-11-suzhou.md', photo_folder: '', photos: [],
+        video_folder: 'data/videos/suzhou', videos: ['../outside.mp4']
+    };
+    const archive = createZip([
+        { name: 'data/travel_data.json', data: JSON.stringify([record]) },
+        { name: record.desc_md, data: '# 苏州\n' }
+    ]);
+
+    await assert.rejects(importDataArchive(root, archive), /第 1 项视频文件名无效/);
 });
 
 test('remote 导入恢复备份中的有效认证配置并拒绝弱配置', async t => {

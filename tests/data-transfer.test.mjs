@@ -130,3 +130,53 @@ test('导出和导入都要求写入 API，静态页面不提供全部数据备�
         target: { closest: selector => selector === '[data-feedback-confirm]' ? {} : null }
     });
 });
+
+test('导入缺少媒体文件的备份后提示缺失数量但保留旅行数据', async t => {
+    const nodes = [];
+    const output = { textContent: '', focus() {} };
+    function node() {
+        const children = new Map();
+        return {
+            events: {}, open: false,
+            classList: { add() {}, remove() {}, toggle() {} },
+            setAttribute() {}, focus() {}, click() {},
+            addEventListener(name, handler) { this.events[name] = handler; },
+            querySelectorAll() { return []; },
+            querySelector(selector) {
+                if (!children.has(selector)) children.set(selector, node());
+                return children.get(selector);
+            },
+            showModal() { this.open = true; }, close() { this.open = false; }
+        };
+    }
+    const previous = { document: globalThis.document, window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.document = {
+        createElement() { const element = node(); nodes.push(element); return element; },
+        body: { append() {} }, querySelector: () => output, activeElement: null
+    };
+    globalThis.window = { location: { hostname: 'diary.example', href: 'https://diary.example/' } };
+    globalThis.fetch = async (_, options) => ({
+        ok: true,
+        json: async () => options?.headers?.['Content-Type'] === 'application/zip'
+            ? { imported: true, missingMediaReferences: 2 }
+            : { service: 'travel-diary-writer-v1', authenticated: true, token: 'test', methods: ['POST', 'PUT', 'DELETE'] }
+    });
+    const transfer = createDataTransfer(async () => {});
+    const [input, confirmation, success, passwordDialog] = nodes;
+
+    await transfer.chooseImport();
+    for (let index = 0; index < 6; index += 1) {
+        passwordDialog.events.click({
+            target: { closest: selector => selector === '[data-password-key]' ? { dataset: { passwordKey: '8' } } : null }
+        });
+    }
+    await new Promise(resolve => setImmediate(resolve));
+    input.files = [{ name: 'backup.zip' }];
+    const pending = input.events.change();
+    confirmation.events.click({ target: { closest: selector => selector === '[data-import-confirm]' } });
+    await pending;
+
+    assert.match(success.querySelector('#dataImportSuccessDescription').textContent, /2 个图片或视频引用缺少对应文件/);
+    assert.equal(output.textContent, '');
+});
