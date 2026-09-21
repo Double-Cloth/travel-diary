@@ -528,9 +528,9 @@ async function main() {
   console.log('Tip: refresh the page after file changes. Press Ctrl+C to stop.');
   console.log('='.repeat(60));
 
-  setTimeout(() => {
-    openBrowser(localhostUrl);
-  }, 500);
+  // setTimeout(() => {
+  //   openBrowser(localhostUrl);
+  // }, 500);
 
   process.on('SIGINT', () => {
     console.log('\nStopping server...');
