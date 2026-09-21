@@ -622,7 +622,7 @@
     scrollbar-color: rgba(117, 73, 40, 0.58) transparent;
     padding: clamp(24px, 2.6vw, 40px);
     border: 0;
-    border-radius: 1px 5px 8px 0;
+    border-radius: var(--book-right-radius, 1px 5px 8px 0);
     background:
         linear-gradient(90deg, #a4824330, transparent 9%, #ffffff0d 85%, #a4824312),
         url("../assets/textures/paper-grain.png"),
