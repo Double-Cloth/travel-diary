@@ -6,7 +6,7 @@ import { normalizeTravelLocation } from '../js/location.mjs';
 globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
-    renderWithPageTurn, cloneTurningPage, createPageCurlFrames, scheduleSearchRouteUpdate, syncRouteFromHash,
+    renderWithPageTurn, cloneTurningPage, createPageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError };
 export function stubReadingRoutes() {
@@ -173,10 +173,15 @@ test('快速切换与取消翻页会清理旧副本并保持最后一次渲染',
     globalThis.document = { createElement: createNode };
     globalThis.getComputedStyle = () => ({ background: '#fff' });
     globalThis.window = { matchMedia: () => ({ matches: false }) };
-    app.setTestState({ spread, leftPage: createNode(), rightPage: createNode() });
+    const leftPage = createNode();
+    const rightPage = createNode();
+    leftPage.inert = rightPage.inert = false;
+    app.setTestState({ spread, leftPage, rightPage });
     let rendered = '';
     app.renderWithPageTurn(() => { rendered = '第一页'; });
-    assert.equal(spread.classList.values.has('turn-back'), true);
+    assert.equal(spread.classList.values.has('turn-forward'), true);
+    assert.equal(leftPage.inert, true);
+    assert.equal(rightPage.inert, true);
     const firstLeaf = [...copies].find(node => node.className === 'book-turn-leaf');
     assert.equal(firstLeaf.inert, true);
     t.mock.timers.tick(100);
@@ -191,6 +196,8 @@ test('快速切换与取消翻页会清理旧副本并保持最后一次渲染',
     t.mock.timers.tick(1000);
     assert.equal(rendered, '最后一页');
     assert.equal(copies.has(secondLeaf), false);
+    assert.equal(leftPage.inert, false);
+    assert.equal(rightPage.inert, false);
     assert.equal(spread.classList.values.size, 0);
     globalThis.window.matchMedia = () => ({ matches: true });
     app.renderWithPageTurn(() => { rendered = '减少动态效果'; });
@@ -229,25 +236,36 @@ test('翻页副本清除屏外记录内容但保持占位，不修改真实记�
     assert.equal(copy.inert, true);
 });
 
-test('柔软纸页保持中缝锚点、连续曲面和正反向落页位置', () => {
+test('翻页方向与书签顺序及返回按钮一致', () => {
+    for (const [from, to, direction] of [
+        ['cover', 'ledger', 'forward'], ['ledger', 'archive', 'forward'],
+        ['archive', 'ledger', 'back'], ['ledger', 'cover', 'back'],
+        ['archive', 'place', 'forward'], ['place', 'archive', 'back'],
+        ['entry', 'photos', 'forward'], ['photos', 'entry', 'back']
+    ]) assert.equal(app.getTurnDirection({ name: from }, { name: to }), direction);
+});
+
+test('卷曲从下角向内扩散，纸面共享边界且正反向准确落页', () => {
     for (const backwards of [false, true]) {
-        const frames = app.createPageCurlFrames(600, backwards);
-        const parse = frame => frame.transform.match(/-?[\d.]+(?:e[+-]?\d+)?/g).slice(1).map(Number);
-        const start = parse(frames[0][0]);
-        const finish = parse(frames[0].at(-1));
-        assert.equal(start[0], backwards ? 550 : 0);
-        assert.equal(finish[0], start[0]);
-        assert.equal(finish[2], 0);
-        assert.ok(Math.abs(Math.abs(finish[3]) - Math.PI) < 1e-10);
-        assert.deepEqual(frames[0][0].transform, frames[0][6].transform, '掀角期间书脊保持静止');
-        const middle = frames.map(strip => parse(strip[24]));
-        assert.ok(middle.at(-1)[2] > 400, '纸张中途拱起');
-        assert.ok(Math.abs(middle[0][3] - middle.at(-1)[3]) > 1.5, '不同位置的角度应呈曲线而非平板');
-        for (let index = 0; index < middle.length - 1; index += 1) {
-            const direction = backwards ? -1 : 1;
-            assert.ok(Math.abs(middle[index + 1][0] - middle[index][0] - direction * Math.cos(middle[index][3]) * 50) < 1e-8);
-            assert.ok(Math.abs(middle[index + 1][2] - middle[index][2] + direction * Math.sin(middle[index][3]) * 50) < 1e-8);
+        const frames = app.createPageCurlFrames(600, 800, backwards);
+        assert.equal(frames.length, 18);
+        for (const band of frames) {
+            assert.equal(band[0].first.z, 0);
+            assert.equal(band[0].last.z, 0);
+            assert.ok(Math.abs(band.at(-1).first.u + band[0].first.u) < 1e-8);
+            assert.equal(band.at(-1).first.z, 0);
         }
+        const early = frames.map(band => band[10]);
+        assert.ok(early[0].first.z === 0 && early[10].first.z === 0, '靠近书脊的纸张仍贴在底页');
+        assert.ok(early[15].last.z > 0, '外侧下角已经开始卷动');
+        assert.ok(early[0].tilt > 0.4, '弯曲边界保持斜向，不能整条竖边同时翻动');
+        for (let frame = 0; frame <= 48; frame += 1) {
+            for (let index = 0; index < frames.length - 1; index += 1) {
+                assert.ok(Math.abs(frames[index][frame].last.u - frames[index + 1][frame].first.u) < 1e-8);
+                assert.ok(Math.abs(frames[index][frame].last.z - frames[index + 1][frame].first.z) < 1e-8);
+            }
+        }
+        assert.equal(frames[0].at(-1).tilt, 0, '落页时与书脊平行');
     }
 });
 

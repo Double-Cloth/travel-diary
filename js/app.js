@@ -530,7 +530,8 @@ function renderRoute(route, options = {}) {
             restoreReadingScrollPosition();
         }
         restoreFocus(options.focusId);
-    }, { animate: options.animate !== false && !options.initial && !isSameChapter });
+    }, { animate: options.animate !== false && !options.initial && !isSameChapter,
+        direction: getTurnDirection(previousRoute, route) });
 }
 
 function deriveTravelModel(records) {
@@ -2574,7 +2575,7 @@ function clearPageTurn() {
     pageTurnTimer = null;
     pageTurnCleanup?.();
     pageTurnCleanup = null;
-    refs.spread?.classList.remove('turn-forward', 'turn-back', 'turn-mobile', 'book-turn-preparing');
+    refs.spread?.classList.remove('turn-forward', 'turn-back', 'turn-mobile', 'turn-mobile-back', 'book-turn-preparing');
 }
 
 function cloneTurningPage(page) {
@@ -2602,28 +2603,56 @@ function cloneTurningPage(page) {
     return clone;
 }
 
-// 沿纸张宽度积分局部切线：每片的终点连接下一片，页边先卷起，书脊随后转动。
-function createPageCurlFrames(width, backwards, count = 12) {
+// 章节顺序与书签一致；地点和附件属于向内阅读，返回所属章节时反向翻页。
+function getTurnDirection(previous, next) {
+    const order = { cover: 0, ledger: 1, archive: 2, place: 3, entry: 4, photos: 5 };
+    return (order[next?.name] ?? 0) < (order[previous?.name] ?? 0) ? 'back' : 'forward';
+}
+
+// 折线从外侧下角沿斜向推进，圆柱曲面连接未翻区域与已翻区域。
+// 每条斜带共享端点；页角、正文和纸背使用同一组几何数据，不再拼接独立掀角动画。
+function createPageCurlFrames(width, height, backwards, count = 18) {
+    const extent = Math.hypot(width, height);
+    const step = extent / count;
     const frames = Array.from({ length: count }, () => []);
-    const step = width / count;
-    const direction = backwards ? -1 : 1;
-    for (let frame = 0; frame <= 40; frame += 1) {
-        const time = frame / 40;
-        // 前 18% 仅掀起外侧下角，随后曲率由页边传向书脊。
-        const travel = Math.max(0, (time - 0.18) / 0.82);
-        const progress = (1 - Math.cos(Math.PI * travel)) / 2;
-        const flex = Math.sin(Math.PI * progress);
-        let x = backwards ? width : 0;
-        let z = 0;
+    for (let frame = 0; frame <= 48; frame += 1) {
+        const time = frame / 48;
+        const progress = time * time * (3 - 2 * time);
+        const tilt = 0.58 * (1 - progress);
+        const c = Math.cos(tilt);
+        const s = Math.sin(tilt);
+        const radius = width * 0.14 * Math.sin(Math.PI * progress);
+        const boundary = (c * width + s * height) * (1 - progress) - Math.PI * radius * progress / 2;
+        const point = u => {
+            const distance = Math.max(0, u - boundary);
+            if (time === 0 || distance === 0) return { u, z: 0 };
+            if (radius < 0.00001) return { u: -u, z: 0 };
+            const angle = Math.min(Math.PI, distance / radius);
+            return { u: boundary + radius * Math.sin(angle) - Math.max(0, distance - Math.PI * radius),
+                z: radius * (1 - Math.cos(angle)) };
+        };
         for (let index = 0; index < count; index += 1) {
-            const position = (index + 0.5) / count;
-            const angle = direction * (-Math.PI * progress + 0.95 * flex * (1 - 2 * position));
-            frames[index].push({
-                offset: time,
-                transform: `translate3d(${x - (backwards ? step : 0)}px, 0, ${z}px) rotateY(${angle}rad)`
-            });
-            x += direction * Math.cos(angle) * step;
-            z -= direction * Math.sin(angle) * step;
+            const u = index * step;
+            const first = point(u);
+            const last = point(u + step);
+            const du = (last.u - first.u) / step;
+            const dz = (last.z - first.z) / step;
+            const length = Math.hypot(du, dz) || 1;
+            const mirror = backwards ? -1 : 1;
+            const x = c * first.u + s * width;
+            const y = s * first.u - c * width;
+            const transform = `matrix3d(${mirror * c * du},${s * du},${dz},0,${-mirror * s},${c},0,0,${-mirror * c * dz / length},${-s * dz / length},${du / length},0,${backwards ? width - x : x},${y},${first.z + 1},1)`;
+            const sample = flipped => {
+                const sign = flipped ? -1 : 1;
+                return `matrix(${c * sign},${-s * sign},${s},${c},${(flipped ? c * width : 0) - u},${width - (flipped ? s * width : 0)})`;
+            };
+            frames[index].push({ offset: time, transform,
+                front: sample(backwards), back: sample(!backwards),
+                shadow: `matrix(${mirror * c},${s},${-mirror * s},${c},${width + mirror * (c * (boundary - width * 0.1) + s * width)},${s * (boundary - width * 0.1) - c * width})`,
+                shadowOpacity: 0.7 * Math.sin(Math.PI * progress),
+                shade: Math.min(0.24, Math.abs(dz) * 0.22 + (du < 0 ? 0.06 * Math.sin(Math.PI * progress) : 0)),
+                // 测试直接验证共享边界、起页范围和终点，避免依赖 CSS 字符串解析。
+                first, last, tilt });
         }
     }
     return frames;
@@ -2640,15 +2669,16 @@ function renderWithPageTurn(renderFn, options = {}) {
     if (isMobileLayout()) {
         renderFn();
         refs.spread.classList.add('turn-mobile');
+        if (options.direction === 'back') refs.spread.classList.add('turn-mobile-back');
         pageTurnTimer = setTimeout(clearPageTurn, 300);
         return;
     }
 
-    // 所有章节都从左页左下角向右翻，路由顺序不再改变物理方向。
-    const backwards = true;
+    const backwards = options.direction === 'back';
     const turningPage = backwards ? refs.leftPage : refs.rightPage;
     const restingPage = backwards ? refs.rightPage : refs.leftPage;
     const { width, height } = turningPage.getBoundingClientRect();
+    const pageInert = [refs.leftPage.inert, refs.rightPage.inert];
     const front = cloneTurningPage(turningPage);
     const resting = cloneTurningPage(restingPage);
     const frontScroll = turningPage.scrollTop;
@@ -2661,49 +2691,60 @@ function renderWithPageTurn(renderFn, options = {}) {
     leaf.setAttribute('aria-hidden', 'true');
     leaf.inert = true;
     resting.classList.add('book-turn-resting');
-    const frames = createPageCurlFrames(width, backwards);
-    const stripWidth = width / frames.length;
+    const frames = createPageCurlFrames(width, height, backwards);
+    const stripWidth = Math.hypot(width, height) / frames.length;
     const animations = [];
     const surfaces = [];
-    frames.forEach((keyframes, index) => {
+    const timing = { duration: PAGE_TURN_MS, fill: 'both', easing: 'linear' };
+    frames.forEach((keyframes) => {
         const strip = document.createElement('div');
         strip.className = 'book-curl-strip';
-        // 亚像素重叠覆盖透视栅格的细缝，不改变纸面的连续几何位置。
-        strip.style.width = `${stripWidth + 0.6}px`;
-        strip.style.transformOrigin = backwards ? `${stripWidth}px center` : 'left center';
+        strip.style.width = `${stripWidth + 0.5}px`;
+        strip.style.height = `${width + height}px`;
         strip.style.transform = keyframes[0].transform;
-        strip.style.setProperty('--curl-shade', String(0.12 + 0.12 * Math.sin(Math.PI * (index + 0.5) / frames.length)));
-        const frontIndex = backwards ? frames.length - index - 1 : index;
         [front, back].forEach((source, side) => {
             const face = document.createElement('div');
             face.className = `book-curl-face${side ? ' book-curl-back' : ' book-curl-front'}`;
+            const surface = document.createElement('div');
+            surface.className = 'book-curl-surface';
+            surface.style.width = `${width}px`;
+            surface.style.height = `${height}px`;
             const copy = source.cloneNode(true);
-            const sampleIndex = side ? frames.length - frontIndex - 1 : frontIndex;
             copy.style.width = `${width}px`;
             copy.style.height = `${height}px`;
-            copy.style.left = `${-sampleIndex * stripWidth}px`;
-            face.append(copy);
+            copy.style.left = '0';
+            const shade = document.createElement('div');
+            shade.className = 'book-curl-shade';
+            surface.append(copy, shade);
+            face.append(surface);
             strip.append(face);
             surfaces.push({ copy, scroll: side ? reversePage.scrollTop : frontScroll });
+            animations.push(surface.animate(keyframes.map(frame => ({ offset: frame.offset,
+                transform: side ? frame.back : frame.front })), timing));
+            animations.push(shade.animate(keyframes.map(frame => ({ offset: frame.offset,
+                opacity: frame.shade })), timing));
         });
         leaf.append(strip);
+        animations.push(strip.animate(keyframes.map(({ offset, transform }) => ({ offset, transform })), timing));
     });
     const shadow = document.createElement('div');
     shadow.className = 'book-turn-shadow';
-    const corner = document.createElement('div');
-    corner.className = 'book-corner-lift';
-    leaf.append(corner);
+    const contact = document.createElement('div');
+    contact.className = 'book-curl-contact';
+    contact.style.width = `${width * 0.2}px`;
+    contact.style.height = `${width + height}px`;
+    shadow.append(contact);
+    animations.push(contact.animate(frames[0].map(frame => ({ offset: frame.offset,
+        transform: frame.shadow, opacity: frame.shadowOpacity })), timing));
     refs.spread.classList.add('book-turn-preparing');
     refs.spread.append(resting, shadow, leaf);
+    refs.leftPage.inert = true;
+    refs.rightPage.inert = true;
     resting.scrollTop = restingScroll;
     surfaces.forEach(({ copy, scroll }) => { copy.scrollTop = scroll; });
     refs.spread.style.setProperty('--page-turn-ms', `${PAGE_TURN_MS}ms`);
     refs.spread.classList.add(backwards ? 'turn-back' : 'turn-forward');
-    const timing = { duration: PAGE_TURN_MS, fill: 'both', easing: 'linear' };
-    Array.from(leaf.children).slice(0, frames.length).forEach((strip, index) => {
-        animations.push(strip.animate(frames[index].map(({ offset, transform }) => ({ offset, transform })), timing));
-    });
-    animations.forEach(animation => animation.pause());
+    animations.forEach(animation => { animation.pause(); animation.currentTime = 0; });
     let startFrame = null;
     let cancelled = false;
     // 保留旧的对页直到纸张落稳，避免翻至中途时底页突然跳变。
@@ -2714,6 +2755,7 @@ function renderWithPageTurn(renderFn, options = {}) {
         leaf.remove();
         resting.remove();
         shadow.remove();
+        [refs.leftPage.inert, refs.rightPage.inert] = pageInert;
     };
     // 先完成首帧栅格化，再开始掀角，防止建层耗时吃掉动画开头。
     startFrame = requestAnimationFrame(() => {

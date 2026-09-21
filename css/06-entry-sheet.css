@@ -722,7 +722,7 @@
     position: absolute;
     top: 0;
     left: 0;
-    height: 100%;
+    transform-origin: 0 0;
     transform-style: preserve-3d;
     will-change: transform;
 }
@@ -732,83 +732,48 @@
     inset: 0;
     overflow: hidden;
     backface-visibility: hidden;
-    background: #f3e7ca;
+    transform-origin: 0 0;
 }
 
-.book-curl-back { transform: rotateY(180deg); }
+/* 翻转法线而不移动采样坐标，纸背的文字由对应页面镜像采样。 */
+.book-curl-back { transform: rotateY(180deg) scaleX(-1); }
 
-.book-curl-face > .paper-page.book-page-copy {
+.book-curl-surface {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+}
+
+.book-curl-surface > .paper-page.book-page-copy {
     top: 0;
     border-radius: 0;
     box-shadow: none;
 }
 
-/* 只改变窄片的合成变换与遮光层透明度，避免逐帧滤镜重绘。 */
-.book-curl-face::after {
-    content: "";
+.book-curl-shade {
     position: absolute;
+    z-index: 20;
     inset: 0;
     pointer-events: none;
     background: #49331c;
-    animation: bookPaperShade var(--page-turn-ms) ease-in-out both;
-}
-
-@keyframes bookPaperShade {
-    0%, 18%, 100% { opacity: 0; }
-    52% { opacity: var(--curl-shade); }
-}
-
-.book-corner-lift {
-    position: absolute;
-    z-index: 6;
-    bottom: 0;
-    left: 0;
-    width: 112px;
-    height: 112px;
-    transform-origin: left bottom;
-    translate: 0 0 4px;
-    clip-path: polygon(0 0, 100% 0, 100% 100%);
-    background: linear-gradient(45deg, #a88e64, #e2cda6 14%, #fff7e2 40%, #f4e7c9 65%, #c3aa7a);
-    filter: drop-shadow(-3px -3px 3px #48301655);
-    box-shadow: inset 2px 2px 4px #fff9e7;
-    animation: bookCornerLift var(--page-turn-ms) linear both;
-    pointer-events: none;
-}
-
-.book-turn-preparing .book-curl-face::after,
-.book-turn-preparing .book-curl-front > .book-page-copy,
-.book-turn-preparing .book-corner-lift,
-.book-turn-preparing .book-turn-shadow { animation-play-state: paused; }
-
-.book-curl-front > .book-page-copy {
-    animation: bookCornerCutBack var(--page-turn-ms) linear both;
-}
-
-@keyframes bookCornerLift {
-    0% { transform: scale(0); opacity: 0; }
-    5% { opacity: 1; }
-    18% { transform: translate(5px, -5px) scale(1) rotate(4deg); opacity: 1; }
-    30%, 100% { transform: scale(0.85); opacity: 0; }
-}
-
-@keyframes bookCornerCutBack {
-    0%, 30%, 100% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 100%); }
-    18% { clip-path: polygon(0 0, 100% 0, 100% 100%, 112px 100%, 0 calc(100% - 112px)); }
 }
 
 .book-turn-shadow {
     position: absolute;
     z-index: 3;
     inset: 0;
+    overflow: hidden;
     pointer-events: none;
-    background: linear-gradient(90deg, transparent 8%, #35210b38 42%, #35210b66 50%, #35210b38 58%, transparent 92%);
-    transform-origin: center;
-    animation: bookCurlShadow var(--page-turn-ms) ease-in-out both;
 }
 
-@keyframes bookCurlShadow {
-    0%, 100% { opacity: 0; transform: scaleX(0.15); }
-    35%, 65% { opacity: 1; transform: scaleX(1); }
+/* 接触阴影随斜向弯曲边界移动，始终留在纸张下方。 */
+.book-curl-contact {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    background: linear-gradient(90deg, transparent, #35210b60 50%, transparent);
 }
 
 .turn-mobile > .paper-page-left {
@@ -816,8 +781,14 @@
     animation: bookMobileIn 0.3s ease-out both;
 }
 
+.turn-mobile-back > .paper-page-left {
+    --mobile-turn-angle: 4deg;
+    --mobile-turn-tilt: -0.5deg;
+    transform-origin: left bottom;
+}
+
 @keyframes bookMobileIn {
-    from { transform: perspective(1000px) rotateY(4deg) rotateZ(-0.5deg); opacity: 0.65; }
+    from { transform: perspective(1000px) rotateY(var(--mobile-turn-angle)) rotateZ(var(--mobile-turn-tilt)); opacity: 0.65; }
     to { transform: perspective(1000px) rotateY(0); opacity: 1; }
 }
 
