@@ -85,6 +85,8 @@ let isSearchComposing = false;
 let isMobileContextPanelOpen = false;
 let isMobileContextPageScrollLocked = false;
 let mobileContextScrollY = 0;
+let isEntryPageScrollLocked = false;
+let entryPageScrollY = 0;
 let viewportResizeTimer = null;
 let photoPreviewResizeTimer = null;
 let photoPreviewLateResizeTimer = null;
@@ -1542,6 +1544,7 @@ function openEntrySheet(record) {
         entryReturnFocus = document.activeElement;
     }
     refs.shell.inert = true;
+    lockEntryPageScroll();
     refs.sheet.setAttribute('aria-hidden', 'false');
     refs.sheet.classList.add('entry-sheet-root-open');
 
@@ -1639,6 +1642,7 @@ function closeEntrySheet(options = {}) {
     clearPhotoRotationTimer();
     document.querySelector('[data-photo-viewer]')?.remove();
     refs.shell.inert = false;
+    unlockEntryPageScroll();
     const wasOpen = refs.sheet.classList.contains('entry-sheet-root-open');
     refs.sheet.classList.remove('entry-sheet-root-open');
     refs.sheet.setAttribute('aria-hidden', 'true');
@@ -1655,6 +1659,36 @@ function closeEntrySheet(options = {}) {
     if (options.restoreFocus && lastEntryFocusId) {
         restoreFocus(lastEntryFocusId);
     }
+}
+
+/* 详情纸页是 fixed 弹层，移动端打开时锁住页面滚动并恢复原来的阅读位置。 */
+function lockEntryPageScroll() {
+    if (!isMobileLayout() || isEntryPageScrollLocked) return;
+
+    entryPageScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
+    isEntryPageScrollLocked = true;
+    document.documentElement.classList.add('entry-sheet-page-locked');
+    document.body.classList.add('entry-sheet-page-locked');
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${entryPageScrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.width = '100%';
+}
+
+function unlockEntryPageScroll() {
+    if (!isEntryPageScrollLocked) return;
+
+    isEntryPageScrollLocked = false;
+    document.documentElement.classList.remove('entry-sheet-page-locked');
+    document.body.classList.remove('entry-sheet-page-locked');
+    document.body.style.position = '';
+    document.body.style.top = '';
+    document.body.style.left = '';
+    document.body.style.right = '';
+    document.body.style.width = '';
+    window.scrollTo(0, entryPageScrollY);
+    entryPageScrollY = 0;
 }
 
 async function deleteTravelRecord(record, authenticatedCapability = null) {
