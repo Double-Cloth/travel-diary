@@ -259,13 +259,14 @@ test('合书保留原页直到落稳，中断会恢复交互且只提交一次�
         inert: false, scrollTop: 80, style: { setProperty() {} }, attributes: new Map(),
         classList: { values: new Set(), add(...names) { names.forEach(name => this.values.add(name)); },
             remove(...names) { names.forEach(name => this.values.delete(name)); } },
-        cloneNode: createNode, querySelectorAll: () => [],
+        cloneNode: createNode, querySelectorAll: () => [], querySelector: () => createNode(),
         getBoundingClientRect: () => ({ top: 0, bottom: 800 }),
         setAttribute(name, value) { this.attributes.set(name, value); },
         removeAttribute(name) { this.attributes.delete(name); },
         append(...children) { children.forEach(child => nodes.add(child)); },
         remove() { nodes.delete(this); }, focus() { this.focused = true; },
-        animate() { const animation = { pause() {}, play() {}, cancel() { this.cancelled = true; } };
+        animate(keyframes, timing) { const animation = { timing, keyframes, state: 'running',
+            pause() { this.state = 'paused'; }, play() { this.state = 'running'; }, cancel() { this.cancelled = true; } };
             animations.push(animation); return animation; }
     });
     const shell = createNode();
@@ -288,8 +289,11 @@ test('合书保留原页直到落稳，中断会恢复交互且只提交一次�
     assert.equal(renders, 0, '合书开始时不能清空当前正文');
     assert.equal(leftPage.inert, true);
     assert.equal(rightPage.inert, true);
+    assert.equal(animations.length, 5, '封皮、封扣、书体、投影与光照共同参与开合');
+    assert.equal(animations.every(animation => animation.state === 'paused'), true, '首帧前所有动画必须暂停');
     frames.shift()();
-    t.mock.timers.tick(1249);
+    assert.equal(animations.every(animation => animation.state === 'running' && animation.currentTime === 0), true, '所有部件从同一首帧起播');
+    t.mock.timers.tick(1449);
     assert.equal(renders, 0);
     t.mock.timers.tick(1);
     assert.equal(renders, 1);
@@ -382,15 +386,19 @@ test('照片预览同步时释放已移除节点并保留仍连接的节点', ()
 
 test('详情、附件与返回都作为书页路由参与翻页', t => {
     const previousDocument = globalThis.document;
+    const previousWindow = globalThis.window;
+    const scrolls = [];
+    globalThis.window = { matchMedia: () => ({ matches: true }), scrollTo: options => scrolls.push(options) };
     globalThis.document = { body: { dataset: {} } };
     const scenario = app.stubReadingRoutes();
-    t.after(() => { scenario.restore(); globalThis.document = previousDocument; });
+    t.after(() => { scenario.restore(); globalThis.document = previousDocument; globalThis.window = previousWindow; });
     const ledger = app.parseRoute('#ledger');
     scenario.render(ledger, { initial: true });
     scenario.render(app.parseRoute('#entry?id=a'));
     scenario.render(app.parseRoute('#entry?id=b'));
     scenario.render(ledger);
     assert.deepEqual(scenario.calls, ['direct', 'ledger', 'turn', 'entry:a', 'turn', 'entry:b', 'turn', 'ledger']);
+    assert.deepEqual(scrolls, [{ top: 0, behavior: 'instant' }, { top: 0, behavior: 'instant' }], '手机打开与切换日记回到页首，返回列表保留原阅读位置');
     scenario.render(app.parseRoute('#photos?id=b'));
     scenario.render(app.parseRoute('#entry?id=b'));
     assert.deepEqual(scenario.calls.slice(-4), ['turn', 'photos', 'turn', 'entry:b']);

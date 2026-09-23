@@ -158,16 +158,54 @@ body {
 .spine-tool:hover { background: radial-gradient(circle at 34% 22%, #fff6ce, #e2c38a 55%, #b48e55); }
 .spine-tool:active { transform: translateY(2px); }
 .closed-book-cover {
-    background:
-        radial-gradient(ellipse at 30% 22%, #d9ab7530, transparent 57%),
-        var(--leather-grain),
-        repeating-linear-gradient(12deg, #0000000a 0 1px, transparent 1px 3px),
-        linear-gradient(105deg, #291910, #754c32 13%, #513022 55%, #382017);
-    background-blend-mode: normal, soft-light, normal, normal;
+    background: #52301e url('../assets/images/pages/leather-mountain-cover.png') center / 100% 100%;
+    transition: transform 320ms ease, box-shadow 320ms ease;
 }
-.closed-book-title { color: #e5c687; text-shadow: 0 -1px #211109, 0 1px #ffe3a680, 0 3px 4px #211109; }
-.closed-book-subtitle { color: #cfaf77; }
-.closed-book-stitching { border-color: #deb16a66; }
+.closed-book-cover::before { inset: 15px 15px 15px 48px; border-color: #e9c98633; box-shadow: inset 0 0 0 2px #21110866; }
+.closed-book-title { top: 21%; left: 53%; color: #ecd199; letter-spacing: .18em; text-shadow: 0 -1px #211109, 0 1px #ffe3a680, 0 3px 4px #211109; }
+.closed-book-subtitle { top: 33%; left: 53%; color: #d8b984; font-size: 13px; letter-spacing: .42em; }
+.closed-book-invitation { top: auto; bottom: 10%; left: 53%; font-size: 14px; color: #f2d6a3; padding: 9px 14px; background: #24120773; border-block: 1px solid #d9b57844; }
+.closed-book-stitching { inset: 24px 24px 24px 56px; border-color: #deb16a44; }
+.closed-book-spine { left: 9px; width: 34px; background: linear-gradient(90deg, #1c0e09, #895b39 42%, #482817 78%, #25120a); }
+.closed-book-spine::before, .closed-book-spine::after { left: 1px; width: 30px; }
+.closed-book-clasp { z-index: 6; top: 45%; right: -15px; width: 75px; height: 60px; transform-origin: right center; }
+.closed-book-clasp i { top: 14px; }
+.closed-book-corner { width: 38px; height: 38px; }
+
+/* 内容有固定的阅读层级，辅助动作收在同一行，不与标题争夺空间。 */
+.ledger-feature-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.ledger-feature-map { position: absolute; inset: 0; pointer-events: none; }
+.ledger-feature-photo + .ledger-feature-map { background: linear-gradient(transparent 35%, #1b170bd9); }
+.ledger-feature-caption { padding: 18px 20px; text-shadow: 0 2px 5px #0008; }
+.ledger-feature-caption small { color: #fff5e4; }
+.ledger-feature-caption span { color: #fff5e4; }
+.ledger-feature-actions .ledger-filter-jump { flex: 0 0 auto; min-height: 44px; padding: 9px 16px; }
+.ledger-feature-filters:focus { outline: none; }
+.ledger-feature-filters:focus-visible { outline: 2px solid #9b6e42; outline-offset: 8px; }
+.index-dashboard-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+.index-dashboard-grid span:last-child { grid-column: 1 / -1; }
+.entry-note { min-width: 0; }
+.entry-note h3 { font-size: 20px; line-height: 1.5; overflow-wrap: anywhere; }
+.entry-location { font-size: 11px; line-height: 1.6; color: #716046; }
+.entry-tags { gap: 8px; align-items: center; }
+.trip-stamp { font-size: 10px; }
+.paper-page { scrollbar-width: thin; scrollbar-color: #aa906557 transparent; scrollbar-gutter: stable; }
+.paper-page:hover { scrollbar-color: #9473479c transparent; }
+.journal-stage:focus { outline: none; }
+.paper-page :is(button, a, input, select):focus-visible { outline: 2px solid #815535; outline-offset: 3px; }
+.luggage-tag { transition: transform 180ms ease, box-shadow 180ms ease; }
+.luggage-tag:hover { transform: translateY(-2px) rotate(-.4deg); }
+.archive-page .page-copy { padding-left: 16px; border-left: 2px solid #ac6c4866; line-height: 1.8; }
+.country-head { align-items: baseline; gap: 12px; }
+.archive-overview-block { margin-top: 0; }
+.archive-overview-block h3 { margin-bottom: 8px; }
+.entry-book-index { gap: 20px; }
+.entry-book-index h1 { line-height: 1.35; }
+.entry-book-page .sheet-nav { margin-top: 22px; padding-block: 16px; }
+.entry-book-article { grid-template-rows: auto auto auto 1fr; }
+.entry-book-article .sheet-nav { align-self: end; }
+.entry-book-article .markdown-content { line-height: 1.95; }
+.entry-book-article .markdown-content img { border: 6px solid #fff8e7; box-shadow: 0 3px 9px #5f432c24; }
 
 @media (min-width: 761px) {
     .journal-shell { --book-height: min(820px, calc(100dvh - 100px)); padding: 28px 78px; }
@@ -213,22 +251,33 @@ body {
     .paper-page,
     .paper-page-right.map-pocket,
     .paper-page-right.dossier-page {
-        padding: 48px clamp(26px, 3vw, 46px) 36px;
+        padding: 66px clamp(26px, 3vw, 46px) 36px;
         background: linear-gradient(90deg, #fffbed30, transparent 80%, #714a2520), url('../assets/textures/paper-grain.png'), repeating-linear-gradient(0deg, transparent 0 31px, #82663d09 31px 32px), #f3e8cf;
         background-blend-mode: normal, multiply, normal, normal;
     }
     .paper-page-right,
     .paper-page-right.map-pocket,
     .paper-page-right.dossier-page {
-        padding-top: 78px;
+        padding-top: 66px;
         background-image: linear-gradient(90deg, #714a2524, transparent 15%, #fffbed25 80%, #714a2512), url('../assets/textures/paper-grain.png'), repeating-linear-gradient(0deg, transparent 0 31px, #82663d09 31px 32px);
     }
     .page-spread::before, .page-spread::after { opacity: .85; }
     .page-head h1 { font-size: clamp(28px, 2.35vw, 36px); line-height: 1.4; }
     .ledger-feature-head h2 { font-size: clamp(27px, 2.15vw, 33px); line-height: 1.4; }
-    .ledger-feature-page { gap: 21px; }
-    .ledger-feature-visual { min-height: clamp(190px, 27vh, 270px); }
-    .ledger-entry { padding-block: 17px; }
+    .ledger-feature-page { gap: 22px; }
+    .ledger-feature-visual { min-height: clamp(165px, 24vh, 240px); }
+    .ledger-feature-stats { padding-block: 17px; }
+    .ledger-feature-quote { font-size: 16px; line-height: 1.75; }
+    .ledger-entry { padding: 16px 6px; }
+    .ledger-entry:hover { transform: translateX(2px); background: #fff7df66; }
+    .ledger-record-heading, .ledger-feature-head .journal-label { margin-bottom: 12px; }
+    .page-head h1 { text-wrap: balance; }
+    .spine-tools { top: 18px; right: 30px; gap: 10px; }
+    .spine-tool { width: 32px; height: 32px; }
+    .spine-profile { width: 34px; height: 34px; }
+    .ledger-feature-mark { width: 40px; height: 40px; font-size: 11px; }
+    .ledger-feature-filters { margin-top: 4px; padding-top: 25px; }
+    .chapter-tab { transition: transform 240ms cubic-bezier(.2,.7,.2,1), filter 180ms; }
     .entry-date-chip { padding: 6px 3px; }
     .closed-book-cover {
         width: 50%;
@@ -261,7 +310,8 @@ body {
         backface-visibility: hidden;
         -webkit-backface-visibility: hidden;
     }
-    .book-cover-leaf > .book-cover-front { transform: translateZ(2px); animation: none; box-shadow: inset 0 0 0 2px #9b74404d, 0 5px 18px #180c0655; }
+    .book-cover-leaf > .book-cover-front { transform: translateZ(2px); transition: none; box-shadow: inset 0 0 0 2px #9b74404d, 0 5px 18px #180c0655; }
+    .book-cover-leaf::after { content: ''; position: absolute; inset: 0 0 0 auto; width: 4px; background: linear-gradient(90deg, #2b180f, #a27747, #382116); transform: rotateY(90deg); transform-origin: right; }
     .book-cover-back {
         padding: 14px 0 26px 18px;
         transform: rotateY(180deg) translateZ(1px);
@@ -279,9 +329,7 @@ body {
         background: linear-gradient(90deg, #281507ad, #28150755 42%, transparent);
         transform-origin: left center;
         pointer-events: none;
-        animation: coverCastShadow var(--book-cover-ms) ease-in-out both;
     }
-    .book-closing .book-cover-shadow { animation-direction: reverse; }
     .journal-shell:is(.book-opening, .book-closing) .journal-stage { position: relative; z-index: 90; }
     .journal-shell:is(.book-opening, .book-closing) .notebook { background: transparent; border-color: transparent; box-shadow: none; }
     .journal-shell:is(.book-opening, .book-closing) .notebook > .closed-book-cover { display: none; }
@@ -293,17 +341,39 @@ body {
     .journal-shell:is(.book-opening, .book-closing) .page-spread::before,
     .journal-shell:is(.book-opening, .book-closing) #leftPage { visibility: hidden; }
     .journal-shell:is(.book-opening, .book-closing) .journal-spine { visibility: hidden; }
-    .journal-shell.book-opening .notebook { animation: bookBodyOpen var(--book-cover-ms) cubic-bezier(.45,0,.55,1) both; }
-    .journal-shell.book-closing .notebook { animation: bookBodyOpen var(--book-cover-ms) cubic-bezier(.45,0,.55,1) reverse both; }
-    @keyframes bookBodyOpen { from { transform: translateX(-25%); } to { transform: translateX(0); } }
-    @keyframes coverCastShadow {
-        0% { opacity: .6; transform: scaleX(1); }
-        45% { opacity: .5; transform: scaleX(.65); }
-        100% { opacity: 0; transform: scaleX(.04); }
-    }
 }
 
 @media (max-width: 760px) {
+    .closed-book-title { top: 22%; left: 53%; font-size: clamp(30px, 10vw, 44px); }
+    .closed-book-subtitle { top: 35%; left: 53%; font-size: 10px; }
+    .closed-book-invitation { top: auto; bottom: 10%; font-size: 11px; letter-spacing: .08em; }
+    .closed-book-spine { left: 7px; width: 26px; }
+    .closed-book-spine::before, .closed-book-spine::after { width: 24px; }
+    .closed-book-cover::before { inset: 12px 12px 12px 36px; }
+    .closed-book-stitching { inset: 19px 19px 19px 42px; }
+    .closed-book-clasp { width: 50px; height: 48px; }
+    .closed-book-clasp i { top: 11px; right: 9px; width: 24px; height: 24px; }
+    .closed-book-corner { width: 30px; height: 30px; }
+    .paper-page { scrollbar-gutter: auto; }
+    .page-head h1 { text-wrap: balance; }
+    .paper-page-right.context-panel .index-dashboard-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .paper-page-right.context-panel .index-dashboard-grid span:last-child { grid-column: 1 / -1; border-left: 0; padding: 6px 0 0; border-top: 1px solid var(--line); }
+    .paper-page .mobile-context-toggle { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 10px 12px; border-radius: 5px; }
+    .mobile-context-toggle small { font-size: 10px; }
+    .entry-note h3 { font-size: 19px; }
+    .entry-location { font-size: 10px; }
+    .entry-date-chip { border: 1px solid #bfa67e; border-radius: 3px; background: linear-gradient(#fdf7e8 0 67%, #e9d9bd 67%); }
+    .year-bookmarks { margin-inline: 0; padding-inline: 5px; }
+    .year-bookmark { border-radius: 4px 4px 0 0; }
+    .entry-book-index { gap: 15px; }
+    .entry-book-index > .journal-label { display: none; }
+    body[data-route='entry'] .paper-page-left { min-height: 0; padding-bottom: 24px; }
+    body[data-route='entry'] .paper-page-right { min-height: 0; padding-top: 20px; }
+    .entry-book-index .entry-book-quote { display: none; }
+    .entry-book-article { min-height: 0; }
+    .entry-book-index .sheet-record-actions { padding-top: 12px; }
+    .entry-book-page .sheet-nav { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; }
+    .entry-book-page .sheet-nav-button { padding-inline: 10px; }
     .journal-spine {
         color: #f4dfb6;
         background: var(--leather-grain), linear-gradient(#7c533b, #493023);

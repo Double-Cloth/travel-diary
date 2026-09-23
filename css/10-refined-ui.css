@@ -567,7 +567,6 @@ body::after {
 
     .closed-book-title { top: 31%; font-size: clamp(44px, 4vw, 60px); }
     .closed-book-subtitle { top: 42%; }
-    .closed-book-emblem { top: 51%; }
     .closed-book-invitation { top: 70%; }
 
     .ledger-record-heading { margin-bottom: 12px; }
@@ -809,7 +808,6 @@ body::after {
     .closed-book-stitching { inset: 20px 18px 20px 60px; }
     .closed-book-title { top: 31%; font-size: clamp(38px, 11vw, 50px); }
     .closed-book-subtitle { top: 42%; }
-    .closed-book-emblem { top: 51%; }
     .closed-book-invitation { top: 69%; font-size: 13px; }
     .closed-book-clasp { right: -11px; width: 58px; height: 56px; }
 

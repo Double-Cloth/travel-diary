@@ -42,7 +42,7 @@ const LEDGER_FILTER_DEFAULTS = {
     sort: DEFAULT_LEDGER_SORT
 };
 const PAGE_TURN_MS = 920;
-const BOOK_COVER_TRANSITION_MS = 1250;
+const BOOK_COVER_TRANSITION_MS = 1450;
 const SEARCH_UPDATE_DELAY_MS = 180;
 const COVER_RECENT_RECORD_LIMIT = 7;
 const COVER_RECENT_RECORD_MIN = 2;
@@ -520,6 +520,8 @@ function renderRoute(route, options = {}) {
         renderedPageHash = serializeRoute(route);
         if (shouldRestoreReadingScroll) {
             restoreReadingScrollPosition();
+        } else if (!isSameChapter && !options.initial && isMobileLayout()) {
+            window.scrollTo({ top: 0, behavior: 'instant' });
         }
         restoreFocus(options.focusId);
     };
@@ -1005,6 +1007,7 @@ function renderLedger(params = {}, options = {}) {
 function renderLedgerFeaturePage(snapshot, resultLabel, ledgerParams) {
     const tripCount = new Set(travelModel.records.map(record => record.visitKey).filter(Boolean)).size;
     const latestRecord = travelModel.recordsDesc[0];
+    const latestPhoto = latestRecord ? getRecordMedia(latestRecord).find(item => item.kind === 'image') : null;
     const latestHref = latestRecord ? `#entry?id=${encodeURIComponent(latestRecord.id)}` : '#ledger';
     const latestPlace = latestRecord ? (latestRecord.locality || latestRecord.adminArea || latestRecord.country) : '下一站';
 
@@ -1019,6 +1022,7 @@ function renderLedgerFeaturePage(snapshot, resultLabel, ledgerParams) {
             </header>
 
             <a class="ledger-feature-visual" href="${latestHref}" aria-label="打开最近一篇旅行记录：${escapeHtml(latestPlace)}">
+                ${latestPhoto ? `<img class="ledger-feature-photo" src="${escapeHtml(latestPhoto.src)}" alt="" decoding="async">` : ''}
                 <span class="ledger-feature-map" aria-hidden="true"></span>
                 <span class="ledger-feature-caption">
                     <small>最近抵达 · ${escapeHtml(latestRecord?.date || '')}</small>
@@ -1039,12 +1043,10 @@ function renderLedgerFeaturePage(snapshot, resultLabel, ledgerParams) {
                 <button class="ledger-feature-add" type="button" data-action="add-record">
                     <span aria-hidden="true">＋</span> 新增旅行记录
                 </button>
-                <span class="ledger-feature-filter">
-                    筛选 ${escapeHtml(resultLabel)}
-                </span>
+                <button class="paper-button ledger-filter-jump" type="button" data-action="show-ledger-filters" aria-controls="ledgerFilters">高级筛选</button>
             </div>
 
-            <div class="ledger-feature-filters">
+            <div class="ledger-feature-filters" id="ledgerFilters" tabindex="-1">
                 ${renderContextPanelHeading('索引夹层', '高级筛选')}
                 ${renderLedgerSnapshot(snapshot, resultLabel)}
                 ${renderLedgerResetAction(ledgerParams)}
@@ -1509,14 +1511,15 @@ function renderEntryRoute(params = {}) {
 
 function getEntryBookSummary(record) {
     const source = record.descMarkdown || '';
-    return source
+    const plainText = source
         .replace(/^#{1,6}\s+.*$/gm, '')
         .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
         .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
         .replace(/[*_>`~-]/g, '')
         .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 92);
+        .trim();
+    // 短篇直接阅读正文，避免同一句话在左右两页重复出现。
+    return plainText.length > 120 ? `${plainText.slice(0, 92)}…` : '';
 }
 
 function renderEntryPhotosRoute(params = {}) {
@@ -2584,15 +2587,41 @@ function renderWithBookCover(renderFn, mode) {
         refs.spread.parentElement.append(coverShadow, leaf);
         inside.scrollTop = refs.leftPage.scrollTop;
         // 正反封皮绕同一个装订轴转动；书体平移将合上的半本书放回桌面中央。
+        const timing = { duration, fill: 'both', direction: closing ? 'reverse' : 'normal', easing: 'linear' };
         const poses = [
             { transform: 'rotateY(0deg)', offset: 0 },
-            { transform: 'rotateY(-12deg)', offset: 0.12 },
-            { transform: 'rotateY(-92deg)', offset: 0.52 },
-            { transform: 'rotateY(-178deg)', offset: 0.9 },
+            { transform: 'rotateY(0deg)', offset: 0.12, easing: 'cubic-bezier(.4,0,.2,1)' },
+            { transform: 'rotateY(-176deg)', offset: 0.88, easing: 'ease-out' },
+            { transform: 'rotateY(-180deg)', offset: 0.97 },
             { transform: 'rotateY(-180deg)', offset: 1 }
         ];
-        animations.push(leaf.animate(poses, { duration, fill: 'both',
-            direction: closing ? 'reverse' : 'normal', easing: 'cubic-bezier(.45,0,.55,1)' }));
+        animations.push(leaf.animate(poses, timing));
+        // 封扣先松开，封皮再转动；反向播放时先落盖，再扣紧。
+        const clasp = front.querySelector('.closed-book-clasp');
+        if (clasp) animations.push(clasp.animate([
+            { transform: 'translateX(0) rotateY(0deg)', opacity: 1, offset: 0 },
+            { transform: 'translateX(24px) rotateY(-100deg)', opacity: 0, offset: .12 },
+            { transform: 'translateX(24px) rotateY(-100deg)', opacity: 0, offset: 1 }
+        ], timing));
+        animations.push(refs.spread.parentElement.animate([
+            { transform: 'translateX(-25%)', offset: 0 },
+            { transform: 'translateX(-25%)', offset: .12, easing: 'cubic-bezier(.4,0,.2,1)' },
+            { transform: 'translateX(0)', offset: .97 },
+            { transform: 'translateX(0)', offset: 1 }
+        ], timing));
+        animations.push(coverShadow.animate([
+            { opacity: .7, transform: 'scaleX(1)', offset: 0 },
+            { opacity: .7, transform: 'scaleX(1)', offset: .12 },
+            { opacity: .42, transform: 'scaleX(.55)', offset: .48 },
+            { opacity: 0, transform: 'scaleX(.02)', offset: .9 },
+            { opacity: 0, transform: 'scaleX(.02)', offset: 1 }
+        ], timing));
+        animations.push(front.animate([
+            { filter: 'brightness(1)', offset: 0 },
+            { filter: 'brightness(1.16)', offset: .32 },
+            { filter: 'brightness(.62)', offset: .65 },
+            { filter: 'brightness(.75)', offset: 1 }
+        ], timing));
     }
 
     refs.shell.style.setProperty('--book-cover-ms', `${duration}ms`);
@@ -2889,6 +2918,22 @@ function handleDocumentClick(event) {
     if (openContextPanel) {
         event.preventDefault();
         openMobileContextPanel();
+        return;
+    }
+
+    const showLedgerFilters = event.target.closest('[data-action="show-ledger-filters"]');
+    if (showLedgerFilters) {
+        event.preventDefault();
+        if (isMobileLayout()) {
+            openMobileContextPanel();
+        } else {
+            const filters = refs.rightPage.querySelector('.ledger-feature-filters');
+            filters?.focus({ preventScroll: true });
+            if (filters) refs.rightPage.scrollTo({
+                top: refs.rightPage.scrollTop + filters.getBoundingClientRect().top - refs.rightPage.getBoundingClientRect().top - 24,
+                behavior: prefersReducedMotion() ? 'instant' : 'smooth'
+            });
+        }
         return;
     }
 

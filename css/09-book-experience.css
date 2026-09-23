@@ -111,8 +111,7 @@
 
 .closed-book-title,
 .closed-book-subtitle,
-.closed-book-invitation,
-.closed-book-emblem {
+.closed-book-invitation {
     position: absolute;
     left: 50%;
     display: block;
@@ -135,20 +134,6 @@
     font-family: var(--font-code);
     font-size: clamp(12px, 1.3vw, 18px);
     letter-spacing: 0.38em;
-}
-
-.closed-book-emblem {
-    top: 51%;
-    width: 120px;
-    color: rgba(218, 180, 105, 0.64);
-}
-
-.closed-book-emblem svg {
-    display: block;
-    width: 100%;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.4;
 }
 
 .closed-book-invitation {
@@ -451,7 +436,6 @@ body[data-route="cover"] .page-spread { visibility: hidden; }
     .closed-book-stitching { inset: 22px 20px 22px 65px; }
     .closed-book-title { top: 29%; font-size: clamp(40px, 11vw, 58px); letter-spacing: 0.08em; }
     .closed-book-subtitle { top: 41%; font-size: 11px; }
-    .closed-book-emblem { top: 50%; }
     .closed-book-invitation { top: 68%; font-size: 14px; }
     .closed-book-clasp { right: -13px; width: 64px; height: 62px; }
     .closed-book-clasp i { top: 16px; right: 9px; width: 28px; height: 28px; }

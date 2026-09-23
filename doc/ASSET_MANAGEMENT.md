@@ -37,6 +37,7 @@ assets/
 | `assets/fonts/*.woff2` | 页面实际加载的完整压缩字体，必须随仓库分发以支持离线启动。 |
 | `assets/images/backgrounds/body-background-travel-diary.png` | 全局桌面背景。 |
 | `assets/images/pages/home-hero-travel-diary.png` | 首页主视觉。 |
+| `assets/images/pages/leather-mountain-cover.png` | Image Gen 生成的山景皮革封面位图；标题、封扣和交互由 HTML/CSS 单独实现，随项目离线分发。 |
 | `assets/images/pages/left-page-cover-travel-diary.png` | 首页左页背景。 |
 | `assets/images/pages/left-page-ledger-travel-diary.png` | 路径页左页背景。 |
 | `assets/images/pages/left-page-profile-travel-diary.png` | 个人档案左页背景。 |
