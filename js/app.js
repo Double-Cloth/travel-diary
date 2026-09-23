@@ -982,7 +982,7 @@ function renderLedger(params = {}, options = {}) {
                 <h1>出发，到新的爱与喧闹中去！</h1>
             </header>
             ${renderLedgerControls(ledgerParams, 'ledgerSearch')}
-            ${renderMobileContextToggle('打开索引夹层', '查看高级筛选与结果快照')}
+            ${renderMobileContextToggle('高级筛选', '查看筛选与结果概览')}
             <div class="year-bookmarks" aria-label="年份书签">
                 ${yearLink('全部', 'all', ledgerParams)}
                 ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
@@ -995,14 +995,63 @@ function renderLedger(params = {}, options = {}) {
             </div>
         </div>
     `, `
-            ${renderContextPanelHeading('索引夹层', '高级筛选')}
-            ${renderLedgerSnapshot(snapshot, resultLabel)}
-            ${renderLedgerResetAction(ledgerParams)}
-            ${renderLedgerFilterWorkbench(ledgerParams)}
+            ${renderLedgerFeaturePage(snapshot, resultLabel, ledgerParams)}
     `, 'map-pocket context-panel', {
         preserveRightScroll: options.preserveRightScroll,
         keepContextPanelOpen: options.keepContextPanelOpen
     });
+}
+
+function renderLedgerFeaturePage(snapshot, resultLabel, ledgerParams) {
+    const tripCount = new Set(travelModel.records.map(record => record.visitKey).filter(Boolean)).size;
+    const latestRecord = travelModel.recordsDesc[0];
+    const latestHref = latestRecord ? `#entry?id=${encodeURIComponent(latestRecord.id)}` : '#ledger';
+    const latestPlace = latestRecord ? (latestRecord.locality || latestRecord.adminArea || latestRecord.country) : '下一站';
+
+    return `
+        <div class="ledger-feature-page">
+            <header class="ledger-feature-head">
+                <div>
+                    <p class="journal-label">沿途拾光</p>
+                    <h2>山河辽阔，<br>人间值得一再出发。</h2>
+                </div>
+                <span class="ledger-feature-mark" aria-hidden="true">TD</span>
+            </header>
+
+            <a class="ledger-feature-visual" href="${latestHref}" aria-label="打开最近一篇旅行记录：${escapeHtml(latestPlace)}">
+                <span class="ledger-feature-map" aria-hidden="true"></span>
+                <span class="ledger-feature-caption">
+                    <small>最近抵达 · ${escapeHtml(latestRecord?.date || '')}</small>
+                    <strong>${escapeHtml(latestPlace)}</strong>
+                    <span>打开最近一篇手记</span>
+                </span>
+            </a>
+
+            <blockquote class="ledger-feature-quote">“旅行不是逃离生活，而是让生活不再只是一种可能。”</blockquote>
+
+            <dl class="ledger-feature-stats" aria-label="旅行档案概览">
+                <div><dt>${travelModel.records.length}</dt><dd>段旅程</dd></div>
+                <div><dt>${tripCount}</dt><dd>次出发</dd></div>
+                <div><dt>${travelModel.years.length}</dt><dd>个年份</dd></div>
+            </dl>
+
+            <div class="ledger-feature-actions">
+                <button class="ledger-feature-add" type="button" data-action="add-record">
+                    <span aria-hidden="true">＋</span> 新增旅行记录
+                </button>
+                <span class="ledger-feature-filter">
+                    筛选 ${escapeHtml(resultLabel)}
+                </span>
+            </div>
+
+            <div class="ledger-feature-filters">
+                ${renderContextPanelHeading('索引夹层', '高级筛选')}
+                ${renderLedgerSnapshot(snapshot, resultLabel)}
+                ${renderLedgerResetAction(ledgerParams)}
+                ${renderLedgerFilterWorkbench(ledgerParams)}
+            </div>
+        </div>
+    `;
 }
 
 function createLedgerResultLabel(count, total, params) {

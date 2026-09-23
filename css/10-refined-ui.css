@@ -1,0 +1,966 @@
+/*
+ * 旅行典藏册视觉重构。
+ * 这一层负责统一比例、层级与响应式呈现，并保留前序文件中的业务组件和翻页逻辑。
+ */
+
+:root {
+    --ink: #2a1a13;
+    --ink-soft: #67564b;
+    --ink-muted: #8c7868;
+    --paper-50: #fbf6e9;
+    --paper-100: #f2e8d2;
+    --paper-200: #dfcfad;
+    --stamp: #9b3d2e;
+    --green: #355344;
+    --line: rgba(70, 45, 29, 0.14);
+    --hairline: rgba(70, 45, 29, 0.2);
+    --ring: 0 0 0 3px rgba(155, 61, 46, 0.18);
+}
+
+body {
+    background-color: #24140d;
+    background-image:
+        linear-gradient(rgba(25, 13, 8, 0.18), rgba(25, 13, 8, 0.3)),
+        url("../assets/images/backgrounds/body-background-travel-diary.png");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+}
+
+body::before {
+    background: radial-gradient(ellipse at center, rgba(255, 222, 168, 0.05), transparent 58%);
+}
+
+body::after {
+    background: radial-gradient(ellipse at center, transparent 58%, rgba(10, 5, 3, 0.28));
+}
+
+.paper-button,
+.primary-button,
+.secondary-button {
+    border-radius: 2px;
+}
+
+/* 路线页右页：由“筛选工具面板”重构为有节奏的旅行概览页。 */
+.ledger-feature-page {
+    display: grid;
+    align-content: start;
+    min-height: 100%;
+    gap: clamp(18px, 2.2vw, 28px);
+}
+
+.ledger-feature-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+}
+
+.ledger-feature-head .journal-label {
+    margin: 0 0 12px;
+}
+
+.ledger-feature-head h2 {
+    margin: 0;
+    max-width: 13em;
+    color: var(--ink);
+    font-size: clamp(29px, 2.7vw, 42px);
+    font-weight: 500;
+    line-height: 1.25;
+    letter-spacing: -0.035em;
+}
+
+.ledger-feature-mark {
+    display: grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 52px;
+    height: 52px;
+    border: 1px solid rgba(155, 61, 46, 0.28);
+    border-radius: 50%;
+    color: var(--stamp);
+    font: 700 13px/1 var(--font-code);
+    letter-spacing: 0.06em;
+    transform: rotate(8deg);
+}
+
+.ledger-feature-visual {
+    position: relative;
+    display: block;
+    min-height: clamp(220px, 31vh, 320px);
+    overflow: hidden;
+    border: 1px solid rgba(72, 47, 30, 0.18);
+    background:
+        linear-gradient(180deg, transparent 48%, rgba(32, 19, 12, 0.72)),
+        url("../assets/images/pages/home-hero-travel-diary.png") center 46% / cover;
+    box-shadow: 0 14px 28px rgba(55, 33, 18, 0.13);
+    transform: rotate(0.25deg);
+    transition: transform 180ms ease, box-shadow 180ms ease;
+}
+
+.ledger-feature-visual::before,
+.ledger-feature-visual::after {
+    content: "";
+    position: absolute;
+    z-index: 2;
+    top: -7px;
+    width: 72px;
+    height: 20px;
+    background: rgba(216, 195, 151, 0.66);
+    box-shadow: 0 1px 3px rgba(65, 42, 24, 0.12);
+}
+
+.ledger-feature-visual::before { left: 13%; transform: rotate(-3deg); }
+.ledger-feature-visual::after { right: 13%; transform: rotate(2deg); }
+
+.ledger-feature-visual:hover,
+.ledger-feature-visual:focus-visible {
+    transform: rotate(0) translateY(-2px);
+    box-shadow: 0 18px 32px rgba(55, 33, 18, 0.18);
+}
+
+.ledger-feature-caption {
+    position: absolute;
+    z-index: 3;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: end;
+    gap: 3px 16px;
+    padding: 22px 24px 20px;
+    color: #fff8e9;
+}
+
+.ledger-feature-caption small {
+    grid-column: 1;
+    color: rgba(255, 248, 233, 0.72);
+    font: 11px/1.4 var(--font-code);
+    letter-spacing: 0.05em;
+}
+
+.ledger-feature-caption strong {
+    grid-column: 1;
+    font-size: 26px;
+    font-weight: 500;
+}
+
+.ledger-feature-caption span {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    color: rgba(255, 248, 233, 0.8);
+    font-size: 13px;
+}
+
+.ledger-feature-quote {
+    margin: 0;
+    padding: 0 0 0 20px;
+    border-left: 2px solid rgba(155, 61, 46, 0.5);
+    color: var(--ink-soft);
+    font-size: clamp(15px, 1.35vw, 18px);
+    line-height: 1.8;
+}
+
+.ledger-feature-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 0;
+    padding: 20px 0;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+}
+
+.ledger-feature-stats div {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 7px;
+    min-width: 0;
+    padding: 0 12px;
+}
+
+.ledger-feature-stats div + div { border-left: 1px solid var(--line); }
+
+.ledger-feature-stats dt {
+    color: var(--stamp);
+    font: 500 clamp(27px, 2.5vw, 38px)/1 var(--font-serif);
+}
+
+.ledger-feature-stats dd {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 13px;
+}
+
+.ledger-feature-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.ledger-feature-add,
+.ledger-feature-filter {
+    min-height: 42px;
+    padding: 8px 14px;
+    color: var(--ink);
+    background: transparent;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.ledger-feature-add {
+    border: 1px solid rgba(155, 61, 46, 0.28);
+    color: var(--stamp);
+}
+
+.ledger-feature-add span {
+    margin-right: 7px;
+    font: 20px/1 var(--font-code);
+    vertical-align: -1px;
+}
+
+.ledger-feature-filter {
+    color: var(--ink-muted);
+    font-family: var(--font-code);
+    font-size: 11px;
+}
+
+.ledger-feature-add:hover,
+.ledger-feature-add:focus-visible { background: rgba(155, 61, 46, 0.07); }
+.ledger-feature-filter:hover,
+.ledger-feature-filter:focus-visible { color: var(--stamp); }
+
+.ledger-feature-filters {
+    display: grid;
+    gap: 16px;
+    margin-top: 8px;
+    padding-top: 28px;
+    border-top: 1px dashed var(--hairline);
+}
+
+/* 统一书页内控件：不再用厚重渐变与悬浮卡片模拟网页按钮。 */
+.paper-page .paper-button,
+.paper-page .sheet-nav-button,
+.paper-page .ribbon-back {
+    min-height: 38px;
+    padding: 8px 12px;
+    border: 1px solid rgba(92, 58, 37, 0.2);
+    border-radius: 2px;
+    color: var(--ink-soft);
+    background: rgba(255, 253, 245, 0.26);
+    box-shadow: none;
+    font-size: 13px;
+    transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.paper-page .paper-button:hover,
+.paper-page .paper-button:focus-visible,
+.paper-page .sheet-nav-button:hover,
+.paper-page .sheet-nav-button:focus-visible,
+.paper-page .ribbon-back:hover,
+.paper-page .ribbon-back:focus-visible {
+    color: var(--stamp);
+    border-color: rgba(155, 61, 46, 0.34);
+    background: rgba(155, 61, 46, 0.045);
+    box-shadow: none;
+    transform: translateY(-1px);
+}
+
+.paper-page .paper-button:active,
+.paper-page .sheet-nav-button:active,
+.paper-page .ribbon-back:active { box-shadow: none; transform: translateY(0); }
+
+.paper-page .paper-button:disabled,
+.paper-page .sheet-nav-button:disabled { background: transparent; box-shadow: none; opacity: 0.38; }
+
+.paper-page .sheet-delete-button { color: var(--stamp); }
+
+/* 个人主页以开放式档案清单呈现，避免一层卡片再套一层卡片。 */
+.archive-page .page-copy {
+    max-width: 34em;
+    margin-top: 16px;
+    color: var(--ink-soft);
+    font-size: clamp(16px, 1.45vw, 19px);
+    line-height: 1.8;
+}
+
+.archive-page > .field-label { display: none; }
+
+.country-folder {
+    padding: 20px 0;
+    border: 0;
+    border-top: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+}
+
+.country-head { margin-bottom: 8px; }
+.country-head h2 { font-size: 21px; font-weight: 500; }
+
+.luggage-grid { gap: 0 18px; }
+
+.luggage-tag {
+    min-height: 76px;
+    padding: 12px 8px 12px 24px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.luggage-tag::before {
+    left: 4px;
+    top: 20px;
+    width: 7px;
+    height: 7px;
+    border-width: 1px;
+    background: transparent;
+}
+
+.luggage-tag:hover,
+.luggage-tag:focus-visible {
+    border-color: rgba(155, 61, 46, 0.24);
+    background: rgba(155, 61, 46, 0.03);
+    box-shadow: none;
+    transform: translateX(3px);
+}
+
+.luggage-tag strong { font-size: 17px; font-weight: 500; }
+.luggage-tag span,
+.luggage-tag small { font-size: 11px; }
+
+.archive-overview-hero,
+.archive-overview-block {
+    padding: 20px 0;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    background: transparent;
+}
+
+.archive-overview-hero { padding-top: 0; }
+.archive-overview-hero strong { font-size: clamp(22px, 2.2vw, 30px); font-weight: 500; }
+
+.overview-metric,
+.overview-insight,
+.overview-location-feature,
+.overview-location-secondary,
+.overview-repeat-location {
+    min-height: 0;
+    padding: 10px 8px;
+    border: 0;
+    border-bottom: 1px solid var(--line);
+    border-radius: 0;
+    background: transparent;
+    box-shadow: none;
+}
+
+.overview-metric strong { font-weight: 500; }
+.overview-insight:hover,
+.overview-insight:focus-visible {
+    border-color: rgba(155, 61, 46, 0.24);
+    background: rgba(155, 61, 46, 0.03);
+    box-shadow: none;
+    transform: translateX(2px);
+}
+
+.overview-location-feature small {
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+@media (min-width: 761px) {
+    .journal-shell {
+        width: min(100%, 1440px);
+        min-height: 100dvh;
+        padding: 28px 90px 28px 54px;
+        overflow: clip;
+    }
+
+    .journal-stage {
+        display: grid;
+        place-items: center;
+        height: calc(100dvh - 56px);
+    }
+
+    .notebook {
+        width: min(1220px, 100%);
+        height: min(820px, calc(100dvh - 84px));
+        min-height: 560px;
+        padding: 14px 18px 26px;
+        border-color: #6f4a31;
+        border-radius: 10px 10px 16px 16px;
+        background:
+            linear-gradient(90deg, #523424, #2c1c15 49.4%, #4f3323 50.6%, #3a251b);
+        box-shadow:
+            inset 0 0 0 2px #2a1a13,
+            inset 0 0 0 3px rgba(213, 170, 105, 0.22),
+            0 3px 0 #1b100b,
+            0 24px 54px rgba(10, 5, 3, 0.5);
+    }
+
+    .notebook::before { inset: 4px; border-radius: 7px 7px 13px 13px; }
+    .notebook::after { top: 13px; bottom: 22px; opacity: 0.7; }
+
+    .book-corner-hardware { display: none; }
+    .book-page-stack { top: 19px; bottom: 14px; }
+    .book-page-stack-left { left: 15px; }
+    .book-page-stack-right { right: 15px; }
+    .book-ribbon { width: 18px; height: 60px; opacity: 0.78; }
+
+    .journal-spine {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        right: auto;
+        width: min(1220px, calc(100% - 144px));
+        height: min(820px, calc(100dvh - 84px));
+        bottom: auto;
+        padding: 0;
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+    }
+
+    .brand-lockup {
+        top: 28px;
+        left: -31px;
+        width: 44px;
+        min-height: 88px;
+        padding: 12px 6px;
+        border: 0;
+        border-radius: 3px 0 0 3px;
+        color: #eadbc0;
+        background: #493229;
+        box-shadow: inset 1px 0 rgba(255, 255, 255, 0.07), 0 8px 14px rgba(13, 6, 3, 0.25);
+    }
+
+    .brand-lockup strong::after {
+        content: "合上";
+        font-size: 13px;
+        letter-spacing: 0.12em;
+    }
+
+    .chapter-tabs {
+        top: 126px;
+        right: -43px;
+        grid-template-columns: 43px;
+        gap: 8px;
+    }
+
+    .chapter-tab {
+        min-width: 43px;
+        min-height: 104px;
+        padding: 13px 8px;
+        border: 0;
+        border-radius: 0 3px 3px 0;
+        color: rgba(255, 248, 231, 0.86);
+        background: #355344;
+        box-shadow: inset 1px 0 rgba(255, 255, 255, 0.1), 3px 7px 12px rgba(12, 6, 3, 0.24);
+        font-size: 13px;
+        letter-spacing: 0.08em;
+    }
+
+    .chapter-tab:nth-child(2) { background: #9b4a35; }
+    .chapter-tab:nth-child(3) { background: #66584d; }
+    .chapter-tab::before { display: none; }
+    .chapter-tab:hover { filter: brightness(1.08); transform: translateX(3px); }
+    .chapter-tab-active { padding: 13px 8px; transform: translateX(6px); }
+    .chapter-tab-active::after {
+        right: 8px;
+        bottom: 12px;
+        left: 8px;
+        width: auto;
+        height: 1px;
+        background: rgba(255, 248, 231, 0.72);
+    }
+
+    .spine-tools {
+        position: absolute;
+        top: 27px;
+        right: 28px;
+        gap: 9px;
+        pointer-events: auto;
+    }
+
+    .spine-tool {
+        width: 38px;
+        height: 38px;
+        border: 1px solid rgba(80, 52, 32, 0.18);
+        border-radius: 50%;
+        color: var(--ink-soft);
+        background: rgba(250, 244, 228, 0.8);
+        box-shadow: 0 4px 10px rgba(60, 38, 20, 0.12);
+    }
+
+    .spine-tool:hover { color: var(--stamp); background: #fffaf0; box-shadow: 0 6px 12px rgba(60, 38, 20, 0.16); }
+    .spine-add-icon { width: 19px; height: 19px; stroke-width: 1.8; }
+    .spine-profile { width: 40px; height: 40px; padding: 2px; border-radius: 50%; }
+    .spine-profile img,
+    .spine-profile-fallback,
+    .spine-profile::after { border-radius: 50%; }
+    .tool-divider { display: none; }
+
+    .paper-page {
+        padding: clamp(30px, 3vw, 46px);
+        background:
+            linear-gradient(180deg, rgba(255, 254, 248, 0.62), rgba(247, 239, 220, 0.22)),
+            url("../assets/textures/paper-grain.png"),
+            #f4ead7;
+        background-blend-mode: normal, multiply, normal;
+    }
+
+    .paper-page-left {
+        background:
+            linear-gradient(90deg, rgba(255, 254, 248, 0.34), transparent 82%, rgba(91, 59, 35, 0.06)),
+            url("../assets/textures/paper-grain.png"),
+            #f4ead7;
+        background-blend-mode: normal, multiply, normal;
+        box-shadow: inset -22px 0 28px -26px rgba(55, 34, 20, 0.55);
+    }
+
+    .paper-page-right,
+    .paper-page-right.map-pocket,
+    .paper-page-right.dossier-page {
+        padding: clamp(30px, 3vw, 46px);
+        background:
+            linear-gradient(90deg, rgba(81, 52, 30, 0.05), transparent 16%),
+            url("../assets/textures/paper-grain.png"),
+            #f4ead7;
+        background-blend-mode: normal, multiply, normal;
+        box-shadow: inset 22px 0 28px -26px rgba(55, 34, 20, 0.55);
+    }
+
+    .page-spread::before,
+    .page-spread::after { opacity: 0.42; }
+
+    .paper-page-left::after,
+    .paper-page-right::after { display: none; }
+
+    body[data-route="cover"] .notebook {
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+
+    body[data-route="cover"] .notebook::before,
+    body[data-route="cover"] .notebook::after,
+    body[data-route="cover"] .book-page-stack,
+    body[data-route="cover"] .book-ribbon { display: none; }
+
+    .closed-book-cover {
+        width: min(560px, calc((100dvh - 86px) * 0.72), calc(100% - 120px));
+        aspect-ratio: 0.72;
+        border-radius: 7px 18px 18px 7px;
+        box-shadow:
+            -12px 12px 0 -8px #c7b596,
+            -16px 16px 0 -10px #7c684d,
+            0 32px 58px rgba(9, 4, 2, 0.55);
+    }
+
+    .closed-book-title { top: 31%; font-size: clamp(44px, 4vw, 60px); }
+    .closed-book-subtitle { top: 42%; }
+    .closed-book-emblem { top: 51%; }
+    .closed-book-invitation { top: 70%; }
+
+    .ledger-record-heading { margin-bottom: 12px; }
+    .ledger-record-heading .paper-button { display: none; }
+    .page-head { margin-bottom: 18px; }
+    .page-head h1 { max-width: 13em; font-size: clamp(30px, 2.7vw, 42px); line-height: 1.25; letter-spacing: -0.04em; }
+
+    .ledger-controls { margin: 16px 0 12px; }
+    .ledger-controls .field-label { display: none; }
+    .ink-field {
+        min-height: 44px;
+        border: 0;
+        border-bottom: 1px solid var(--hairline);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+    .ink-field::before {
+        content: "";
+        width: 17px;
+        height: 17px;
+        margin-left: 2px;
+        border: 0;
+        border-radius: 0;
+        background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ccircle cx='10.8' cy='10.8' r='6.8' fill='none' stroke='%238c7868' stroke-width='1.8'/%3E%3Cpath d='m16 16 4 4' fill='none' stroke='%238c7868' stroke-width='1.8' stroke-linecap='round'/%3E%3C/svg%3E") center / contain no-repeat;
+        box-shadow: none;
+    }
+    .ink-field input { padding-left: 10px; background: transparent; font-size: 13px; }
+
+    .year-bookmarks { gap: 4px 18px; margin: 14px 0 16px; border-bottom: 1px solid var(--line); }
+    .year-bookmark {
+        min-height: 34px;
+        padding: 5px 2px 9px;
+        border: 0;
+        border-bottom: 2px solid transparent;
+        border-radius: 0;
+        background: transparent;
+    }
+    .year-bookmark:hover,
+    .year-bookmark:focus-visible { color: var(--stamp); background: transparent; box-shadow: none; transform: none; }
+    .year-bookmark-active,
+    .year-bookmark-active:hover,
+    .year-bookmark-active:focus-visible { color: var(--stamp); border-color: var(--stamp); background: transparent; box-shadow: none; }
+
+    .result-count { margin: 0 0 12px; }
+    .timeline-list { gap: 0; }
+    .ledger-year-group { gap: 0; padding-left: 0; }
+    .ledger-year-group + .ledger-year-group { margin-top: 24px; }
+    .ledger-year-divider { min-height: 30px; }
+    .ledger-year-divider span { padding: 0; border: 0; border-radius: 0; background: transparent; }
+    .ledger-year-divider::after { background: linear-gradient(90deg, rgba(155, 61, 46, 0.25), transparent); }
+    .ledger-year-entries { gap: 0; }
+    .ledger-year-entries::before,
+    .ledger-year-entries .ledger-entry::after,
+    .ledger-entry .record-paperclip { display: none; }
+
+    .ledger-entry {
+        grid-template-columns: 60px minmax(0, 1fr);
+        gap: 16px;
+        padding: 13px 4px;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+    .ledger-entry:hover,
+    .ledger-entry:focus-visible { border-color: rgba(155, 61, 46, 0.28); background: rgba(155, 61, 46, 0.035); box-shadow: none; transform: translateX(3px); }
+    .entry-date-chip {
+        align-self: center;
+        min-height: 52px;
+        border: 0;
+        border-right: 1px solid var(--line);
+        border-radius: 0;
+        background: transparent;
+    }
+    .entry-date-chip strong { font-size: 21px; font-weight: 500; }
+    .entry-date-chip span { font-size: 9px; }
+    .entry-location { font-size: 10px; letter-spacing: 0.01em; }
+    .entry-note h3 { margin: 3px 0 4px; font-size: 18px; font-weight: 500; }
+    .location-chip { min-height: 0; padding: 0; border: 0; background: transparent; font-size: 11px; }
+    .repeat-stamp { min-height: 0; padding: 0 6px; border-radius: 2px; background: transparent; font-size: 10px; }
+    .trip-stamp { min-width: 48px; height: 20px; padding: 0 6px; border: 0; border-radius: 2px; font-size: 9px; }
+
+    .ledger-feature-filter { display: none; }
+}
+
+@media (max-width: 760px) {
+    body {
+        background: #f5eddd url("../assets/textures/paper-grain.png");
+        background-attachment: fixed;
+    }
+    body::before,
+    body::after { display: none; }
+
+    .journal-shell {
+        display: block;
+        width: 100%;
+        min-height: 100dvh;
+        padding: 0;
+    }
+
+    .journal-spine {
+        position: sticky;
+        top: 0;
+        z-index: 80;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-rows: 64px 48px;
+        gap: 0;
+        height: 112px;
+        padding: env(safe-area-inset-top) 18px 0;
+        color: var(--ink);
+        background: rgba(248, 242, 228, 0.96);
+        border-bottom: 1px solid var(--line);
+        backdrop-filter: blur(12px);
+    }
+
+    .brand-lockup {
+        align-self: center;
+        color: var(--ink);
+    }
+    .brand-lockup strong { font-size: 0; font-weight: 500; letter-spacing: 0.08em; text-shadow: none; }
+    .brand-lockup strong::after { content: "旅行手记"; color: var(--ink); font-size: 23px; }
+    .brand-lockup small { display: block; margin-top: 3px; color: var(--ink-muted); font: 8px/1.2 var(--font-code); letter-spacing: 0.16em; }
+
+    .spine-tools { grid-column: 2; grid-row: 1; align-self: center; gap: 8px; }
+    .spine-tool { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; color: var(--ink-soft); background: transparent; box-shadow: none; }
+    .spine-tool:hover { color: var(--stamp); background: rgba(155, 61, 46, 0.05); box-shadow: none; }
+    .spine-add-icon { width: 19px; height: 19px; stroke-width: 1.8; }
+    .spine-profile { width: 38px; height: 38px; padding: 2px; border-radius: 50%; }
+    .spine-profile img,
+    .spine-profile-fallback,
+    .spine-profile::after { border-radius: 50%; }
+    .tool-divider { display: none; }
+
+    .chapter-tabs {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 0;
+        align-self: stretch;
+        min-width: 0;
+        padding: 0;
+    }
+    .chapter-tab,
+    .chapter-tab:nth-child(2),
+    .chapter-tab:nth-child(3) {
+        min-width: 0;
+        min-height: 48px;
+        padding: 13px 4px 11px;
+        border: 0;
+        border-radius: 0;
+        color: var(--ink-muted);
+        background: transparent;
+        box-shadow: none;
+        font-size: 14px;
+    }
+    .chapter-tab::before { display: none; }
+    .chapter-tab-active,
+    .chapter-tab-active:nth-child(2),
+    .chapter-tab-active:nth-child(3) { color: var(--stamp); background: transparent; }
+    .chapter-tab-active::after { bottom: 0; width: 34px; height: 2px; background: var(--stamp); }
+
+    .journal-stage,
+    .notebook { min-height: calc(100dvh - 112px); height: auto; }
+    .notebook {
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+    .notebook::before,
+    .notebook::after,
+    .book-corner-hardware,
+    .book-page-stack,
+    .book-ribbon { display: none; }
+
+    .page-spread { display: block; height: auto; min-height: calc(100dvh - 112px); }
+    .paper-page {
+        min-height: calc(100dvh - 112px);
+        height: auto;
+        overflow: visible;
+        padding: 30px 22px 56px;
+        border-radius: 0;
+        background:
+            linear-gradient(rgba(255, 253, 247, 0.32), rgba(255, 253, 247, 0.32)),
+            url("../assets/textures/paper-grain.png"),
+            #f5eddd;
+        box-shadow: none;
+    }
+
+    .paper-page-left::after,
+    .paper-page-right::after { display: none; }
+
+    body[data-route="cover"] .journal-spine { display: none; }
+    body[data-route="cover"] .journal-shell {
+        display: block;
+        height: 100dvh;
+        min-height: 100dvh;
+        padding: 0;
+        overflow: hidden;
+    }
+    body[data-route="cover"] .journal-stage,
+    body[data-route="cover"] .notebook {
+        width: 100%;
+        height: 100dvh;
+        min-height: 0;
+        padding: 0;
+    }
+    body[data-route="cover"] .journal-stage {
+        position: relative;
+        width: 100%;
+        height: 100dvh;
+        min-height: 0;
+        padding: 0;
+    }
+    body[data-route="cover"] .notebook {
+        display: grid;
+        place-items: center;
+        background:
+            radial-gradient(ellipse at center, rgba(255, 225, 180, 0.07), transparent 58%),
+            url("../assets/images/backgrounds/body-background-travel-diary.png") center / cover;
+    }
+    body[data-route="cover"] .page-spread { display: none; }
+    .closed-book-cover {
+        width: min(342px, calc(100% - 40px), calc((100dvh - 64px) * 0.72));
+        aspect-ratio: 0.72;
+        border-radius: 6px 13px 13px 6px;
+        box-shadow:
+            -8px 9px 0 -5px #c5b28f,
+            -11px 12px 0 -6px #6f5d46,
+            0 24px 44px rgba(9, 4, 2, 0.52);
+    }
+    .closed-book-cover::before { inset: 15px 14px 15px 52px; }
+    .closed-book-spine { left: 14px; width: 40px; }
+    .closed-book-stitching { inset: 20px 18px 20px 60px; }
+    .closed-book-title { top: 31%; font-size: clamp(38px, 11vw, 50px); }
+    .closed-book-subtitle { top: 42%; }
+    .closed-book-emblem { top: 51%; }
+    .closed-book-invitation { top: 69%; font-size: 13px; }
+    .closed-book-clasp { right: -11px; width: 58px; height: 56px; }
+
+    .page-head { margin-bottom: 20px; }
+    .ledger-record-heading { margin-bottom: 10px; }
+    .ledger-record-heading .paper-button { display: none; }
+    .page-head h1 { max-width: none; font-size: clamp(30px, 7.5vw, 36px); line-height: 1.28; letter-spacing: -0.04em; }
+    .journal-label { color: var(--stamp); font-size: 12px; letter-spacing: 0.14em; }
+
+    .ledger-controls { margin: 18px 0 12px; }
+    .ledger-controls .field-label { display: none; }
+    .ink-field { min-height: 48px; border: 0; border-radius: 24px; background: rgba(93, 72, 55, 0.07); box-shadow: none; }
+    .ink-field input { padding-left: 18px; background: transparent; font-size: 14px; }
+
+    .mobile-context-toggle {
+        grid-template-columns: minmax(0, 1fr) auto;
+        min-height: 40px;
+        margin: 0 0 10px;
+        padding: 7px 2px;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
+        color: var(--ink-soft);
+        background: transparent;
+        box-shadow: none;
+        text-align: left;
+    }
+    .mobile-context-toggle::after { content: none; }
+    .mobile-context-toggle > span { color: var(--stamp); font-size: 14px; }
+    .mobile-context-toggle small { justify-self: end; font-size: 10px; }
+
+    .year-bookmarks {
+        flex-wrap: nowrap;
+        gap: 8px;
+        margin: 14px -22px 18px;
+        padding: 0 22px 10px;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+    .year-bookmarks::-webkit-scrollbar { display: none; }
+    .year-bookmark { flex: 0 0 auto; min-height: 36px; padding: 7px 13px; border: 0; border-radius: 18px; background: transparent; }
+    .year-bookmark-active,
+    .year-bookmark-active:hover,
+    .year-bookmark-active:focus-visible { color: #fff8e9; background: var(--green); box-shadow: none; }
+
+    .result-count { margin-bottom: 8px; }
+    .timeline-list { gap: 0; }
+    .ledger-year-group { gap: 0; padding-left: 0; }
+    .ledger-year-group + .ledger-year-group { margin-top: 24px; }
+    .ledger-year-divider span { padding: 0; border: 0; border-radius: 0; background: transparent; }
+    .ledger-year-divider::after { background: linear-gradient(90deg, rgba(155, 61, 46, 0.22), transparent); }
+    .ledger-year-entries { gap: 0; }
+    .ledger-year-entries::before,
+    .ledger-year-entries .ledger-entry::after,
+    .ledger-entry .record-paperclip { display: none; }
+    .ledger-entry {
+        grid-template-columns: 62px minmax(0, 1fr);
+        gap: 14px;
+        padding: 15px 0;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+    }
+    .ledger-entry:hover,
+    .ledger-entry:focus-visible { border-color: rgba(155, 61, 46, 0.28); background: rgba(155, 61, 46, 0.025); box-shadow: none; transform: none; }
+    .entry-date-chip { align-self: center; min-height: 52px; border: 0; border-right: 1px solid var(--line); border-radius: 0; background: transparent; }
+    .entry-date-chip strong { font-size: 22px; font-weight: 500; }
+    .entry-date-chip span { font-size: 9px; }
+    .entry-location { color: var(--green); font-size: 10px; }
+    .entry-note h3 { margin: 3px 0 5px; font-size: 18px; font-weight: 500; }
+    .location-chip { min-height: 0; padding: 0; border: 0; background: transparent; font-size: 11px; }
+    .repeat-stamp { min-height: 0; padding: 0 5px; border-radius: 2px; background: transparent; font-size: 9px; }
+    .trip-stamp { min-width: 44px; height: 19px; padding: 0 5px; border: 0; border-radius: 2px; font-size: 9px; }
+
+    .paper-page-right.context-panel .ledger-feature-page > :not(.ledger-feature-filters) { display: none; }
+    .paper-page-right.context-panel .ledger-feature-filters { margin: 0; padding: 0; border: 0; }
+    .ledger-feature-filters .context-panel-heading { display: grid; }
+
+    .paper-page-right.context-panel {
+        background:
+            linear-gradient(rgba(255, 253, 247, 0.38), rgba(255, 253, 247, 0.38)),
+            url("../assets/textures/paper-grain.png"),
+            #f3ead8;
+        box-shadow: 0 22px 46px rgba(22, 12, 7, 0.36);
+    }
+
+    .paper-page-right.context-panel .context-panel-heading {
+        border-bottom-color: var(--line);
+        background: rgba(246, 238, 220, 0.96);
+        box-shadow: 0 6px 14px rgba(52, 31, 14, 0.06);
+    }
+
+    .paper-page-right.context-panel .context-panel-close {
+        border-radius: 50%;
+        background: transparent;
+    }
+
+    .paper-page-right.context-panel .index-dashboard {
+        padding: 16px 0;
+        border: 0;
+        border-bottom: 1px solid var(--line);
+        background: transparent;
+    }
+
+    .paper-page-right.context-panel .index-dashboard-grid span {
+        border: 0;
+        border-left: 1px solid var(--line);
+        background: transparent;
+    }
+
+    .paper-page-right.context-panel .index-segment {
+        border-color: var(--line);
+        border-radius: 2px;
+        background: rgba(255, 253, 247, 0.34);
+        box-shadow: none;
+        transform: none;
+    }
+
+    .paper-page-right.context-panel .index-segment:hover,
+    .paper-page-right.context-panel .index-segment:focus-visible {
+        border-color: rgba(155, 61, 46, 0.28);
+        background: rgba(155, 61, 46, 0.04);
+        box-shadow: none;
+        transform: none;
+    }
+
+    .paper-page-right.context-panel .index-segment-active,
+    .paper-page-right.context-panel .index-segment-active:hover,
+    .paper-page-right.context-panel .index-segment-active:focus-visible {
+        color: #fff8e9;
+        border-color: var(--green);
+        background: var(--green);
+        box-shadow: none;
+        transform: none;
+    }
+
+    .ledger-feature-head h2 { font-size: 32px; }
+    .ledger-feature-caption { padding: 18px; }
+    .ledger-feature-caption span { display: none; }
+    .ledger-feature-stats div { display: grid; justify-items: center; gap: 4px; }
+    .ledger-feature-actions { align-items: stretch; flex-direction: column; }
+}
+
+@media (max-width: 380px) {
+    .journal-spine { padding-inline: 14px; }
+    .brand-lockup strong::after { font-size: 21px; }
+    .paper-page { padding-inline: 18px; }
+    .year-bookmarks { margin-inline: -18px; padding-inline: 18px; }
+    .chapter-tab,
+    .chapter-tab:nth-child(2),
+    .chapter-tab:nth-child(3) { font-size: 13px; }
+}
