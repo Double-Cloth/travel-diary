@@ -1,0 +1,503 @@
+/* 合盖首页与整书阅读体验。此文件只覆盖外壳与路由页，不改变编辑器等事务型对话框。 */
+.closed-book-cover {
+    position: absolute;
+    z-index: 30;
+    top: 50%;
+    left: 50%;
+    display: none;
+    width: min(1020px, calc(100% - 120px));
+    aspect-ratio: 1.43;
+    padding: 0;
+    border: 1px solid #25150e;
+    border-radius: 11px 18px 18px 10px / 18px 12px 12px 18px;
+    color: #ead19a;
+    background:
+        radial-gradient(ellipse at 32% 17%, rgba(255, 224, 164, 0.13), transparent 27%),
+        repeating-linear-gradient(102deg, rgba(255, 255, 255, 0.025) 0 1px, transparent 1px 4px),
+        repeating-linear-gradient(8deg, rgba(16, 7, 3, 0.08) 0 1px, transparent 1px 3px),
+        linear-gradient(105deg, #25140e, #553322 13%, #3a2117 47%, #2b1711 100%);
+    box-shadow:
+        inset 0 0 0 3px #7b513477,
+        inset 0 0 0 5px #1d0f0b,
+        inset 18px 0 24px rgba(10, 4, 2, 0.42),
+        inset -3px 0 2px rgba(223, 172, 94, 0.24),
+        0 10px 0 #d6c096,
+        0 13px 0 #806f53,
+        0 17px 1px #311d13,
+        0 36px 55px rgba(8, 3, 1, 0.68);
+    transform: translate(-50%, -50%) rotateX(2deg) rotateZ(-0.45deg);
+    transform-origin: 4.5% 50%;
+    transform-style: preserve-3d;
+    cursor: pointer;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.closed-book-cover::before {
+    content: "";
+    position: absolute;
+    inset: 18px 20px 18px 76px;
+    border: 1px solid rgba(209, 164, 91, 0.25);
+    border-radius: 2px 10px 10px 2px;
+    box-shadow: inset 0 0 0 2px rgba(17, 7, 3, 0.54), inset 0 0 34px rgba(12, 5, 2, 0.28);
+    z-index: 1;
+    pointer-events: none;
+}
+
+.closed-book-cover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(112deg, transparent 8%, rgba(255, 230, 173, 0.09) 15%, transparent 25%, transparent 72%, rgba(0, 0, 0, 0.22));
+    mix-blend-mode: screen;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.closed-book-cover:hover {
+    box-shadow:
+        inset 0 0 0 3px #88603f88,
+        inset 0 0 0 5px #1d0f0b,
+        inset 18px 0 24px rgba(10, 4, 2, 0.42),
+        inset -3px 0 2px rgba(223, 172, 94, 0.28),
+        0 10px 0 #ded0aa,
+        0 13px 0 #897a5d,
+        0 17px 1px #311d13,
+        0 42px 65px rgba(8, 3, 1, 0.72);
+    transform: translate(-50%, calc(-50% - 4px)) rotateX(2.5deg) rotateZ(-0.25deg);
+}
+
+.closed-book-cover:focus-visible {
+    outline: 2px solid #e5c57b;
+    outline-offset: 7px;
+    box-shadow: 0 0 0 5px rgba(229, 197, 123, 0.18), 0 38px 62px rgba(8, 3, 1, 0.7);
+}
+
+.closed-book-spine {
+    position: absolute;
+    z-index: 3;
+    inset: 0 auto 0 23px;
+    width: 58px;
+    border: 1px solid rgba(18, 7, 3, 0.78);
+    border-block: 0;
+    border-radius: 46% 15% 15% 46%;
+    background: linear-gradient(90deg, #160a07, #70462d 32%, #372016 72%, #170a07);
+    box-shadow: inset 4px 0 7px rgba(255, 208, 136, 0.16), 8px 0 11px rgba(9, 3, 1, 0.34);
+}
+
+.closed-book-spine::before,
+.closed-book-spine::after {
+    content: "";
+    position: absolute;
+    left: 4px;
+    width: 48px;
+    height: 11px;
+    border-block: 1px solid rgba(224, 176, 103, 0.2);
+    background: linear-gradient(180deg, #2a150d, #72462d, #25120c);
+    box-shadow: 0 2px 5px rgba(9, 3, 1, 0.35);
+}
+
+.closed-book-spine::before { top: 12%; }
+.closed-book-spine::after { bottom: 12%; }
+
+.closed-book-stitching {
+    position: absolute;
+    z-index: 3;
+    inset: 28px 34px;
+    border: 1px dashed rgba(220, 176, 105, 0.34);
+    border-radius: 4px 12px 12px 4px;
+    pointer-events: none;
+}
+
+.closed-book-title,
+.closed-book-subtitle,
+.closed-book-invitation,
+.closed-book-emblem {
+    position: absolute;
+    left: 50%;
+    display: block;
+    transform: translateX(-46%);
+    z-index: 4;
+    text-align: center;
+    white-space: nowrap;
+    text-shadow: 0 1px rgba(255, 242, 199, 0.2), 0 -1px #120805, 0 3px 5px #0e0604;
+}
+
+.closed-book-title {
+    top: 28%;
+    font-size: clamp(48px, 5vw, 72px);
+    font-weight: 700;
+    letter-spacing: 0.14em;
+}
+
+.closed-book-subtitle {
+    top: 43%;
+    font-family: var(--font-code);
+    font-size: clamp(12px, 1.3vw, 18px);
+    letter-spacing: 0.38em;
+}
+
+.closed-book-emblem {
+    top: 51%;
+    width: 120px;
+    color: rgba(218, 180, 105, 0.64);
+}
+
+.closed-book-emblem svg {
+    display: block;
+    width: 100%;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.4;
+}
+
+.closed-book-invitation {
+    top: 69%;
+    color: rgba(231, 206, 151, 0.76);
+    font-size: clamp(14px, 1.45vw, 19px);
+    letter-spacing: 0.16em;
+}
+
+.closed-book-clasp {
+    position: absolute;
+    top: 43%;
+    right: -22px;
+    width: 86px;
+    height: 70px;
+    border: 1px solid #1c0c07;
+    border-radius: 8px 22px 22px 8px;
+    background: linear-gradient(100deg, #24110b, #613a26 48%, #2a160f);
+    box-shadow: inset 0 1px rgba(255, 220, 157, 0.15), 0 8px 12px rgba(8, 3, 1, 0.48);
+}
+
+.closed-book-clasp i {
+    position: absolute;
+    top: 19px;
+    right: 13px;
+    width: 30px;
+    height: 30px;
+    border: 2px solid #6e4a25;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 28%, #f3d48b, #b58944 34%, #6c4724 70%, #d2aa61);
+    box-shadow: inset 0 0 0 2px rgba(57, 34, 15, 0.6), 0 2px 3px #130905;
+}
+
+.closed-book-corner {
+    position: absolute;
+    right: -1px;
+    z-index: 2;
+    width: 58px;
+    height: 58px;
+    background: linear-gradient(135deg, #f0d68c, #956a34 28%, #d3ad64 48%, #56391f 70%, #c39249);
+    clip-path: polygon(100% 0, 100% 100%, 76% 100%, 70% 36%, 0 28%, 0 0);
+    filter: drop-shadow(-2px 2px 2px rgba(17, 8, 3, 0.55));
+}
+
+.closed-book-corner-top { top: -1px; }
+.closed-book-corner-bottom { bottom: -1px; transform: scaleY(-1); }
+
+body[data-route="cover"] .closed-book-cover { display: block; }
+body[data-route="cover"] .journal-spine { visibility: hidden; pointer-events: none; }
+body[data-route="cover"] .notebook {
+    border-color: transparent;
+    background: transparent;
+    box-shadow: none;
+}
+body[data-route="cover"] .notebook::before,
+body[data-route="cover"] .notebook::after,
+body[data-route="cover"] .book-page-stack,
+body[data-route="cover"] .book-corner-hardware,
+body[data-route="cover"] .book-ribbon,
+body[data-route="cover"] .page-spread { visibility: hidden; }
+
+.journal-shell.book-opening .closed-book-cover,
+.journal-shell.book-closing .closed-book-cover { display: block; pointer-events: none; }
+.journal-shell.book-opening .closed-book-cover { animation: bookCoverOpen 880ms cubic-bezier(0.48, 0.02, 0.18, 1) both; }
+.journal-shell.book-closing .closed-book-cover { animation: bookCoverClose 760ms cubic-bezier(0.42, 0, 0.34, 1) both; }
+.journal-shell.book-opening .page-spread,
+.journal-shell.book-closing .page-spread,
+.journal-shell.book-opening .book-page-stack,
+.journal-shell.book-closing .book-page-stack,
+.journal-shell.book-opening .book-corner-hardware,
+.journal-shell.book-closing .book-corner-hardware,
+.journal-shell.book-opening .book-ribbon,
+.journal-shell.book-closing .book-ribbon { visibility: visible; }
+.journal-shell.book-opening .notebook,
+.journal-shell.book-closing .notebook {
+    border-color: #9d7547;
+    background:
+        repeating-linear-gradient(35deg, #edca8505 0 1px, transparent 1px 3px),
+        repeating-linear-gradient(125deg, #140b0733 0 1px, transparent 1px 4px),
+        linear-gradient(90deg, #64432e, #38271d 49.5%, #6d4b32 50.5%, #523723);
+    box-shadow: inset 0 0 0 3px #352219, inset 0 0 0 4px #c1955a55,
+        0 3px 0 #2b1b12, 0 18px 24px #10090480, 0 35px 65px #10090466;
+}
+
+@keyframes bookCoverOpen {
+    0% { transform: translate(-50%, -50%) rotateX(2deg) rotateY(0) rotateZ(-0.45deg); opacity: 1; }
+    45% { opacity: 1; }
+    100% { transform: translate(-50%, -50%) translateX(-46%) rotateX(3deg) rotateY(-168deg) rotateZ(-0.2deg); opacity: 0; }
+}
+
+@keyframes bookCoverClose {
+    0% { transform: translate(-50%, -50%) translateX(-46%) rotateX(3deg) rotateY(-168deg) rotateZ(-0.2deg); opacity: 0.35; }
+    100% { transform: translate(-50%, -50%) rotateX(2deg) rotateY(0) rotateZ(-0.45deg); opacity: 1; }
+}
+
+/* 日记详情现在是书内页：左页负责索引信息，右页承担连续正文。 */
+.entry-book-index {
+    display: grid;
+    min-height: 100%;
+    align-content: start;
+    gap: 16px;
+}
+
+.entry-book-back {
+    width: fit-content;
+    margin-bottom: 3px;
+}
+
+.entry-book-index h1 {
+    margin: 0;
+    color: var(--ink);
+    font-size: clamp(34px, 3.5vw, 52px);
+    line-height: 1.16;
+}
+
+.entry-book-date {
+    width: fit-content;
+    padding-bottom: 7px;
+    border-bottom: 1px solid rgba(117, 66, 37, 0.32);
+    color: var(--stamp);
+    font-family: var(--font-code);
+    font-size: 13px;
+    letter-spacing: 0.08em;
+}
+
+.entry-book-location {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.entry-book-quote {
+    margin: 6px 0 0;
+    padding: 18px 0 18px 20px;
+    border-left: 2px solid rgba(143, 53, 39, 0.48);
+    color: var(--ink-soft);
+    font-size: 18px;
+    line-height: 1.75;
+}
+
+.entry-book-index .sheet-record-actions {
+    justify-content: flex-start;
+    margin: auto 0 0;
+    padding-top: 18px;
+    border-top: 1px dashed rgba(89, 59, 31, 0.24);
+}
+
+.entry-book-article {
+    display: grid;
+    min-height: 100%;
+    align-content: start;
+}
+
+.entry-book-article::before {
+    content: "旅行手记 · JOURNAL";
+    display: block;
+    margin-bottom: 18px;
+    color: var(--ink-muted);
+    font-family: var(--font-code);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+}
+
+.entry-book-article .markdown-content { font-size: 17px; }
+.entry-book-page .sheet-nav { margin-bottom: 4px; }
+
+/* 外侧页角给出可翻动的材质提示，真正交互仍由可访问的章节与篇章按钮承担。 */
+@media (min-width: 761px) {
+    .journal-shell {
+        display: block;
+        padding: 20px 82px 28px 38px;
+    }
+
+    .journal-stage,
+    .notebook { height: calc(100dvh - 48px); }
+
+    .journal-spine {
+        position: absolute;
+        inset: 20px 34px 28px 38px;
+        z-index: 80;
+        display: block;
+        height: auto;
+        padding: 0;
+        pointer-events: none;
+    }
+
+    .brand-lockup {
+        position: absolute;
+        z-index: 4;
+        top: 24px;
+        left: 24px;
+        width: 56px;
+        min-height: 66px;
+        padding: 13px 7px;
+        border: 1px solid rgba(231, 199, 131, 0.26);
+        border-radius: 3px 3px 8px 8px;
+        background: linear-gradient(90deg, #633b2c, #815544 52%, #573126);
+        box-shadow: inset 0 1px rgba(255, 231, 183, 0.17), 0 8px 15px rgba(13, 6, 3, 0.36);
+        writing-mode: vertical-rl;
+        pointer-events: auto;
+    }
+
+    .brand-lockup strong { font-size: 0; }
+    .brand-lockup strong::after {
+        content: "合上手记";
+        font-size: 14px;
+        letter-spacing: 0.14em;
+    }
+    .brand-lockup small { display: none; }
+
+    .chapter-tabs {
+        position: absolute;
+        top: 118px;
+        right: -48px;
+        display: grid;
+        grid-template-columns: 48px;
+        gap: 10px;
+        padding: 0;
+        pointer-events: auto;
+    }
+
+    .chapter-tab {
+        min-width: 48px;
+        min-height: 116px;
+        padding: 14px 10px;
+        border: 1px solid rgba(244, 224, 178, 0.2);
+        border-left: 0;
+        border-radius: 0 5px 5px 0;
+        font-size: 14px;
+        letter-spacing: 0.08em;
+        writing-mode: vertical-rl;
+        transition: transform 0.18s ease, filter 0.18s ease;
+    }
+
+    .chapter-tab:hover { transform: translateX(4px); }
+    .chapter-tab-active { padding: 14px 10px; transform: translateX(7px); }
+    .chapter-tab-active::after {
+        top: 50%;
+        bottom: auto;
+        left: 8px;
+        width: 2px;
+        height: 24px;
+        transform: translateY(-50%);
+    }
+
+    .spine-tools {
+        position: absolute;
+        top: 20px;
+        right: 22px;
+        display: flex;
+        pointer-events: auto;
+    }
+
+    .paper-page-left::after,
+    .paper-page-right::after {
+        content: "";
+        position: sticky;
+        z-index: 18;
+        bottom: -1px;
+        display: block;
+        width: 44px;
+        height: 44px;
+        margin-top: -44px;
+        pointer-events: none;
+        filter: drop-shadow(0 -3px 4px rgba(48, 28, 12, 0.13));
+    }
+
+    .paper-page-left::after {
+        left: 0;
+        margin-right: auto;
+        background: linear-gradient(45deg, #d6bd86 0 47%, #fff5d9 49% 62%, transparent 64%);
+        clip-path: polygon(0 0, 100% 100%, 0 100%);
+    }
+
+    .paper-page-right::after {
+        right: 0;
+        margin-left: auto;
+        background: linear-gradient(-45deg, #d6bd86 0 47%, #fff5d9 49% 62%, transparent 64%);
+        clip-path: polygon(100% 0, 100% 100%, 0 100%);
+    }
+}
+
+/* 卷页纸背保留纸纤维和透光差异；边缘高光与接触阴影共同强化纸张厚度。 */
+.book-curl-back .book-curl-surface::after,
+.book-curl-front .book-curl-surface::after {
+    content: "";
+    position: absolute;
+    z-index: 24;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(90deg, rgba(255, 251, 228, 0.48), transparent 3%, transparent 96%, rgba(73, 43, 20, 0.24));
+    mix-blend-mode: soft-light;
+}
+
+.book-curl-back .book-curl-surface::after {
+    background:
+        linear-gradient(90deg, rgba(85, 51, 25, 0.18), rgba(255, 246, 211, 0.34) 8%, transparent 42%),
+        url("../assets/textures/paper-grain.png");
+    opacity: 0.42;
+}
+
+.book-curl-strip:first-child .book-curl-face { box-shadow: -2px 0 3px rgba(255, 250, 225, 0.32); }
+.book-curl-contact {
+    filter: blur(6px);
+    background: linear-gradient(90deg, transparent, rgba(36, 20, 8, 0.52) 46%, rgba(36, 20, 8, 0.18) 72%, transparent);
+}
+
+@media (max-width: 760px) {
+    body[data-route="cover"] .journal-shell {
+        display: grid;
+        min-height: 100dvh;
+        padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    }
+
+    body[data-route="cover"] .journal-stage,
+    body[data-route="cover"] .notebook { min-height: calc(100dvh - 28px); }
+
+    .closed-book-cover {
+        width: min(92vw, 560px);
+        aspect-ratio: 0.76;
+        border-radius: 10px 14px 14px 10px;
+        box-shadow: inset 0 0 0 3px #7b513477, inset 0 0 0 5px #1d0f0b,
+            inset 16px 0 21px rgba(10, 4, 2, 0.42), 0 7px 0 #d6c096, 0 10px 0 #806f53,
+            0 28px 48px rgba(8, 3, 1, 0.65);
+        transform: translate(-50%, -50%);
+    }
+
+    .closed-book-cover:hover { transform: translate(-50%, -50%); }
+    .closed-book-cover::before { inset: 16px 15px 16px 56px; }
+    .closed-book-spine { left: 16px; width: 44px; }
+    .closed-book-spine::before,
+    .closed-book-spine::after { left: 3px; width: 36px; }
+    .closed-book-stitching { inset: 22px 20px 22px 65px; }
+    .closed-book-title { top: 29%; font-size: clamp(40px, 11vw, 58px); letter-spacing: 0.08em; }
+    .closed-book-subtitle { top: 41%; font-size: 11px; }
+    .closed-book-emblem { top: 50%; }
+    .closed-book-invitation { top: 68%; font-size: 14px; }
+    .closed-book-clasp { right: -13px; width: 64px; height: 62px; }
+    .closed-book-clasp i { top: 16px; right: 9px; width: 28px; height: 28px; }
+
+    .entry-book-index { min-height: auto; }
+    .entry-book-index h1 { font-size: 32px; }
+    .entry-book-quote { font-size: 16px; }
+    .entry-book-index .sheet-record-actions { margin-top: 8px; }
+    .entry-book-article::before { margin-top: 8px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .journal-shell.book-opening .closed-book-cover,
+    .journal-shell.book-closing .closed-book-cover { animation: none; }
+}

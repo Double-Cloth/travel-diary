@@ -10,16 +10,15 @@ export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteConten
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError };
 export function stubReadingRoutes() {
-    const originals = { renderLedger, renderCover, renderEntryPhotosRoute, openEntrySheet,
-        closeEntrySheet, renderWithPageTurn, clearPageTurn, updateChapterTabs, restoreFocus,
+    const originals = { renderLedger, renderCover, renderEntryRoute, renderEntryPhotosRoute,
+        renderWithPageTurn, clearPageTurn, updateChapterTabs, restoreFocus,
         restoreReadingScrollPosition, travelModel, activeRoute, renderedPageHash, lastReadingHash,
         shell: refs.shell };
     const calls = [];
     renderLedger = () => calls.push('ledger');
     renderCover = () => calls.push('cover');
+    renderEntryRoute = params => calls.push('entry:' + params.id);
     renderEntryPhotosRoute = () => calls.push('photos');
-    openEntrySheet = record => calls.push('entry:' + record.id);
-    closeEntrySheet = () => {};
     clearPageTurn = () => {};
     updateChapterTabs = () => {};
     restoreFocus = () => {};
@@ -35,7 +34,7 @@ export function stubReadingRoutes() {
         render: renderRoute,
         invalidate: () => { renderedPageHash = ''; },
         restore() {
-            ({ renderLedger, renderCover, renderEntryPhotosRoute, openEntrySheet, closeEntrySheet,
+            ({ renderLedger, renderCover, renderEntryRoute, renderEntryPhotosRoute,
                 renderWithPageTurn, clearPageTurn, updateChapterTabs, restoreFocus,
                 restoreReadingScrollPosition, travelModel, activeRoute, renderedPageHash,
                 lastReadingHash } = originals);
@@ -304,7 +303,7 @@ test('照片预览同步时释放已移除节点并保留仍连接的节点', ()
 });
 
 
-test('详情打开、换篇和关闭复用列表；附件返回或数据刷新后重建背景', t => {
+test('详情、附件与返回都作为书页路由参与翻页', t => {
     const previousDocument = globalThis.document;
     globalThis.document = { body: { dataset: {} } };
     const scenario = app.stubReadingRoutes();
@@ -314,11 +313,11 @@ test('详情打开、换篇和关闭复用列表；附件返回或数据刷新�
     scenario.render(app.parseRoute('#entry?id=a'));
     scenario.render(app.parseRoute('#entry?id=b'));
     scenario.render(ledger);
-    assert.deepEqual(scenario.calls, ['direct', 'ledger', 'entry:a', 'entry:b']);
+    assert.deepEqual(scenario.calls, ['direct', 'ledger', 'turn', 'entry:a', 'turn', 'entry:b', 'turn', 'ledger']);
     scenario.render(app.parseRoute('#photos?id=b'));
     scenario.render(app.parseRoute('#entry?id=b'));
-    assert.deepEqual(scenario.calls.slice(-4), ['turn', 'photos', 'ledger', 'entry:b']);
+    assert.deepEqual(scenario.calls.slice(-4), ['turn', 'photos', 'turn', 'entry:b']);
     scenario.invalidate();
     scenario.render(app.parseRoute('#entry?id=a'));
-    assert.deepEqual(scenario.calls.slice(-2), ['ledger', 'entry:a']);
+    assert.deepEqual(scenario.calls.slice(-2), ['turn', 'entry:a']);
 });

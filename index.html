@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Travel Diary</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232b160f'/%3E%3Cpath d='M32 7l5.6 18.7L57 32l-19.4 6.3L32 57l-5.6-18.7L7 32l19.4-6.3L32 7z' fill='%23d8b467'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="css/journal.css?v=20260922-mobile-layout-v1">
+    <link rel="stylesheet" href="css/journal.css?v=20260923-book-experience-v1">
 </head>
 <body>
     <a class="skip-link" href="#journalStage">跳到档案内容</a>
@@ -58,6 +58,21 @@
                 <div class="book-page-stack book-page-stack-left" aria-hidden="true"></div>
                 <div class="book-page-stack book-page-stack-right" aria-hidden="true"></div>
                 <div class="book-ribbon" aria-hidden="true"></div>
+                <button class="closed-book-cover" id="closedBookCover" type="button" data-action="open-book" aria-label="翻开旅行手记">
+                    <span class="closed-book-spine" aria-hidden="true"></span>
+                    <span class="closed-book-stitching" aria-hidden="true"></span>
+                    <span class="closed-book-corner closed-book-corner-top" aria-hidden="true"></span>
+                    <span class="closed-book-corner closed-book-corner-bottom" aria-hidden="true"></span>
+                    <span class="closed-book-emblem" aria-hidden="true">
+                        <svg viewBox="0 0 120 52" focusable="false">
+                            <path d="M8 41 33 19l12 12L64 8l22 25 11-10 15 18M6 42h108M32 42l14-14 11 9 8-8 16 13" />
+                        </svg>
+                    </span>
+                    <span class="closed-book-title">旅行手记</span>
+                    <span class="closed-book-subtitle">TRAVEL DIARY</span>
+                    <span class="closed-book-invitation">翻开，继续这段旅程</span>
+                    <span class="closed-book-clasp" aria-hidden="true"><i></i></span>
+                </button>
                 <div class="page-spread" id="pageSpread">
                     <section class="paper-page paper-page-left" id="leftPage" aria-label="左页"></section>
                     <section class="paper-page paper-page-right" id="rightPage" aria-label="右页"></section>
@@ -66,8 +81,6 @@
         </main>
     </div>
 
-    <div class="entry-sheet-root" id="sheetRoot" aria-hidden="true"></div>
-
-    <script type="module" src="js/app.js?v=20260922-mobile-layout-v1"></script>
+    <script type="module" src="js/app.js?v=20260923-book-experience-v1"></script>
 </body>
 </html>

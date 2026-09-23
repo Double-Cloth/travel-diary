@@ -41,7 +41,8 @@ const LEDGER_FILTER_DEFAULTS = {
     q: '',
     sort: DEFAULT_LEDGER_SORT
 };
-const PAGE_TURN_MS = 1050;
+const PAGE_TURN_MS = 920;
+const BOOK_COVER_TRANSITION_MS = 900;
 const SEARCH_UPDATE_DELAY_MS = 180;
 const COVER_RECENT_RECORD_LIMIT = 7;
 const COVER_RECENT_RECORD_MIN = 2;
@@ -75,9 +76,9 @@ let travelModel = null;
 let activeRoute = null;
 let pageTurnTimer = null;
 let pageTurnCleanup = null;
+let bookTransitionTimer = null;
 let lastReadingHash = '#ledger';
 let renderedPageHash = '';
-let entryReturnFocus = null;
 let lastEntryFocusId = '';
 let lastReadingScrollPosition = null;
 let searchRouteTimer = null;
@@ -85,8 +86,6 @@ let isSearchComposing = false;
 let isMobileContextPanelOpen = false;
 let isMobileContextPageScrollLocked = false;
 let mobileContextScrollY = 0;
-let isEntryPageScrollLocked = false;
-let entryPageScrollY = 0;
 let viewportResizeTimer = null;
 let photoPreviewResizeTimer = null;
 let photoPreviewLateResizeTimer = null;
@@ -250,7 +249,7 @@ function cacheRefs() {
     refs.spread = document.getElementById('pageSpread');
     refs.leftPage = document.getElementById('leftPage');
     refs.rightPage = document.getElementById('rightPage');
-    refs.sheet = document.getElementById('sheetRoot');
+    refs.closedBookCover = document.getElementById('closedBookCover');
     refs.profilePictureButton = document.querySelector('.spine-profile');
     refs.profilePictureInput = document.getElementById('profilePictureInput');
     refs.profilePictureInput?.addEventListener('cancel', () => {
@@ -484,24 +483,15 @@ function renderRoute(route, options = {}) {
     const shouldRestoreReadingScroll = isReturningToReadingBackground(previousRoute, route);
     activeRoute = route;
 
-    if (route.name !== 'entry') {
-        closeEntrySheet({ restoreHash: false });
-    }
-
-    // 详情是一张独立阅读纸，打开、换篇和合上时复用底下的书页。
-    if (route.name === 'entry') {
-        clearPageTurn();
-        renderEntryRoute(route.params);
-        return;
-    }
     if (shouldRestoreReadingScroll && renderedPageHash === serializeRoute(route)) {
         clearPageTurn();
         restoreReadingScrollPosition();
         restoreFocus(options.focusId);
         return;
     }
-    const isSameChapter = previousRoute?.name === route.name && ['cover', 'ledger', 'archive'].includes(route.name);
-    renderWithPageTurn(() => {
+    const isSameChapter = previousRoute?.name === route.name
+        && ['cover', 'ledger', 'archive'].includes(route.name);
+    const render = () => {
         refs.shell.dataset.route = route.name;
         document.body.dataset.route = route.name;
         updateChapterTabs(route.name);
@@ -532,8 +522,18 @@ function renderRoute(route, options = {}) {
             restoreReadingScrollPosition();
         }
         restoreFocus(options.focusId);
-    }, { animate: options.animate !== false && !options.initial && !isSameChapter,
-        direction: getTurnDirection(previousRoute, route) });
+    };
+    const shouldAnimate = options.animate !== false && !options.initial && !isSameChapter;
+    const crossesCover = previousRoute && (previousRoute.name === 'cover' || route.name === 'cover')
+        && previousRoute.name !== route.name;
+    if (crossesCover && shouldAnimate) {
+        renderWithBookCover(render, route.name === 'cover' ? 'closing' : 'opening');
+        return;
+    }
+    renderWithPageTurn(render, {
+        animate: shouldAnimate,
+        direction: options.direction || getTurnDirection(previousRoute, route)
+    });
 }
 
 function deriveTravelModel(records) {
@@ -868,41 +868,8 @@ function buildLocationIndex(records) {
 }
 
 function renderCover() {
-    const routeRecords = getRouteMapRecords();
-    const recentRecordCount = getCoverRecentRecordCount();
-    const recentRecords = travelModel.recordsDesc.slice(0, recentRecordCount);
-
-    setPages(`
-        <div class="cover-page cover-recent-page">
-            <h1 class="archive-home-title">最近旅行记录</h1>
-            <p class="journal-label">最近记录</p>
-            <div class="cover-record-list">
-                ${recentRecords.length ? recentRecords.map(renderCoverRecord).join('') : renderEmptyArchiveState()}
-            </div>
-        </div>
-    `, `
-        <div class="pocket-page">
-            <div class="route-insert">
-                <div class="route-map-label">
-                    <strong>随机路线图</strong>
-                    <span>本次抽取 ${routeRecords.length} 个目的地</span>
-                </div>
-                <div class="route-sketch route-collage" aria-label="随机旅行路线拼贴">
-                    <svg class="route-doodle" viewBox="0 0 100 100" preserveAspectRatio="none" focusable="false" aria-hidden="true">
-                        <path class="doodle-route" d="M12 72 C26 52 34 73 48 50 S69 37 86 22" />
-                        <path class="doodle-river" d="M5 34 C17 25 25 38 36 31 S55 18 70 31 S84 45 95 36" />
-                        <path class="doodle-hill" d="M8 84 L18 69 L27 84 M24 84 L36 62 L50 84 M70 78 L79 65 L90 78" />
-                        <circle class="doodle-sun" cx="83" cy="18" r="5" />
-                    </svg>
-                    <span class="route-washi route-washi-a" aria-hidden="true"></span>
-                    <span class="route-washi route-washi-b" aria-hidden="true"></span>
-                    <span class="route-postmark" aria-hidden="true">TRAVEL<br>DIARY</span>
-                    ${routeRecords.length ? renderRouteMap(routeRecords) : '<span class="route-map-empty">添加第一条记录后，这里会出现随机目的地</span>'}
-                    <span class="map-compass">N</span>
-                </div>
-            </div>
-        </div>
-    `);
+    // 首页只保留合上的实体封面；真实书页在翻开后才进入可访问树。
+    setPages('', '');
 }
 
 function getCoverRecentRecordCount() {
@@ -1446,29 +1413,61 @@ function renderPlace(params = {}) {
 
 function renderEntryRoute(params = {}) {
     const record = travelModel.recordsById.get(params.id);
-    if (renderedPageHash === lastReadingHash) {
-        openEntrySheet(record);
+    const returnHash = lastReadingHash || '#ledger';
+
+    if (!record) {
+        setPages(`
+            <div class="entry-book-index">
+                <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回旅行路径</a>
+                <p class="journal-label">旅行手记</p>
+                <h1>没有找到这篇日记</h1>
+            </div>
+        `, '<div class="empty-note">这张书页可能已被移动或删除。</div>', 'entry-book-page');
         return;
     }
-    const backgroundRoute = parseRoute(lastReadingHash);
-    refs.shell.dataset.route = backgroundRoute.name;
-    document.body.dataset.route = backgroundRoute.name;
-    updateChapterTabs(backgroundRoute.name);
-    if (backgroundRoute.name === 'cover') {
-        renderCover();
-    } else if (backgroundRoute.name === 'place') {
-        renderPlace(backgroundRoute.params);
-    } else if (backgroundRoute.name === 'archive') {
-        renderArchive(backgroundRoute.params);
-    } else {
-        const ledgerParams = backgroundRoute.name === 'ledger'
-            ? backgroundRoute.params
-            : (record ? { year: record.year, q: '', sort: DEFAULT_LEDGER_SORT } : { year: 'all', q: '', sort: DEFAULT_LEDGER_SORT });
-        renderLedger(ledgerParams);
-    }
-    renderedPageHash = lastReadingHash;
-    restoreReadingScrollPosition();
-    openEntrySheet(record);
+
+    const navigation = getEntryNavigation(record);
+    const summary = getEntryBookSummary(record);
+    setPages(`
+        <article class="entry-book-index" aria-labelledby="entryBookTitle">
+            <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回原处</a>
+            <p class="journal-label">旅行手记</p>
+            <time class="entry-book-date" datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '日期未记')}</time>
+            <h1 id="entryBookTitle">${escapeHtml(record.title)}</h1>
+            <div class="entry-book-location">
+                <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(getLocationText(record))}</a>
+                ${renderTripGroupHint(record)}
+            </div>
+            ${summary ? `<blockquote class="entry-book-quote">${escapeHtml(summary)}</blockquote>` : ''}
+            <div class="sheet-record-actions" aria-label="记录管理">
+                <button class="paper-button" type="button" data-action="edit-record" data-record-id="${escapeHtml(record.id)}">修改记录</button>
+                <button class="paper-button sheet-delete-button" type="button" data-action="delete-record" data-record-id="${escapeHtml(record.id)}">删除记录</button>
+            </div>
+        </article>
+    `, `
+        <article class="entry-book-article" aria-label="${escapeHtml(record.title)}正文">
+            <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
+            ${renderPhotoSleeve(record, {
+                previewRows: ENTRY_PHOTO_PREVIEW_ROWS,
+                showViewAll: true
+            })}
+            ${renderEntrySheetNav(navigation)}
+        </article>
+    `, 'entry-book-page');
+
+    requestAnimationFrame(() => queuePhotoSleevePreviewSync());
+}
+
+function getEntryBookSummary(record) {
+    const source = record.descMarkdown || '';
+    return source
+        .replace(/^#{1,6}\s+.*$/gm, '')
+        .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
+        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
+        .replace(/[*_>`~-]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 92);
 }
 
 function renderEntryPhotosRoute(params = {}) {
@@ -1536,63 +1535,6 @@ function handleClearSearch(button) {
     }
 }
 
-function openEntrySheet(record) {
-    if (!refs.sheet) return;
-    closePhotoViewerDialog();
-
-    if (!refs.sheet.classList.contains('entry-sheet-root-open')) {
-        entryReturnFocus = document.activeElement;
-    }
-    refs.shell.inert = true;
-    lockEntryPageScroll();
-    refs.sheet.setAttribute('aria-hidden', 'false');
-    refs.sheet.classList.add('entry-sheet-root-open');
-
-    if (!record) {
-        refs.sheet.innerHTML = `
-            <div class="sheet-backdrop" data-action="close-entry"></div>
-            <div class="entry-sheet-frame">
-                <button class="sheet-close" type="button" data-action="close-entry" aria-label="合上纸页">×</button>
-                <article class="entry-sheet" role="dialog" aria-modal="true" aria-labelledby="entrySheetTitle">
-                    <h1 id="entrySheetTitle">没有找到这篇日记</h1>
-                </article>
-            </div>
-        `;
-        return;
-    }
-
-    const navigation = getEntryNavigation(record);
-    refs.sheet.innerHTML = `
-        <div class="sheet-backdrop" data-action="close-entry"></div>
-        <div class="entry-sheet-frame">
-            <button class="sheet-close" type="button" data-action="close-entry" aria-label="合上纸页">×</button>
-            <article class="entry-sheet" role="dialog" aria-modal="true" aria-labelledby="entrySheetTitle" tabindex="-1">
-                <div class="sheet-meta">
-                    <time datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '')}</time>
-                    <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(getLocationText(record))}</a>
-                    ${renderTripGroupHint(record)}
-                </div>
-                <h1 id="entrySheetTitle">${escapeHtml(record.title)}</h1>
-                <div class="sheet-record-actions" aria-label="记录管理">
-                    <button class="paper-button" type="button" data-action="edit-record" data-record-id="${escapeHtml(record.id)}">修改记录</button>
-                    <button class="paper-button sheet-delete-button" type="button" data-action="delete-record" data-record-id="${escapeHtml(record.id)}">删除记录</button>
-                </div>
-                <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
-                ${renderPhotoSleeve(record, {
-                    previewRows: ENTRY_PHOTO_PREVIEW_ROWS,
-                    showViewAll: true
-                })}
-                ${renderEntrySheetNav(navigation)}
-            </article>
-        </div>
-    `;
-
-    requestAnimationFrame(() => {
-        queuePhotoSleevePreviewSync();
-        refs.sheet.querySelector('.entry-sheet')?.focus({ preventScroll: true });
-    });
-}
-
 function getEntryNavigation(record) {
     const contextRoute = parseRoute(lastReadingHash || '#ledger');
     let records;
@@ -1633,64 +1575,6 @@ function renderEntrySheetNav(navigation) {
     `;
 }
 
-function closeEntrySheet(options = {}) {
-    if (!refs.sheet) return;
-
-    stopObservingPhotoViewerStage();
-    photoViewerState = null;
-    photoGestureState = createPhotoGestureState();
-    clearPhotoRotationTimer();
-    document.querySelector('[data-photo-viewer]')?.remove();
-    refs.shell.inert = false;
-    unlockEntryPageScroll();
-    const wasOpen = refs.sheet.classList.contains('entry-sheet-root-open');
-    refs.sheet.classList.remove('entry-sheet-root-open');
-    refs.sheet.setAttribute('aria-hidden', 'true');
-    refs.sheet.innerHTML = '';
-    syncPhotoSleevePreviewRows();
-    if (wasOpen && entryReturnFocus?.isConnected) entryReturnFocus.focus({ preventScroll: true });
-    entryReturnFocus = null;
-
-    if (options.restoreHash) {
-        navigateTo(lastReadingHash || '#ledger', { replace: true, focusId: lastEntryFocusId, animate: false });
-        return;
-    }
-
-    if (options.restoreFocus && lastEntryFocusId) {
-        restoreFocus(lastEntryFocusId);
-    }
-}
-
-/* 详情纸页是 fixed 弹层，移动端打开时锁住页面滚动并恢复原来的阅读位置。 */
-function lockEntryPageScroll() {
-    if (!isMobileLayout() || isEntryPageScrollLocked) return;
-
-    entryPageScrollY = window.scrollY || document.documentElement.scrollTop || document.body.scrollTop || 0;
-    isEntryPageScrollLocked = true;
-    document.documentElement.classList.add('entry-sheet-page-locked');
-    document.body.classList.add('entry-sheet-page-locked');
-    document.body.style.position = 'fixed';
-    document.body.style.top = `-${entryPageScrollY}px`;
-    document.body.style.left = '0';
-    document.body.style.right = '0';
-    document.body.style.width = '100%';
-}
-
-function unlockEntryPageScroll() {
-    if (!isEntryPageScrollLocked) return;
-
-    isEntryPageScrollLocked = false;
-    document.documentElement.classList.remove('entry-sheet-page-locked');
-    document.body.classList.remove('entry-sheet-page-locked');
-    document.body.style.position = '';
-    document.body.style.top = '';
-    document.body.style.left = '';
-    document.body.style.right = '';
-    document.body.style.width = '';
-    window.scrollTo(0, entryPageScrollY);
-    entryPageScrollY = 0;
-}
-
 async function deleteTravelRecord(record, authenticatedCapability = null) {
     const capability = authenticatedCapability || await detectWriterCapability();
     if (!capability.methods.has('DELETE')) {
@@ -1707,7 +1591,6 @@ async function deleteTravelRecord(record, authenticatedCapability = null) {
     if (!response.ok || !result.deleted) throw new Error(result.error || '未收到服务器的删除确认。');
     try { await refreshTravelModel(getRefreshKey()); }
     catch { return { refreshFailed: true }; }
-    closeEntrySheet();
     window.location.hash = lastReadingHash || '#ledger';
     syncRouteFromHash({ initial: true });
     return { refreshFailed: false };
@@ -1828,10 +1711,6 @@ function closePhotoViewerDialog() {
 }
 
 function getPhotoViewerRoot() {
-    if (refs.sheet?.classList.contains('entry-sheet-root-open')) {
-        return refs.sheet;
-    }
-
     return document.body;
 }
 
@@ -2607,9 +2486,30 @@ function clamp(value, min, max) {
 function clearPageTurn() {
     clearTimeout(pageTurnTimer);
     pageTurnTimer = null;
+    clearTimeout(bookTransitionTimer);
+    bookTransitionTimer = null;
     pageTurnCleanup?.();
     pageTurnCleanup = null;
+    refs.shell?.classList.remove('book-opening', 'book-closing');
     refs.spread?.classList.remove('turn-forward', 'turn-back', 'turn-mobile', 'turn-mobile-back', 'book-turn-preparing');
+}
+
+function renderWithBookCover(renderFn, mode) {
+    clearPageTurn();
+    renderFn();
+
+    if (!refs.shell || isMobileLayout() || prefersReducedMotion()) {
+        return;
+    }
+
+    const className = mode === 'closing' ? 'book-closing' : 'book-opening';
+    refs.shell.classList.add(className);
+    refs.closedBookCover?.setAttribute('aria-hidden', 'true');
+    bookTransitionTimer = window.setTimeout(() => {
+        refs.shell?.classList.remove(className);
+        refs.closedBookCover?.removeAttribute('aria-hidden');
+        bookTransitionTimer = null;
+    }, BOOK_COVER_TRANSITION_MS);
 }
 
 function cloneTurningPage(page) {
@@ -2725,7 +2625,7 @@ function renderWithPageTurn(renderFn, options = {}) {
     leaf.setAttribute('aria-hidden', 'true');
     leaf.inert = true;
     resting.classList.add('book-turn-resting');
-    const frames = createPageCurlFrames(width, height, backwards);
+    const frames = createPageCurlFrames(width, height, backwards, getPageCurlStripCount(width));
     const stripWidth = Math.hypot(width, height) / frames.length;
     const animations = [];
     const surfaces = [];
@@ -2803,7 +2703,20 @@ function renderWithPageTurn(renderFn, options = {}) {
     });
 }
 
+function getPageCurlStripCount(width) {
+    const constrainedDevice = globalThis.navigator?.hardwareConcurrency
+        && globalThis.navigator.hardwareConcurrency <= 4;
+    if (constrainedDevice || width < 520) return 12;
+    return width > 760 ? 18 : 15;
+}
+
 function handleDocumentClick(event) {
+    if (event.target.closest('[data-action="open-book"]')) {
+        event.preventDefault();
+        navigateTo('#ledger');
+        return;
+    }
+
     if (event.target.closest('[data-action="retry-load"]')) {
         event.preventDefault();
         window.location.reload();
@@ -2881,13 +2794,6 @@ function handleDocumentClick(event) {
         return;
     }
 
-    const closeEntry = event.target.closest('[data-action="close-entry"]');
-    if (closeEntry) {
-        event.preventDefault();
-        closeEntrySheet({ restoreHash: true });
-        return;
-    }
-
     const closePhotoViewer = event.target.closest('[data-action="close-photo-viewer"]');
     if (closePhotoViewer) {
         event.preventDefault();
@@ -2922,7 +2828,10 @@ function handleDocumentClick(event) {
         event.preventDefault();
         const nextId = entryNav.getAttribute('data-entry-id');
         if (nextId) {
-            navigateTo({ name: 'entry', params: { id: nextId } }, { replace: true });
+            navigateTo(
+                { name: 'entry', params: { id: nextId } },
+                { replace: true, direction: entryNav.dataset.action === 'entry-prev' ? 'back' : 'forward' }
+            );
         }
         return;
     }
@@ -3077,27 +2986,7 @@ function handleDocumentKeydown(event) {
         }
     }
 
-    const readingSheetOpen = refs.sheet?.classList.contains('entry-sheet-root-open');
-    // 原生编辑和确认弹窗优先处理自己的键盘事件。
-    if (readingSheetOpen && !document.querySelector('dialog[open]') && !isPhotoViewerOpen()) {
-        if (event.key === 'Escape') {
-            event.preventDefault();
-            closeEntrySheet({ restoreHash: true });
-            return;
-        }
-        if (event.key === 'Tab') {
-            const controls = Array.from(refs.sheet.querySelectorAll('a[href], button:not(:disabled), [tabindex="0"]'))
-                .filter(node => node.getClientRects().length && !node.closest('[hidden]'));
-            const first = controls[0];
-            const last = controls.at(-1);
-            const outsideControls = !controls.includes(document.activeElement);
-            if (first && (outsideControls || (event.shiftKey ? document.activeElement === first : document.activeElement === last))) {
-                event.preventDefault();
-                (event.shiftKey ? last : first).focus();
-            }
-        }
-    }
-    if (event.key === 'Escape' && !readingSheetOpen && isMobileContextPanelOpen) {
+    if (event.key === 'Escape' && isMobileContextPanelOpen) {
         event.preventDefault();
         closeMobileContextPanel();
         return;

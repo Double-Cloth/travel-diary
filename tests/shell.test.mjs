@@ -26,7 +26,8 @@ const cssPartFiles = [
     '05-archive-place.css',
     '06-entry-sheet.css',
     '07-responsive.css',
-    '08-custom-select.css'
+    '08-custom-select.css',
+    '09-book-experience.css'
 ];
 const cssPartContents = [];
 
@@ -185,8 +186,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260922-mobile-layout-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260922-mobile-layout-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260923-book-experience-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260923-book-experience-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -380,6 +381,18 @@ test('全部数据导入保留当前认证且不传输密码头', () => {
     assert.match(authJs, /PASSWORD_LENGTH = 6/);
 });
 
+test('首页只显示合盖封面，日记详情与篇章导航进入整书翻页', () => {
+    assert.match(indexHtml, /id="closedBookCover"[\s\S]*data-action="open-book"/);
+    assert.doesNotMatch(indexHtml, /id="sheetRoot"/);
+    assert.match(appJs, /function renderCover\(\)\s*\{[\s\S]*setPages\('', ''\);/);
+    assert.match(appJs, /function renderEntryRoute[\s\S]*entry-book-index[\s\S]*entry-book-article/);
+    assert.match(appJs, /data-action="entry-prev"[\s\S]*data-action="entry-next"/);
+    assert.match(appJs, /function getPageCurlStripCount[\s\S]*return 12;[\s\S]*return width > 760 \? 18 : 15;/);
+    assert.match(journalCss, /body\[data-route="cover"\] \.closed-book-cover\s*\{\s*display: block;/);
+    assert.match(journalCss, /\.journal-shell\.book-opening \.closed-book-cover[\s\S]*bookCoverOpen/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.entry-book-index/);
+});
+
 test('个人主页可验证当前密码并在新密码确认满六位后自动提交换密', () => {
     assert.match(appJs, /data-action="change-password"/);
     assert.match(appJs, /const showPasswordChange = createPasswordChangeDialog/);
@@ -417,9 +430,10 @@ test('全部数据导入先建立服务端会话并提交双重写入凭据', ()
     assert.match(recordStoreJs, /HttpOnly; SameSite=Strict/);
 });
 
-test('打开并退出日记时恢复路线档案滚动位置', () => {
+test('日记详情作为书内页渲染且返回时恢复路线档案滚动位置', () => {
     assert.match(appJs, /function rememberReadingContext\(focusId = ''\)[\s\S]*left: refs\.leftPage\?\.scrollTop \|\| 0,[\s\S]*right: refs\.rightPage\?\.scrollTop \|\| 0,[\s\S]*windowY: window\.scrollY/);
-    assert.match(appJs, /function renderEntryRoute[\s\S]*restoreReadingScrollPosition\(\);[\s\S]*openEntrySheet\(record\);/);
+    assert.match(appJs, /function renderEntryRoute[\s\S]*setPages\([\s\S]*entry-book-index[\s\S]*entry-book-article/);
+    assert.doesNotMatch(appJs, /function renderEntryRoute[\s\S]{0,1200}openEntrySheet\(record\)/);
     assert.match(appJs, /const shouldRestoreReadingScroll = isReturningToReadingBackground\(previousRoute, route\);[\s\S]*if \(shouldRestoreReadingScroll\) \{[\s\S]*restoreReadingScrollPosition\(\);/);
     assert.match(appJs, /function restoreReadingScrollPosition\(\)[\s\S]*refs\.leftPage\.scrollTop = lastReadingScrollPosition\.left;[\s\S]*refs\.rightPage\.scrollTop = lastReadingScrollPosition\.right;[\s\S]*window\.scrollTo\(0, lastReadingScrollPosition\.windowY\);/);
 });
@@ -429,7 +443,7 @@ test('每篇日记按最早行程起显示编号但不暴露 trip_id', () => {
     assert.match(appJs, /const itineraryGroups = buildItineraryGroups\(enhancedAsc\);/);
     assert.match(appJs, /tripRecordCount: tripGroup\?\.count \|\| 0,[\s\S]*tripGroupLabel: tripGroup\?\.label \|\| ''/);
     assert.match(appJs, /function renderTripGroupHint\(record\)[\s\S]*if \(!label\)[\s\S]*const variant = Math\.max\(0,[\s\S]*class="trip-stamp trip-variant-\$\{variant\}"[\s\S]*>行程 \$\{escapeHtml\(label\)\}<\/span>/);
-    assert.match(appJs, /class="sheet-meta"[\s\S]*renderTripGroupHint\(record\)/);
+    assert.match(appJs, /class="entry-book-location"[\s\S]*renderTripGroupHint\(record\)/);
     assert.match(appJs, /class="entry-tags"[\s\S]*renderTripGroupHint\(record\)/);
     assert.doesNotMatch(appJs, /escapeHtml\(record\.(?:trip_id|tripId)\)/);
     assert.match(journalCss, /\.trip-stamp\s*{[\s\S]*min-width: 54px;[\s\S]*height: 26px;[\s\S]*border-radius: 999px;[\s\S]*background: var\(--trip-color\);/);
@@ -495,8 +509,8 @@ test('地点详情右侧记录列表保留底部滚动缓冲', () => {
 test('移动端夹层遮罩不使用全屏模糊', () => {
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.journal-shell\.mobile-context-panel-open::before\s*{[\s\S]*content: none;[\s\S]*display: none;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.journal-shell\.mobile-context-panel-open::before\s*{[\s\S]*pointer-events: none;/);
-    assert.doesNotMatch(journalCss, /\.journal-shell\.mobile-context-panel-open::before\s*{[\s\S]*backdrop-filter/);
-    assert.doesNotMatch(journalCss, /\.journal-shell\.mobile-context-panel-open::before\s*{[\s\S]*pointer-events: auto;/);
+    assert.doesNotMatch(journalCss, /\.journal-shell\.mobile-context-panel-open::before\s*{[^}]*backdrop-filter/);
+    assert.doesNotMatch(journalCss, /\.journal-shell\.mobile-context-panel-open::before\s*{[^}]*pointer-events: auto;/);
 });
 
 test('旅行档案仅使用项目本地字体族', () => {
@@ -642,7 +656,7 @@ test('从照片全集页返回笔记不会把照片页保存为关闭后的背�
 
 test('照片全集页打开照片查看器时不会挂载到隐藏的笔记弹层', () => {
     assert.match(appJs, /function getPhotoViewerRoot\(\)/);
-    assert.match(appJs, /refs\.sheet\?\.classList\.contains\('entry-sheet-root-open'\)/);
+    assert.doesNotMatch(appJs, /entry-sheet-root-open/);
     assert.match(appJs, /return document\.body;/);
     assert.match(appJs, /const root = getPhotoViewerRoot\(\);[\s\S]*root\.insertAdjacentHTML\('beforeend'/);
     assert.match(appJs, /getPhotoViewerRoot\(\)\?\.querySelector\('\[data-photo-viewer-image\]'\)/);
