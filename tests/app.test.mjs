@@ -6,7 +6,7 @@ import { normalizeTravelLocation } from '../js/location.mjs';
 globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
-    renderWithPageTurn, cloneTurningPage, createPageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
+    renderWithPageTurn, renderWithBookCover, clearPageTurn, cloneTurningPage, createPageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError };
 export function stubReadingRoutes() {
@@ -43,6 +43,8 @@ export function stubReadingRoutes() {
     };
 }
 export function setTestState(values) {
+    if (values.shell) refs.shell = values.shell;
+    if (values.closedBookCover) refs.closedBookCover = values.closedBookCover;
     if (values.spread) refs.spread = values.spread;
     if (values.leftPage) refs.leftPage = values.leftPage;
     if (values.rightPage) refs.rightPage = values.rightPage;
@@ -242,6 +244,81 @@ test('翻页方向与书签顺序及返回按钮一致', () => {
         ['archive', 'place', 'forward'], ['place', 'archive', 'back'],
         ['entry', 'photos', 'forward'], ['photos', 'entry', 'back']
     ]) assert.equal(app.getTurnDirection({ name: from }, { name: to }), direction);
+});
+
+test('合书保留原页直到落稳，中断会恢复交互且只提交一次目标画面', t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const previous = { window: globalThis.window, document: globalThis.document,
+        getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame,
+        cancelAnimationFrame: globalThis.cancelAnimationFrame };
+    t.after(() => { app.clearPageTurn(); Object.assign(globalThis, previous); });
+    const nodes = new Set();
+    const animations = [];
+    const frames = [];
+    const createNode = () => ({
+        inert: false, scrollTop: 80, style: { setProperty() {} }, attributes: new Map(),
+        classList: { values: new Set(), add(...names) { names.forEach(name => this.values.add(name)); },
+            remove(...names) { names.forEach(name => this.values.delete(name)); } },
+        cloneNode: createNode, querySelectorAll: () => [],
+        getBoundingClientRect: () => ({ top: 0, bottom: 800 }),
+        setAttribute(name, value) { this.attributes.set(name, value); },
+        removeAttribute(name) { this.attributes.delete(name); },
+        append(...children) { children.forEach(child => nodes.add(child)); },
+        remove() { nodes.delete(this); }, focus() { this.focused = true; },
+        animate() { const animation = { pause() {}, play() {}, cancel() { this.cancelled = true; } };
+            animations.push(animation); return animation; }
+    });
+    const shell = createNode();
+    const leftPage = createNode();
+    const rightPage = createNode();
+    const closedBookCover = createNode();
+    const spread = createNode();
+    spread.parentElement = createNode();
+    spread.closest = () => shell;
+    let reduced = false;
+    let mobile = false;
+    globalThis.window = { matchMedia: query => ({ matches: query.includes('reduced-motion') ? reduced : mobile }) };
+    globalThis.document = { createElement: createNode };
+    globalThis.getComputedStyle = () => ({ background: '#eee' });
+    globalThis.requestAnimationFrame = callback => { frames.push(callback); return frames.length; };
+    globalThis.cancelAnimationFrame = () => {};
+    app.setTestState({ shell, spread, leftPage, rightPage, closedBookCover });
+    let renders = 0;
+    app.renderWithBookCover(() => { renders += 1; }, 'closing');
+    assert.equal(renders, 0, '合书开始时不能清空当前正文');
+    assert.equal(leftPage.inert, true);
+    assert.equal(rightPage.inert, true);
+    frames.shift()();
+    t.mock.timers.tick(1249);
+    assert.equal(renders, 0);
+    t.mock.timers.tick(1);
+    assert.equal(renders, 1);
+    assert.equal(closedBookCover.focused, true);
+    assert.equal(leftPage.inert, false);
+    assert.equal(closedBookCover.attributes.has('aria-hidden'), false);
+    assert.equal([...nodes].some(node => node.className === 'book-cover-leaf'), false);
+
+    app.renderWithBookCover(() => { renders += 1; }, 'closing');
+    app.clearPageTurn();
+    frames.shift()();
+    t.mock.timers.tick(2000);
+    assert.equal(renders, 2, '取消首帧或调整视口不得重复提交目标画面');
+    assert.equal(shell.classList.values.size, 0);
+    assert.equal(animations.every(animation => animation.cancelled), true);
+
+    reduced = true;
+    app.renderWithBookCover(() => { renders += 1; }, 'opening');
+    assert.equal(renders, 3);
+    assert.equal(shell.classList.values.size, 0);
+    reduced = false;
+    mobile = true;
+    app.renderWithBookCover(() => { renders += 1; }, 'opening');
+    assert.equal(renders, 4);
+    assert.equal([...nodes].some(node => node.className === 'book-cover-leaf'), false);
+    frames.shift()();
+    t.mock.timers.tick(480);
+    assert.equal(shell.focused, true);
+    assert.equal(rightPage.inert, false);
 });
 
 test('卷曲从下角向内扩散，纸面共享边界且正反向准确落页', () => {

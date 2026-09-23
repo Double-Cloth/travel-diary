@@ -42,7 +42,7 @@ const LEDGER_FILTER_DEFAULTS = {
     sort: DEFAULT_LEDGER_SORT
 };
 const PAGE_TURN_MS = 920;
-const BOOK_COVER_TRANSITION_MS = 900;
+const BOOK_COVER_TRANSITION_MS = 1250;
 const SEARCH_UPDATE_DELAY_MS = 180;
 const COVER_RECENT_RECORD_LIMIT = 7;
 const COVER_RECENT_RECORD_MIN = 2;
@@ -2540,25 +2540,86 @@ function clearPageTurn() {
     pageTurnCleanup?.();
     pageTurnCleanup = null;
     refs.shell?.classList.remove('book-opening', 'book-closing');
+    refs.closedBookCover?.removeAttribute('aria-hidden');
     refs.spread?.classList.remove('turn-forward', 'turn-back', 'turn-mobile', 'turn-mobile-back', 'book-turn-preparing');
 }
 
 function renderWithBookCover(renderFn, mode) {
     clearPageTurn();
-    renderFn();
-
-    if (!refs.shell || isMobileLayout() || prefersReducedMotion()) {
+    if (!refs.shell || prefersReducedMotion()) {
+        renderFn();
         return;
     }
 
-    const className = mode === 'closing' ? 'book-closing' : 'book-opening';
+    const closing = mode === 'closing';
+    const mobile = isMobileLayout();
+    const duration = mobile ? 480 : BOOK_COVER_TRANSITION_MS;
+    // 合拢前保留当前正文；中断时也完成路由，避免地址与可见内容不同步。
+    if (!closing) renderFn();
+    const className = closing ? 'book-closing' : 'book-opening';
+    const inertState = [refs.leftPage.inert, refs.rightPage.inert];
+    const animations = [];
+    let leaf = null;
+    let coverShadow = null;
+    let startFrame = null;
+    let finished = false;
+
+    if (!mobile) {
+        leaf = document.createElement('div');
+        leaf.className = 'book-cover-leaf';
+        leaf.setAttribute('aria-hidden', 'true');
+        leaf.inert = true;
+        const front = refs.closedBookCover.cloneNode(true);
+        front.removeAttribute('id');
+        front.removeAttribute('data-action');
+        front.classList.add('book-cover-front');
+        const back = document.createElement('div');
+        back.className = 'book-cover-back';
+        const inside = cloneTurningPage(refs.leftPage);
+        back.append(inside);
+        leaf.append(front, back);
+        coverShadow = document.createElement('div');
+        coverShadow.className = 'book-cover-shadow';
+        coverShadow.setAttribute('aria-hidden', 'true');
+        refs.spread.parentElement.append(coverShadow, leaf);
+        inside.scrollTop = refs.leftPage.scrollTop;
+        // 正反封皮绕同一个装订轴转动；书体平移将合上的半本书放回桌面中央。
+        const poses = [
+            { transform: 'rotateY(0deg)', offset: 0 },
+            { transform: 'rotateY(-12deg)', offset: 0.12 },
+            { transform: 'rotateY(-92deg)', offset: 0.52 },
+            { transform: 'rotateY(-178deg)', offset: 0.9 },
+            { transform: 'rotateY(-180deg)', offset: 1 }
+        ];
+        animations.push(leaf.animate(poses, { duration, fill: 'both',
+            direction: closing ? 'reverse' : 'normal', easing: 'cubic-bezier(.45,0,.55,1)' }));
+    }
+
+    refs.shell.style.setProperty('--book-cover-ms', `${duration}ms`);
     refs.shell.classList.add(className);
+    refs.leftPage.inert = refs.rightPage.inert = true;
     refs.closedBookCover?.setAttribute('aria-hidden', 'true');
-    bookTransitionTimer = window.setTimeout(() => {
-        refs.shell?.classList.remove(className);
+    animations.forEach(animation => { animation.pause(); animation.currentTime = 0; });
+    pageTurnCleanup = () => {
+        if (finished) return;
+        finished = true;
+        cancelAnimationFrame(startFrame);
+        animations.forEach(animation => animation.cancel());
+        leaf?.remove();
+        coverShadow?.remove();
+        [refs.leftPage.inert, refs.rightPage.inert] = inertState;
+        if (closing) renderFn();
+        refs.shell.classList.remove(className);
         refs.closedBookCover?.removeAttribute('aria-hidden');
-        bookTransitionTimer = null;
-    }, BOOK_COVER_TRANSITION_MS);
+        // 焦点落到新可见的书本表面，避免停留在已隐藏的封面或合书书签上。
+        const focusTarget = closing ? refs.closedBookCover : refs.spread.closest('main');
+        focusTarget?.focus({ preventScroll: true });
+    };
+    startFrame = requestAnimationFrame(() => {
+        if (finished) return;
+        animations.forEach(animation => animation.play());
+        bookTransitionTimer = setTimeout(clearPageTurn, duration);
+    });
 }
 
 function cloneTurningPage(page) {
