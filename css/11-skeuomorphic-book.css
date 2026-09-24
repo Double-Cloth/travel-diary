@@ -12,6 +12,10 @@ body {
     background-image: linear-gradient(#28160a0d, #1a0d072e), url('../assets/images/backgrounds/body-background-travel-diary.png');
 }
 
+body[data-route='archive'] .paper-page {
+    --page-art: url('../assets/images/pages/left-page-profile-travel-diary.png');
+}
+
 .paper-page .paper-button,
 .paper-page .sheet-nav-button,
 .paper-page .ribbon-back,
@@ -247,22 +251,32 @@ body {
 .archive-overview-block { margin-top: 0; }
 .archive-overview-block h3 { margin-bottom: 8px; }
 .entry-book-index { display: flex; flex-direction: column; gap: 34px; }
-.entry-book-index .entry-book-back { padding: 0; min-height: 28px; border: 0; box-shadow: none; background: none; font-size: 15px; }
+.paper-page .entry-book-index .entry-book-back {
+    display: inline-flex;
+    align-items: center;
+    width: fit-content;
+    min-height: 38px;
+    padding: 8px 12px;
+    border: 1px solid #8e714b;
+    border-radius: 5px;
+    background: var(--control-face);
+    box-shadow: var(--control-shadow);
+    font-size: 14px;
+}
+.paper-page .entry-book-index .entry-book-back:hover,
+.paper-page .entry-book-index .entry-book-back:focus-visible {
+    padding: 8px 12px;
+    border-color: #795b36;
+    background: var(--control-face);
+    box-shadow: var(--control-shadow);
+    transform: none;
+}
 .entry-book-heading { display: grid; gap: 16px; padding: 12px 0 30px; border-bottom: 3px double #8d4a3966; }
 .entry-book-index h1 { font-size: clamp(38px, 4.5vw, 64px); line-height: 1.3; letter-spacing: .05em; overflow-wrap: anywhere; }
 .entry-book-date { border: 0; padding: 0; color: var(--ink-soft); }
 .entry-book-location { gap: 14px; }
 .entry-book-location .location-chip { font-size: 15px; }
 .entry-book-location .trip-stamp { background: transparent; color: var(--stamp); border: 1px solid #8d4a3955; padding: 5px 8px; transform: rotate(-3deg); }
-.entry-neighbors h2 { margin: 0 0 18px; font-size: 20px; font-weight: 500; color: #754633; }
-.entry-neighbor { display: grid; grid-template-columns: 64px minmax(0, 1fr) 18px; align-items: center; gap: 16px; width: 100%; min-height: 66px; padding: 14px 0; border: 0; border-top: 1px solid var(--line); color: var(--ink); background: transparent; text-align: left; font-family: inherit; cursor: pointer; transition: background 180ms, padding 180ms; }
-.entry-neighbor:last-child { border-bottom: 1px solid var(--line); }
-.entry-neighbor span { font-size: 13px; color: var(--ink-soft); }
-.entry-neighbor strong { font-size: 19px; font-weight: 500; overflow-wrap: anywhere; }
-.entry-neighbor svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; transition: transform 180ms; }
-button.entry-neighbor:hover { background: #fff9e455; padding-inline: 8px; }
-button.entry-neighbor:hover svg { transform: translateX(3px); }
-.entry-neighbor-empty { cursor: default; opacity: .6; }
 .entry-management { margin-top: auto; border: 1px solid #96794b45; border-radius: 4px; background: #ddc8a014; }
 .entry-management summary { min-height: 48px; padding: 14px 18px; cursor: pointer; color: var(--ink-soft); font-size: 14px; }
 .entry-management summary::marker { color: #947347; font-size: 10px; }
@@ -319,21 +333,29 @@ button.entry-neighbor:hover svg { transform: translateX(3px); }
     }
     .chapter-tab:nth-child(2) { --tab-color: #8d4a39; }
     .chapter-tab:nth-child(3) { --tab-color: #5f6247; }
-    .chapter-tab-active { filter: brightness(1.13); box-shadow: inset 0 0 0 2px #f1d392ae, inset 0 0 0 4px #321c14, inset 0 3px 7px #1b0d0873, 4px 6px 8px #140b087d; }
-    .chapter-tab-active::after { top: auto; bottom: 8px; background: #f7d994; box-shadow: 0 1px #342012; }
+    .chapter-tab.chapter-tab-active,
+    .chapter-tab.chapter-tab-active:hover,
+    .chapter-tab.chapter-tab-active:focus-visible {
+        color: #49301f;
+        background: var(--plaque-face);
+        box-shadow: inset 0 0 0 2px #fff4d1, inset 0 0 0 4px #8f6d43, 0 3px 0 #67472a, 5px 8px 12px #140b087d;
+        text-shadow: 0 1px #fff6d8;
+        filter: none;
+        transform: translateX(9px);
+    }
+    .chapter-tab-active::after { top: auto; bottom: 9px; background: #8b6238; box-shadow: 0 1px #fff5d1; }
     .spine-tools { top: 25px; right: 30px; }
     .paper-page,
     .paper-page-right.map-pocket,
     .paper-page-right.dossier-page {
         padding: 66px clamp(26px, 3vw, 46px) 36px;
-        background: linear-gradient(90deg, #fffbed30, transparent 80%, #714a2520), url('../assets/textures/paper-grain.png'), repeating-linear-gradient(0deg, transparent 0 31px, #82663d09 31px 32px), #f3e8cf;
-        background-blend-mode: normal, multiply, normal, normal;
+        background: linear-gradient(90deg, #fff8e4c9, #f5e9d2cc 72%, #e9d5b9d6), var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.png')) center / cover, url('../assets/textures/paper-grain.png'), #f3e8cf;
     }
     .paper-page-right,
     .paper-page-right.map-pocket,
     .paper-page-right.dossier-page {
         padding-top: 66px;
-        background-image: linear-gradient(90deg, #714a2524, transparent 15%, #fffbed25 80%, #714a2512), url('../assets/textures/paper-grain.png'), repeating-linear-gradient(0deg, transparent 0 31px, #82663d09 31px 32px);
+        background: linear-gradient(90deg, #e9d5b9db, #fff8e4d9 17%, #f5e9d2d9 82%, #e9d5b9dc), var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.png')) center / cover, url('../assets/textures/paper-grain.png'), #f3e8cf;
     }
     .page-spread::before, .page-spread::after { opacity: .85; }
     .page-head h1 { font-size: clamp(28px, 2.35vw, 36px); line-height: 1.4; }
@@ -449,7 +471,6 @@ button.entry-neighbor:hover svg { transform: translateX(3px); }
     .entry-book-heading { padding: 0 0 20px; gap: 10px; }
     .entry-book-index h1 { font-size: 36px; }
     .entry-book-location .location-chip { font-size: 12px; }
-    .entry-neighbors { display: none; }
     .entry-management { margin-top: 0; }
     .entry-management summary { min-height: 42px; padding: 12px; }
     .entry-book-article { min-height: 0; }
@@ -490,7 +511,11 @@ button.entry-neighbor:hover svg { transform: translateX(3px); }
     .chapter-tab-active:nth-child(2),
     .chapter-tab-active:nth-child(3) { color: #fff1d3; background: linear-gradient(#42291e, #70503a); box-shadow: inset 0 2px 4px #1f100a77; }
     .chapter-tab-active::after { display: none; }
-    .paper-page { border-inline: 5px solid #bfa780; box-shadow: inset 3px 0 7px #85643e22; }
+    .paper-page {
+        border-inline: 5px solid #bfa780;
+        box-shadow: inset 3px 0 7px #85643e22;
+        background: linear-gradient(#f9efdfdf, #f4e8d7e3), var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.png')) center / cover, url('../assets/textures/paper-grain.png'), #f3e8cf;
+    }
     .year-bookmark { padding-inline: 13px; }
     .paper-page .paper-button, .paper-page .sheet-nav-button { min-height: 42px; }
     .journal-shell.book-opening .journal-stage { animation: pocketBookOpen var(--book-cover-ms) ease-out both; transform-origin: left center; }

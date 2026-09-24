@@ -131,6 +131,11 @@
     inset: auto 0 calc(100% + 8px);
 }
 
+.ledger-feature-filters .custom-select-menu {
+    min-width: 0;
+    max-width: none;
+}
+
 .custom-select-menu[hidden],
 .record-editor-autocomplete-menu[hidden] { display: none; }
 .custom-select-menu::-webkit-scrollbar,

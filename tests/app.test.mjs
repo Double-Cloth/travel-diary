@@ -64,7 +64,7 @@ export function setTestState(values) {
 `);
 delete globalThis.document;
 
-test('长短篇详情正文只渲染一次，相邻篇目和管理入口不复制正文', t => {
+test('长短篇详情正文只渲染一次，页尾翻篇与管理入口不重复', t => {
     const previous = globalThis.requestAnimationFrame;
     globalThis.requestAnimationFrame = () => 1;
     t.after(() => { globalThis.requestAnimationFrame = previous; });
@@ -74,8 +74,9 @@ test('长短篇详情正文只渲染一次，相邻篇目和管理入口不复�
         const result = app.renderTestEntry(record, { index: 1, total: 3, previous: { id: 'prev', title: '前一篇' }, next: { id: 'next', title: '后一篇' } });
         assert.equal(result.left.includes(body), false);
         assert.equal(result.right.split(body).length - 1, 1);
-        assert.match(result.left, /相邻篇目/);
-        assert.match(result.left, /data-action="entry-next" data-entry-id="next"/);
+        assert.doesNotMatch(result.left, /data-action="entry-next"|data-action="entry-prev"/);
+        assert.equal((result.right.match(/data-action="entry-next"/g) || []).length, 1);
+        assert.equal((result.right.match(/data-action="entry-prev"/g) || []).length, 1);
         assert.match(result.left, /<details class="entry-management">/);
         assert.doesNotMatch(result.right, /没有图片或视频附件/);
         assert.match(result.right, /02 \/ 3/);

@@ -8,7 +8,7 @@ import { confirmFeedback, showFeedback } from './feedback-dialog.js';
 import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20260914-profile-upload-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
-import { enhanceCustomSelects } from './custom-select.js?v=20260913-select-placement-v3';
+import { enhanceCustomSelects } from './custom-select.js?v=20260924-page-polish-v1';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
@@ -1480,11 +1480,6 @@ function renderEntryRoute(params = {}) {
                     ${renderTripGroupHint(record)}
                 </div>
             </div>
-            <nav class="entry-neighbors" aria-label="相邻篇目">
-                <h2>相邻篇目</h2>
-                ${renderEntryNeighbor(navigation.previous, 'prev', '上一篇')}
-                ${renderEntryNeighbor(navigation.next, 'next', '下一篇')}
-            </nav>
             <details class="entry-management">
                 <summary>记录管理</summary>
                 <div class="sheet-record-actions" aria-label="记录管理">
@@ -1506,14 +1501,6 @@ function renderEntryRoute(params = {}) {
     `, 'entry-book-page');
 
     requestAnimationFrame(() => queuePhotoSleevePreviewSync());
-}
-
-function renderEntryNeighbor(record, direction, label) {
-    if (!record) return `<div class="entry-neighbor entry-neighbor-empty"><span>${label}</span><span>已到${direction === 'prev' ? '首' : '末'}篇</span></div>`;
-    return `<button class="entry-neighbor" type="button" data-action="entry-${direction}" data-entry-id="${escapeHtml(record.id)}">
-        <span>${label}</span><strong>${escapeHtml(record.title)}</strong>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
-    </button>`;
 }
 
 function renderEntryPhotosRoute(params = {}) {

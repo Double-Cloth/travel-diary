@@ -44,15 +44,31 @@ function updateCustomSelectPlacement(wrapper) {
 
     const boundary = getCustomSelectBoundary(wrapper);
     const triggerRect = trigger.getBoundingClientRect();
-    const menuRect = menu.getBoundingClientRect();
     const boundaryRect = boundary === document.documentElement
-        ? { top: 0, bottom: window.innerHeight }
+        ? { top: 0, right: window.innerWidth, bottom: window.innerHeight, left: 0 }
         : boundary.getBoundingClientRect();
+    const isLedgerFilter = Boolean(wrapper.closest('.ledger-feature-filters'));
     const gap = 8;
-    const spaceBelow = boundaryRect.bottom - triggerRect.bottom - gap;
-    const spaceAbove = triggerRect.top - boundaryRect.top - gap;
+    const visibleTop = Math.max(8, boundaryRect.top);
+    const visibleBottom = Math.min(window.innerHeight - 8, boundaryRect.bottom);
+    const spaceBelow = Math.max(0, visibleBottom - triggerRect.bottom - gap);
+    const spaceAbove = Math.max(0, triggerRect.top - visibleTop - gap);
 
-    const opensUpward = menuRect.height > spaceBelow && spaceAbove > spaceBelow;
+    if (isLedgerFilter) {
+        const boundaryLeft = Math.max(8, boundaryRect.left + 8);
+        const boundaryRight = Math.min(window.innerWidth - 8, boundaryRect.right - 8);
+        const menuWidth = Math.max(0, Math.min(320, Math.max(240, triggerRect.width), boundaryRight - boundaryLeft));
+        const menuLeft = Math.min(Math.max(triggerRect.left, boundaryLeft), boundaryRight - menuWidth);
+        menu.style.width = `${menuWidth}px`;
+        menu.style.left = `${menuLeft - wrapper.getBoundingClientRect().left}px`;
+        menu.style.right = 'auto';
+    }
+
+    const menuHeight = Math.min(menu.scrollHeight, 272);
+    const opensUpward = menuHeight > spaceBelow && spaceAbove > spaceBelow;
+    if (isLedgerFilter) {
+        menu.style.maxHeight = `${Math.min(272, opensUpward ? spaceAbove : spaceBelow)}px`;
+    }
     wrapper.classList.toggle('is-open-upward', opensUpward);
     wrapper.classList.toggle('is-open-downward', !opensUpward);
     if (wasHidden) menu.hidden = true;
