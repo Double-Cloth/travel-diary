@@ -256,7 +256,6 @@ body[data-route="cover"] .page-spread { visibility: hidden; }
 }
 
 .entry-book-article .markdown-content { font-size: 17px; }
-.entry-book-page .sheet-nav { margin-bottom: 4px; }
 
 /* 外侧页角给出可翻动的材质提示，真正交互仍由可访问的章节与篇章按钮承担。 */
 @media (min-width: 761px) {

@@ -1480,6 +1480,11 @@ function renderEntryRoute(params = {}) {
                     ${renderTripGroupHint(record)}
                 </div>
             </div>
+            <nav class="entry-neighbors" aria-label="相邻篇目">
+                <h2>相邻篇目</h2>
+                ${renderEntryNeighbor(navigation.previous, 'prev', '上一篇')}
+                ${renderEntryNeighbor(navigation.next, 'next', '下一篇')}
+            </nav>
             <details class="entry-management">
                 <summary>记录管理</summary>
                 <div class="sheet-record-actions" aria-label="记录管理">
@@ -1496,11 +1501,18 @@ function renderEntryRoute(params = {}) {
                 previewRows: ENTRY_PHOTO_PREVIEW_ROWS,
                 showViewAll: true
             }) : ''}
-            ${renderEntrySheetNav(navigation)}
         </article>
     `, 'entry-book-page');
 
     requestAnimationFrame(() => queuePhotoSleevePreviewSync());
+}
+
+function renderEntryNeighbor(record, direction, label) {
+    if (!record) return `<div class="entry-neighbor entry-neighbor-empty"><span>${label}</span><span>已到${direction === 'prev' ? '首' : '末'}篇</span></div>`;
+    return `<button class="entry-neighbor" type="button" data-action="entry-${direction}" data-entry-id="${escapeHtml(record.id)}">
+        <span>${label}</span><strong>${escapeHtml(record.title)}</strong>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+    </button>`;
 }
 
 function renderEntryPhotosRoute(params = {}) {
@@ -1588,24 +1600,6 @@ function getEntryNavigation(record) {
         previous: index > 0 ? records[index - 1] : null,
         next: index >= 0 && index < records.length - 1 ? records[index + 1] : null
     };
-}
-
-function renderEntrySheetNav(navigation) {
-    const position = navigation.index >= 0
-        ? `${navigation.index + 1} / ${navigation.total}`
-        : `1 / ${Math.max(navigation.total, 1)}`;
-
-    return `
-        <nav class="sheet-nav" aria-label="日记翻页">
-            <button class="paper-button sheet-nav-button" type="button" data-action="entry-prev" data-entry-id="${navigation.previous ? escapeHtml(navigation.previous.id) : ''}" ${navigation.previous ? '' : 'disabled'} aria-label="上一篇日记">
-                上一篇
-            </button>
-            <span class="sheet-nav-count">${escapeHtml(position)}</span>
-            <button class="paper-button sheet-nav-button" type="button" data-action="entry-next" data-entry-id="${navigation.next ? escapeHtml(navigation.next.id) : ''}" ${navigation.next ? '' : 'disabled'} aria-label="下一篇日记">
-                下一篇
-            </button>
-        </nav>
-    `;
 }
 
 async function deleteTravelRecord(record, authenticatedCapability = null) {

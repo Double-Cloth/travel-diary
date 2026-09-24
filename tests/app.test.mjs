@@ -64,7 +64,7 @@ export function setTestState(values) {
 `);
 delete globalThis.document;
 
-test('长短篇详情正文只渲染一次，页尾翻篇与管理入口不重复', t => {
+test('长短篇详情正文只渲染一次，左页相邻篇目与管理入口不重复', t => {
     const previous = globalThis.requestAnimationFrame;
     globalThis.requestAnimationFrame = () => 1;
     t.after(() => { globalThis.requestAnimationFrame = previous; });
@@ -74,13 +74,27 @@ test('长短篇详情正文只渲染一次，页尾翻篇与管理入口不重�
         const result = app.renderTestEntry(record, { index: 1, total: 3, previous: { id: 'prev', title: '前一篇' }, next: { id: 'next', title: '后一篇' } });
         assert.equal(result.left.includes(body), false);
         assert.equal(result.right.split(body).length - 1, 1);
-        assert.doesNotMatch(result.left, /data-action="entry-next"|data-action="entry-prev"/);
-        assert.equal((result.right.match(/data-action="entry-next"/g) || []).length, 1);
-        assert.equal((result.right.match(/data-action="entry-prev"/g) || []).length, 1);
+        assert.match(result.left, /相邻篇目/);
+        assert.equal((result.left.match(/data-action="entry-next"/g) || []).length, 1);
+        assert.equal((result.left.match(/data-action="entry-prev"/g) || []).length, 1);
+        assert.match(result.left, /data-action="entry-next" data-entry-id="next"/);
+        assert.match(result.left, /data-action="entry-prev" data-entry-id="prev"/);
+        assert.doesNotMatch(result.right, /data-action="entry-next"|data-action="entry-prev"|class="sheet-nav"/);
         assert.match(result.left, /<details class="entry-management">/);
         assert.doesNotMatch(result.right, /没有图片或视频附件/);
         assert.match(result.right, /02 \/ 3/);
     }
+});
+
+test('首末篇在相邻篇目中显示不可点击的边界提示', t => {
+    const previous = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = () => 1;
+    t.after(() => { globalThis.requestAnimationFrame = previous; });
+    const record = normalizeTravelLocation({ id: 'only', date: '2026-08-28', country_code: 'CN', locality: '重庆市', title: '重庆', photos: [], videos: [] });
+    const result = app.renderTestEntry(record, { index: 0, total: 1, previous: null, next: null });
+    assert.match(result.left, /已到首篇/);
+    assert.match(result.left, /已到末篇/);
+    assert.doesNotMatch(result.left, /data-action="entry-next"|data-action="entry-prev"/);
 });
 
 test('删除已提交但数据刷新失败时返回已删除状态，避免误报删除失败', async t => {

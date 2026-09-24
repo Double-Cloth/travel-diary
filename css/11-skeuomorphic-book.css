@@ -277,6 +277,15 @@ body[data-route='archive'] .paper-page {
 .entry-book-location { gap: 14px; }
 .entry-book-location .location-chip { font-size: 15px; }
 .entry-book-location .trip-stamp { background: transparent; color: var(--stamp); border: 1px solid #8d4a3955; padding: 5px 8px; transform: rotate(-3deg); }
+.entry-neighbors h2 { margin: 0 0 18px; font-size: 20px; font-weight: 500; color: #754633; }
+.entry-neighbor { display: grid; grid-template-columns: 64px minmax(0, 1fr) 18px; align-items: center; gap: 16px; width: 100%; min-height: 66px; padding: 14px 0; border: 0; border-top: 1px solid var(--line); color: var(--ink); background: transparent; text-align: left; font-family: inherit; cursor: pointer; transition: background 180ms, padding 180ms; }
+.entry-neighbor:last-child { border-bottom: 1px solid var(--line); }
+.entry-neighbor span { font-size: 13px; color: var(--ink-soft); }
+.entry-neighbor strong { font-size: 19px; font-weight: 500; overflow-wrap: anywhere; }
+.entry-neighbor svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; transition: transform 180ms; }
+button.entry-neighbor:hover, button.entry-neighbor:focus-visible { background: #fff9e455; padding-inline: 8px; }
+button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { transform: translateX(3px); }
+.entry-neighbor-empty { cursor: default; opacity: .6; }
 .entry-management { margin-top: auto; border: 1px solid #96794b45; border-radius: 4px; background: #ddc8a014; }
 .entry-management summary { min-height: 48px; padding: 14px 18px; cursor: pointer; color: var(--ink-soft); font-size: 14px; }
 .entry-management summary::marker { color: #947347; font-size: 10px; }
@@ -286,8 +295,6 @@ body[data-route='archive'] .paper-page {
 .entry-book-article::before { content: none; }
 .entry-running-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding-bottom: 15px; margin-bottom: 34px; border-bottom: 1px solid #80684766; color: var(--ink-soft); font-size: 16px; }
 .entry-running-head span:last-child { font: 12px var(--font-code); white-space: nowrap; }
-.entry-book-page .sheet-nav { margin-top: auto; padding-top: 30px; padding-bottom: 4px; border-top: 0; width: 100%; }
-.entry-book-page .sheet-nav-button { min-width: 96px; min-height: 44px; }
 .entry-book-article .markdown-content { color: #3c3025; font-size: 18px; line-height: 2.05; padding-bottom: 28px; overflow-wrap: anywhere; }
 .entry-book-article .markdown-content p { margin: 0 0 1.4em; }
 .entry-book-article .markdown-content p:last-child { margin-bottom: 0; }
@@ -471,15 +478,15 @@ body[data-route='archive'] .paper-page {
     .entry-book-heading { padding: 0 0 20px; gap: 10px; }
     .entry-book-index h1 { font-size: 36px; }
     .entry-book-location .location-chip { font-size: 12px; }
+    .entry-neighbors h2 { margin-bottom: 8px; font-size: 18px; }
+    .entry-neighbor { min-height: 58px; gap: 10px; }
+    .entry-neighbor strong { font-size: 16px; }
     .entry-management { margin-top: 0; }
     .entry-management summary { min-height: 42px; padding: 12px; }
     .entry-book-article { min-height: 0; }
     .entry-running-head { margin-bottom: 24px; font-size: 14px; }
     .entry-book-article .markdown-content { font-size: 17px; line-height: 1.95; padding-bottom: 24px; }
     .entry-book-index .sheet-record-actions { padding-top: 12px; }
-    .entry-book-page .sheet-nav { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); gap: 10px; }
-    .entry-book-page .sheet-nav-button { padding-inline: 10px; }
-    .entry-book-page .sheet-nav { position: sticky; bottom: 0; margin: 12px -8px -12px; width: calc(100% + 16px); padding: 14px 8px max(14px, env(safe-area-inset-bottom)); background: url('../assets/textures/paper-grain.png'), #f3e8cf; border-top: 1px solid #a58b6055; box-shadow: 0 -5px 12px #6a4c2110; z-index: 3; }
     .turn-mobile > .paper-page-left { animation: none; }
     .page-spread.turn-mobile { animation: readerPageIn 420ms cubic-bezier(.22,.65,.25,1) both; }
     .page-spread.turn-mobile-back { --reader-shift: -22px; }
