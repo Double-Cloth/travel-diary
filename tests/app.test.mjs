@@ -9,6 +9,15 @@ export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteConten
     renderWithPageTurn, renderWithBookCover, clearPageTurn, cloneTurningPage, createPageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError };
+export function renderTestEntry(record, navigation) {
+    const originals = { setPages, getEntryNavigation, travelModel };
+    let result;
+    setPages = (left, right) => { result = { left, right }; };
+    getEntryNavigation = () => navigation;
+    travelModel = { ...deriveTravelModel([record]), recordsById: new Map([[record.id, record]]) };
+    try { renderEntryRoute({ id: record.id }); return result; }
+    finally { ({ setPages, getEntryNavigation, travelModel } = originals); }
+}
 export function stubReadingRoutes() {
     const originals = { renderLedger, renderCover, renderEntryRoute, renderEntryPhotosRoute,
         renderWithPageTurn, clearPageTurn, updateChapterTabs, restoreFocus,
@@ -54,6 +63,24 @@ export function setTestState(values) {
 }
 `);
 delete globalThis.document;
+
+test('长短篇详情正文只渲染一次，相邻篇目和管理入口不复制正文', t => {
+    const previous = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = () => 1;
+    t.after(() => { globalThis.requestAnimationFrame = previous; });
+    for (const body of ['只有一句旅行笔记。', '旅行经过只应出现一次。'.repeat(20)]) {
+        const record = normalizeTravelLocation({ id: 'current', date: '2026-08-28', country_code: 'CN', locality: '重庆市', title: '重庆',
+            descMarkdown: '# 重庆\n\n' + body, descBodyHtml: '<p>' + body + '</p>', photos: [], videos: [] });
+        const result = app.renderTestEntry(record, { index: 1, total: 3, previous: { id: 'prev', title: '前一篇' }, next: { id: 'next', title: '后一篇' } });
+        assert.equal(result.left.includes(body), false);
+        assert.equal(result.right.split(body).length - 1, 1);
+        assert.match(result.left, /相邻篇目/);
+        assert.match(result.left, /data-action="entry-next" data-entry-id="next"/);
+        assert.match(result.left, /<details class="entry-management">/);
+        assert.doesNotMatch(result.right, /没有图片或视频附件/);
+        assert.match(result.right, /02 \/ 3/);
+    }
+});
 
 test('删除已提交但数据刷新失败时返回已删除状态，避免误报删除失败', async t => {
     const previous = { window: globalThis.window, fetch: globalThis.fetch };
@@ -158,8 +185,8 @@ test('快速切换与取消翻页会清理旧副本并保持最后一次渲染',
         scrollTop: 45,
         children: [],
         getBoundingClientRect: () => ({ width: 600, height: 800 }),
-        animate() {
-            const animation = { cancelled: false, pause() {}, play() {}, cancel() { this.cancelled = true; } };
+        animate(keyframes, timing) {
+            const animation = { keyframes, timing, cancelled: false, pause() {}, play() {}, cancel() { this.cancelled = true; } };
             animations.push(animation);
             return animation;
         },
@@ -185,6 +212,8 @@ test('快速切换与取消翻页会清理旧副本并保持最后一次渲染',
     assert.equal(rightPage.inert, true);
     const firstLeaf = [...copies].find(node => node.className === 'book-turn-leaf');
     assert.equal(firstLeaf.inert, true);
+    assert.equal(animations[0].keyframes.find(frame => frame.offset === .72).opacity, 1);
+    assert.equal(animations[0].keyframes.at(-1).opacity, 0, '对页副本在落页前完成交接');
     t.mock.timers.tick(100);
     app.renderWithPageTurn(() => { rendered = '第二页'; }, { direction: 'back' });
     assert.equal(copies.has(firstLeaf), false);
@@ -289,7 +318,7 @@ test('合书保留原页直到落稳，中断会恢复交互且只提交一次�
     assert.equal(renders, 0, '合书开始时不能清空当前正文');
     assert.equal(leftPage.inert, true);
     assert.equal(rightPage.inert, true);
-    assert.equal(animations.length, 5, '封皮、封扣、书体、投影与光照共同参与开合');
+    assert.equal(animations.length, 6, '封皮、封扣、书体、投影与双面光照共同参与开合');
     assert.equal(animations.every(animation => animation.state === 'paused'), true, '首帧前所有动画必须暂停');
     frames.shift()();
     assert.equal(animations.every(animation => animation.state === 'running' && animation.currentTime === 0), true, '所有部件从同一首帧起播');
@@ -338,7 +367,7 @@ test('卷曲从下角向内扩散，纸面共享边界且正反向准确落页',
         const early = frames.map(band => band[10]);
         assert.ok(early[0].first.z === 0 && early[10].first.z === 0, '靠近书脊的纸张仍贴在底页');
         assert.ok(early[15].last.z > 0, '外侧下角已经开始卷动');
-        assert.ok(early[0].tilt > 0.4, '弯曲边界保持斜向，不能整条竖边同时翻动');
+        assert.ok(early[0].tilt > 0.18 && early[0].tilt < 0.25, '下角轻微先行，避免整张纸大幅斜飞');
         for (let frame = 0; frame <= 48; frame += 1) {
             for (let index = 0; index < frames.length - 1; index += 1) {
                 assert.ok(Math.abs(frames[index][frame].last.u - frames[index + 1][frame].first.u) < 1e-8);

@@ -188,8 +188,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260923-skeuomorphic-v2/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260923-skeuomorphic-v2/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260924-reader-v3/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260924-reader-v3/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -389,7 +389,7 @@ test('首页只显示合盖封面，日记详情与篇章导航进入整书翻�
     assert.match(appJs, /function renderCover\(\)\s*\{[\s\S]*setPages\('', ''\);/);
     assert.match(appJs, /function renderEntryRoute[\s\S]*entry-book-index[\s\S]*entry-book-article/);
     assert.match(appJs, /data-action="entry-prev"[\s\S]*data-action="entry-next"/);
-    assert.match(appJs, /function getPageCurlStripCount[\s\S]*return 12;[\s\S]*return width > 760 \? 18 : 15;/);
+    assert.match(appJs, /function getPageCurlStripCount[\s\S]*return 12;[\s\S]*return width < 520 \? 18 : 24;/);
     assert.match(journalCss, /body\[data-route="cover"\] \.closed-book-cover\s*\{\s*display: block;/);
     assert.match(journalCss, /\.book-cover-leaf[\s\S]*transform-origin: 0 50%;[\s\S]*transform-style: preserve-3d/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.entry-book-index/);

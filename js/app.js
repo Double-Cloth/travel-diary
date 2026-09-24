@@ -1478,30 +1478,40 @@ function renderEntryRoute(params = {}) {
     }
 
     const navigation = getEntryNavigation(record);
-    const summary = getEntryBookSummary(record);
+    const position = navigation.index >= 0 ? navigation.index + 1 : 1;
+    const media = getRecordMedia(record);
     setPages(`
         <article class="entry-book-index" aria-labelledby="entryBookTitle">
             <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回原处</a>
-            <p class="journal-label">旅行手记</p>
-            <time class="entry-book-date" datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '日期未记')}</time>
-            <h1 id="entryBookTitle">${escapeHtml(record.title)}</h1>
-            <div class="entry-book-location">
-                <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(getLocationText(record))}</a>
-                ${renderTripGroupHint(record)}
+            <div class="entry-book-heading">
+                <time class="entry-book-date" datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '日期未记')}</time>
+                <h1 id="entryBookTitle">${escapeHtml(record.title)}</h1>
+                <div class="entry-book-location">
+                    <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(getLocationText(record))}</a>
+                    ${renderTripGroupHint(record)}
+                </div>
             </div>
-            ${summary ? `<blockquote class="entry-book-quote">${escapeHtml(summary)}</blockquote>` : ''}
-            <div class="sheet-record-actions" aria-label="记录管理">
-                <button class="paper-button" type="button" data-action="edit-record" data-record-id="${escapeHtml(record.id)}">修改记录</button>
-                <button class="paper-button sheet-delete-button" type="button" data-action="delete-record" data-record-id="${escapeHtml(record.id)}">删除记录</button>
-            </div>
+            <nav class="entry-neighbors" aria-label="相邻篇目">
+                <h2>相邻篇目</h2>
+                ${renderEntryNeighbor(navigation.previous, 'prev', '上一篇')}
+                ${renderEntryNeighbor(navigation.next, 'next', '下一篇')}
+            </nav>
+            <details class="entry-management">
+                <summary>记录管理</summary>
+                <div class="sheet-record-actions" aria-label="记录管理">
+                    <button class="paper-button" type="button" data-action="edit-record" data-record-id="${escapeHtml(record.id)}">修改记录</button>
+                    <button class="paper-button sheet-delete-button" type="button" data-action="delete-record" data-record-id="${escapeHtml(record.id)}">删除记录</button>
+                </div>
+            </details>
         </article>
     `, `
         <article class="entry-book-article" aria-label="${escapeHtml(record.title)}正文">
+            <header class="entry-running-head"><span>旅行手记</span><span>${String(position).padStart(2, '0')} / ${navigation.total || 1}</span></header>
             <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
-            ${renderPhotoSleeve(record, {
+            ${media.length ? renderPhotoSleeve(record, {
                 previewRows: ENTRY_PHOTO_PREVIEW_ROWS,
                 showViewAll: true
-            })}
+            }) : ''}
             ${renderEntrySheetNav(navigation)}
         </article>
     `, 'entry-book-page');
@@ -1509,17 +1519,12 @@ function renderEntryRoute(params = {}) {
     requestAnimationFrame(() => queuePhotoSleevePreviewSync());
 }
 
-function getEntryBookSummary(record) {
-    const source = record.descMarkdown || '';
-    const plainText = source
-        .replace(/^#{1,6}\s+.*$/gm, '')
-        .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-        .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1')
-        .replace(/[*_>`~-]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    // 短篇直接阅读正文，避免同一句话在左右两页重复出现。
-    return plainText.length > 120 ? `${plainText.slice(0, 92)}…` : '';
+function renderEntryNeighbor(record, direction, label) {
+    if (!record) return `<div class="entry-neighbor entry-neighbor-empty"><span>${label}</span><span>已到${direction === 'prev' ? '首' : '末'}篇</span></div>`;
+    return `<button class="entry-neighbor" type="button" data-action="entry-${direction}" data-entry-id="${escapeHtml(record.id)}">
+        <span>${label}</span><strong>${escapeHtml(record.title)}</strong>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
+    </button>`;
 }
 
 function renderEntryPhotosRoute(params = {}) {
@@ -2622,6 +2627,14 @@ function renderWithBookCover(renderFn, mode) {
             { filter: 'brightness(.62)', offset: .65 },
             { filter: 'brightness(.75)', offset: 1 }
         ], timing));
+        // 衬纸随封皮背光，再在落平时恢复与静态纸页相同的亮度。
+        animations.push(back.animate([
+            { filter: 'brightness(.78)', offset: 0 },
+            { filter: 'brightness(.78)', offset: .38 },
+            { filter: 'brightness(.92)', offset: .7 },
+            { filter: 'brightness(1)', offset: .97 },
+            { filter: 'brightness(1)', offset: 1 }
+        ], timing));
     }
 
     refs.shell.style.setProperty('--book-cover-ms', `${duration}ms`);
@@ -2691,10 +2704,10 @@ function createPageCurlFrames(width, height, backwards, count = 18) {
     for (let frame = 0; frame <= 48; frame += 1) {
         const time = frame / 48;
         const progress = time * time * (3 - 2 * time);
-        const tilt = 0.58 * (1 - progress);
+        const tilt = 0.24 * (1 - progress);
         const c = Math.cos(tilt);
         const s = Math.sin(tilt);
-        const radius = width * 0.14 * Math.sin(Math.PI * progress);
+        const radius = width * 0.10 * Math.sin(Math.PI * progress);
         const boundary = (c * width + s * height) * (1 - progress) - Math.PI * radius * progress / 2;
         const point = u => {
             const distance = Math.max(0, u - boundary);
@@ -2743,7 +2756,7 @@ function renderWithPageTurn(renderFn, options = {}) {
         renderFn();
         refs.spread.classList.add('turn-mobile');
         if (options.direction === 'back') refs.spread.classList.add('turn-mobile-back');
-        pageTurnTimer = setTimeout(clearPageTurn, 300);
+        pageTurnTimer = setTimeout(clearPageTurn, 420);
         return;
     }
 
@@ -2769,6 +2782,11 @@ function renderWithPageTurn(renderFn, options = {}) {
     const animations = [];
     const surfaces = [];
     const timing = { duration: PAGE_TURN_MS, fill: 'both', easing: 'linear' };
+    // 纸张落下的最后阶段逐渐交接底页，消除副本移除瞬间的闪变。
+    animations.push(resting.animate([
+        { opacity: 1, offset: 0 }, { opacity: 1, offset: .72 },
+        { opacity: 0, offset: .96 }, { opacity: 0, offset: 1 }
+    ], timing));
     frames.forEach((keyframes) => {
         const strip = document.createElement('div');
         strip.className = 'book-curl-strip';
@@ -2845,8 +2863,8 @@ function renderWithPageTurn(renderFn, options = {}) {
 function getPageCurlStripCount(width) {
     const constrainedDevice = globalThis.navigator?.hardwareConcurrency
         && globalThis.navigator.hardwareConcurrency <= 4;
-    if (constrainedDevice || width < 520) return 12;
-    return width > 760 ? 18 : 15;
+    if (constrainedDevice) return 12;
+    return width < 520 ? 18 : 24;
 }
 
 function handleDocumentClick(event) {
