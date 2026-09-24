@@ -59,14 +59,17 @@ test('应用外壳不再包含路线筛选抽屉', () => {
 });
 
 test('路线页不存在重复筛选入口', () => {
-    assert.doesNotMatch(appJs, /data-action="open-drawer"|筛选与排序|打开筛选面板/);
+    assert.doesNotMatch(appJs, /data-action="open-drawer"|打开筛选面板/);
+    assert.equal(appJs.match(/<button[^>]*data-action="show-ledger-filters"/g)?.length, 1);
+    assert.doesNotMatch(appJs, /ledger-feature-actions|ledger-feature-add|ledger-filter-jump/);
 });
 
 test('索引夹层包含完整且唯一的高级筛选工作台', () => {
     assert.match(appJs, /function renderLedgerFilterWorkbench/);
-    for (const key of ['year', 'month', 'country', 'area', 'locality', 'sort']) {
+    for (const key of ['month', 'country', 'area', 'locality', 'sort']) {
         assert.match(appJs, new RegExp(`renderLedgerSelect\\([^;]+['"]${key}['"]`));
     }
+    assert.doesNotMatch(appJs, /renderLedgerSelect\('年份', 'year'/);
     assert.match(appJs, /filterToggleButton\('首次到访', 'visit'/);
     assert.match(appJs, /filterToggleButton\('有媒体', 'media', 'any'/);
     assert.match(appJs, /filterToggleButton\('有图片', 'media'/);
@@ -76,12 +79,13 @@ test('索引夹层包含完整且唯一的高级筛选工作台', () => {
         /filterToggleButton\('全部', 'media', 'all'[^]*filterToggleButton\('有媒体', 'media', 'any'[^]*filterToggleButton\('无媒体', 'media', 'none'[^]*filterToggleButton\('有图片', 'media', 'photos'[^]*filterToggleButton\('有视频', 'media', 'videos'/
     );
     assert.match(appJs, /filterToggleButton\('有笔记', 'note'/);
-    assert.match(appJs, /重置全部/);
+    assert.match(appJs, /清除筛选与排序/);
     assert.doesNotMatch(appJs, /当前筛选|当前排序|切到最早优先|切回最新优先/);
 });
 
 test('索引夹层重置筛选位于筛选项之前且随内容滚动', () => {
     assert.match(appJs, /renderLedgerSnapshot\(snapshot, resultLabel\)\}\s+\$\{renderLedgerResetAction\(ledgerParams\)\}\s+\$\{renderLedgerFilterWorkbench\(ledgerParams\)\}/);
+    assert.match(appJs, /function renderLedgerResetAction\(params\)[\s\S]*if \(!canReset\) return '';/);
     assert.doesNotMatch(journalCss, /\.index-reset-anchor\s*{[^}]*position:\s*sticky;/);
     assert.match(journalCss, /\.index-reset-anchor\s*{[^}]*background: transparent;/);
     assert.doesNotMatch(journalCss, /\.index-reset-anchor\s*{[^}]*linear-gradient/);
@@ -188,8 +192,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260924-reader-v3/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260924-y2k-controls-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260924-interaction-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260924-interaction-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260913-select-placement-v3/);
@@ -420,7 +424,7 @@ test('个人主页提供经二次确认和密码验证保护的全部数据清�
     assert.match(dataTransferJs, /method: 'DELETE'/);
     assert.match(dataTransferJs, /result\.cleared/);
     assert.match(recordStoreJs, /if \(req\.method === 'DELETE'\) \{\s*const result = await clearTravelData\(root\)/);
-    assert.match(journalCss, /\.archive-data-transfer \.archive-data-clear\s*{/);
+    assert.match(journalCss, /\.archive-danger-zone \.archive-data-clear\s*{/);
 });
 
 test('全部数据导入先建立服务端会话并提交双重写入凭据', () => {

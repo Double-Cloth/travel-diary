@@ -51,21 +51,6 @@ body {
 
 .paper-page .sheet-delete-button { color: #8b3228; }
 
-.ledger-feature-add,
-.ledger-feature-add:hover,
-.ledger-feature-add:focus-visible {
-    min-height: 46px;
-    padding: 10px 22px;
-    border: 1px solid;
-    border-radius: 7px;
-    border-color: #402619;
-    color: #ffebbe;
-    background: linear-gradient(#fff4cd3d, #ffffff0a 43%, #170b075e 48%, #ffffff06 72%), var(--leather-grain), #64402a;
-    box-shadow: inset 0 0 0 1px #d6b27a, inset 0 0 0 3px #553823, 0 2px 0 #382418, 0 5px 9px #40261755;
-    text-shadow: 0 -1px #28190e;
-}
-.ledger-feature-add:active { transform: translateY(2px); box-shadow: inset 0 3px 7px #1f0d0a8c, inset 0 0 0 2px #ad8758, 0 1px #fff1c7; }
-
 .ink-field {
     display: flex;
     align-items: center;
@@ -241,7 +226,7 @@ body {
 .ledger-feature-caption { padding: 18px 20px; text-shadow: 0 2px 5px #0008; }
 .ledger-feature-caption small { color: #fff5e4; }
 .ledger-feature-caption span { color: #fff5e4; }
-.ledger-feature-actions .ledger-filter-jump { flex: 0 0 auto; min-height: 44px; padding: 9px 16px; }
+.ledger-controls .ledger-filter-trigger { min-height: 44px; padding: 9px 13px; white-space: nowrap; }
 .ledger-feature-filters:focus { outline: none; }
 .ledger-feature-filters:focus-visible { outline: 2px solid #9b6e42; outline-offset: 8px; }
 .index-dashboard-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
@@ -359,7 +344,7 @@ button.entry-neighbor:hover svg { transform: translateX(3px); }
     .ledger-feature-quote { font-size: 16px; line-height: 1.75; }
     .ledger-entry { padding: 16px 6px; }
     .ledger-entry:hover { transform: translateX(2px); background: #fff7df66; }
-    .ledger-record-heading, .ledger-feature-head .journal-label { margin-bottom: 12px; }
+    .ledger-feature-head .journal-label { margin-bottom: 12px; }
     .page-head h1 { text-wrap: balance; }
     .spine-tools { top: -46px; right: 8px; gap: 10px; }
     .spine-tool { width: 32px; height: 32px; }

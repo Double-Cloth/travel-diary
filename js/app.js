@@ -977,14 +977,10 @@ function renderLedger(params = {}, options = {}) {
     setPages(`
         <div class="ledger-page">
             <header class="page-head">
-                <div class="ledger-record-heading">
-                    <p class="journal-label">路线档案</p>
-                    <button class="paper-button" type="button" data-action="add-record"><span aria-hidden="true">＋</span> 新增旅行记录</button>
-                </div>
+                <p class="journal-label">路线档案</p>
                 <h1>出发，到新的爱与喧闹中去！</h1>
             </header>
             ${renderLedgerControls(ledgerParams, 'ledgerSearch')}
-            ${renderMobileContextToggle('高级筛选', '查看筛选与结果概览')}
             <div class="year-bookmarks" aria-label="年份书签">
                 ${yearLink('全部', 'all', ledgerParams)}
                 ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
@@ -1039,13 +1035,6 @@ function renderLedgerFeaturePage(snapshot, resultLabel, ledgerParams) {
                 <div><dt>${travelModel.years.length}</dt><dd>个年份</dd></div>
             </dl>
 
-            <div class="ledger-feature-actions">
-                <button class="ledger-feature-add" type="button" data-action="add-record">
-                    <span aria-hidden="true">＋</span> 新增旅行记录
-                </button>
-                <button class="paper-button ledger-filter-jump" type="button" data-action="show-ledger-filters" aria-controls="ledgerFilters">高级筛选</button>
-            </div>
-
             <div class="ledger-feature-filters" id="ledgerFilters" tabindex="-1">
                 ${renderContextPanelHeading('索引夹层', '高级筛选')}
                 ${renderLedgerSnapshot(snapshot, resultLabel)}
@@ -1093,10 +1082,6 @@ function renderLedgerFilterWorkbench(params) {
     const adminAreaLabel = getAdminAreaFilterLabel(travelModel.records, params.country);
     const adminAreaOptions = getAdminAreaFilterOptions(params.country);
     const localityOptions = getLocalityFilterOptions(params.country, params.area);
-    const yearOptions = [
-        { value: 'all', label: '全部年份' },
-        ...travelModel.years.map(year => ({ value: year, label: `${year}年` }))
-    ];
     const monthOptions = [
         { value: 'all', label: '全部月份' },
         ...travelModel.filterOptions.months
@@ -1136,7 +1121,6 @@ function renderLedgerFilterWorkbench(params) {
         <section class="index-filter-section" aria-labelledby="indexLocationFilters">
             <h3 id="indexLocationFilters">时间与地点</h3>
             <div class="index-filter-grid">
-                ${renderLedgerSelect('年份', 'year', yearOptions, params.year)}
                 ${renderLedgerSelect('月份', 'month', monthOptions, params.month)}
                 ${renderLedgerSelect('国家 / 地区', 'country', countryOptions, params.country)}
                 ${renderLedgerSelect(adminAreaLabel, 'area', scopedAdminAreaOptions, params.area)}
@@ -1175,10 +1159,11 @@ function renderLedgerFilterWorkbench(params) {
 
 function renderLedgerResetAction(params) {
     const canReset = hasActiveLedgerFilter(params) || params.sort !== DEFAULT_LEDGER_SORT;
+    if (!canReset) return '';
 
     return `
         <div class="index-reset-anchor">
-            <button class="paper-button full-width index-reset" type="button" data-action="reset-ledger-filters" ${canReset ? '' : 'disabled'}>重置全部</button>
+            <button class="paper-button index-reset" type="button" data-action="reset-ledger-filters">清除筛选与排序</button>
         </div>
     `;
 }
@@ -1270,7 +1255,6 @@ function renderArchive(params = {}) {
                 <div>
                     <button class="paper-button" type="button" data-action="export-all-data">导出全部数据</button>
                     <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
-                    <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
                 </div>
                 <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
             </section>
@@ -1278,6 +1262,11 @@ function renderArchive(params = {}) {
                 <h3 id="archiveSecurityTitle">访问安全</h3>
                 <p>验证当前密码后设置新的 6 位数字密码；再次输入到第 6 位时会自动提交。</p>
                 <button class="paper-button" type="button" data-action="change-password">修改访问密码</button>
+            </section>
+            <section class="archive-overview-block archive-danger-zone" aria-labelledby="archiveDangerTitle">
+                <h3 id="archiveDangerTitle">危险操作</h3>
+                <p>永久清空所有旅行记录和自定义头像。操作前请先导出备份。</p>
+                <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
             </section>
     `, 'dossier-page context-panel');
 }
@@ -2944,13 +2933,9 @@ function handleDocumentClick(event) {
         event.preventDefault();
         if (isMobileLayout()) {
             openMobileContextPanel();
+            requestAnimationFrame(scrollToLedgerFilters);
         } else {
-            const filters = refs.rightPage.querySelector('.ledger-feature-filters');
-            filters?.focus({ preventScroll: true });
-            if (filters) refs.rightPage.scrollTo({
-                top: refs.rightPage.scrollTop + filters.getBoundingClientRect().top - refs.rightPage.getBoundingClientRect().top - 24,
-                behavior: prefersReducedMotion() ? 'instant' : 'smooth'
-            });
+            scrollToLedgerFilters();
         }
         return;
     }
@@ -3383,6 +3368,17 @@ function openMobileContextPanel() {
     requestAnimationFrame(() => refs.rightPage?.focus({ preventScroll: true }));
 }
 
+function scrollToLedgerFilters() {
+    const filters = refs.rightPage?.querySelector('#ledgerFilters');
+    if (!filters) return;
+
+    filters.focus({ preventScroll: true });
+    refs.rightPage.scrollTo({
+        top: refs.rightPage.scrollTop + filters.getBoundingClientRect().top - refs.rightPage.getBoundingClientRect().top - 12,
+        behavior: prefersReducedMotion() ? 'instant' : 'smooth'
+    });
+}
+
 function closeMobileContextPanel() {
     restoreFocusBeforeHidingContextPanel();
     isMobileContextPanelOpen = false;
@@ -3394,7 +3390,7 @@ function restoreFocusBeforeHidingContextPanel() {
         return;
     }
 
-    const toggle = document.querySelector('[data-action="open-context-panel"]');
+    const toggle = document.querySelector('[data-action="open-context-panel"], [data-action="show-ledger-filters"]');
     if (toggle instanceof HTMLElement && !toggle.disabled) {
         toggle.focus({ preventScroll: true });
         return;
@@ -3564,8 +3560,9 @@ function renderLedgerControls(params, inputId) {
             <label class="field-label" for="${inputId}">搜索路线</label>
             <div class="ink-field search-field">
                 <input id="${inputId}" type="search" value="${escapeHtml(params.q)}" autocomplete="off" placeholder="搜索国家、行政区、目的地或日记内容">
-                <button class="search-clear" type="button" data-action="clear-search" data-target="ledger" aria-label="清空路线搜索" ${params.q ? '' : 'disabled'}>×</button>
+                ${params.q ? '<button class="search-clear" type="button" data-action="clear-search" data-target="ledger" aria-label="清空路线搜索">×</button>' : ''}
             </div>
+            <button class="paper-button ledger-filter-trigger" type="button" data-action="show-ledger-filters" aria-controls="ledgerFilters">筛选与排序</button>
         </div>
     `;
 }

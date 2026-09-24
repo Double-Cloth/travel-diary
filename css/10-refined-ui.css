@@ -193,45 +193,6 @@ body::after {
     font-size: 13px;
 }
 
-.ledger-feature-actions {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-}
-
-.ledger-feature-add,
-.ledger-feature-filter {
-    min-height: 42px;
-    padding: 8px 14px;
-    color: var(--ink);
-    background: transparent;
-    font-size: 14px;
-    cursor: pointer;
-}
-
-.ledger-feature-add {
-    border: 1px solid rgba(155, 61, 46, 0.28);
-    color: var(--stamp);
-}
-
-.ledger-feature-add span {
-    margin-right: 7px;
-    font: 20px/1 var(--font-code);
-    vertical-align: -1px;
-}
-
-.ledger-feature-filter {
-    color: var(--ink-muted);
-    font-family: var(--font-code);
-    font-size: 11px;
-}
-
-.ledger-feature-add:hover,
-.ledger-feature-add:focus-visible { background: rgba(155, 61, 46, 0.07); }
-.ledger-feature-filter:hover,
-.ledger-feature-filter:focus-visible { color: var(--stamp); }
-
 .ledger-feature-filters {
     display: grid;
     gap: 16px;
@@ -569,8 +530,6 @@ body::after {
     .closed-book-subtitle { top: 42%; }
     .closed-book-invitation { top: 70%; }
 
-    .ledger-record-heading { margin-bottom: 12px; }
-    .ledger-record-heading .paper-button { display: none; }
     .page-head { margin-bottom: 18px; }
     .page-head h1 { max-width: 13em; font-size: clamp(30px, 2.7vw, 42px); line-height: 1.25; letter-spacing: -0.04em; }
 
@@ -651,7 +610,6 @@ body::after {
     .repeat-stamp { min-height: 0; padding: 0 6px; border-radius: 2px; background: transparent; font-size: 10px; }
     .trip-stamp { min-width: 48px; height: 20px; padding: 0 6px; border: 0; border-radius: 2px; font-size: 9px; }
 
-    .ledger-feature-filter { display: none; }
 }
 
 @media (max-width: 760px) {
@@ -812,8 +770,6 @@ body::after {
     .closed-book-clasp { right: -11px; width: 58px; height: 56px; }
 
     .page-head { margin-bottom: 20px; }
-    .ledger-record-heading { margin-bottom: 10px; }
-    .ledger-record-heading .paper-button { display: none; }
     .page-head h1 { max-width: none; font-size: clamp(30px, 7.5vw, 36px); line-height: 1.28; letter-spacing: -0.04em; }
     .journal-label { color: var(--stamp); font-size: 12px; letter-spacing: 0.14em; }
 
@@ -950,7 +906,6 @@ body::after {
     .ledger-feature-caption { padding: 18px; }
     .ledger-feature-caption span { display: none; }
     .ledger-feature-stats div { display: grid; justify-items: center; gap: 4px; }
-    .ledger-feature-actions { align-items: stretch; flex-direction: column; }
 }
 
 @media (max-width: 380px) {
