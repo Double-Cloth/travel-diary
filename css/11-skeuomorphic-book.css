@@ -392,8 +392,18 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         transform: translate(-50%, -50%);
         transform-origin: 0 50%;
         box-shadow: inset 0 0 0 2px #9b74404d, 3px 3px 0 #b4a081, 6px 6px 0 #e8d7b7, 8px 8px 0 #a08c69, 10px 11px 0 #452d1f, 0 28px 44px #1009078c;
+        transition: transform 420ms cubic-bezier(.2,.7,.2,1), box-shadow 420ms cubic-bezier(.2,.7,.2,1);
     }
-    .closed-book-cover:hover { transform: translate(-50%, calc(-50% - 2px)); }
+    .closed-book-cover::after { transition: opacity 420ms ease; opacity: .65; }
+    .closed-book-clasp { transition: transform 360ms cubic-bezier(.2,.7,.2,1), box-shadow 360ms ease; }
+    @media (hover: hover) and (pointer: fine) {
+        body[data-route='cover'] .closed-book-cover:hover {
+            transform: translate(-50%, calc(-50% - 4px)) rotateY(-3deg) rotateX(1deg);
+            box-shadow: inset 0 0 0 2px #af895857, 3px 4px 0 #b4a081, 6px 7px 0 #e8d7b7, 8px 9px 0 #a08c69, 11px 13px 0 #452d1f, 14px 36px 52px #100907a8;
+        }
+        .closed-book-cover:hover::after { opacity: 1; }
+        .closed-book-cover:hover .closed-book-clasp { transform: translateX(5px) translateZ(12px) rotateY(-12deg); box-shadow: inset 0 1px #ffdc9d33, -2px 8px 13px #08030199; }
+    }
     .closed-book-title { font-size: clamp(36px, 4vw, 58px); }
     body[data-route='cover'] .notebook { background: transparent; border-color: transparent; box-shadow: none; }
     /* 硬封面与衬纸共用一个轴和正反面，翻到背面后自然遮住皮面。 */
@@ -417,6 +427,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         -webkit-backface-visibility: hidden;
     }
     .book-cover-leaf > .book-cover-front { transform: translateZ(2px); transition: none; box-shadow: inset 0 0 0 2px #9b74404d, 0 5px 18px #180c0655; }
+    .book-cover-leaf > .book-cover-front .closed-book-clasp { transition: none; }
     .book-cover-leaf::after { content: ''; position: absolute; inset: 0 0 0 auto; width: 4px; background: linear-gradient(90deg, #2b180f, #a27747, #382116); transform: rotateY(90deg); transform-origin: right; }
     .book-cover-back {
         padding: 14px 0 26px 18px;
@@ -426,6 +437,16 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         background: var(--leather-grain), #65452f;
         box-shadow: -8px 10px 22px #28160c44;
     }
+    .book-cover-back::after {
+        content: '';
+        position: absolute;
+        inset: 14px 0 26px 18px;
+        z-index: 2;
+        border-radius: var(--book-left-radius);
+        background: linear-gradient(90deg, #2b190d57, transparent 15%, #fff9e625 76%, transparent);
+        box-shadow: inset 12px 0 18px #39231026, inset 0 1px #fff8dd7a;
+        pointer-events: none;
+    }
     .book-cover-back .book-page-copy { position: relative; inset: auto; width: 100%; height: 100%; border-radius: var(--book-left-radius); }
     .book-cover-shadow {
         position: absolute;
@@ -434,6 +455,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         border-radius: 0 5px 7px 0;
         background: linear-gradient(90deg, #281507ad, #28150755 42%, transparent);
         transform-origin: left center;
+        filter: blur(7px);
         pointer-events: none;
     }
     .journal-shell:is(.book-opening, .book-closing) .journal-stage { position: relative; z-index: 90; }
@@ -450,6 +472,18 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
 }
 
 @media (max-width: 760px) {
+    .journal-shell:is(.book-opening, .book-closing) .journal-spine { visibility: hidden; }
+    .book-mobile-cover {
+        position: fixed;
+        z-index: 120;
+        display: block;
+        margin: 0;
+        transform: none;
+        transform-origin: 7% 50%;
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
+        pointer-events: none;
+    }
     .closed-book-title { top: 22%; left: 53%; font-size: clamp(30px, 10vw, 44px); }
     .closed-book-subtitle { top: 35%; left: 53%; font-size: 10px; }
     .closed-book-invitation { top: auto; bottom: 10%; font-size: 11px; letter-spacing: .08em; }
@@ -525,10 +559,15 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     }
     .year-bookmark { padding-inline: 13px; }
     .paper-page .paper-button, .paper-page .sheet-nav-button { min-height: 42px; }
-    .journal-shell.book-opening .journal-stage { animation: pocketBookOpen var(--book-cover-ms) ease-out both; transform-origin: left center; }
-    .journal-shell.book-closing .journal-stage { animation: pocketBookOpen var(--book-cover-ms) ease-in reverse both; transform-origin: left center; }
+    .journal-shell.book-opening .journal-stage { animation: pocketBookOpen var(--book-cover-ms) linear both; transform-origin: 7% center; }
+    .journal-shell.book-closing .journal-stage { animation: pocketBookOpen var(--book-cover-ms) linear reverse both; transform-origin: 7% center; }
     .journal-shell.book-closing .closed-book-cover { display: none; }
-    @keyframes pocketBookOpen { from { opacity: 0; transform: perspective(1100px) rotateY(28deg) scale(.97); } to { opacity: 1; transform: perspective(1100px) rotateY(0) scale(1); } }
+    @keyframes pocketBookOpen {
+        0% { opacity: .45; transform: perspective(1200px) rotateY(12deg) scale(.985); }
+        45% { opacity: .74; transform: perspective(1200px) rotateY(7deg) scale(.99); }
+        82% { opacity: 1; transform: perspective(1200px) rotateY(1deg) scale(1); }
+        100% { opacity: 1; transform: perspective(1200px) rotateY(0) scale(1); }
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {

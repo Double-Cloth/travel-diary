@@ -381,20 +381,29 @@ body[data-route="cover"] .page-spread { visibility: hidden; }
     z-index: 24;
     inset: 0;
     pointer-events: none;
-    background: linear-gradient(90deg, rgba(255, 251, 228, 0.48), transparent 3%, transparent 96%, rgba(73, 43, 20, 0.24));
+    background: linear-gradient(90deg, rgba(255, 250, 225, 0.62), rgba(255, 245, 217, 0.1) 5%, transparent 76%, rgba(77, 45, 23, 0.28) 98%, rgba(255, 244, 207, 0.45));
     mix-blend-mode: soft-light;
 }
 
 .book-curl-back .book-curl-surface::after {
     background:
-        linear-gradient(90deg, rgba(85, 51, 25, 0.18), rgba(255, 246, 211, 0.34) 8%, transparent 42%),
+        linear-gradient(90deg, rgba(91, 55, 27, 0.23), rgba(255, 246, 211, 0.42) 9%, transparent 50%, rgba(95, 62, 30, 0.15)),
         url("../assets/textures/paper-grain.png");
-    opacity: 0.42;
+    opacity: 0.52;
 }
 
 .book-curl-contact {
-    filter: blur(6px);
-    background: linear-gradient(90deg, transparent, rgba(36, 20, 8, 0.52) 46%, rgba(36, 20, 8, 0.18) 72%, transparent);
+    filter: blur(5px);
+    background: linear-gradient(90deg, transparent, rgba(36, 20, 8, 0.62) 44%, rgba(36, 20, 8, 0.24) 72%, transparent);
+}
+
+.book-curl-ambient {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    filter: blur(19px);
+    background: linear-gradient(90deg, transparent, rgba(34, 20, 9, 0.36) 30%, rgba(34, 20, 9, 0.21) 65%, transparent);
 }
 
 @media (max-width: 760px) {

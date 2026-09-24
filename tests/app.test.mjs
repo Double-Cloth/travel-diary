@@ -304,7 +304,7 @@ test('合书保留原页直到落稳，中断会恢复交互且只提交一次�
         classList: { values: new Set(), add(...names) { names.forEach(name => this.values.add(name)); },
             remove(...names) { names.forEach(name => this.values.delete(name)); } },
         cloneNode: createNode, querySelectorAll: () => [], querySelector: () => createNode(),
-        getBoundingClientRect: () => ({ top: 0, bottom: 800 }),
+        getBoundingClientRect: () => ({ top: 0, left: 0, width: 560, height: 800, bottom: 800 }),
         setAttribute(name, value) { this.attributes.set(name, value); },
         removeAttribute(name) { this.attributes.delete(name); },
         append(...children) { children.forEach(child => nodes.add(child)); },
@@ -323,7 +323,7 @@ test('合书保留原页直到落稳，中断会恢复交互且只提交一次�
     let reduced = false;
     let mobile = false;
     globalThis.window = { matchMedia: query => ({ matches: query.includes('reduced-motion') ? reduced : mobile }) };
-    globalThis.document = { createElement: createNode };
+    globalThis.document = { createElement: createNode, body: createNode() };
     globalThis.getComputedStyle = () => ({ background: '#eee' });
     globalThis.requestAnimationFrame = callback => { frames.push(callback); return frames.length; };
     globalThis.cancelAnimationFrame = () => {};
@@ -363,10 +363,22 @@ test('合书保留原页直到落稳，中断会恢复交互且只提交一次�
     app.renderWithBookCover(() => { renders += 1; }, 'opening');
     assert.equal(renders, 4);
     assert.equal([...nodes].some(node => node.className === 'book-cover-leaf'), false);
+    assert.equal([...nodes].some(node => node.classList.values.has('book-mobile-cover')), true);
     frames.shift()();
-    t.mock.timers.tick(480);
+    t.mock.timers.tick(820);
     assert.equal(shell.focused, true);
     assert.equal(rightPage.inert, false);
+    assert.equal([...nodes].some(node => node.classList.values.has('book-mobile-cover')), false);
+
+    globalThis.window.innerWidth = 390;
+    globalThis.window.innerHeight = 844;
+    closedBookCover.getBoundingClientRect = () => ({ width: 0, height: 0 });
+    app.renderWithBookCover(() => { renders += 1; }, 'closing');
+    assert.equal([...nodes].find(node => node.classList.values.has('book-mobile-cover')).style.width, '342px',
+        '内页合书时按移动端封面尺寸创建副本');
+    frames.shift()();
+    t.mock.timers.tick(820);
+    assert.equal(renders, 5);
 });
 
 test('卷曲从下角向内扩散，纸面共享边界且正反向准确落页', () => {
