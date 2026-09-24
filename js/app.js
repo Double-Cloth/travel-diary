@@ -2532,6 +2532,7 @@ function renderWithBookCover(renderFn, mode) {
     const closing = mode === 'closing';
     const mobile = isMobileLayout();
     const duration = mobile ? 820 : BOOK_COVER_TRANSITION_MS;
+    const coverHovered = !closing && refs.closedBookCover.matches?.(':hover');
     const mobileCoverBounds = mobile ? (() => {
         const bounds = refs.closedBookCover.getBoundingClientRect();
         if (bounds.width && bounds.height) return bounds;
@@ -2547,6 +2548,7 @@ function renderWithBookCover(renderFn, mode) {
     let leaf = null;
     let mobileCover = null;
     let coverShadow = null;
+    let coverParent = null;
     let startFrame = null;
     let finished = false;
 
@@ -2563,34 +2565,31 @@ function renderWithBookCover(renderFn, mode) {
         });
         document.body.append(mobileCover);
         animations.push(mobileCover.animate([
-            { transform: 'perspective(1200px) rotateY(0deg)', filter: 'brightness(1)', offset: 0 },
-            { transform: 'perspective(1200px) rotateY(-8deg)', filter: 'brightness(1.08)', offset: .16 },
-            { transform: 'perspective(1200px) rotateY(-46deg)', filter: 'brightness(.95)', offset: .45 },
-            { transform: 'perspective(1200px) rotateY(-116deg)', filter: 'brightness(.68)', offset: .78 },
-            { transform: 'perspective(1200px) rotateY(-165deg)', filter: 'brightness(.65)', offset: 1 }
+            { transform: 'perspective(1200px) rotateY(0deg)', offset: 0 },
+            { transform: 'perspective(1200px) rotateY(-8deg)', offset: .16 },
+            { transform: 'perspective(1200px) rotateY(-46deg)', offset: .45 },
+            { transform: 'perspective(1200px) rotateY(-116deg)', offset: .78 },
+            { transform: 'perspective(1200px) rotateY(-165deg)', offset: 1 }
         ], { duration, fill: 'both', direction: closing ? 'reverse' : 'normal', easing: 'linear' }));
     } else {
         leaf = document.createElement('div');
         leaf.className = 'book-cover-leaf';
         leaf.setAttribute('aria-hidden', 'true');
         leaf.inert = true;
-        const front = refs.closedBookCover.cloneNode(true);
-        front.removeAttribute('id');
-        front.removeAttribute('data-action');
+        // 直接移动已绘制的封面，避免克隆后重新栅格化整张皮革纹理。
+        const front = refs.closedBookCover;
+        coverParent = front.parentElement || refs.spread.parentElement;
         front.classList.add('book-cover-front');
         const back = document.createElement('div');
         back.className = 'book-cover-back';
-        const inside = cloneTurningPage(refs.leftPage);
-        back.append(inside);
         leaf.append(front, back);
         coverShadow = document.createElement('div');
         coverShadow.className = 'book-cover-shadow';
         coverShadow.setAttribute('aria-hidden', 'true');
         refs.spread.parentElement.append(coverShadow, leaf);
-        inside.scrollTop = refs.leftPage.scrollTop;
         // 正反封皮绕同一个装订轴转动；书体平移将合上的半本书放回桌面中央。
         const timing = { duration, fill: 'both', direction: closing ? 'reverse' : 'normal', easing: 'linear' };
-        const startAngle = !closing && refs.closedBookCover.matches?.(':hover') ? -3 : 0;
+        const startAngle = coverHovered ? -3 : 0;
         const poses = [
             { transform: `rotateY(${startAngle}deg)`, offset: 0 },
             { transform: 'rotateY(-4deg) rotateX(1deg)', offset: .12, easing: 'cubic-bezier(.35,0,.25,1)' },
@@ -2604,10 +2603,10 @@ function renderWithBookCover(renderFn, mode) {
         // 封扣先松开，封皮再转动；反向播放时先落盖，再扣紧。
         const clasp = front.querySelector('.closed-book-clasp');
         if (clasp) animations.push(clasp.animate([
-            { transform: 'translateX(0) translateZ(12px) rotateY(0deg)', opacity: 1, offset: 0 },
-            { transform: 'translateX(8px) translateZ(14px) rotateY(-24deg)', opacity: 1, offset: .06 },
-            { transform: 'translateX(24px) translateZ(12px) rotateY(-100deg)', opacity: 0, offset: .18 },
-            { transform: 'translateX(24px) translateZ(12px) rotateY(-100deg)', opacity: 0, offset: 1 }
+            { transform: 'translateX(0) translateZ(18px) rotateY(0deg)', opacity: 1, offset: 0 },
+            { transform: 'translateX(8px) translateZ(20px) rotateY(-24deg)', opacity: 1, offset: .06 },
+            { transform: 'translateX(24px) translateZ(18px) rotateY(-100deg)', opacity: 0, offset: .18 },
+            { transform: 'translateX(24px) translateZ(18px) rotateY(-100deg)', opacity: 0, offset: 1 }
         ], timing));
         animations.push(refs.spread.parentElement.animate([
             { transform: 'translateX(-25%)', offset: 0 },
@@ -2624,20 +2623,16 @@ function renderWithBookCover(renderFn, mode) {
             { opacity: 0, transform: 'scaleX(.02)', offset: .97 },
             { opacity: 0, transform: 'scaleX(.02)', offset: 1 }
         ], timing));
-        animations.push(front.animate([
-            { filter: 'brightness(1)', offset: 0 },
-            { filter: 'brightness(1.12)', offset: .28 },
-            { filter: 'brightness(.82)', offset: .53 },
-            { filter: 'brightness(.58)', offset: .78 },
-            { filter: 'brightness(.72)', offset: 1 }
-        ], timing));
-        // 衬纸随封皮背光，再在落平时恢复与静态纸页相同的亮度。
+        // 封里只绘制轻量衬面，正文页在落平时渐显，避免逐帧重绘整张页面副本。
         animations.push(back.animate([
-            { filter: 'brightness(.78)', offset: 0 },
-            { filter: 'brightness(.78)', offset: .38 },
-            { filter: 'brightness(.9)', offset: .7 },
-            { filter: 'brightness(1)', offset: .97 },
-            { filter: 'brightness(1)', offset: 1 }
+            { opacity: 1, offset: 0 },
+            { opacity: 1, offset: .96 },
+            { opacity: 0, offset: 1 }
+        ], timing));
+        animations.push(refs.leftPage.animate([
+            { opacity: 0, offset: 0 },
+            { opacity: 0, offset: .93 },
+            { opacity: 1, offset: 1 }
         ], timing));
     }
 
@@ -2651,6 +2646,10 @@ function renderWithBookCover(renderFn, mode) {
         finished = true;
         cancelAnimationFrame(startFrame);
         animations.forEach(animation => animation.cancel());
+        if (coverParent) {
+            coverParent.append(refs.closedBookCover);
+            refs.closedBookCover.classList.remove('book-cover-front');
+        }
         leaf?.remove();
         mobileCover?.remove();
         coverShadow?.remove();
@@ -2662,10 +2661,14 @@ function renderWithBookCover(renderFn, mode) {
         const focusTarget = closing ? refs.closedBookCover : refs.spread.closest('main');
         focusTarget?.focus({ preventScroll: true });
     };
+    // 留一帧给新书页和封面栅格化，再开始翻动，避免首帧纹理上传打断动画。
     startFrame = requestAnimationFrame(() => {
         if (finished) return;
-        animations.forEach(animation => animation.play());
-        bookTransitionTimer = setTimeout(clearPageTurn, duration);
+        startFrame = requestAnimationFrame(() => {
+            if (finished) return;
+            animations.forEach(animation => animation.play());
+            bookTransitionTimer = setTimeout(clearPageTurn, duration);
+        });
     });
 }
 

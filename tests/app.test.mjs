@@ -333,8 +333,15 @@ test('合书保留原页直到落稳，中断会恢复交互且只提交一次�
     assert.equal(renders, 0, '合书开始时不能清空当前正文');
     assert.equal(leftPage.inert, true);
     assert.equal(rightPage.inert, true);
-    assert.equal(animations.length, 6, '封皮、封扣、书体、投影与双面光照共同参与开合');
+    assert.equal(animations.length, 6, '封皮、封扣、书体、投影、封里与左页共同参与开合');
+    assert.equal(closedBookCover.classList.values.has('book-cover-front'), true, '翻书应复用已经绘制的封面');
+    assert.equal([...nodes].some(node => node.classList.values.has('book-page-copy')), false,
+        '开合封皮不应复制整张正文页');
+    assert.equal(animations.some(animation => animation.keyframes.some(frame => 'filter' in frame)), false,
+        '开合动画不应逐帧改变整面滤镜');
     assert.equal(animations.every(animation => animation.state === 'paused'), true, '首帧前所有动画必须暂停');
+    frames.shift()();
+    assert.equal(animations.every(animation => animation.state === 'paused'), true, '预绘制帧不能提前启动翻书动画');
     frames.shift()();
     assert.equal(animations.every(animation => animation.state === 'running' && animation.currentTime === 0), true, '所有部件从同一首帧起播');
     t.mock.timers.tick(1449);
@@ -344,6 +351,7 @@ test('合书保留原页直到落稳，中断会恢复交互且只提交一次�
     assert.equal(closedBookCover.focused, true);
     assert.equal(leftPage.inert, false);
     assert.equal(closedBookCover.attributes.has('aria-hidden'), false);
+    assert.equal(closedBookCover.classList.values.has('book-cover-front'), false);
     assert.equal([...nodes].some(node => node.className === 'book-cover-leaf'), false);
 
     app.renderWithBookCover(() => { renders += 1; }, 'closing');
@@ -365,6 +373,7 @@ test('合书保留原页直到落稳，中断会恢复交互且只提交一次�
     assert.equal([...nodes].some(node => node.className === 'book-cover-leaf'), false);
     assert.equal([...nodes].some(node => node.classList.values.has('book-mobile-cover')), true);
     frames.shift()();
+    frames.shift()();
     t.mock.timers.tick(820);
     assert.equal(shell.focused, true);
     assert.equal(rightPage.inert, false);
@@ -376,6 +385,7 @@ test('合书保留原页直到落稳，中断会恢复交互且只提交一次�
     app.renderWithBookCover(() => { renders += 1; }, 'closing');
     assert.equal([...nodes].find(node => node.classList.values.has('book-mobile-cover')).style.width, '342px',
         '内页合书时按移动端封面尺寸创建副本');
+    frames.shift()();
     frames.shift()();
     t.mock.timers.tick(820);
     assert.equal(renders, 5);

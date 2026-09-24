@@ -395,14 +395,14 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         transition: transform 420ms cubic-bezier(.2,.7,.2,1), box-shadow 420ms cubic-bezier(.2,.7,.2,1);
     }
     .closed-book-cover::after { transition: opacity 420ms ease; opacity: .65; }
-    .closed-book-clasp { transition: transform 360ms cubic-bezier(.2,.7,.2,1), box-shadow 360ms ease; }
+    .closed-book-clasp { transform: translateZ(18px); transition: transform 360ms cubic-bezier(.2,.7,.2,1), box-shadow 360ms ease; }
     @media (hover: hover) and (pointer: fine) {
         body[data-route='cover'] .closed-book-cover:hover {
             transform: translate(-50%, calc(-50% - 4px)) rotateY(-3deg) rotateX(1deg);
             box-shadow: inset 0 0 0 2px #af895857, 3px 4px 0 #b4a081, 6px 7px 0 #e8d7b7, 8px 9px 0 #a08c69, 11px 13px 0 #452d1f, 14px 36px 52px #100907a8;
         }
         .closed-book-cover:hover::after { opacity: 1; }
-        .closed-book-cover:hover .closed-book-clasp { transform: translateX(5px) translateZ(12px) rotateY(-12deg); box-shadow: inset 0 1px #ffdc9d33, -2px 8px 13px #08030199; }
+        .closed-book-cover:hover .closed-book-clasp { transform: translateX(5px) translateZ(18px) rotate(-4deg); box-shadow: inset 0 1px #ffdc9d33, -2px 8px 13px #08030199; }
     }
     .closed-book-title { font-size: clamp(36px, 4vw, 58px); }
     body[data-route='cover'] .notebook { background: transparent; border-color: transparent; box-shadow: none; }
@@ -413,6 +413,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         inset: 0 0 0 50%;
         transform-origin: 0 50%;
         transform-style: preserve-3d;
+        will-change: transform;
         pointer-events: none;
     }
     .book-cover-leaf > .book-cover-front,
@@ -427,6 +428,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         -webkit-backface-visibility: hidden;
     }
     .book-cover-leaf > .book-cover-front { transform: translateZ(2px); transition: none; box-shadow: inset 0 0 0 2px #9b74404d, 0 5px 18px #180c0655; }
+    .book-cover-front > * { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
     .book-cover-leaf > .book-cover-front .closed-book-clasp { transition: none; }
     .book-cover-leaf::after { content: ''; position: absolute; inset: 0 0 0 auto; width: 4px; background: linear-gradient(90deg, #2b180f, #a27747, #382116); transform: rotateY(90deg); transform-origin: right; }
     .book-cover-back {
@@ -443,19 +445,17 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         inset: 14px 0 26px 18px;
         z-index: 2;
         border-radius: var(--book-left-radius);
-        background: linear-gradient(90deg, #2b190d57, transparent 15%, #fff9e625 76%, transparent);
+        background: linear-gradient(90deg, #8a694c55, transparent 18%, #fff9e64d 76%, #93735533), url('../assets/textures/paper-grain.png'), #e9dcc1;
         box-shadow: inset 12px 0 18px #39231026, inset 0 1px #fff8dd7a;
         pointer-events: none;
     }
-    .book-cover-back .book-page-copy { position: relative; inset: auto; width: 100%; height: 100%; border-radius: var(--book-left-radius); }
     .book-cover-shadow {
         position: absolute;
         z-index: 20;
         inset: 14px 18px 26px 50%;
         border-radius: 0 5px 7px 0;
-        background: linear-gradient(90deg, #281507ad, #28150755 42%, transparent);
+        background: radial-gradient(ellipse at 0% 50%, #281507ad, #28150755 42%, transparent 78%);
         transform-origin: left center;
-        filter: blur(7px);
         pointer-events: none;
     }
     .journal-shell:is(.book-opening, .book-closing) .journal-stage { position: relative; z-index: 90; }
@@ -466,8 +466,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .journal-shell:is(.book-opening, .book-closing) .book-corner-hardware,
     .journal-shell:is(.book-opening, .book-closing) .book-ribbon,
     .journal-shell:is(.book-opening, .book-closing) .book-page-stack-left,
-    .journal-shell:is(.book-opening, .book-closing) .page-spread::before,
-    .journal-shell:is(.book-opening, .book-closing) #leftPage { visibility: hidden; }
+    .journal-shell:is(.book-opening, .book-closing) .page-spread::before { visibility: hidden; }
     .journal-shell:is(.book-opening, .book-closing) .journal-spine { visibility: hidden; }
 }
 
@@ -482,6 +481,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         transform-origin: 7% 50%;
         backface-visibility: hidden;
         -webkit-backface-visibility: hidden;
+        will-change: transform;
         pointer-events: none;
     }
     .closed-book-title { top: 22%; left: 53%; font-size: clamp(30px, 10vw, 44px); }
