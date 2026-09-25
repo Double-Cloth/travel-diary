@@ -442,8 +442,3 @@ body[data-route="cover"] .page-spread { visibility: hidden; }
     .entry-book-index .sheet-record-actions { margin-top: 8px; }
     .entry-book-article::before { margin-top: 8px; }
 }
-
-@media (prefers-reduced-motion: reduce) {
-    .journal-shell.book-opening .closed-book-cover,
-    .journal-shell.book-closing .closed-book-cover { animation: none; }
-}
