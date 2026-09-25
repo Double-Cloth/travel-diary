@@ -2548,7 +2548,21 @@ function renderWithBookCover(renderFn, mode) {
     const overlay = document.createElement('div');
     overlay.className = 'book-transition-overlay';
     overlay.setAttribute('aria-hidden', 'true');
-    overlay.style.opacity = closing ? '0' : '1';
+    const backdrop = document.createElement('div');
+    backdrop.className = 'book-transition-backdrop';
+    const bodyBackground = getComputedStyle(document.body);
+    backdrop.style.background = bodyBackground.background;
+    backdrop.style.backgroundBlendMode = bodyBackground.backgroundBlendMode;
+    backdrop.style.opacity = closing ? '0' : '1';
+    const scene = document.createElement('div');
+    scene.className = 'book-transition-scene';
+    Object.assign(scene.style, {
+        top: `${coverBounds.top}px`, left: `${coverBounds.left}px`,
+        width: `${coverBounds.width}px`, height: `${coverBounds.height}px`,
+        opacity: closing ? '0' : '1'
+    });
+    const leaf = document.createElement('div');
+    leaf.className = 'book-transition-leaf';
     const cover = document.createElement('img');
     cover.className = 'book-transition-cover';
     cover.src = mobile
@@ -2556,23 +2570,23 @@ function renderWithBookCover(renderFn, mode) {
         : 'assets/images/pages/book-cover-animation-desktop.webp';
     cover.alt = '';
     cover.draggable = false;
-    Object.assign(cover.style, {
-        top: `${coverBounds.top}px`, left: `${coverBounds.left}px`,
-        width: `${coverBounds.width}px`, height: `${coverBounds.height}px`
-    });
-    overlay.append(cover);
+    const back = document.createElement('div');
+    back.className = 'book-transition-back';
+    leaf.append(cover, back);
+    scene.append(leaf);
+    overlay.append(backdrop, scene);
     document.body.append(overlay);
 
     let finished = false;
     let frame = null;
-    let fade = null;
+    const animations = [];
     let finishTimer = null;
     pageTurnCleanup = () => {
         if (finished) return;
         finished = true;
         cancelAnimationFrame(frame);
         clearTimeout(finishTimer);
-        fade?.cancel();
+        animations.forEach(animation => animation.cancel());
         if (closing) renderFn();
         overlay.remove();
         refs.closedBookCover?.removeAttribute('aria-hidden');
@@ -2583,21 +2597,43 @@ function renderWithBookCover(renderFn, mode) {
     if (!closing) renderFn();
     refs.closedBookCover?.setAttribute('aria-hidden', 'true');
 
-    const startFade = () => {
+    const startTurn = () => {
         if (finished) return;
-        fade = overlay.animate([
-            { opacity: closing ? 0 : 1 },
-            { opacity: closing ? 1 : 0 }
-        ], { duration: 240, fill: 'both', easing: 'ease-out' });
-        finishTimer = setTimeout(clearPageTurn, 240);
+        const page = mobile ? refs.leftPage : refs.rightPage;
+        const pageBounds = page.getBoundingClientRect();
+        const target = pageBounds.width && pageBounds.height ? {
+            left: pageBounds.left, top: pageBounds.top, width: pageBounds.width,
+            // 手机书页可连续滚动，只让封皮贴合首屏的可见高度。
+            height: mobile ? Math.min(pageBounds.height,
+                Math.max(coverBounds.height, window.innerHeight - pageBounds.top - 12)) : pageBounds.height
+        } : coverBounds;
+        const move = `translate(${target.left - coverBounds.left}px, ${target.top - coverBounds.top}px) scale(${target.width / coverBounds.width}, ${target.height / coverBounds.height})`;
+        const sceneFrames = closing
+            ? [{ transform: move }, { transform: 'translate(0, 0) scale(1)' }]
+            : [{ transform: 'translate(0, 0) scale(1)' }, { transform: move }];
+        animations.push(scene.animate(sceneFrames, {
+            duration: 960, fill: 'both', easing: 'cubic-bezier(.45, 0, .55, 1)'
+        }));
+        const angles = closing ? [-176, -166, -105, -38, 0] : [0, -24, -100, -166, -176];
+        animations.push(leaf.animate(angles.map((angle, index) => ({
+            offset: [0, .18, .5, .82, 1][index], transform: `rotateY(${angle}deg)`
+        })), { duration: 960, fill: 'both', easing: 'cubic-bezier(.45, 0, .55, 1)' }));
+        animations.push(scene.animate(closing
+            ? [{ offset: 0, opacity: 0 }, { offset: .13, opacity: 1 }, { offset: 1, opacity: 1 }]
+            : [{ offset: 0, opacity: 1 }, { offset: .94, opacity: 1 }, { offset: 1, opacity: 0 }],
+        { duration: 960, fill: 'both' }));
+        if (!closing) animations.push(backdrop.animate([
+            { opacity: 1 }, { opacity: 0 }
+        ], { duration: 380, fill: 'both', easing: 'ease-out' }));
+        finishTimer = setTimeout(clearPageTurn, 960);
     };
 
     if (closing) {
-        frame = requestAnimationFrame(startFade);
+        frame = requestAnimationFrame(startTurn);
         return;
     }
 
-    // 新书页先在遮罩下完成首帧绘制，连续几帧稳定后才淡出封面。
+    // 新书页先在封面后完成首帧绘制，再沿书脊翻开封面。
     let lastFrame = 0;
     let stableFrames = 0;
     const started = performance.now();
@@ -2606,7 +2642,7 @@ function renderWithBookCover(renderFn, mode) {
         stableFrames = lastFrame && time - lastFrame < 34 ? stableFrames + 1 : 0;
         lastFrame = time;
         if ((stableFrames >= 3 && time - started >= 90) || time - started >= 900) {
-            startFade();
+            startTurn();
         } else {
             frame = requestAnimationFrame(awaitPaint);
         }

@@ -395,7 +395,7 @@ test('首页封面使用轻量过渡，日记详情与篇章导航仍进入整�
     assert.match(appJs, /data-action="entry-prev"[\s\S]*data-action="entry-next"/);
     assert.match(appJs, /function getPageCurlStripCount[\s\S]*return 12;[\s\S]*return width < 520 \? 18 : 24;/);
     assert.match(journalCss, /body\[data-route="cover"\] \.closed-book-cover\s*\{\s*display: block;/);
-    assert.match(journalCss, /\.book-transition-overlay[\s\S]*position: fixed;[\s\S]*will-change: opacity;/);
+    assert.match(journalCss, /\.book-transition-overlay[\s\S]*position: fixed;[\s\S]*perspective: 1800px;/);
     assert.doesNotMatch(appJs, /rotateY\(-180deg\)/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.entry-book-index/);
 });

@@ -290,7 +290,7 @@ test('翻页方向与书签顺序及返回按钮一致', () => {
     ]) assert.equal(app.getTurnDirection({ name: from }, { name: to }), direction);
 });
 
-test('封面过渡先遮挡书页绘制，合书落稳后提交且中断不重复渲染', t => {
+test('封面沿书脊翻转，合书落稳后提交且中断不重复渲染', t => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const previous = { window: globalThis.window, document: globalThis.document,
         getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame,
@@ -332,11 +332,12 @@ test('封面过渡先遮挡书页绘制，合书落稳后提交且中断不重�
     app.renderWithBookCover(() => { renders += 1; }, 'closing');
     assert.equal(renders, 0, '合书开始时不能清空当前正文');
     assert.equal([...nodes].some(node => node.className === 'book-transition-overlay'), true);
-    assert.equal(animations.length, 0, '书页仍可见时尚未开始淡入封面');
+    assert.equal(animations.length, 0, '书页仍可见时尚未开始合书');
     frames.shift()();
-    assert.equal(animations.length, 1);
-    assert.deepEqual(animations[0].keyframes.map(frame => frame.opacity), [0, 1]);
-    t.mock.timers.tick(239);
+    assert.equal(animations.length, 3);
+    assert.deepEqual(animations[1].keyframes.map(frame => frame.transform),
+        ['rotateY(-176deg)', 'rotateY(-166deg)', 'rotateY(-105deg)', 'rotateY(-38deg)', 'rotateY(0deg)']);
+    t.mock.timers.tick(959);
     assert.equal(renders, 0);
     t.mock.timers.tick(1);
     assert.equal(renders, 1);
@@ -359,20 +360,25 @@ test('封面过渡先遮挡书页绘制，合书落稳后提交且中断不重�
     globalThis.window.innerWidth = 390;
     globalThis.window.innerHeight = 844;
     closedBookCover.getBoundingClientRect = () => ({ width: 0, height: 0 });
+    leftPage.getBoundingClientRect = () => ({ top: 112, left: 0, width: 390, height: 5000 });
     app.renderWithBookCover(() => { renders += 1; }, 'opening');
     assert.equal(renders, 4, '开书时立即在静态封面下绘制新页');
     const mobileOverlay = [...nodes].find(node => node.className === 'book-transition-overlay');
     assert.ok(mobileOverlay);
-    assert.equal([...nodes].findLast(node => node.className === 'book-transition-cover').style.width, '342px');
+    assert.equal([...nodes].findLast(node => node.className === 'book-transition-scene').style.width, '342px');
     frames.shift()(performance.now() + 1000);
-    t.mock.timers.tick(240);
+    const mobileScaleY = Number(animations.at(-4).keyframes.at(-1).transform.match(/scale\([^,]+, ([^)]+)\)/)[1]);
+    assert.ok(mobileScaleY < 2, '连续滚动的手机书页不能把封皮拉伸到整页高度');
+    assert.deepEqual(animations.at(-3).keyframes.map(frame => frame.transform),
+        ['rotateY(0deg)', 'rotateY(-24deg)', 'rotateY(-100deg)', 'rotateY(-166deg)', 'rotateY(-176deg)']);
+    t.mock.timers.tick(960);
     assert.equal(shell.focused, true);
     assert.equal([...nodes].some(node => node.className === 'book-transition-overlay'), false);
 
     app.renderWithBookCover(() => { renders += 1; }, 'closing');
-    assert.equal([...nodes].findLast(node => node.className === 'book-transition-cover').style.width, '342px');
+    assert.equal([...nodes].findLast(node => node.className === 'book-transition-scene').style.width, '342px');
     frames.shift()();
-    t.mock.timers.tick(240);
+    t.mock.timers.tick(960);
     assert.equal(renders, 5);
 });
 

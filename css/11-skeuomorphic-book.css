@@ -16,19 +16,63 @@ body {
     position: fixed;
     z-index: 200;
     inset: 0;
-    background: inherit;
-    background-blend-mode: inherit;
     pointer-events: auto;
+    perspective: 1800px;
+}
+
+.book-transition-backdrop {
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(#28160a0d, #1a0d072e), url('../assets/images/backgrounds/body-background-travel-diary.png');
     will-change: opacity;
 }
 
-.book-transition-cover {
+.book-transition-scene {
     position: absolute;
+    transform-origin: left top;
+    transform-style: preserve-3d;
+    will-change: transform, opacity;
+}
+
+.book-transition-leaf {
+    position: absolute;
+    inset: 0;
+    transform-origin: left center;
+    transform-style: preserve-3d;
+    will-change: transform;
+}
+
+.book-transition-cover,
+.book-transition-back {
+    position: absolute;
+    inset: 0;
     display: block;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
     object-fit: fill;
     border-radius: 6px 13px 13px 6px;
-    box-shadow: 0 24px 44px rgba(9, 4, 2, 0.52);
     pointer-events: none;
+}
+
+.book-transition-cover {
+    box-shadow: 8px 18px 30px rgba(9, 4, 2, 0.4);
+}
+
+.book-transition-back {
+    transform: rotateY(180deg);
+    background: linear-gradient(90deg, #392316 0%, #af8b62 7%, #e5d1ac 18%, #e8d9bd 75%, #b89770 100%), url('../assets/textures/paper-grain.png');
+    background-blend-mode: multiply;
+    box-shadow: inset 13px 0 20px #39241496, inset -4px 0 15px #fff6db8a, -8px 18px 34px #12090673;
+}
+
+.book-transition-back::after {
+    content: '';
+    position: absolute;
+    inset: 16px 18px;
+    border: 1px solid #76553973;
+    border-radius: 3px 9px 9px 3px;
+    box-shadow: inset 0 0 0 2px #21110b91;
 }
 
 body[data-route='archive'] .paper-page {
