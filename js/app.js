@@ -1581,9 +1581,11 @@ function renderEntryPhotosRoute(params = {}) {
     if (!record) {
         setPages(`
             <div class="place-page">
-                <a class="ribbon-back" href="#ledger">返回路线档案</a>
-                <p class="journal-label">媒体附件</p>
-                <h1>没有找到这篇日记</h1>
+                <div class="entry-photos-summary">
+                    <a class="ribbon-back" href="#ledger">返回路线档案</a>
+                    <p class="journal-label">媒体附件</p>
+                    <h1>没有找到这篇日记</h1>
+                </div>
             </div>
         `, `
             <div class="photo-note">无法加载对应的图片或视频附件。</div>
@@ -1593,10 +1595,12 @@ function renderEntryPhotosRoute(params = {}) {
 
     setPages(`
         <div class="place-page">
-            <a class="ribbon-back" href="${serializeRoute({ name: 'entry', params: { id: record.id } })}">返回笔记</a>
-            <p class="journal-label">媒体附件</p>
-            <h1>${escapeHtml(record.title)}</h1>
-            <p class="place-count">${escapeHtml(getLocationText(record))} · ${record.photos?.length || 0} 张图片 · ${record.videos?.length || 0} 个视频</p>
+            <div class="entry-photos-summary">
+                <a class="ribbon-back" href="${serializeRoute({ name: 'entry', params: { id: record.id } })}">返回笔记</a>
+                <p class="journal-label">媒体附件</p>
+                <h1>${escapeHtml(record.title)}</h1>
+                <p class="place-count">${escapeHtml(getLocationText(record))} · ${record.photos?.length || 0} 张图片 · ${record.videos?.length || 0} 个视频</p>
+            </div>
         </div>
     `, `
         <div class="place-records entry-photos-page">

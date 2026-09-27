@@ -581,12 +581,12 @@ test('省份详情页在左页提供返回与相邻省份导航', () => {
 test('移动端日记与地点详情依次显示顶部摘要、主要内容和相邻项导航', () => {
     assert.match(appJs, /class="place-summary"[\s\S]*class="place-neighbors entry-neighbors"/);
     assert.match(appJs, /class="entry-book-summary"[\s\S]*class="entry-neighbors"/);
-    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*body\[data-route="entry"\] \.page-spread,\s*body\[data-route="place"\] \.page-spread\s*{[\s\S]*display: flex;[\s\S]*flex-direction: column;[\s\S]*align-items: stretch;/);
-    assert.match(journalCss, /body\[data-route="entry"\] \.page-spread,\s*body\[data-route="place"\] \.page-spread\s*{[\s\S]*gap: 0;[\s\S]*overflow: hidden;[\s\S]*border-inline: 5px solid #bfa780;[\s\S]*left-page-ledger-travel-diary\.png/);
-    assert.match(journalCss, /body\[data-route="entry"\] \.paper-page,\s*body\[data-route="place"\] \.paper-page\s*{[\s\S]*border-inline: 0;[\s\S]*background: transparent;[\s\S]*box-shadow: none;/);
-    assert.match(journalCss, /body\[data-route="entry"\] \.paper-page-left,[\s\S]*body\[data-route="place"\] \.place-page\s*{[\s\S]*display: contents;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*body\[data-route="entry"\] \.page-spread,\s*body\[data-route="place"\] \.page-spread,[\s\S]*\{[\s\S]*display: flex;[\s\S]*flex-direction: column;[\s\S]*align-items: stretch;/);
+    assert.match(journalCss, /body\[data-route="entry"\] \.page-spread,\s*body\[data-route="place"\] \.page-spread,[\s\S]*\{[\s\S]*gap: 0;[\s\S]*overflow: hidden;[\s\S]*border-inline: 5px solid #bfa780;[\s\S]*left-page-ledger-travel-diary\.png/);
+    assert.match(journalCss, /body\[data-route="entry"\] \.paper-page,\s*body\[data-route="place"\] \.paper-page,[\s\S]*\{[\s\S]*border-inline: 0;[\s\S]*background: transparent;[\s\S]*box-shadow: none;/);
+    assert.match(journalCss, /body\[data-route="entry"\] \.paper-page-left,[\s\S]*body\[data-route="place"\] \.place-page,[\s\S]*\{[\s\S]*display: contents;/);
     assert.match(journalCss, /body\[data-route="entry"\] \.entry-book-summary,\s*body\[data-route="place"\] \.place-summary\s*{[\s\S]*order: 0;/);
-    assert.match(journalCss, /body\[data-route="entry"\] \.page-spread > \.paper-page-right,\s*body\[data-route="place"\] \.page-spread > \.paper-page-right\s*{[\s\S]*order: 1;/);
+    assert.match(journalCss, /body\[data-route="entry"\] \.page-spread > \.paper-page-right,\s*body\[data-route="place"\] \.page-spread > \.paper-page-right,[\s\S]*\{[\s\S]*order: 1;/);
     assert.match(journalCss, /body\[data-route="entry"\] \.entry-neighbors,\s*body\[data-route="place"\] \.place-neighbors\s*{[\s\S]*order: 2;/);
 });
 
@@ -626,6 +626,14 @@ test('日记页最多预览三行媒体且提供全集媒体页', () => {
     assert.match(appJs, /function renderEntryPhotosRoute\(params = \{\}\)/);
     assert.match(appJs, /renderPhotoSleeve\(record\)/);
     assert.match(journalCss, /\.photo-sleeve-action\s*{/);
+});
+
+test('媒体附件页在移动端使用连续纸面并让摘要紧接媒体网格', () => {
+    assert.match(appJs, /class="entry-photos-summary">[\s\S]*返回笔记[\s\S]*媒体附件[\s\S]*place-count/);
+    assert.match(journalCss, /body\[data-route="photos"\] \.page-spread\s*\{[\s\S]*display: flex;[\s\S]*flex-direction: column;/);
+    assert.match(journalCss, /body\[data-route="photos"\] \.paper-page-left,[\s\S]*body\[data-route="photos"\] \.place-page\s*\{[\s\S]*display: contents;/);
+    assert.match(journalCss, /body\[data-route="photos"\] \.entry-photos-summary\s*\{[\s\S]*order: 0;/);
+    assert.match(journalCss, /body\[data-route="photos"\] \.paper-page-right\.dossier-page\s*\{[\s\S]*min-height: 0;/);
 });
 
 test('不存在的媒体引用显示可定位到 travel_data.json 字段的错误', () => {
@@ -696,7 +704,7 @@ test('照片全集页打开照片查看器时不会挂载到隐藏的笔记弹�
 
 test('移动端照片缩略图保持双列且旋转角度连续递增', () => {
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-sleeve\s*{[\s\S]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);/);
-    assert.doesNotMatch(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-sleeve\s*{[\s\S]*grid-template-columns: 1fr;/);
+    assert.doesNotMatch(journalCss, /\.photo-sleeve\s*\{[^}]*grid-template-columns: 1fr;/);
     assert.match(journalCss, /\.photo-viewer-image-rotating\s*{[\s\S]*transition: transform 0\.22s/);
     assert.match(appJs, /const PHOTO_ROTATION_ANIMATION_MS = 220;/);
     assert.match(appJs, /photoViewerState\.rotation \+= delta;/);

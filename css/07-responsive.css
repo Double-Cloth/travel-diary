@@ -179,7 +179,8 @@
 
     /* 详情页在窄屏按阅读顺序排列：顶部摘要、正文或相关记录、相邻项导航。 */
     body[data-route="entry"] .page-spread,
-    body[data-route="place"] .page-spread {
+    body[data-route="place"] .page-spread,
+    body[data-route="photos"] .page-spread {
         display: flex;
         flex-direction: column;
         align-items: stretch;
@@ -196,7 +197,8 @@
 
     /* 主信息与辅助信息共用同一张纸面，避免背景、边框和阴影在中段重新起页。 */
     body[data-route="entry"] .paper-page,
-    body[data-route="place"] .paper-page {
+    body[data-route="place"] .paper-page,
+    body[data-route="photos"] .paper-page {
         border-inline: 0;
         border-radius: 0;
         background: transparent;
@@ -206,7 +208,9 @@
     body[data-route="entry"] .paper-page-left,
     body[data-route="entry"] .entry-book-index,
     body[data-route="place"] .paper-page-left,
-    body[data-route="place"] .place-page {
+    body[data-route="place"] .place-page,
+    body[data-route="photos"] .paper-page-left,
+    body[data-route="photos"] .place-page {
         display: contents;
     }
 
@@ -225,9 +229,34 @@
         display: block;
     }
 
+    body[data-route="photos"] .entry-photos-summary {
+        display: block;
+        order: 0;
+        padding: clamp(16px, 4.5vw, 20px) clamp(16px, 4.5vw, 20px) 12px;
+    }
+
     body[data-route="entry"] .page-spread > .paper-page-right,
-    body[data-route="place"] .page-spread > .paper-page-right {
+    body[data-route="place"] .page-spread > .paper-page-right,
+    body[data-route="photos"] .page-spread > .paper-page-right {
         order: 1;
+    }
+
+    body[data-route="photos"] .paper-page-right.dossier-page {
+        min-height: 0;
+        padding: 8px clamp(16px, 4.5vw, 20px) clamp(20px, 5vw, 28px);
+    }
+
+    body[data-route="photos"] .entry-photos-page {
+        min-height: 0;
+        padding-bottom: 0;
+    }
+
+    body[data-route="photos"] .entry-photos-page > .journal-label {
+        margin-bottom: 0;
+    }
+
+    body[data-route="photos"] .entry-photos-page > .photo-sleeve {
+        margin-top: 4px;
     }
 
     body[data-route="entry"] .entry-neighbors,

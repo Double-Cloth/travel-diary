@@ -263,6 +263,9 @@
     color: var(--ink-muted);
 }
 
+/* 桌面端保持原有左右书页结构，移动端由响应式层把摘要和媒体网格串成连续纸面。 */
+.entry-photos-summary { display: contents; }
+
 .photo-viewer {
     position: fixed;
     inset: 0;
