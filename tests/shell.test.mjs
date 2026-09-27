@@ -562,6 +562,9 @@ test('省份详情页在左页提供返回与相邻省份导航', () => {
     assert.match(appJs, /<a class="ribbon-back" href="#archive">返回档案夹<\/a>/);
     assert.match(appJs, /function getPlaceAdminAreaNavigation/);
     assert.match(appJs, /aria-label="相邻\$\{escapeHtml\(adminAreaNavigation\.typeLabel\)\}"/);
+    assert.match(appJs, /class="place-neighbors entry-neighbors"/);
+    assert.match(appJs, /class="place-neighbor place-neighbor-\$\{direction\} entry-neighbor"/);
+    assert.match(appJs, /class="place-neighbor place-neighbor-\$\{direction\} entry-neighbor entry-neighbor-empty"/);
     assert.match(appJs, /data-action="place-\$\{direction\}"/);
     assert.match(appJs, /placeNav\.dataset\.action === 'place-prev' \? 'back' : 'forward'/);
     assert.match(journalCss, /\.place-neighbors\s*{/);

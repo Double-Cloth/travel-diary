@@ -450,18 +450,7 @@
     }
 
     .place-neighbors {
-        gap: 8px;
         margin-top: 22px;
-        padding-top: 14px;
-    }
-
-    .place-neighbor {
-        min-height: 60px;
-        padding: 9px 10px;
-    }
-
-    .place-neighbor strong {
-        font-size: 14px;
     }
 
     .place-records .ledger-entry {

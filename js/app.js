@@ -1443,7 +1443,8 @@ function renderPlace(params = {}) {
                 `).join('')}
             </div>
             ${adminAreaNavigation ? `
-                <nav class="place-neighbors" aria-label="相邻${escapeHtml(adminAreaNavigation.typeLabel)}">
+                <nav class="place-neighbors entry-neighbors" aria-label="相邻${escapeHtml(adminAreaNavigation.typeLabel)}">
+                    <h2>相邻${escapeHtml(adminAreaNavigation.typeLabel)}</h2>
                     ${renderPlaceAdminAreaNeighbor(adminAreaNavigation.previous, 'prev', adminAreaNavigation.typeLabel)}
                     ${renderPlaceAdminAreaNeighbor(adminAreaNavigation.next, 'next', adminAreaNavigation.typeLabel)}
                 </nav>
@@ -1484,7 +1485,7 @@ function renderPlaceAdminAreaNeighbor(area, direction, typeLabel) {
 
     if (!area) {
         return `
-            <div class="place-neighbor place-neighbor-${direction} place-neighbor-empty">
+            <div class="place-neighbor place-neighbor-${direction} entry-neighbor entry-neighbor-empty">
                 <span>${escapeHtml(label)}</span>
                 <strong>${escapeHtml(endLabel)}${escapeHtml(typeLabel)}</strong>
             </div>
@@ -1492,14 +1493,14 @@ function renderPlaceAdminAreaNeighbor(area, direction, typeLabel) {
     }
 
     return `
-        <button class="place-neighbor place-neighbor-${direction}" type="button"
+        <button class="place-neighbor place-neighbor-${direction} entry-neighbor" type="button"
             data-action="place-${direction}"
             data-country-key="${escapeHtml(area.countryKey)}"
             data-admin-area="${escapeHtml(area.adminArea)}"
             aria-label="${escapeHtml(label)}：${escapeHtml(area.label)}">
             <span>${escapeHtml(label)}</span>
             <strong>${escapeHtml(area.label)}</strong>
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="${direction === 'prev' ? 'm15 5-7 7 7 7' : 'm9 5 7 7-7 7'}"/></svg>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
         </button>
     `;
 }
