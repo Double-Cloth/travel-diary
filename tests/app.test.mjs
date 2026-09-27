@@ -334,9 +334,11 @@ test('封面沿书脊翻转，合书落稳后提交且中断不重复渲染', t 
     assert.equal([...nodes].some(node => node.className === 'book-transition-overlay'), true);
     assert.equal(animations.length, 0, '书页仍可见时尚未开始合书');
     frames.shift()();
-    assert.equal(animations.length, 6);
+    assert.equal(animations.length, 7);
+    assert.equal(animations[1].timing.direction, 'reverse');
+    assert.deepEqual(animations[0].keyframes, animations[2].keyframes, '封皮与纸芯必须共用书脊位移');
     assert.deepEqual(animations[1].keyframes.map(frame => frame.transform),
-        ['rotateY(-179.2deg)', 'rotateY(-174deg)', 'rotateY(-86deg)', 'rotateY(-5deg)', 'rotateY(0deg)']);
+        ['rotateY(0deg)', 'rotateY(-4deg)', 'rotateY(-178deg)', 'rotateY(-180deg)']);
     t.mock.timers.tick(1179);
     assert.equal(renders, 0);
     t.mock.timers.tick(1);
@@ -361,16 +363,17 @@ test('封面沿书脊翻转，合书落稳后提交且中断不重复渲染', t 
     globalThis.window.innerHeight = 844;
     closedBookCover.getBoundingClientRect = () => ({ width: 0, height: 0 });
     leftPage.getBoundingClientRect = () => ({ top: 112, left: 0, width: 390, height: 5000 });
+    spread.parentElement.getBoundingClientRect = leftPage.getBoundingClientRect;
     app.renderWithBookCover(() => { renders += 1; }, 'opening');
     assert.equal(renders, 4, '开书时立即在静态封面下绘制新页');
     const mobileOverlay = [...nodes].find(node => node.className === 'book-transition-overlay');
     assert.ok(mobileOverlay);
     assert.equal([...nodes].findLast(node => node.className === 'book-transition-scene').style.width, '342px');
     frames.shift()(performance.now() + 1000);
-    const mobileScaleY = Number(animations.at(-5).keyframes.at(-1).transform.match(/scale\([^,]+, ([^)]+)\)/)[1]);
-    assert.ok(mobileScaleY < 2, '连续滚动的手机书页不能把封皮拉伸到整页高度');
-    assert.deepEqual(animations.at(-4).keyframes.map(frame => frame.transform),
-        ['rotateY(0deg)', 'rotateY(-5deg)', 'rotateY(-92deg)', 'rotateY(-171deg)', 'rotateY(-179.2deg)']);
+    const mobileScaleY = Number(animations.at(-7).keyframes[0].transform.match(/scale\([^,]+, ([^)]+)\)/)[1]);
+    assert.ok(mobileScaleY > .5 && mobileScaleY < 2, '连续滚动的手机书页不能把封皮拉伸到整页高度');
+    assert.deepEqual(animations.at(-6).keyframes.map(frame => frame.transform),
+        ['rotateY(0deg)', 'rotateY(-4deg)', 'rotateY(-178deg)', 'rotateY(-180deg)']);
     t.mock.timers.tick(1180);
     assert.equal(shell.focused, true);
     assert.equal([...nodes].some(node => node.className === 'book-transition-overlay'), false);

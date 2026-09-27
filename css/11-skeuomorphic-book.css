@@ -31,7 +31,7 @@ body {
     position: absolute;
     transform-origin: left top;
     transform-style: preserve-3d;
-    will-change: transform, opacity;
+    will-change: transform;
     z-index: 3;
 }
 
@@ -42,7 +42,7 @@ body {
     pointer-events: none;
     transform: translateZ(0);
     transform-origin: center;
-    will-change: clip-path;
+    will-change: transform;
 }
 
 .book-transition-leaf {
@@ -54,91 +54,47 @@ body {
     z-index: 3;
 }
 
-.book-transition-cover,
+/* 动画使用真实封面，避免从页面皮革跳换成另一张图片。 */
+.book-transition-leaf > .book-transition-cover,
 .book-transition-back {
     position: absolute;
     inset: 0;
     display: block;
     width: 100%;
     height: 100%;
+    margin: 0;
     backface-visibility: hidden;
-    object-fit: fill;
-    border-radius: 6px 13px 13px 6px;
+    -webkit-backface-visibility: hidden;
     pointer-events: none;
 }
-
-.book-transition-cover {
-    box-shadow: 8px 18px 30px rgba(9, 4, 2, 0.4);
+.book-transition-leaf > .book-transition-cover {
+    transform: translateZ(1px);
+    transition: none;
+    box-shadow: inset 0 0 0 2px #9b74404d, 0 6px 16px #180c0644;
 }
-
+.book-transition-cover .closed-book-clasp { transition: none; }
 .book-transition-back {
+    overflow: hidden;
     transform: rotateY(180deg);
-    background: linear-gradient(90deg, #392316 0%, #af8b62 7%, #e5d1ac 18%, #e8d9bd 75%, #b89770 100%), url('../assets/textures/paper-grain.png');
-    background-blend-mode: multiply;
-    box-shadow: inset 13px 0 20px #39241496, inset -4px 0 15px #fff6db8a, -8px 18px 34px #12090673;
+    border-radius: var(--book-left-radius);
+    background: var(--leather-grain), #e8d9bd;
+    box-shadow: -5px 8px 18px #28160c44;
 }
-
-.book-transition-back::after {
-    content: '';
+.book-transition-back > .book-transition-lining {
     position: absolute;
-    inset: 16px 18px;
-    border: 1px solid #76553973;
-    border-radius: 3px 9px 9px 3px;
-    box-shadow: inset 0 0 0 2px #21110b91;
+    top: 0;
+    left: 0;
+    margin: 0;
+    transform: none;
+    will-change: auto;
 }
-
 .book-transition-edge {
     position: absolute;
-    z-index: 4;
-    top: 3px;
-    bottom: 3px;
-    left: -2px;
-    width: 5px;
-    border-radius: 60% 20% 20% 60%;
-    background: linear-gradient(90deg, #160a07, #8a5d3d 46%, #25120c);
-    box-shadow: 1px 0 2px #f2ce8852, -2px 0 5px #0d0503a8;
-    transform: translateZ(2px);
-}
-
-.book-transition-paper {
-    position: absolute;
-    z-index: 3;
-    inset: 3px 2px 3px 1px;
-    transform-origin: left center;
-    transform-style: preserve-3d;
-    will-change: transform;
-}
-
-.book-transition-paper-front,
-.book-transition-paper-back {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    border-radius: 2px 9px 9px 2px;
-    backface-visibility: hidden;
-}
-
-.book-transition-paper-front {
-    background: linear-gradient(90deg, #dfc9a8, #fff9e7 14%, #f2e4ca 88%, #c9ad85),
-        url('../assets/textures/paper-grain.png'), #f3e8cf;
-    box-shadow: inset 12px 0 18px #72503245, inset -2px 0 5px #fffdf080,
-        5px 12px 22px #1b0c0752;
-}
-
-.book-transition-paper-back {
-    transform: rotateY(180deg);
-    background: #f3e8cf;
-    box-shadow: inset -12px 0 18px #72503245, -5px 12px 22px #1b0c0752;
-}
-
-.book-transition-paper-content {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    min-height: 0;
-    overflow: hidden;
-    border-radius: inherit;
+    inset: 0 0 0 auto;
+    width: 3px;
+    background: linear-gradient(90deg, #2b180f, #a27747, #382116);
+    transform: rotateY(90deg);
+    transform-origin: right center;
 }
 
 .book-transition-cast-shadow {

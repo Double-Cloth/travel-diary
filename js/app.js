@@ -61,11 +61,6 @@ const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
 const DEFAULT_VIDEO_VOLUME = 0.85;
 const VIDEO_PLAY_ICON_PATH = 'M8 5.5v13l10-6.5z';
 const VIDEO_PAUSE_ICON_PATH = 'M7 5h4v14H7zm6 0h4v14h-4z';
-const BOOK_COVER_IMAGE_URLS = {
-    desktop: 'assets/images/pages/book-cover-animation-desktop.webp',
-    mobile: 'assets/images/pages/book-cover-animation-mobile.webp'
-};
-const bookCoverImageCache = [];
 
 const refs = {};
 let openRecordEditor;
@@ -117,7 +112,6 @@ async function refreshTravelModel(cacheKey = '') {
 
 async function initApp() {
     cacheRefs();
-    preloadBookCoverImages();
     bindGlobalEvents();
     const recordDeleteDialog = createRecordDeleteDialog();
     const handleRecordSaved = async (savedRecord, context = {}) => {
@@ -2539,33 +2533,11 @@ function prepareTransitionClone(node, className) {
     return clone;
 }
 
-function preloadBookCoverImages() {
-    Object.values(BOOK_COVER_IMAGE_URLS).forEach(src => {
-        const image = new Image();
-        image.decoding = 'async';
-        image.src = src;
-        bookCoverImageCache.push(image);
-        void image.decode().catch(() => {});
-    });
-}
-
 function createTransitionBook() {
     const source = refs.spread.parentElement;
     const clone = prepareTransitionClone(source, 'book-transition-book');
     clone.querySelector('.closed-book-cover')?.remove();
     return { source, clone };
-}
-
-function getInsetClip(outerBounds, innerBounds) {
-    const outerRight = outerBounds.right ?? outerBounds.left + outerBounds.width;
-    const outerBottom = outerBounds.bottom ?? outerBounds.top + outerBounds.height;
-    const innerRight = innerBounds.right ?? innerBounds.left + innerBounds.width;
-    const innerBottom = innerBounds.bottom ?? innerBounds.top + innerBounds.height;
-    const top = Math.max(0, innerBounds.top - outerBounds.top);
-    const right = Math.max(0, outerRight - innerRight);
-    const bottom = Math.max(0, outerBottom - innerBottom);
-    const left = Math.max(0, innerBounds.left - outerBounds.left);
-    return `inset(${top}px ${right}px ${bottom}px ${left}px round 8px 14px 14px 8px)`;
 }
 
 function renderWithBookCover(renderFn, mode) {
@@ -2611,21 +2583,16 @@ function renderWithBookCover(renderFn, mode) {
     });
     const leaf = document.createElement('div');
     leaf.className = 'book-transition-leaf';
-    const cover = document.createElement('img');
-    cover.className = 'book-transition-cover';
-    cover.src = mobile
-        ? BOOK_COVER_IMAGE_URLS.mobile
-        : BOOK_COVER_IMAGE_URLS.desktop;
-    cover.alt = '';
-    cover.draggable = false;
+    const cover = prepareTransitionClone(refs.closedBookCover, 'book-transition-cover');
+    cover.removeAttribute('data-action');
     const back = document.createElement('div');
     back.className = 'book-transition-back';
     const edge = document.createElement('div');
     edge.className = 'book-transition-edge';
-    leaf.append(cover, back);
+    leaf.append(cover, back, edge);
     const castShadow = document.createElement('div');
     castShadow.className = 'book-transition-cast-shadow';
-    scene.append(castShadow, leaf, edge);
+    scene.append(castShadow, leaf);
     overlay.append(backdrop, scene);
     document.body.append(overlay);
 
@@ -2656,140 +2623,79 @@ function renderWithBookCover(renderFn, mode) {
         if (finished) return;
         const { source: sourceBook, clone: transitionBook } = createTransitionBook();
         const bookBounds = sourceBook.getBoundingClientRect();
-        const page = mobile ? refs.leftPage : refs.rightPage;
-        const pageBounds = page.getBoundingClientRect();
-        const target = pageBounds.width && pageBounds.height ? {
-            left: pageBounds.left, top: pageBounds.top, width: pageBounds.width,
-            // 手机书页可连续滚动，只让封皮贴合首屏的可见高度。
-            height: mobile ? Math.min(pageBounds.height,
-                Math.max(coverBounds.height, window.innerHeight - pageBounds.top - 12)) : pageBounds.height
-        } : coverBounds;
+        // 封皮、衬纸与纸芯共用书脊坐标；只平移整本书，不再用移动裁剪展开正文。
+        const target = {
+            left: bookBounds.left + (mobile ? 0 : bookBounds.width / 2),
+            top: bookBounds.top,
+            width: bookBounds.width / (mobile ? 1 : 2),
+            height: mobile ? Math.min(bookBounds.height,
+                Math.max(coverBounds.height, window.innerHeight - bookBounds.top - 12)) : bookBounds.height
+        };
+        const scaleX = coverBounds.width / target.width;
+        const scaleY = coverBounds.height / target.height;
+        const closedMove = `translate(${coverBounds.left - target.left}px, ${coverBounds.top - target.top}px) scale(${scaleX}, ${scaleY})`;
+        const timing = { duration: BOOK_COVER_TURN_MS, fill: 'both',
+            direction: closing ? 'reverse' : 'normal', easing: 'linear' };
+        const movement = [
+            { offset: 0, transform: closedMove },
+            { offset: .12, transform: closedMove, easing: 'cubic-bezier(.35,0,.2,1)' },
+            { offset: 1, transform: 'translate(0px, 0px) scale(1, 1)' }
+        ];
+        Object.assign(scene.style, { top: `${target.top}px`, left: `${target.left}px`,
+            width: `${target.width}px`, height: `${target.height}px`, opacity: '1' });
         Object.assign(transitionBook.style, {
-            top: `${bookBounds.top}px`,
-            left: `${bookBounds.left}px`,
-            width: `${bookBounds.width}px`,
-            height: `${bookBounds.height}px`
+            top: `${bookBounds.top}px`, left: `${bookBounds.left}px`,
+            width: `${bookBounds.width}px`, height: `${bookBounds.height}px`,
+            transformOrigin: mobile ? 'left top' : '50% 0',
+            // 手机只保留封皮下的首屏纸芯，长正文在落平后交还真实页面。
+            clipPath: mobile ? `inset(0 0 ${Math.max(0, bookBounds.height - target.height)}px 0)`
+                : 'inset(-40px -60px -60px 50%)'
         });
         overlay.append(transitionBook);
         const sourcePages = sourceBook.querySelectorAll('.paper-page');
         transitionBook.querySelectorAll('.paper-page').forEach((clonedPage, index) => {
             clonedPage.scrollTop = sourcePages[index]?.scrollTop || 0;
         });
-
-        let paper = null;
         if (!mobile) {
-            paper = document.createElement('div');
-            paper.className = 'book-transition-paper';
-            const paperFront = document.createElement('div');
-            paperFront.className = 'book-transition-paper-front';
-            const paperBack = document.createElement('div');
-            paperBack.className = 'book-transition-paper-back';
-            paperBack.append(prepareTransitionClone(refs.leftPage, 'book-transition-paper-content'));
-            paper.append(paperFront, paperBack);
-            scene.append(paper);
+            // 左半本直接贴在硬封皮背面，落平时与真实左页逐像素重合。
+            const lining = createTransitionBook().clone;
+            lining.classList.add('book-transition-lining');
+            Object.assign(lining.style, { width: `${bookBounds.width}px`, height: `${bookBounds.height}px` });
+            back.append(lining);
+            lining.querySelectorAll('.paper-page').forEach((clonedPage, index) => {
+                clonedPage.scrollTop = sourcePages[index]?.scrollTop || 0;
+            });
         }
-
-        const move = `translate(${target.left - coverBounds.left}px, ${target.top - coverBounds.top}px) scale(${target.width / coverBounds.width}, ${target.height / coverBounds.height})`;
-        const sceneFrames = closing
-            ? [{ offset: 0, transform: move }, { offset: .78, transform: 'translate(0, 0) scale(1)' }, { offset: 1, transform: 'translate(0, 0) scale(1)' }]
-            : [{ offset: 0, transform: 'translate(0, 0) scale(1)' }, { offset: .78, transform: move }, { offset: 1, transform: move }];
-        animations.push(scene.animate(sceneFrames, {
-            duration: BOOK_COVER_TURN_MS, fill: 'both', easing: 'linear'
-        }));
-        const coverFrames = closing
-            ? [
-                { offset: 0, transform: 'rotateY(-179.2deg)' },
-                { offset: .3, transform: 'rotateY(-174deg)' },
-                { offset: .7, transform: 'rotateY(-86deg)' },
-                { offset: .94, transform: 'rotateY(-5deg)' },
-                { offset: 1, transform: 'rotateY(0deg)' }
-            ]
-            : [
-                { offset: 0, transform: 'rotateY(0deg)' },
-                { offset: .08, transform: 'rotateY(-5deg)' },
-                { offset: .46, transform: 'rotateY(-92deg)' },
-                { offset: .72, transform: 'rotateY(-171deg)' },
-                { offset: 1, transform: 'rotateY(-179.2deg)' }
-            ];
-        animations.push(leaf.animate(coverFrames, {
-            duration: BOOK_COVER_TURN_MS,
-            fill: 'both',
-            easing: 'linear'
-        }));
-
-        if (paper) {
-            const paperFrames = closing
-                ? [
-                    { offset: 0, transform: 'translateZ(-2px) rotateY(-179.6deg)' },
-                    { offset: .22, transform: 'translateZ(-2px) rotateY(-166deg)' },
-                    { offset: .48, transform: 'translateZ(-2px) rotateY(-72deg)' },
-                    { offset: .66, transform: 'translateZ(-2px) rotateY(0deg)' },
-                    { offset: 1, transform: 'translateZ(-2px) rotateY(0deg)' }
-                ]
-                : [
-                    { offset: 0, transform: 'translateZ(-2px) rotateY(0deg)' },
-                    { offset: .4, transform: 'translateZ(-2px) rotateY(0deg)' },
-                    { offset: .58, transform: 'translateZ(-2px) rotateY(-24deg)' },
-                    { offset: .82, transform: 'translateZ(-2px) rotateY(-142deg)' },
-                    { offset: 1, transform: 'translateZ(-2px) rotateY(-179.6deg)' }
-                ];
-            animations.push(paper.animate(paperFrames, {
-                duration: BOOK_COVER_TURN_MS,
-                fill: 'both',
-                easing: 'linear'
-            }));
-        }
-
-        const closedClip = getInsetClip(bookBounds, coverBounds);
-        const openClip = 'inset(0 0 0 0 round 12px)';
-        animations.push(transitionBook.animate(closing
-            ? [
-                { offset: 0, clipPath: openClip },
-                { offset: .22, clipPath: openClip },
-                { offset: .86, clipPath: closedClip },
-                { offset: 1, clipPath: closedClip }
-            ]
-            : [
-                { offset: 0, clipPath: closedClip },
-                { offset: .12, clipPath: closedClip },
-                { offset: .78, clipPath: openClip },
-                { offset: 1, clipPath: openClip }
-            ], {
-            duration: BOOK_COVER_TURN_MS,
-            fill: 'both',
-            easing: 'linear'
-        }));
-        animations.push(castShadow.animate(closing
-            ? [
-                { offset: 0, opacity: .08, transform: 'translateX(-92%) scaleX(.96)' },
-                { offset: .52, opacity: .48, transform: 'translateX(-48%) scaleX(.82)' },
-                { offset: 1, opacity: .06, transform: 'translateX(-4%) scaleX(.08)' }
-            ]
-            : [
-                { offset: 0, opacity: .06, transform: 'translateX(-4%) scaleX(.08)' },
-                { offset: .48, opacity: .48, transform: 'translateX(-48%) scaleX(.82)' },
-                { offset: 1, opacity: .08, transform: 'translateX(-92%) scaleX(.96)' }
-            ], {
-            duration: BOOK_COVER_TURN_MS,
-            fill: 'both',
-            easing: 'linear'
-        }));
-        animations.push(backdrop.animate(closing
-            ? [
-                { offset: 0, opacity: 0 },
-                { offset: .62, opacity: 0 },
-                { offset: 1, opacity: 1 }
-            ]
-            : [
-                { offset: 0, opacity: 1 },
-                { offset: .34, opacity: 1 },
-                { offset: .9, opacity: 0 },
-                { offset: 1, opacity: 0 }
-            ], {
-            duration: BOOK_COVER_TURN_MS,
-            fill: 'both',
-            easing: 'cubic-bezier(.16, 1, .3, 1)'
-        }));
+        animations.push(scene.animate(movement, timing));
+        animations.push(leaf.animate([
+            { offset: 0, transform: 'rotateY(0deg)' },
+            { offset: .12, transform: 'rotateY(-4deg)', easing: 'cubic-bezier(.42,0,.25,1)' },
+            { offset: .9, transform: 'rotateY(-178deg)', easing: 'ease-out' },
+            { offset: 1, transform: 'rotateY(-180deg)' }
+        ], timing));
+        animations.push(transitionBook.animate(movement, timing));
+        const clasp = cover.querySelector('.closed-book-clasp');
+        if (clasp) animations.push(clasp.animate([
+            { offset: 0, transform: 'translateX(0) rotateY(0deg)', opacity: 1 },
+            { offset: .12, transform: 'translateX(22px) rotateY(-100deg)', opacity: 0 },
+            { offset: 1, transform: 'translateX(22px) rotateY(-100deg)', opacity: 0 }
+        ], timing));
+        animations.push(castShadow.animate([
+            { offset: 0, opacity: .16, transform: 'scaleX(1)' },
+            { offset: .38, opacity: .45, transform: 'scaleX(.65)' },
+            { offset: .58, opacity: .32, transform: 'scaleX(.18)' },
+            { offset: 1, opacity: 0, transform: 'scaleX(.02)' }
+        ], timing));
+        animations.push(back.animate([
+            { offset: 0, filter: 'brightness(.7)' },
+            { offset: .5, filter: 'brightness(.7)' },
+            { offset: 1, filter: 'brightness(1)' }
+        ], timing));
+        animations.push(backdrop.animate([
+            { offset: 0, opacity: 1 },
+            { offset: .9, opacity: 1 },
+            { offset: 1, opacity: 0 }
+        ], timing));
         finishTimer = setTimeout(clearPageTurn, BOOK_COVER_TURN_MS);
     };
 
