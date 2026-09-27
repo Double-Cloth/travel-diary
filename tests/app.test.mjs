@@ -466,3 +466,45 @@ test('详情、附件与返回都作为书页路由参与翻页', t => {
     scenario.render(app.parseRoute('#entry?id=a'));
     assert.deepEqual(scenario.calls.slice(-2), ['turn', 'entry:a']);
 });
+
+test('手机切页的过期完成回调不能清理新动画，完成后移除全部副本', async t => {
+    const previous = { window: globalThis.window, document: globalThis.document, getComputedStyle: globalThis.getComputedStyle };
+    t.after(() => { app.clearPageTurn(); Object.assign(globalThis, previous); });
+    const nodes = new Set();
+    const animations = [];
+    const createNode = () => ({
+        style: {},
+        classList: { add() {}, remove() {}, contains() { return false; } },
+        setAttribute() {}, removeAttribute() {}, querySelectorAll() { return []; },
+        getBoundingClientRect() { return { left: 0, top: -120, width: 390, height: 4000 }; },
+        cloneNode: createNode,
+        append(...children) { children.forEach(child => nodes.add(child)); },
+        remove() { nodes.delete(this); },
+        animate() {
+            let finish;
+            const finished = new Promise(resolve => { finish = resolve; });
+            const animation = { finished, finish, cancel() { this.cancelled = true; } };
+            animations.push(animation);
+            return animation;
+        }
+    });
+    globalThis.document = { createElement: createNode, body: createNode() };
+    globalThis.window = { matchMedia: query => ({ matches: !query.includes('reduced-motion') }) };
+    globalThis.getComputedStyle = () => ({ background: '#fff' });
+    app.setTestState({ spread: createNode(), leftPage: createNode(), rightPage: createNode() });
+    let rendered;
+    app.renderWithPageTurn(() => { rendered = '第一页'; });
+    const first = animations[0];
+    app.renderWithPageTurn(() => { rendered = '第二页'; }, { direction: 'back' });
+    const second = animations[3];
+    first.finish();
+    await Promise.resolve();
+    assert.equal(rendered, '第二页');
+    assert.equal(first.cancelled, true);
+    assert.equal(second.cancelled, undefined);
+    assert.equal([...nodes].filter(node => node.className === 'mobile-page-transition').length, 1);
+    second.finish();
+    await Promise.resolve();
+    assert.equal(second.cancelled, true);
+    assert.equal([...nodes].filter(node => node.className === 'mobile-page-transition').length, 0);
+});

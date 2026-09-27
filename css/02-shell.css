@@ -71,7 +71,7 @@
     font-size: 17px;
     line-height: 1.25;
     white-space: nowrap;
-    transition: padding 0.2s ease, color 0.2s ease, filter 0.2s ease;
+    transition: transform 200ms ease-out, color 160ms ease-out, filter 160ms ease-out;
 }
 
 .chapter-tab:nth-child(2) {

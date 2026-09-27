@@ -1645,6 +1645,9 @@ function openPhotoViewer(photos, index = 0) {
 
 function renderPhotoViewer() {
     stopObservingPhotoViewerStage();
+    const previousImage = document.querySelector('[data-photo-viewer-image]');
+    const previousFrame = previousImage?.complete && previousImage.naturalWidth
+        ? previousImage.closest('[data-photo-viewer-frame]').cloneNode(true) : null;
     document.querySelector('[data-photo-viewer]')?.remove();
     const root = getPhotoViewerRoot();
     if (!photoViewerState || !root) {
@@ -1713,6 +1716,27 @@ function renderPhotoViewer() {
     }
 
     const image = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]');
+    if (previousFrame && image && !prefersReducedMotion()) {
+        // 新图加载、适配完成前保留旧图，避免切换大照片时露出空白舞台。
+        previousFrame.removeAttribute('data-photo-viewer-frame');
+        previousFrame.querySelector('img').removeAttribute('data-photo-viewer-image');
+        previousFrame.querySelector('img').removeAttribute('data-photo-viewer-media');
+        previousFrame.setAttribute('aria-hidden', 'true');
+        previousFrame.inert = true;
+        previousFrame.style.pointerEvents = 'none';
+        image.closest('[data-photo-viewer-stage]').append(previousFrame);
+        const reveal = () => {
+            if (!previousFrame.isConnected) return;
+            const fade = previousFrame.animate([{ opacity: 1 }, { opacity: 0 }],
+                { duration: 180, easing: 'ease-out', fill: 'forwards' });
+            fade.finished.then(() => previousFrame.remove(), () => previousFrame.remove());
+        };
+        if (image.complete) requestAnimationFrame(reveal);
+        else {
+            image.addEventListener('load', () => requestAnimationFrame(reveal), { once: true });
+            image.addEventListener('error', () => previousFrame.remove(), { once: true });
+        }
+    }
     if (image?.complete) {
         fitPhotoToStage();
     } else {
@@ -2738,7 +2762,11 @@ function renderWithBookCover(renderFn, mode) {
             { offset: .9, opacity: 1 },
             { offset: 1, opacity: 0 }
         ], timing));
-        finishTimer = setTimeout(clearPageTurn, BOOK_COVER_TURN_MS);
+        if (animations[0].finished) {
+            animations[0].finished.then(() => { if (!finished) clearPageTurn(); }, () => {});
+        } else {
+            finishTimer = setTimeout(clearPageTurn, BOOK_COVER_TURN_MS);
+        }
     };
 
     if (closing) {
@@ -2852,10 +2880,41 @@ function renderWithPageTurn(renderFn, options = {}) {
     }
 
     if (isMobileLayout()) {
+        const bounds = refs.spread.getBoundingClientRect();
+        const snapshot = prepareTransitionClone(refs.spread, 'mobile-page-snapshot');
+        snapshot.querySelectorAll('.paper-page').forEach((page, index) => {
+            page.style.background = getComputedStyle([refs.leftPage, refs.rightPage][index]).background;
+        });
+        const viewport = document.createElement('div');
+        viewport.className = 'mobile-page-transition';
+        viewport.setAttribute('aria-hidden', 'true');
+        viewport.inert = true;
+        Object.assign(viewport.style, { left: `${bounds.left}px`, width: `${bounds.width}px` });
+        Object.assign(snapshot.style, { width: `${bounds.width}px`, top: `${bounds.top}px` });
+        viewport.append(snapshot);
+        document.body.append(viewport);
         renderFn();
-        refs.spread.classList.add('turn-mobile');
-        if (options.direction === 'back') refs.spread.classList.add('turn-mobile-back');
-        pageTurnTimer = setTimeout(clearPageTurn, 420);
+        const shift = options.direction === 'back' ? -12 : 12;
+        const timing = { duration: 300, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'both' };
+        const animations = [viewport.animate([
+            { opacity: 1, transform: 'translateX(0)' },
+            { opacity: 0, transform: `translateX(${-shift}px)` }
+        ], timing)];
+        // 只移动真实纸页，避免变换整本书改变固定筛选夹层的包含块。
+        for (const page of [refs.leftPage, refs.rightPage]) {
+            if (page.classList.contains('context-panel')) continue;
+            animations.push(page.animate([
+                { opacity: 1, transform: `translateX(${shift}px)` },
+                { opacity: 1, transform: 'translateX(0)' }
+            ], timing));
+        }
+        let cancelled = false;
+        pageTurnCleanup = () => {
+            cancelled = true;
+            animations.forEach(animation => animation.cancel());
+            viewport.remove();
+        };
+        animations[0].finished.then(() => { if (!cancelled) clearPageTurn(); }, () => {});
         return;
     }
 
@@ -2932,6 +2991,10 @@ function renderWithPageTurn(renderFn, options = {}) {
         transform: frame.shadow, opacity: frame.shadowOpacity * .42 })), timing));
     animations.push(contact.animate(frames[0].map(frame => ({ offset: frame.offset,
         transform: frame.shadow, opacity: frame.shadowOpacity })), timing));
+    // 纸面在落稳前交还真实正文，避免分条副本与最终页面之间出现细缝闪动。
+    animations.push(leaf.animate([
+        { opacity: 1, offset: 0 }, { opacity: 1, offset: .92 }, { opacity: 0, offset: 1 }
+    ], timing));
     refs.spread.classList.add('book-turn-preparing');
     refs.spread.append(resting, shadow, leaf);
     refs.leftPage.inert = true;
@@ -2960,7 +3023,11 @@ function renderWithPageTurn(renderFn, options = {}) {
             if (cancelled) return;
             refs.spread.classList.remove('book-turn-preparing');
             animations.forEach(animation => animation.play());
-            pageTurnTimer = setTimeout(clearPageTurn, PAGE_TURN_MS);
+            if (animations[0].finished) {
+                animations[0].finished.then(() => { if (!cancelled) clearPageTurn(); }, () => {});
+            } else {
+                pageTurnTimer = setTimeout(clearPageTurn, PAGE_TURN_MS);
+            }
         });
     });
 }
