@@ -580,7 +580,9 @@ test('省份详情页在左页提供返回与相邻省份导航', () => {
 
 test('移动端日记与地点详情先显示主要内容，再显示摘要和相邻项导航', () => {
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*body\[data-route="entry"\] \.page-spread,\s*body\[data-route="place"\] \.page-spread\s*{[\s\S]*display: flex;[\s\S]*flex-direction: column;[\s\S]*align-items: stretch;/);
+    assert.match(journalCss, /body\[data-route="entry"\] \.page-spread,\s*body\[data-route="place"\] \.page-spread\s*{[\s\S]*gap: 0;[\s\S]*overflow: hidden;[\s\S]*border-inline: 5px solid #bfa780;[\s\S]*left-page-ledger-travel-diary\.png/);
     assert.match(journalCss, /body\[data-route="entry"\] \.paper-page-right,\s*body\[data-route="place"\] \.paper-page-right\s*{[\s\S]*order: -1;/);
+    assert.match(journalCss, /body\[data-route="entry"\] \.paper-page,\s*body\[data-route="place"\] \.paper-page\s*{[\s\S]*border-inline: 0;[\s\S]*background: transparent;[\s\S]*box-shadow: none;/);
 });
 
 test('日记媒体支持沉浸式查看，图片与视频共用基础变换操作', () => {

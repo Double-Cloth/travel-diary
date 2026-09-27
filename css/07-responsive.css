@@ -183,11 +183,29 @@
         display: flex;
         flex-direction: column;
         align-items: stretch;
+        gap: 0;
+        overflow: hidden;
+        border-inline: 5px solid #bfa780;
+        background:
+            linear-gradient(rgba(249, 239, 223, 0.88), rgba(244, 232, 215, 0.9)),
+            url("../assets/images/pages/left-page-ledger-travel-diary.png") center / cover,
+            url("../assets/textures/paper-grain.png"),
+            #f3e8cf;
+        box-shadow: inset 3px 0 7px rgba(133, 100, 62, 0.13);
     }
 
     body[data-route="entry"] .paper-page-right,
     body[data-route="place"] .paper-page-right {
         order: -1;
+    }
+
+    /* 主信息与辅助信息共用同一张纸面，避免背景、边框和阴影在中段重新起页。 */
+    body[data-route="entry"] .paper-page,
+    body[data-route="place"] .paper-page {
+        border-inline: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
     }
 
     .journal-shell.mobile-context-panel-open::before {
