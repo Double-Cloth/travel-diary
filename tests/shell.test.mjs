@@ -557,9 +557,15 @@ test('点击头像先验证密码，再选择常见图片并写入服务更新�
     assert.match(recordStoreJs, /saveProfilePicture/);
 });
 
-test('地点详情页仅保留左页返回按钮', () => {
+test('省份详情页在左页提供返回与相邻省份导航', () => {
     assert.doesNotMatch(appJs, /<div class="place-page">\s*<a class="location-back location-close"/);
     assert.match(appJs, /<a class="ribbon-back" href="#archive">返回档案夹<\/a>/);
+    assert.match(appJs, /function getPlaceAdminAreaNavigation/);
+    assert.match(appJs, /aria-label="相邻\$\{escapeHtml\(adminAreaNavigation\.typeLabel\)\}"/);
+    assert.match(appJs, /data-action="place-\$\{direction\}"/);
+    assert.match(appJs, /placeNav\.dataset\.action === 'place-prev' \? 'back' : 'forward'/);
+    assert.match(journalCss, /\.place-neighbors\s*{/);
+    assert.match(journalCss, /body\[data-route="place"\] \.paper-page-left\s*{[^}]*min-height: 0;/);
     assert.doesNotMatch(appJs, /class="location-back location-close route-location-close"/);
     assert.doesNotMatch(appJs, /aria-label="关闭地点详情"/);
     assert.doesNotMatch(appJs, /routeActionRoot|renderRouteActions|refs\.routeAction/);

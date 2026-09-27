@@ -1429,6 +1429,7 @@ function renderPlace(params = {}) {
     const label = getPlaceLabel(params, matching);
     const visitCount = countDistinctVisits(matching);
     const localities = Array.from(new Set(matching.map(record => record.locality).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-CN'));
+    const adminAreaNavigation = getPlaceAdminAreaNavigation(params);
 
     setPages(`
         <div class="place-page">
@@ -1441,6 +1442,12 @@ function renderPlace(params = {}) {
                     <a class="location-chip" href="${placeHash(params.country, params.area, locality)}">${escapeHtml(locality)}</a>
                 `).join('')}
             </div>
+            ${adminAreaNavigation ? `
+                <nav class="place-neighbors" aria-label="相邻${escapeHtml(adminAreaNavigation.typeLabel)}">
+                    ${renderPlaceAdminAreaNeighbor(adminAreaNavigation.previous, 'prev', adminAreaNavigation.typeLabel)}
+                    ${renderPlaceAdminAreaNeighbor(adminAreaNavigation.next, 'next', adminAreaNavigation.typeLabel)}
+                </nav>
+            ` : ''}
         </div>
     `, `
         <div class="place-records">
@@ -1448,6 +1455,53 @@ function renderPlace(params = {}) {
             ${matching.length ? matching.map(renderLedgerEntry).join('') : '<div class="empty-note">这个地点还没有旅行记录。</div>'}
         </div>
     `, 'dossier-page place-detail-page');
+}
+
+function getPlaceAdminAreaNavigation(params = {}) {
+    if (!params.area || params.locality) return null;
+
+    const country = travelModel.countries.find(item => (
+        item.countryKey === params.country || item.country === params.country
+    ));
+    if (!country) return null;
+
+    const index = country.adminAreas.findIndex(area => (
+        area.key === params.area || area.adminArea === params.area
+    ));
+    if (index < 0) return null;
+
+    return {
+        previous: country.adminAreas[index - 1] || null,
+        next: country.adminAreas[index + 1] || null,
+        typeLabel: country.labels.domestic ? '省份' : country.labels.adminArea
+    };
+}
+
+function renderPlaceAdminAreaNeighbor(area, direction, typeLabel) {
+    const prefix = direction === 'prev' ? '上一' : '下一';
+    const label = `${prefix}${typeLabel}`;
+    const endLabel = direction === 'prev' ? '已到首个' : '已到末个';
+
+    if (!area) {
+        return `
+            <div class="place-neighbor place-neighbor-${direction} place-neighbor-empty">
+                <span>${escapeHtml(label)}</span>
+                <strong>${escapeHtml(endLabel)}${escapeHtml(typeLabel)}</strong>
+            </div>
+        `;
+    }
+
+    return `
+        <button class="place-neighbor place-neighbor-${direction}" type="button"
+            data-action="place-${direction}"
+            data-country-key="${escapeHtml(area.countryKey)}"
+            data-admin-area="${escapeHtml(area.adminArea)}"
+            aria-label="${escapeHtml(label)}：${escapeHtml(area.label)}">
+            <span>${escapeHtml(label)}</span>
+            <strong>${escapeHtml(area.label)}</strong>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="${direction === 'prev' ? 'm15 5-7 7 7 7' : 'm9 5 7 7-7 7'}"/></svg>
+        </button>
+    `;
 }
 
 function renderEntryRoute(params = {}) {
@@ -3172,6 +3226,20 @@ function handleDocumentClick(event) {
             navigateTo(
                 { name: 'entry', params: { id: nextId } },
                 { replace: true, direction: entryNav.dataset.action === 'entry-prev' ? 'back' : 'forward' }
+            );
+        }
+        return;
+    }
+
+    const placeNav = event.target.closest('[data-action="place-prev"], [data-action="place-next"]');
+    if (placeNav) {
+        event.preventDefault();
+        const countryKey = placeNav.getAttribute('data-country-key');
+        const adminArea = placeNav.getAttribute('data-admin-area');
+        if (countryKey && adminArea) {
+            navigateTo(
+                placeHash(countryKey, adminArea, ''),
+                { replace: true, direction: placeNav.dataset.action === 'place-prev' ? 'back' : 'forward' }
             );
         }
         return;

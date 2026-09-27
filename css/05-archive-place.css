@@ -297,6 +297,103 @@
     font-family: var(--font-code);
 }
 
+.place-neighbors {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    margin-top: 36px;
+    padding-top: 18px;
+    border-top: 1px solid var(--line);
+}
+
+.place-neighbor {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 18px;
+    grid-template-areas:
+        "label icon"
+        "title icon";
+    align-items: center;
+    gap: 3px 10px;
+    min-width: 0;
+    min-height: 64px;
+    padding: 10px 12px;
+    border: 1px solid rgba(92, 58, 37, 0.24);
+    border-radius: 5px;
+    color: var(--ink-soft);
+    background: rgba(255, 250, 232, 0.38);
+    box-shadow: 0 3px 7px rgba(52, 31, 14, 0.08), inset 0 1px rgba(255, 255, 255, 0.38);
+    font-family: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.place-neighbor-prev {
+    grid-template-columns: 18px minmax(0, 1fr);
+    grid-template-areas:
+        "icon label"
+        "icon title";
+}
+
+.place-neighbor span {
+    grid-area: label;
+    color: var(--ink-muted);
+    font-family: var(--font-code);
+    font-size: 10px;
+    letter-spacing: 0.04em;
+}
+
+.place-neighbor strong {
+    grid-area: title;
+    min-width: 0;
+    overflow: hidden;
+    font-size: 16px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.place-neighbor svg {
+    grid-area: icon;
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.6;
+    transition: transform 160ms ease;
+}
+
+.place-neighbor:hover,
+.place-neighbor:focus-visible {
+    border-color: rgba(143, 53, 39, 0.42);
+    color: var(--stamp);
+    background: rgba(255, 246, 222, 0.62);
+    transform: translateY(-1px);
+}
+
+.place-neighbor-prev:hover svg,
+.place-neighbor-prev:focus-visible svg { transform: translateX(-2px); }
+
+.place-neighbor-next:hover svg,
+.place-neighbor-next:focus-visible svg { transform: translateX(2px); }
+
+.place-neighbor-empty {
+    border-style: dashed;
+    background: transparent;
+    box-shadow: none;
+    cursor: default;
+    opacity: 0.52;
+}
+
+.place-neighbor-empty::after {
+    grid-area: icon;
+    content: "";
+    width: 12px;
+    border-top: 1px solid currentColor;
+}
+
 .ribbon-back {
     display: inline-flex;
     align-items: center;

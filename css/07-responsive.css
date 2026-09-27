@@ -418,6 +418,68 @@
         grid-template-columns: 1fr;
     }
 
+    body[data-route="place"] .paper-page-left {
+        min-height: 0;
+        padding-bottom: 24px;
+    }
+
+    body[data-route="place"] .paper-page-right {
+        min-height: 0;
+        padding-top: 14px;
+    }
+
+    .place-page .ribbon-back {
+        margin-bottom: 16px;
+    }
+
+    .place-page .place-count {
+        margin: 10px 0 12px;
+    }
+
+    .place-page .city-tags {
+        gap: 6px;
+    }
+
+    .place-page .location-chip {
+        min-height: 34px;
+        padding: 6px 9px;
+        border: 1px solid rgba(83, 56, 30, 0.18);
+        border-radius: 4px;
+        background: rgba(255, 246, 222, 0.42);
+        font-size: 12px;
+    }
+
+    .place-neighbors {
+        gap: 8px;
+        margin-top: 22px;
+        padding-top: 14px;
+    }
+
+    .place-neighbor {
+        min-height: 60px;
+        padding: 9px 10px;
+    }
+
+    .place-neighbor strong {
+        font-size: 14px;
+    }
+
+    .place-records .ledger-entry {
+        grid-template-columns: 58px minmax(0, 1fr);
+        gap: 12px;
+        min-height: 0;
+        padding: 14px 0;
+    }
+
+    .place-records .entry-date-chip {
+        min-height: 58px;
+        height: 58px;
+    }
+
+    .place-records .entry-note h3 {
+        font-size: 18px;
+    }
+
     .index-filter-grid {
         grid-template-columns: 1fr;
     }
