@@ -267,6 +267,14 @@
 .entry-photos-summary { display: contents; }
 
 .photo-viewer {
+    --viewer-leather-dark: #1b0f0a;
+    --viewer-leather: #3f2518;
+    --viewer-leather-light: #70462e;
+    --viewer-brass-dark: #6a431e;
+    --viewer-brass: #b9853f;
+    --viewer-brass-light: #f0d08b;
+    --viewer-screen: #080705;
+    --viewer-paper: #ead9b4;
     position: fixed;
     inset: 0;
     z-index: 5;
@@ -279,9 +287,12 @@
     position: absolute;
     inset: 0;
     background:
-        radial-gradient(circle at 50% 40%, rgba(72, 52, 34, 0.2), rgba(10, 7, 5, 0.88) 62%),
-        rgba(12, 8, 5, 0.82);
-    backdrop-filter: blur(6px);
+        radial-gradient(circle at 50% 38%, rgba(121, 82, 47, 0.22), transparent 44%),
+        linear-gradient(115deg, rgba(255, 225, 163, 0.05), transparent 32% 68%, rgba(0, 0, 0, 0.18)),
+        url("../assets/textures/paper-grain.png"),
+        rgba(10, 6, 4, 0.91);
+    background-blend-mode: screen, normal, multiply, normal;
+    backdrop-filter: blur(7px) saturate(0.78);
 }
 
 .photo-viewer-panel {
@@ -294,18 +305,63 @@
     height: min(760px, 100%);
     max-height: calc(100vh - 40px);
     outline: none;
+    isolation: isolate;
+    filter: drop-shadow(0 26px 34px rgba(0, 0, 0, 0.46));
+}
+
+.photo-viewer-panel::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: -8px;
+    border: 1px solid #9a7043;
+    border-radius: 12px;
+    pointer-events: none;
+    background:
+        linear-gradient(135deg, rgba(255, 228, 170, 0.08), transparent 24% 72%, rgba(0, 0, 0, 0.2)),
+        url("../assets/textures/paper-grain.png"),
+        var(--viewer-leather-dark);
+    background-blend-mode: screen, multiply, normal;
+    box-shadow:
+        inset 0 0 0 2px #21120c,
+        inset 0 0 0 4px rgba(216, 174, 101, 0.22),
+        inset 0 2px 2px rgba(255, 236, 196, 0.08),
+        0 4px 0 #090503,
+        0 18px 34px rgba(0, 0, 0, 0.48);
 }
 
 .photo-viewer-toolbar {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: center;
     min-height: 54px;
     padding: 8px 48px;
-    border: 1px solid rgba(238, 216, 169, 0.18);
-    border-radius: 8px;
-    background: rgba(35, 23, 14, 0.74);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+    border: 1px solid #805832;
+    border-radius: 6px;
+    background:
+        linear-gradient(180deg, rgba(255, 225, 164, 0.08), transparent 38%, rgba(0, 0, 0, 0.17)),
+        url("../assets/textures/paper-grain.png"),
+        var(--viewer-leather);
+    background-blend-mode: screen, multiply, normal;
+    box-shadow:
+        inset 0 0 0 2px #24140d,
+        inset 0 0 0 3px rgba(220, 177, 99, 0.24),
+        inset 0 2px 3px rgba(255, 238, 199, 0.08),
+        0 3px 0 #100906,
+        0 8px 18px rgba(0, 0, 0, 0.28);
+}
+
+.photo-viewer-toolbar::before {
+    content: "";
+    position: absolute;
+    left: 18px;
+    width: 26px;
+    height: 7px;
+    background:
+        radial-gradient(circle at 3px 50%, #e8bf72 0 2px, #62401e 2.5px 3px, transparent 3.5px),
+        radial-gradient(circle at 23px 50%, #e8bf72 0 2px, #62401e 2.5px 3px, transparent 3.5px);
+    filter: drop-shadow(0 1px #120905);
 }
 
 .photo-viewer-control-group {
@@ -321,23 +377,60 @@
     min-width: 38px;
     height: 36px;
     padding: 0 10px;
-    border: 1px solid rgba(245, 219, 167, 0.26);
-    border-radius: 6px;
+    border: 1px solid #93652f;
+    border-radius: 5px;
     cursor: pointer;
     color: #fff7df;
     background:
-        linear-gradient(180deg, rgba(130, 94, 48, 0.82), rgba(64, 42, 24, 0.88));
+        linear-gradient(180deg, rgba(255, 227, 169, 0.18), transparent 48%),
+        linear-gradient(180deg, #805527, #4c2e17);
     font-family: var(--font-serif);
     font-size: 15px;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+    text-shadow: 0 1px #201006;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 244, 211, 0.24),
+        inset 0 0 0 1px rgba(47, 25, 11, 0.36),
+        0 2px 0 #27150b,
+        0 4px 7px rgba(0, 0, 0, 0.28);
+    transition: filter 150ms ease, transform 150ms ease, box-shadow 150ms ease;
 }
 
 .photo-viewer-control:hover,
 .photo-viewer-control:focus-visible {
     background:
-        linear-gradient(180deg, rgba(174, 124, 55, 0.9), rgba(82, 53, 29, 0.92));
-    outline: 2px solid rgba(245, 219, 167, 0.32);
+        linear-gradient(180deg, rgba(255, 238, 197, 0.25), transparent 48%),
+        linear-gradient(180deg, #a06e34, #5d391c);
+    outline: 2px solid rgba(240, 208, 139, 0.46);
     outline-offset: 2px;
+    filter: brightness(1.06);
+    transform: translateY(-1px);
+}
+
+.photo-viewer-control:active {
+    outline: none;
+    transform: translateY(1px);
+    box-shadow:
+        inset 0 2px 4px rgba(20, 9, 3, 0.52),
+        inset 0 0 0 1px rgba(255, 233, 189, 0.1),
+        0 1px 0 #211108;
+}
+
+.photo-viewer-control:disabled {
+    cursor: default;
+    filter: saturate(0.35);
+    opacity: 0.48;
+    transform: none;
+}
+
+.photo-viewer-control-icon {
+    display: block;
+    width: 17px;
+    height: 17px;
+    fill: none;
+    stroke: currentColor;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-width: 1.9;
 }
 
 .photo-viewer-close {
@@ -349,14 +442,48 @@
     min-width: 38px;
     height: 36px;
     padding: 0;
+    border-color: #8b4835;
+    color: #ffe9ca;
+    background:
+        linear-gradient(180deg, rgba(255, 225, 188, 0.2), transparent 48%),
+        linear-gradient(180deg, #864735, #4c241d);
 }
 
-.photo-viewer-count,
-.photo-viewer-zoom {
+.photo-viewer-close:hover,
+.photo-viewer-close:focus-visible {
+    background:
+        linear-gradient(180deg, rgba(255, 237, 208, 0.25), transparent 48%),
+        linear-gradient(180deg, #a65840, #5a2920);
+}
+
+.photo-viewer-count {
     min-width: 58px;
-    color: rgba(255, 247, 223, 0.88);
+    padding: 6px 12px 5px;
+    border: 1px solid #1b0e08;
+    border-radius: 3px;
+    color: #f0d08b;
+    background: linear-gradient(180deg, #160d08, #2c1c12);
+    box-shadow:
+        inset 0 2px 4px rgba(0, 0, 0, 0.72),
+        inset 0 -1px rgba(255, 226, 167, 0.09),
+        0 1px rgba(255, 235, 196, 0.12);
     font-family: var(--font-code);
     font-size: 13px;
+    letter-spacing: 0.08em;
+    text-align: center;
+    text-shadow: 0 0 7px rgba(226, 172, 75, 0.24);
+    white-space: nowrap;
+}
+
+.photo-viewer-zoom {
+    min-width: 58px;
+    padding: 4px 7px;
+    border: 1px solid rgba(29, 15, 7, 0.78);
+    border-radius: 3px;
+    color: #ead6aa;
+    background: rgba(18, 10, 6, 0.58);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.46), 0 1px rgba(255, 239, 205, 0.08);
+    font: 12px var(--font-code);
     text-align: center;
     white-space: nowrap;
 }
@@ -366,16 +493,23 @@
     display: block;
     min-height: 0;
     overflow: hidden;
-    border: 1px solid rgba(238, 216, 169, 0.16);
-    border-radius: 8px;
+    border: 5px solid #3d281a;
+    border-radius: 6px;
     cursor: grab;
     touch-action: none;
     background:
         linear-gradient(45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.04) 75%),
         linear-gradient(45deg, transparent 25%, rgba(255, 255, 255, 0.04) 25% 75%, transparent 75%),
-        rgba(9, 7, 5, 0.62);
+        var(--viewer-screen);
     background-position: 0 0, 12px 12px;
     background-size: 24px 24px;
+    box-shadow:
+        inset 0 0 0 1px #0d0805,
+        inset 0 0 0 3px rgba(229, 196, 128, 0.08),
+        inset 0 14px 28px rgba(0, 0, 0, 0.7),
+        inset 0 -2px 2px rgba(255, 224, 164, 0.08),
+        0 1px rgba(240, 207, 142, 0.2),
+        0 4px 10px rgba(0, 0, 0, 0.34);
 }
 
 .photo-viewer-stage:active {
@@ -386,14 +520,26 @@
 
 .photo-viewer-media-error {
     position: absolute;
-    inset: 18px;
+    left: 50%;
+    top: 50%;
     display: grid;
     place-items: center;
+    width: min(520px, calc(100% - 36px));
     padding: 24px;
-    color: #f5dba7;
+    border: 1px solid #997444;
+    border-radius: 2px;
+    color: #4c2d20;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.34), transparent 32%),
+        url("../assets/textures/paper-grain.png"),
+        #e8d6ad;
+    background-blend-mode: screen, multiply, normal;
+    box-shadow: inset 0 0 0 2px rgba(255, 249, 224, 0.56), 0 3px 0 #5f4024, 0 12px 24px rgba(0, 0, 0, 0.36);
     font-size: 15px;
     line-height: 1.8;
     text-align: center;
+    text-shadow: 0 1px rgba(255, 252, 232, 0.72);
+    transform: translate(-50%, -50%) rotate(-0.35deg);
     word-break: break-word;
 }
 
@@ -419,7 +565,10 @@
     user-select: none;
     will-change: transform;
     transition: none;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.42);
+    outline: 1px solid rgba(239, 216, 170, 0.2);
+    box-shadow:
+        0 0 0 3px rgba(17, 10, 6, 0.72),
+        0 20px 50px rgba(0, 0, 0, 0.48);
 }
 
 .photo-viewer-image { image-rendering: auto; }
@@ -441,18 +590,27 @@
     width: 72px;
     height: 72px;
     padding: 0;
-    border: 1px solid rgba(255, 247, 223, 0.72);
+    border: 1px solid #c99a54;
     border-radius: 50%;
     cursor: pointer;
     color: #fff7df;
-    background: rgba(35, 23, 14, 0.78);
-    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.38);
+    background:
+        radial-gradient(circle at 42% 32%, rgba(255, 245, 211, 0.18), transparent 28%),
+        linear-gradient(145deg, #6f4825, #2b190f 68%);
+    box-shadow:
+        inset 0 0 0 3px #23140c,
+        inset 0 0 0 5px rgba(230, 191, 115, 0.32),
+        inset 0 2px 3px rgba(255, 238, 200, 0.22),
+        0 3px 0 #150b07,
+        0 14px 34px rgba(0, 0, 0, 0.48);
     transform: translate(-50%, -50%);
 }
 
 .video-viewer-big-play:hover,
 .video-viewer-big-play:focus-visible {
-    background: rgba(121, 83, 40, 0.92);
+    background:
+        radial-gradient(circle at 42% 32%, rgba(255, 248, 219, 0.22), transparent 28%),
+        linear-gradient(145deg, #946532, #3a2114 68%);
     outline: 3px solid rgba(245, 219, 167, 0.34);
     outline-offset: 3px;
 }
@@ -468,11 +626,20 @@
     align-items: center;
     justify-content: center;
     padding: 9px 10px;
-    border: 1px solid rgba(238, 216, 169, 0.18);
-    border-radius: 8px;
-    color: rgba(255, 247, 223, 0.88);
-    background: rgba(35, 23, 14, 0.8);
-    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.24);
+    border: 1px solid #805832;
+    border-radius: 6px;
+    color: rgba(255, 247, 223, 0.9);
+    background:
+        linear-gradient(180deg, rgba(255, 229, 178, 0.08), transparent 34%, rgba(0, 0, 0, 0.16)),
+        url("../assets/textures/paper-grain.png"),
+        var(--viewer-leather);
+    background-blend-mode: screen, multiply, normal;
+    box-shadow:
+        inset 0 0 0 2px #24140d,
+        inset 0 0 0 3px rgba(220, 177, 99, 0.18),
+        inset 0 2px 3px rgba(255, 238, 199, 0.07),
+        0 3px 0 #100906,
+        0 8px 18px rgba(0, 0, 0, 0.28);
 }
 
 .photo-viewer-transform-controls {
@@ -484,10 +651,11 @@
 }
 
 .photo-viewer-control-divider {
-    width: 1px;
+    width: 2px;
     height: 24px;
     margin-inline: 2px;
-    background: rgba(245, 219, 167, 0.22);
+    background: linear-gradient(90deg, rgba(15, 8, 4, 0.74), rgba(241, 210, 149, 0.18));
+    box-shadow: 1px 0 rgba(0, 0, 0, 0.2);
 }
 
 .photo-viewer-reset {
@@ -576,8 +744,60 @@
 .video-viewer-range {
     width: 100%;
     margin: 0;
-    accent-color: #c39852;
+    accent-color: var(--viewer-brass);
+    appearance: none;
+    height: 20px;
+    padding: 0;
+    background: transparent;
     cursor: pointer;
+}
+
+.video-viewer-range::-webkit-slider-runnable-track {
+    height: 7px;
+    border: 1px solid #160c07;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #0f0906, #3a2819);
+    box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.78), 0 1px rgba(255, 232, 187, 0.13);
+}
+
+.video-viewer-range::-webkit-slider-thumb {
+    appearance: none;
+    width: 18px;
+    height: 18px;
+    margin-top: -6px;
+    border: 1px solid #6f461e;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 30%, #ffe2a1 0 12%, #c48c40 34%, #795020 78%);
+    box-shadow: inset 0 1px rgba(255, 244, 213, 0.58), 0 2px 3px rgba(0, 0, 0, 0.62);
+}
+
+.video-viewer-range::-moz-range-track {
+    height: 7px;
+    border: 1px solid #160c07;
+    border-radius: 2px;
+    background: linear-gradient(180deg, #0f0906, #3a2819);
+    box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.78), 0 1px rgba(255, 232, 187, 0.13);
+}
+
+.video-viewer-range::-moz-range-progress {
+    height: 5px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #80501f, #d5a451);
+}
+
+.video-viewer-range::-moz-range-thumb {
+    width: 18px;
+    height: 18px;
+    border: 1px solid #6f461e;
+    border-radius: 50%;
+    background: radial-gradient(circle at 38% 30%, #ffe2a1 0 12%, #c48c40 34%, #795020 78%);
+    box-shadow: inset 0 1px rgba(255, 244, 213, 0.58), 0 2px 3px rgba(0, 0, 0, 0.62);
+}
+
+.video-viewer-range:focus-visible {
+    outline: 2px solid rgba(240, 208, 139, 0.54);
+    outline-offset: 3px;
+    box-shadow: none;
 }
 
 .video-viewer-seek {
@@ -603,9 +823,16 @@
 
 .video-viewer-time {
     min-width: 106px;
-    color: rgba(255, 247, 223, 0.82);
+    padding: 5px 8px;
+    border: 1px solid #170c07;
+    border-radius: 3px;
+    color: #f0d08b;
+    background: linear-gradient(180deg, #150c08, #2c1c12);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7), 0 1px rgba(255, 235, 196, 0.1);
     font: 12px var(--font-code);
+    letter-spacing: 0.03em;
     text-align: center;
+    text-shadow: 0 0 7px rgba(226, 172, 75, 0.22);
     white-space: nowrap;
 }
 
@@ -623,11 +850,15 @@
     grid-template-columns: minmax(max-content, 1fr) auto;
     min-height: 36px;
     padding: 7px 30px 7px 10px;
-    border-color: rgba(245, 219, 167, 0.26);
-    border-radius: 6px;
+    border-color: #93652f;
+    border-radius: 5px;
     color: #fff7df;
-    background: #513821;
+    background:
+        linear-gradient(180deg, rgba(255, 227, 169, 0.16), transparent 48%),
+        linear-gradient(180deg, #805527, #4c2e17);
     font: 13px var(--font-serif);
+    text-shadow: 0 1px #201006;
+    box-shadow: inset 0 1px rgba(255, 244, 211, 0.2), 0 2px 0 #27150b, 0 4px 7px rgba(0, 0, 0, 0.24);
 }
 
 .video-viewer-rate-label .custom-select-trigger > [data-custom-select-label] {
@@ -639,7 +870,9 @@
 .video-viewer-rate-label .custom-select-trigger:focus-visible,
 .video-viewer-rate-label .custom-select.is-open .custom-select-trigger {
     border-color: rgba(245, 219, 167, 0.54);
-    background: #6b492b;
+    background:
+        linear-gradient(180deg, rgba(255, 238, 197, 0.22), transparent 48%),
+        linear-gradient(180deg, #9b6932, #5b371b);
     box-shadow: 0 0 0 3px rgba(195, 152, 82, 0.18);
 }
 
@@ -658,11 +891,26 @@
 }
 
 .photo-viewer-caption {
-    min-height: 22px;
+    position: relative;
+    justify-self: center;
+    min-height: 26px;
+    width: fit-content;
+    max-width: 88%;
     margin: 0;
-    color: rgba(255, 247, 223, 0.76);
-    font-size: 14px;
+    padding: 5px 18px 4px;
+    border: 1px solid #9c7a4b;
+    border-radius: 2px;
+    color: #3a291c;
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.26), transparent 38%),
+        url("../assets/textures/paper-grain.png"),
+        var(--viewer-paper);
+    background-blend-mode: screen, multiply, normal;
+    box-shadow: inset 0 1px rgba(255, 251, 231, 0.72), 0 2px 0 #624324, 0 5px 10px rgba(0, 0, 0, 0.26);
+    font-size: 13px;
     text-align: center;
+    text-shadow: 0 1px rgba(255, 252, 233, 0.66);
+    transform: rotate(-0.2deg);
     word-break: break-word;
 }
 

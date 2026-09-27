@@ -1729,12 +1729,12 @@ function renderPhotoViewer() {
             <section class="photo-viewer-panel${isVideo ? ' has-video' : ''}" role="dialog" aria-modal="true" aria-label="媒体查看器" tabindex="-1">
                 <div class="photo-viewer-toolbar">
                     <div class="photo-viewer-nav-group photo-viewer-control-group" aria-label="媒体切换">
-                        <button class="photo-viewer-control" type="button" data-action="photo-prev" data-photo-action="prev" aria-label="上一项媒体">‹</button>
+                        <button class="photo-viewer-control" type="button" data-action="photo-prev" data-photo-action="prev" aria-label="上一项媒体">${renderPhotoViewerControlIcon('previous')}</button>
                         <span class="photo-viewer-count">${escapeHtml(position)}</span>
-                        <button class="photo-viewer-control" type="button" data-action="photo-next" data-photo-action="next" aria-label="下一项媒体">›</button>
+                        <button class="photo-viewer-control" type="button" data-action="photo-next" data-photo-action="next" aria-label="下一项媒体">${renderPhotoViewerControlIcon('next')}</button>
                     </div>
                 </div>
-                <button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer" aria-label="关闭媒体查看器">×</button>
+                <button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer" aria-label="关闭媒体查看器">${renderPhotoViewerControlIcon('close')}</button>
                 <div class="photo-viewer-stage" data-photo-viewer-stage>
                     ${isVideo
                         ? `<div class="photo-viewer-media-frame" data-photo-viewer-frame>
@@ -1902,9 +1902,22 @@ function renderTransformControls(mediaLabel, className = '') {
 
 function renderRotateControls(label) {
     return `<div class="photo-viewer-rotate-group photo-viewer-control-group" aria-label="${label}">
-        <button class="photo-viewer-control" type="button" data-action="photo-rotate-left" data-photo-action="rotate-left" aria-label="向左旋转">↺</button>
-        <button class="photo-viewer-control" type="button" data-action="photo-rotate-right" data-photo-action="rotate-right" aria-label="向右旋转">↻</button>
+        <button class="photo-viewer-control" type="button" data-action="photo-rotate-left" data-photo-action="rotate-left" aria-label="向左旋转">${renderPhotoViewerControlIcon('rotate-left')}</button>
+        <button class="photo-viewer-control" type="button" data-action="photo-rotate-right" data-photo-action="rotate-right" aria-label="向右旋转">${renderPhotoViewerControlIcon('rotate-right')}</button>
     </div>`;
+}
+
+function renderPhotoViewerControlIcon(name) {
+    const paths = {
+        previous: '<path d="m15 18-6-6 6-6"></path>',
+        next: '<path d="m9 18 6-6-6-6"></path>',
+        close: '<path d="M6 6l12 12M18 6 6 18"></path>',
+        minus: '<path d="M5 12h14"></path>',
+        plus: '<path d="M12 5v14M5 12h14"></path>',
+        'rotate-left': '<path d="M8 7H3V2M3.6 6.6A9 9 0 1 1 3 15"></path>',
+        'rotate-right': '<path d="M16 7h5V2M20.4 6.6A9 9 0 1 0 21 15"></path>'
+    };
+    return `<svg class="photo-viewer-control-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">${paths[name] || ''}</svg>`;
 }
 
 function renderVideoPlaybackIcon(isPlaying = false) {
@@ -1913,9 +1926,9 @@ function renderVideoPlaybackIcon(isPlaying = false) {
 
 function renderZoomControls(label) {
     return `<div class="photo-viewer-zoom-group photo-viewer-control-group" aria-label="${label}">
-        <button class="photo-viewer-control" type="button" data-action="photo-zoom-out" data-photo-action="zoom-out" aria-label="缩小">−</button>
+        <button class="photo-viewer-control" type="button" data-action="photo-zoom-out" data-photo-action="zoom-out" aria-label="缩小">${renderPhotoViewerControlIcon('minus')}</button>
         <span class="photo-viewer-zoom" data-photo-viewer-zoom>100%</span>
-        <button class="photo-viewer-control" type="button" data-action="photo-zoom-in" data-photo-action="zoom-in" aria-label="放大">+</button>
+        <button class="photo-viewer-control" type="button" data-action="photo-zoom-in" data-photo-action="zoom-in" aria-label="放大">${renderPhotoViewerControlIcon('plus')}</button>
     </div>`;
 }
 
