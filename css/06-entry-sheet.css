@@ -577,6 +577,11 @@
     cursor: pointer;
 }
 
+.video-viewer-seek {
+    height: 32px;
+    touch-action: none;
+}
+
 .video-viewer-volume { width: 76px; }
 
 .video-viewer-volume-label {

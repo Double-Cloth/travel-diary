@@ -738,6 +738,14 @@ test('移动端视频查看器同排显示播放和进度并可折叠其余控�
     assert.match(appJs, /class="photo-viewer-control video-viewer-fullscreen"[\s\S]*data-video-action="fullscreen"/);
 });
 
+test('移动端视频进度条使用独立触摸拖动状态连续更新时间', () => {
+    assert.match(appJs, /const videoSeek = event\.target\.closest\?\.\('\[data-video-seek\]'\);[\s\S]*event\.pointerType !== 'mouse'[\s\S]*beginVideoSeek\(event, videoSeek\);/);
+    assert.match(appJs, /function beginVideoSeek\(event, seek\)[\s\S]*videoSeekPointerId = event\.pointerId;[\s\S]*setPointerCapture\?\.\(event\.pointerId\);/);
+    assert.match(appJs, /function updateVideoSeekFromPointer\(event,[\s\S]*getBoundingClientRect\(\)[\s\S]*video\.currentTime = currentTime;/);
+    assert.match(appJs, /photoGestureState\.videoSeekPointerId === null && document\.activeElement !== seek/);
+    assert.match(journalCss, /\.video-viewer-seek\s*{[\s\S]*height: 32px;[\s\S]*touch-action: none;/);
+});
+
 test('文件设置在常见手机宽度下改为单列并保持可读字号', () => {
     assert.match(recordEditorJs, /class="record-editor-grid record-editor-files-grid"/);
     assert.match(journalCss, /@media \(max-width: 540px\)[\s\S]*\.record-editor-files-grid\s*{[\s\S]*grid-template-columns: minmax\(0, 1fr\);[\s\S]*gap: 16px;/);

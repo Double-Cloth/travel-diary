@@ -1929,7 +1929,7 @@ function syncVideoViewerControls() {
     if (!video || !root) return;
     const duration = Number.isFinite(video.duration) ? video.duration : 0;
     const seek = root.querySelector('[data-video-seek]');
-    if (seek && document.activeElement !== seek) {
+    if (seek && photoGestureState.videoSeekPointerId === null && document.activeElement !== seek) {
         seek.max = String(duration);
         seek.value = String(Math.min(video.currentTime || 0, duration || 0));
     }
@@ -2311,6 +2311,12 @@ function clearPhotoRotationTimer() {
 }
 
 function handlePhotoPointerDown(event) {
+    const videoSeek = event.target.closest?.('[data-video-seek]');
+    if (videoSeek && event.pointerType !== 'mouse') {
+        beginVideoSeek(event, videoSeek);
+        return;
+    }
+
     const stage = event.target.closest?.('[data-photo-viewer-stage]');
     if (!stage || !photoViewerState || (event.pointerType === 'mouse' && event.button !== 0)) {
         return;
@@ -2335,6 +2341,11 @@ function handlePhotoPointerDown(event) {
 }
 
 function handlePhotoPointerMove(event) {
+    if (photoGestureState.videoSeekPointerId === event.pointerId) {
+        updateVideoSeekFromPointer(event);
+        return;
+    }
+
     if (!photoViewerState || !photoGestureState.pointers.has(event.pointerId)) {
         return;
     }
@@ -2376,6 +2387,13 @@ function handlePhotoPointerMove(event) {
 }
 
 function handlePhotoPointerEnd(event) {
+    if (photoGestureState.videoSeekPointerId === event.pointerId) {
+        if (event.type === 'pointerup') updateVideoSeekFromPointer(event);
+        photoGestureState.videoSeekPointerId = null;
+        syncVideoViewerControls();
+        return;
+    }
+
     if (!photoGestureState.pointers.has(event.pointerId)) {
         return;
     }
@@ -2391,6 +2409,29 @@ function handlePhotoPointerEnd(event) {
         photoGestureState.suppressClick = true;
         handleVideoViewerAction('toggle-play');
     }
+}
+
+function beginVideoSeek(event, seek) {
+    const video = getViewerVideo();
+    if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+
+    event.preventDefault();
+    photoGestureState.videoSeekPointerId = event.pointerId;
+    seek.setPointerCapture?.(event.pointerId);
+    updateVideoSeekFromPointer(event, seek);
+}
+
+function updateVideoSeekFromPointer(event, seek = getPhotoViewerRoot()?.querySelector('[data-video-seek]')) {
+    const video = getViewerVideo();
+    const duration = video?.duration;
+    const rect = seek?.getBoundingClientRect();
+    if (!video || !Number.isFinite(duration) || duration <= 0 || !rect?.width) return;
+
+    event.preventDefault();
+    const currentTime = clamp((event.clientX - rect.left) / rect.width, 0, 1) * duration;
+    seek.value = String(currentTime);
+    video.currentTime = currentTime;
+    syncVideoViewerControls();
 }
 
 function handlePhotoWheel(event) {
@@ -2457,7 +2498,8 @@ function createPhotoGestureState() {
         dragStart: null,
         pinchStart: null,
         suppressClick: false,
-        videoTapPointerId: null
+        videoTapPointerId: null,
+        videoSeekPointerId: null
     };
 }
 
