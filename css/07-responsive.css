@@ -177,6 +177,19 @@
         scrollbar-color: auto;
     }
 
+    /* 详情页在窄屏按阅读优先级纵向排列：正文或相关记录在前，摘要与翻页导航在后。 */
+    body[data-route="entry"] .page-spread,
+    body[data-route="place"] .page-spread {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    body[data-route="entry"] .paper-page-right,
+    body[data-route="place"] .paper-page-right {
+        order: -1;
+    }
+
     .journal-shell.mobile-context-panel-open::before {
         content: none;
         display: none;
