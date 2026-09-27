@@ -348,6 +348,7 @@ body[data-route='archive'] .paper-page {
 .archive-overview-block { margin-top: 0; }
 .archive-overview-block h3 { margin-bottom: 8px; }
 .entry-book-index { display: flex; flex-direction: column; gap: 34px; }
+.entry-book-summary { display: contents; }
 .paper-page .entry-book-index .entry-book-back {
     display: inline-flex;
     align-items: center;

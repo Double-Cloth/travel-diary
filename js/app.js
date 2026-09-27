@@ -1433,14 +1433,16 @@ function renderPlace(params = {}) {
 
     setPages(`
         <div class="place-page">
-            <a class="ribbon-back" href="#archive">返回档案夹</a>
-            <p class="journal-label">地点档案</p>
-            <h1>${escapeHtml(label)}</h1>
-            <p class="place-count">${visitCount} 次到访</p>
-            <div class="city-tags">
-                ${localities.map(locality => `
-                    <a class="location-chip" href="${placeHash(params.country, params.area, locality)}">${escapeHtml(locality)}</a>
-                `).join('')}
+            <div class="place-summary">
+                <a class="ribbon-back" href="#archive">返回档案夹</a>
+                <p class="journal-label">地点档案</p>
+                <h1>${escapeHtml(label)}</h1>
+                <p class="place-count">${visitCount} 次到访</p>
+                <div class="city-tags">
+                    ${localities.map(locality => `
+                        <a class="location-chip" href="${placeHash(params.country, params.area, locality)}">${escapeHtml(locality)}</a>
+                    `).join('')}
+                </div>
             </div>
             ${adminAreaNavigation ? `
                 <nav class="place-neighbors entry-neighbors" aria-label="相邻${escapeHtml(adminAreaNavigation.typeLabel)}">
@@ -1512,9 +1514,11 @@ function renderEntryRoute(params = {}) {
     if (!record) {
         setPages(`
             <div class="entry-book-index">
-                <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回旅行路径</a>
-                <p class="journal-label">旅行手记</p>
-                <h1>没有找到这篇日记</h1>
+                <div class="entry-book-summary">
+                    <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回旅行路径</a>
+                    <p class="journal-label">旅行手记</p>
+                    <h1>没有找到这篇日记</h1>
+                </div>
             </div>
         `, '<div class="empty-note">这张书页可能已被移动或删除。</div>', 'entry-book-page');
         return;
@@ -1525,13 +1529,15 @@ function renderEntryRoute(params = {}) {
     const media = getRecordMedia(record);
     setPages(`
         <article class="entry-book-index" aria-labelledby="entryBookTitle">
-            <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回原处</a>
-            <div class="entry-book-heading">
-                <time class="entry-book-date" datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '日期未记')}</time>
-                <h1 id="entryBookTitle">${escapeHtml(record.title)}</h1>
-                <div class="entry-book-location">
-                    <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(getLocationText(record))}</a>
-                    ${renderTripGroupHint(record)}
+            <div class="entry-book-summary">
+                <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回原处</a>
+                <div class="entry-book-heading">
+                    <time class="entry-book-date" datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '日期未记')}</time>
+                    <h1 id="entryBookTitle">${escapeHtml(record.title)}</h1>
+                    <div class="entry-book-location">
+                        <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(getLocationText(record))}</a>
+                        ${renderTripGroupHint(record)}
+                    </div>
                 </div>
             </div>
             <nav class="entry-neighbors" aria-label="相邻篇目">

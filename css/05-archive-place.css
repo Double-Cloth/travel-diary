@@ -297,6 +297,10 @@
     font-family: var(--font-code);
 }
 
+.place-summary {
+    display: contents;
+}
+
 .place-neighbors {
     margin-top: 36px;
 }

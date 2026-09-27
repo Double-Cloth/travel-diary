@@ -177,7 +177,7 @@
         scrollbar-color: auto;
     }
 
-    /* 详情页在窄屏按阅读优先级纵向排列：正文或相关记录在前，摘要与翻页导航在后。 */
+    /* 详情页在窄屏按阅读顺序排列：顶部摘要、正文或相关记录、相邻项导航。 */
     body[data-route="entry"] .page-spread,
     body[data-route="place"] .page-spread {
         display: flex;
@@ -194,11 +194,6 @@
         box-shadow: inset 3px 0 7px rgba(133, 100, 62, 0.13);
     }
 
-    body[data-route="entry"] .paper-page-right,
-    body[data-route="place"] .paper-page-right {
-        order: -1;
-    }
-
     /* 主信息与辅助信息共用同一张纸面，避免背景、边框和阴影在中段重新起页。 */
     body[data-route="entry"] .paper-page,
     body[data-route="place"] .paper-page {
@@ -206,6 +201,49 @@
         border-radius: 0;
         background: transparent;
         box-shadow: none;
+    }
+
+    body[data-route="entry"] .paper-page-left,
+    body[data-route="entry"] .entry-book-index,
+    body[data-route="place"] .paper-page-left,
+    body[data-route="place"] .place-page {
+        display: contents;
+    }
+
+    body[data-route="entry"] .entry-book-summary,
+    body[data-route="place"] .place-summary {
+        order: 0;
+        padding: clamp(16px, 4.5vw, 20px) clamp(16px, 4.5vw, 20px) 0;
+    }
+
+    body[data-route="entry"] .entry-book-summary {
+        display: grid;
+        gap: 20px;
+    }
+
+    body[data-route="place"] .place-summary {
+        display: block;
+    }
+
+    body[data-route="entry"] .page-spread > .paper-page-right,
+    body[data-route="place"] .page-spread > .paper-page-right {
+        order: 1;
+    }
+
+    body[data-route="entry"] .entry-neighbors,
+    body[data-route="place"] .place-neighbors {
+        order: 2;
+        margin-top: 0;
+        padding: 24px clamp(16px, 4.5vw, 20px) 0;
+    }
+
+    body[data-route="entry"] .entry-management {
+        order: 3;
+        margin: 20px clamp(16px, 4.5vw, 20px) clamp(16px, 4.5vw, 20px);
+    }
+
+    body[data-route="place"] .place-neighbors {
+        padding-bottom: clamp(16px, 4.5vw, 20px);
     }
 
     .journal-shell.mobile-context-panel-open::before {

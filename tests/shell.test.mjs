@@ -578,11 +578,16 @@ test('省份详情页在左页提供返回与相邻省份导航', () => {
     assert.doesNotMatch(journalCss, /\.location-close/);
 });
 
-test('移动端日记与地点详情先显示主要内容，再显示摘要和相邻项导航', () => {
+test('移动端日记与地点详情依次显示顶部摘要、主要内容和相邻项导航', () => {
+    assert.match(appJs, /class="place-summary"[\s\S]*class="place-neighbors entry-neighbors"/);
+    assert.match(appJs, /class="entry-book-summary"[\s\S]*class="entry-neighbors"/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*body\[data-route="entry"\] \.page-spread,\s*body\[data-route="place"\] \.page-spread\s*{[\s\S]*display: flex;[\s\S]*flex-direction: column;[\s\S]*align-items: stretch;/);
     assert.match(journalCss, /body\[data-route="entry"\] \.page-spread,\s*body\[data-route="place"\] \.page-spread\s*{[\s\S]*gap: 0;[\s\S]*overflow: hidden;[\s\S]*border-inline: 5px solid #bfa780;[\s\S]*left-page-ledger-travel-diary\.png/);
-    assert.match(journalCss, /body\[data-route="entry"\] \.paper-page-right,\s*body\[data-route="place"\] \.paper-page-right\s*{[\s\S]*order: -1;/);
     assert.match(journalCss, /body\[data-route="entry"\] \.paper-page,\s*body\[data-route="place"\] \.paper-page\s*{[\s\S]*border-inline: 0;[\s\S]*background: transparent;[\s\S]*box-shadow: none;/);
+    assert.match(journalCss, /body\[data-route="entry"\] \.paper-page-left,[\s\S]*body\[data-route="place"\] \.place-page\s*{[\s\S]*display: contents;/);
+    assert.match(journalCss, /body\[data-route="entry"\] \.entry-book-summary,\s*body\[data-route="place"\] \.place-summary\s*{[\s\S]*order: 0;/);
+    assert.match(journalCss, /body\[data-route="entry"\] \.page-spread > \.paper-page-right,\s*body\[data-route="place"\] \.page-spread > \.paper-page-right\s*{[\s\S]*order: 1;/);
+    assert.match(journalCss, /body\[data-route="entry"\] \.entry-neighbors,\s*body\[data-route="place"\] \.place-neighbors\s*{[\s\S]*order: 2;/);
 });
 
 test('日记媒体支持沉浸式查看，图片与视频共用基础变换操作', () => {
