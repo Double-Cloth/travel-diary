@@ -401,6 +401,8 @@ test('首页封面使用轻量过渡，日记详情与篇章导航仍进入整�
     assert.doesNotMatch(appJs, /book-transition-scene[\s\S]{0,800}opacity:\s*0/);
     assert.match(appJs, /rotateY\(-180deg\)/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.entry-book-index/);
+    assert.match(journalCss, /@media \(hover: none\) and \(pointer: coarse\)\s*\{[\s\S]*body\[data-route='cover'\] \.closed-book-cover:hover[\s\S]*body\[data-route='cover'\] \.closed-book-cover:active/);
+    assert.match(journalCss, /\.closed-book-cover\s*\{[\s\S]*touch-action: manipulation;/);
 });
 
 test('个人主页可验证当前密码并在新密码确认满六位后自动提交换密', () => {
@@ -767,11 +769,13 @@ test('移动端视频查看器同排显示播放和进度并可折叠其余控�
     assert.match(appJs, /class="photo-viewer-control video-viewer-fullscreen"[\s\S]*data-video-action="fullscreen"/);
 });
 
-test('移动端视频进度条使用独立触摸拖动状态连续更新时间', () => {
-    assert.match(appJs, /const videoSeek = event\.target\.closest\?\.\('\[data-video-seek\]'\);[\s\S]*event\.pointerType !== 'mouse'[\s\S]*beginVideoSeek\(event, videoSeek\);/);
-    assert.match(appJs, /function beginVideoSeek\(event, seek\)[\s\S]*videoSeekPointerId = event\.pointerId;[\s\S]*setPointerCapture\?\.\(event\.pointerId\);/);
+test('视频进度条仅在指针拖动期间暂停自动同步', () => {
+    assert.match(appJs, /const videoSeek = event\.target\.closest\?\.\('\[data-video-seek\]'\);[\s\S]*if \(videoSeek\) \{[\s\S]*beginVideoSeek\(event, videoSeek\);/);
+    assert.match(appJs, /function beginVideoSeek\(event, seek\)[\s\S]*videoSeekPointerId = event\.pointerId;[\s\S]*event\.pointerType !== 'mouse'[\s\S]*setPointerCapture\?\.\(event\.pointerId\);/);
+    assert.match(appJs, /function handlePhotoPointerMove\(event\)[\s\S]*videoSeekPointerId === event\.pointerId[\s\S]*event\.pointerType !== 'mouse'[\s\S]*updateVideoSeekFromPointer\(event\);/);
     assert.match(appJs, /function updateVideoSeekFromPointer\(event,[\s\S]*getBoundingClientRect\(\)[\s\S]*video\.currentTime = currentTime;/);
-    assert.match(appJs, /photoGestureState\.videoSeekPointerId === null && document\.activeElement !== seek/);
+    assert.match(appJs, /if \(seek\) \{[\s\S]*seek\.max = String\(duration\);[\s\S]*if \(photoGestureState\.videoSeekPointerId === null\)/);
+    assert.doesNotMatch(appJs, /document\.activeElement !== (?:seek|volume)/);
     assert.match(journalCss, /\.video-viewer-seek\s*{[\s\S]*height: 32px;[\s\S]*touch-action: none;/);
     assert.match(journalCss, /--video-range-progress, 0%/);
     assert.match(appJs, /function syncVideoRangeProgress\(range\)[\s\S]*--video-range-progress/);

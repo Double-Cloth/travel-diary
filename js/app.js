@@ -43,6 +43,9 @@ const LEDGER_FILTER_DEFAULTS = {
 };
 const PAGE_TURN_MS = 920;
 const BOOK_COVER_TURN_MS = 1180;
+const MOBILE_BOOK_COVER_OPEN_MS = 1040;
+const MOBILE_BOOK_COVER_CLOSE_MS = 920;
+const MOBILE_BOOK_COVER_PAINT_WAIT_MS = 240;
 const SEARCH_UPDATE_DELAY_MS = 180;
 const COVER_RECENT_RECORD_LIMIT = 7;
 const COVER_RECENT_RECORD_MIN = 2;
@@ -2031,13 +2034,15 @@ function syncVideoViewerControls() {
     if (!video || !root) return;
     const duration = Number.isFinite(video.duration) ? video.duration : 0;
     const seek = root.querySelector('[data-video-seek]');
-    if (seek && photoGestureState.videoSeekPointerId === null && document.activeElement !== seek) {
+    if (seek) {
         seek.max = String(duration);
-        seek.value = String(Math.min(video.currentTime || 0, duration || 0));
+        if (photoGestureState.videoSeekPointerId === null) {
+            seek.value = String(Math.min(video.currentTime || 0, duration || 0));
+        }
     }
     syncVideoRangeProgress(seek);
     const volume = root.querySelector('[data-video-volume]');
-    if (volume && document.activeElement !== volume) volume.value = String(video.volume);
+    if (volume) volume.value = String(video.volume);
     syncVideoRangeProgress(volume);
     const rate = root.querySelector('[data-video-rate]');
     if (rate && document.activeElement !== rate) rate.value = String(video.playbackRate);
@@ -2425,7 +2430,7 @@ function clearPhotoRotationTimer() {
 
 function handlePhotoPointerDown(event) {
     const videoSeek = event.target.closest?.('[data-video-seek]');
-    if (videoSeek && event.pointerType !== 'mouse') {
+    if (videoSeek) {
         beginVideoSeek(event, videoSeek);
         return;
     }
@@ -2455,7 +2460,7 @@ function handlePhotoPointerDown(event) {
 
 function handlePhotoPointerMove(event) {
     if (photoGestureState.videoSeekPointerId === event.pointerId) {
-        updateVideoSeekFromPointer(event);
+        if (event.pointerType !== 'mouse') updateVideoSeekFromPointer(event);
         return;
     }
 
@@ -2501,7 +2506,7 @@ function handlePhotoPointerMove(event) {
 
 function handlePhotoPointerEnd(event) {
     if (photoGestureState.videoSeekPointerId === event.pointerId) {
-        if (event.type === 'pointerup') updateVideoSeekFromPointer(event);
+        if (event.type === 'pointerup' && event.pointerType !== 'mouse') updateVideoSeekFromPointer(event);
         photoGestureState.videoSeekPointerId = null;
         syncVideoViewerControls();
         return;
@@ -2526,12 +2531,15 @@ function handlePhotoPointerEnd(event) {
 
 function beginVideoSeek(event, seek) {
     const video = getViewerVideo();
-    if (!video || !Number.isFinite(video.duration) || video.duration <= 0) return;
+    if (!video || !Number.isFinite(video.duration) || video.duration <= 0
+        || (event.pointerType === 'mouse' && event.button !== 0)) return;
 
-    event.preventDefault();
     photoGestureState.videoSeekPointerId = event.pointerId;
-    seek.setPointerCapture?.(event.pointerId);
-    updateVideoSeekFromPointer(event, seek);
+    if (event.pointerType !== 'mouse') {
+        event.preventDefault();
+        seek.setPointerCapture?.(event.pointerId);
+        updateVideoSeekFromPointer(event, seek);
+    }
 }
 
 function updateVideoSeekFromPointer(event, seek = getPhotoViewerRoot()?.querySelector('[data-video-seek]')) {
@@ -2675,6 +2683,7 @@ function clearPageTurn() {
 
 let lastCoverBounds = null;
 let lastCoverViewport = null;
+let lastMobileCoverBackground = null;
 
 function prepareTransitionClone(node, className) {
     const clone = node.cloneNode(true);
@@ -2725,9 +2734,20 @@ function renderWithBookCover(renderFn, mode) {
     overlay.setAttribute('aria-hidden', 'true');
     const backdrop = document.createElement('div');
     backdrop.className = 'book-transition-backdrop';
-    const bodyBackground = getComputedStyle(document.body);
-    backdrop.style.background = bodyBackground.background;
-    backdrop.style.backgroundBlendMode = bodyBackground.backgroundBlendMode;
+    if (mobile && !closing) {
+        const coverBackground = getComputedStyle(refs.spread.parentElement);
+        lastMobileCoverBackground = {
+            background: coverBackground.background,
+            backgroundBlendMode: coverBackground.backgroundBlendMode
+        };
+    }
+    const backdropBackground = mobile
+        ? lastMobileCoverBackground
+        : getComputedStyle(document.body);
+    if (backdropBackground?.background) {
+        backdrop.style.background = backdropBackground.background;
+        backdrop.style.backgroundBlendMode = backdropBackground.backgroundBlendMode;
+    }
     backdrop.style.opacity = closing ? '0' : '1';
     const scene = document.createElement('div');
     scene.className = 'book-transition-scene';
@@ -2789,11 +2809,15 @@ function renderWithBookCover(renderFn, mode) {
         const scaleX = coverBounds.width / target.width;
         const scaleY = coverBounds.height / target.height;
         const closedMove = `translate(${coverBounds.left - target.left}px, ${coverBounds.top - target.top}px) scale(${scaleX}, ${scaleY})`;
-        const timing = { duration: BOOK_COVER_TURN_MS, fill: 'both',
+        const turnDuration = mobile
+            ? (closing ? MOBILE_BOOK_COVER_CLOSE_MS : MOBILE_BOOK_COVER_OPEN_MS)
+            : BOOK_COVER_TURN_MS;
+        const timing = { duration: turnDuration, fill: 'both',
             direction: closing ? 'reverse' : 'normal', easing: 'linear' };
         const movement = [
             { offset: 0, transform: closedMove },
-            { offset: .12, transform: closedMove, easing: 'cubic-bezier(.35,0,.2,1)' },
+            { offset: mobile ? .06 : .12, transform: closedMove,
+                easing: 'cubic-bezier(.16,.84,.24,1)' },
             { offset: 1, transform: 'translate(0px, 0px) scale(1, 1)' }
         ];
         Object.assign(scene.style, { top: `${target.top}px`, left: `${target.left}px`,
@@ -2822,12 +2846,19 @@ function renderWithBookCover(renderFn, mode) {
             });
         }
         animations.push(scene.animate(movement, timing));
-        animations.push(leaf.animate([
+        const leafFrames = mobile ? [
+            { offset: 0, transform: 'rotateY(0deg)' },
+            { offset: .06, transform: 'rotateY(-3deg)', easing: 'cubic-bezier(.16,.84,.24,1)' },
+            { offset: .72, transform: 'rotateY(-164deg)', easing: 'cubic-bezier(.2,.7,.2,1)' },
+            { offset: .94, transform: 'rotateY(-179deg)', easing: 'ease-out' },
+            { offset: 1, transform: 'rotateY(-180deg)' }
+        ] : [
             { offset: 0, transform: 'rotateY(0deg)' },
             { offset: .12, transform: 'rotateY(-4deg)', easing: 'cubic-bezier(.42,0,.25,1)' },
             { offset: .9, transform: 'rotateY(-178deg)', easing: 'ease-out' },
             { offset: 1, transform: 'rotateY(-180deg)' }
-        ], timing));
+        ];
+        animations.push(leaf.animate(leafFrames, timing));
         animations.push(transitionBook.animate(movement, timing));
         const clasp = cover.querySelector('.closed-book-clasp');
         if (clasp) animations.push(clasp.animate([
@@ -2846,15 +2877,21 @@ function renderWithBookCover(renderFn, mode) {
             { offset: .5, filter: 'brightness(.7)' },
             { offset: 1, filter: 'brightness(1)' }
         ], timing));
-        animations.push(backdrop.animate([
+        const backdropFrames = mobile ? [
+            { offset: 0, opacity: 1, easing: 'cubic-bezier(.16,.84,.24,1)' },
+            { offset: .18, opacity: .94, easing: 'cubic-bezier(.2,.7,.2,1)' },
+            { offset: .72, opacity: .18, easing: 'ease-out' },
+            { offset: 1, opacity: 0 }
+        ] : [
             { offset: 0, opacity: 1 },
             { offset: .9, opacity: 1 },
             { offset: 1, opacity: 0 }
-        ], timing));
+        ];
+        animations.push(backdrop.animate(backdropFrames, timing));
         if (animations[0].finished) {
             animations[0].finished.then(() => { if (!finished) clearPageTurn(); }, () => {});
         } else {
-            finishTimer = setTimeout(clearPageTurn, BOOK_COVER_TURN_MS);
+            finishTimer = setTimeout(clearPageTurn, turnDuration);
         }
     };
 
@@ -2871,7 +2908,11 @@ function renderWithBookCover(renderFn, mode) {
         if (finished) return;
         stableFrames = lastFrame && time - lastFrame < 34 ? stableFrames + 1 : 0;
         lastFrame = time;
-        if ((stableFrames >= 3 && time - started >= 90) || time - started >= 900) {
+        const minimumPaintWait = mobile ? 48 : 90;
+        const maximumPaintWait = mobile ? MOBILE_BOOK_COVER_PAINT_WAIT_MS : 900;
+        const requiredStableFrames = mobile ? 2 : 3;
+        if ((stableFrames >= requiredStableFrames && time - started >= minimumPaintWait)
+            || time - started >= maximumPaintWait) {
             startTurn();
         } else {
             frame = requestAnimationFrame(awaitPaint);

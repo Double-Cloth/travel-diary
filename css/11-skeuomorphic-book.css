@@ -16,6 +16,8 @@ body {
     position: fixed;
     z-index: 200;
     inset: 0;
+    isolation: isolate;
+    overflow: clip;
     pointer-events: auto;
     perspective: 1800px;
 }
@@ -24,6 +26,7 @@ body {
     position: absolute;
     inset: 0;
     background: linear-gradient(#28160a0d, #1a0d072e), url('../assets/images/backgrounds/body-background-travel-diary.png');
+    transform: translateZ(0);
     will-change: opacity;
 }
 
@@ -507,6 +510,11 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
 }
 
 @media (max-width: 760px) {
+    .book-transition-backdrop {
+        background:
+            radial-gradient(ellipse at center, rgba(255, 225, 180, 0.07), transparent 58%),
+            url('../assets/images/backgrounds/body-background-travel-diary.png') center / cover;
+    }
     .closed-book-title { top: 22%; left: 53%; font-size: clamp(30px, 10vw, 44px); }
     .closed-book-subtitle { top: 35%; left: 53%; font-size: 10px; }
     .closed-book-invitation { top: auto; bottom: 10%; font-size: 11px; letter-spacing: .08em; }
@@ -517,6 +525,22 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .closed-book-clasp { width: 50px; height: 48px; }
     .closed-book-clasp i { top: 11px; right: 9px; width: 24px; height: 24px; }
     .closed-book-corner { width: 30px; height: 30px; }
+    .closed-book-cover {
+        touch-action: manipulation;
+        transition: transform 160ms cubic-bezier(.16,.84,.24,1), box-shadow 160ms ease;
+    }
+    @media (hover: none) and (pointer: coarse) {
+        body[data-route='cover'] .closed-book-cover:hover {
+            transform: translate(-50%, -50%);
+            box-shadow: -8px 9px 0 -5px #c5b28f, -11px 12px 0 -6px #6f5d46, 0 24px 44px rgba(9, 4, 2, .52);
+        }
+        body[data-route='cover'] .closed-book-cover:hover::after { opacity: 1; }
+        body[data-route='cover'] .closed-book-cover:active {
+            transform: translate(-50%, calc(-50% + 2px)) scale(.995);
+            box-shadow: -7px 7px 0 -5px #c5b28f, -10px 10px 0 -6px #6f5d46, 0 17px 30px rgba(9, 4, 2, .46);
+        }
+        body[data-route='cover'] .closed-book-cover:active::after { opacity: .82; }
+    }
     .paper-page { scrollbar-gutter: auto; }
     .page-head h1 { text-wrap: balance; }
     .paper-page-right.context-panel .index-dashboard-grid { grid-template-columns: 1fr 1fr; gap: 10px; }

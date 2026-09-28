@@ -372,16 +372,24 @@ test('封面沿书脊翻转，合书落稳后提交且中断不重复渲染', t 
     frames.shift()(performance.now() + 1000);
     const mobileScaleY = Number(animations.at(-7).keyframes[0].transform.match(/scale\([^,]+, ([^)]+)\)/)[1]);
     assert.ok(mobileScaleY > .5 && mobileScaleY < 2, '连续滚动的手机书页不能把封皮拉伸到整页高度');
+    assert.equal(animations.at(-7).timing.duration, 1040, '手机开书应以稍慢于原版的节奏完成');
     assert.deepEqual(animations.at(-6).keyframes.map(frame => frame.transform),
-        ['rotateY(0deg)', 'rotateY(-4deg)', 'rotateY(-178deg)', 'rotateY(-180deg)']);
-    t.mock.timers.tick(1180);
+        ['rotateY(0deg)', 'rotateY(-3deg)', 'rotateY(-164deg)', 'rotateY(-179deg)', 'rotateY(-180deg)']);
+    assert.deepEqual(animations.at(-1).keyframes.map(frame => frame.opacity),
+        [1, .94, .18, 0], '封面背景应贯穿整段动画渐变，不能在末尾突然跳换');
+    const mobileBackdrop = [...nodes].find(node => node.className === 'book-transition-backdrop');
+    assert.equal(mobileBackdrop.style.background, '#eee', '手机动画应复用封面画布背景');
+    t.mock.timers.tick(1039);
+    assert.equal([...nodes].some(node => node.className === 'book-transition-overlay'), true);
+    t.mock.timers.tick(1);
     assert.equal(shell.focused, true);
     assert.equal([...nodes].some(node => node.className === 'book-transition-overlay'), false);
 
     app.renderWithBookCover(() => { renders += 1; }, 'closing');
     assert.equal([...nodes].findLast(node => node.className === 'book-transition-scene').style.width, '342px');
     frames.shift()();
-    t.mock.timers.tick(1180);
+    assert.equal(animations.at(-7).timing.duration, 920, '手机合书速度应保持利落');
+    t.mock.timers.tick(920);
     assert.equal(renders, 5);
 });
 
