@@ -590,6 +590,14 @@ test('桌面章节书签按已翻开和未翻开状态分处书页前后', () =>
     assert.match(appJs, /refs\.shell\.append\(viewport\);/);
 });
 
+test('章节书签选中态用高亮细节表达且不产生位置缩进', () => {
+    assert.match(journalCss, /\.chapter-tab\.chapter-tab-active,[\s\S]*?transform:\s*translateX\(0\) rotate\(\.35deg\);/);
+    assert.match(journalCss, /\.chapter-tab-active::before\s*\{[\s\S]*?border-style:\s*solid;/);
+    assert.match(journalCss, /\.chapter-tab-active \.chapter-icon\s*\{[\s\S]*?radial-gradient/);
+    assert.match(journalCss, /\.chapter-tab-active:nth-child\(3\)\s*\{[\s\S]*?transform:\s*none;/);
+    assert.doesNotMatch(journalCss, /\.chapter-tab\.chapter-tab-active,[^{]*\{[^}]*transform:\s*translateX\((?!0\))/);
+});
+
 test('空数据目录使用扉页内置头像并仅在自定义头像存在时替换', () => {
     assert.match(appJs, /class="preface-portrait-fallback"[^>]*>旅<\/span>/);
     assert.match(appJs, /<img data-profile-picture-image data-src="data\/profile\/profile-picture\.png"[^>]*hidden>/);

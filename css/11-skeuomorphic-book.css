@@ -970,7 +970,29 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
             linear-gradient(180deg, color-mix(in srgb, var(--bookmark-cloth-light) 88%, white), var(--bookmark-cloth) 38%, var(--bookmark-cloth-dark) 100%);
         text-shadow: 0 -1px #1b100b, 0 1px #fff8dc57;
         filter: brightness(1.08) saturate(1.04) drop-shadow(7px 8px 6px #120a0785);
-        transform: translateX(9px) rotate(0);
+        transform: translateX(0) rotate(.35deg);
+    }
+    .chapter-tab:nth-child(2).chapter-tab-active,
+    .chapter-tab:nth-child(2).chapter-tab-active:hover,
+    .chapter-tab:nth-child(2).chapter-tab-active:focus-visible {
+        transform: translateX(0) rotate(-.45deg);
+    }
+    .chapter-tab:nth-child(3).chapter-tab-active,
+    .chapter-tab:nth-child(3).chapter-tab-active:hover,
+    .chapter-tab:nth-child(3).chapter-tab-active:focus-visible {
+        transform: translateX(0) rotate(.18deg);
+    }
+    .chapter-tab-active::before {
+        border-style: solid;
+        border-color: color-mix(in srgb, var(--bookmark-thread) 88%, white);
+        box-shadow: inset 0 0 0 1px #3a221c24, 0 0 5px #f3d99a29;
+    }
+    .chapter-tab-active .chapter-icon {
+        border-color: #f6dfaa;
+        color: #4a2d1b;
+        background: radial-gradient(circle at 35% 28%, #fff8d6, #d9b568 48%, #8b5d2e 100%);
+        box-shadow: inset 0 1px #fff8dc, 0 0 0 1px #2a170f52, 0 2px 4px #160b075c;
+        text-shadow: 0 1px #fff1c57a;
     }
     .chapter-tab-active::after {
         top: 50%;
@@ -1185,7 +1207,13 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     }
     .chapter-tab-active,
     .chapter-tab-active:nth-child(2),
-    .chapter-tab-active:nth-child(3) { color: #fff6df; filter: brightness(1.12) saturate(1.04); transform: translateY(3px); }
+    .chapter-tab-active:nth-child(3) {
+        color: #fff6df;
+        box-shadow: inset 0 1px #fff2c58a, inset 0 0 0 2px #f2d89a66, 0 4px 7px #25150e66;
+        filter: brightness(1.12) saturate(1.04);
+        text-shadow: 0 -1px #2b180f, 0 0 5px #ffe8af52;
+        transform: none;
+    }
     .chapter-tab::after { display: none; }
     .paper-page {
         border-inline: 5px solid #bfa780;

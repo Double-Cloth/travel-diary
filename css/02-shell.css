@@ -46,7 +46,7 @@
     letter-spacing: 0.12em;
 }
 
-/* 章节像夹在书里的布书签，选中项自然垂入书口。 */
+/* 章节像夹在书里的布书签，选中项通过材质高光与缝线变化强调。 */
 .chapter-tabs {
     align-self: end;
     display: grid;
