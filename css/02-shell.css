@@ -534,6 +534,10 @@ body[data-route="archive"] .paper-page-left {
     --left-page-bg-image: url("../assets/images/pages/left-page-profile-travel-diary.png");
 }
 
+body[data-route="preface"] .paper-page-left {
+    --left-page-bg-image: url("../assets/images/pages/left-page-profile-travel-diary.png");
+}
+
 .paper-page-right {
     border-radius: 1px 5px 8px 0;
     background:
@@ -591,4 +595,3 @@ body[data-route="archive"] .paper-page-left {
     font-size: clamp(16px, 1.35vw, 19px);
     line-height: 1.75;
 }
-

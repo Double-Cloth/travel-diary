@@ -113,6 +113,7 @@ test('删除已提交但数据刷新失败时返回已删除状态，避免误�
 });
 
 test('路由搜索保留查询值中的后续问号', () => {
+    assert.equal(app.parseRoute('#preface').name, 'preface');
     assert.equal(app.parseRoute('#ledger?q=去哪?怎么去?&year=2026').params.q, '去哪?怎么去?');
     assert.equal(app.parseRoute('#archive?q=?').params.q, '?');
 });

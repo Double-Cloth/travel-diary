@@ -111,9 +111,243 @@ body {
     will-change: transform, opacity;
 }
 
-body[data-route='archive'] .paper-page {
+body[data-route='archive'] .paper-page,
+body[data-route='preface'] .paper-page {
     --page-art: url('../assets/images/pages/left-page-profile-travel-diary.png');
 }
+
+/* 自序像千禧年旅行相册的扉页：冲印照片、金属铭牌、横线便笺与压入式工具键。 */
+.preface-profile-page {
+    display: grid;
+    justify-items: center;
+    align-content: start;
+    gap: 18px;
+    min-height: 100%;
+    text-align: center;
+}
+
+.preface-heading h1 {
+    margin: 0;
+    color: #3f2a1d;
+    font-size: clamp(38px, 4.4vw, 58px);
+    line-height: 1;
+    letter-spacing: .12em;
+    text-shadow: 0 1px #fff8df, 0 3px 4px #5c3c1c24;
+}
+
+.preface-heading p {
+    max-width: 30em;
+    margin: 12px 0 0;
+    color: #715b43;
+    font-size: 14px;
+    line-height: 1.75;
+}
+
+.preface-portrait {
+    position: relative;
+    display: grid;
+    width: min(238px, 72%);
+    aspect-ratio: 4 / 4.7;
+    padding: 13px 13px 43px;
+    border: 1px solid #9c7c55;
+    border-radius: 3px;
+    color: #70583d;
+    background: linear-gradient(135deg, #fffef6, #ead9b8 74%, #c9ad7b);
+    box-shadow: inset 0 0 0 3px #fff8e4, 0 3px 0 #96734d, 0 12px 18px #4a301b38;
+    transform: rotate(-1.4deg);
+    cursor: pointer;
+    transition: transform 180ms cubic-bezier(.2,.7,.2,1), filter 180ms, box-shadow 180ms;
+}
+
+.preface-portrait:hover,
+.preface-portrait:focus-visible {
+    filter: brightness(1.04);
+    transform: rotate(-.5deg) translateY(-2px);
+    box-shadow: inset 0 0 0 3px #fff8e4, 0 3px 0 #96734d, 0 16px 24px #4a301b45;
+}
+
+.preface-portrait img,
+.preface-portrait-fallback {
+    grid-area: 1 / 1;
+    width: 100%;
+    height: 100%;
+    border: 1px solid #876843;
+    border-radius: 1px;
+}
+
+.preface-portrait img {
+    position: relative;
+    z-index: 2;
+    display: block;
+    object-fit: cover;
+    object-position: center;
+    filter: saturate(.9) contrast(1.03) sepia(.08);
+}
+
+.preface-portrait img[hidden] { display: none; }
+
+.preface-portrait-fallback {
+    display: grid;
+    place-items: center;
+    color: #f6e7c2;
+    background: linear-gradient(145deg, #806145, #3f2c1f);
+    font-size: 72px;
+    text-shadow: 0 -1px #2b1a10, 0 2px #a5825666;
+}
+
+.preface-portrait small {
+    position: absolute;
+    right: 14px;
+    bottom: 13px;
+    left: 14px;
+    color: #71583b;
+    font: 10px/1.2 var(--font-code);
+    letter-spacing: .08em;
+}
+
+.preface-photo-corner {
+    position: absolute;
+    z-index: 3;
+    top: 3px;
+    width: 36px;
+    height: 36px;
+    filter: drop-shadow(0 1px 1px #42281240);
+    opacity: .78;
+}
+
+.preface-photo-corner-left {
+    left: 3px;
+    background:
+        linear-gradient(#c49f5f 0 0) top / 100% 9px no-repeat,
+        linear-gradient(#c49f5f 0 0) left / 9px 100% no-repeat;
+}
+
+.preface-photo-corner-right {
+    right: 3px;
+    background:
+        linear-gradient(#c49f5f 0 0) top / 100% 9px no-repeat,
+        linear-gradient(#c49f5f 0 0) right / 9px 100% no-repeat;
+}
+
+.preface-owner-plaque {
+    display: grid;
+    gap: 3px;
+    min-width: min(290px, 86%);
+    padding: 9px 24px 10px;
+    border: 1px solid #76532e;
+    border-radius: 5px;
+    color: #563921;
+    background: var(--plaque-face);
+    box-shadow: inset 0 1px #fff5d1, inset 0 -2px #8b6438, 0 3px 0 #79532d, 0 8px 12px #4f301828;
+    text-shadow: 0 1px #fff4cf;
+}
+
+.preface-owner-plaque span {
+    font: 9px/1.2 var(--font-code);
+    letter-spacing: .18em;
+}
+
+.preface-owner-plaque strong { font-size: 18px; letter-spacing: .08em; }
+
+.preface-signature {
+    width: min(430px, 94%);
+    margin: 0;
+    padding: 18px 20px 15px;
+    border: 1px solid #b69a6f;
+    border-radius: 2px;
+    color: #624834;
+    background:
+        linear-gradient(90deg, transparent 29px, #ad675d40 29px 30px, transparent 30px),
+        repeating-linear-gradient(0deg, #fff8e6 0 27px, #9da8a54a 27px 28px);
+    box-shadow: 0 2px 0 #9f8058, 0 7px 12px #51351c24;
+    font-size: 17px;
+    line-height: 1.8;
+    transform: rotate(.55deg);
+}
+
+.preface-facts {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: min(430px, 94%);
+    margin: 0;
+    border: 1px solid #9e7d53;
+    border-radius: 5px;
+    background: linear-gradient(#e8d4ad, #fff6dc 36%, #e3c99b);
+    box-shadow: inset 0 1px #fff9e8, inset 0 -1px #9d784c, 0 4px 8px #5f402128;
+}
+
+.preface-facts div { min-width: 0; padding: 11px 8px; }
+.preface-facts div + div { border-left: 1px solid #9f7c504d; }
+.preface-facts dt { color: #52351f; font: 700 16px/1.15 var(--font-code); overflow-wrap: anywhere; }
+.preface-facts dd { margin: 5px 0 0; color: #786149; font-size: 11px; }
+
+.preface-tools-panel { gap: 18px; }
+
+.preface-tools-intro {
+    margin: -4px 0 0;
+    color: #715b43;
+    font-size: 13px;
+    line-height: 1.75;
+}
+
+.preface-tool-section {
+    position: relative;
+    display: grid;
+    gap: 10px;
+    padding: 17px 16px 18px;
+    border: 1px solid #a4865f;
+    border-radius: 6px;
+    background: linear-gradient(180deg, #fff7dfd9, #e6cf9fa8);
+    box-shadow: inset 0 1px #fff9e8, inset 0 -1px #b08e5e, 0 4px 8px #56391d20;
+}
+
+.preface-tool-section::before,
+.preface-tool-section::after {
+    content: '';
+    position: absolute;
+    top: 12px;
+    width: 6px;
+    height: 6px;
+    border: 1px solid #856238;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, #fff5c9, #aa7b3f 48%, #58361d);
+    box-shadow: inset 0 1px #fff5cb, 0 1px 2px #321b0c55;
+}
+
+.preface-tool-section::before { left: 12px; }
+.preface-tool-section::after { right: 12px; }
+
+.preface-tool-section h3 {
+    margin: 0;
+    padding: 0 14px 10px;
+    border-bottom: 1px solid #9c7a4c66;
+    color: #9a493b;
+    font-size: 18px;
+    font-weight: 400;
+    letter-spacing: .08em;
+}
+
+.preface-tool-section > p {
+    margin: 0;
+    color: #78634e;
+    font-size: 12px;
+    line-height: 1.7;
+}
+
+.preface-tool-actions {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+
+.preface-tools-panel .preface-tool-section .paper-button {
+    width: 100%;
+    min-height: 48px;
+    padding: 10px 12px;
+    font-size: 14px;
+}
+
+.preface-tools-panel .archive-data-status { margin: 0; }
 
 
 .paper-page .paper-button,
@@ -507,6 +741,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     }
     .closed-book-title { font-size: clamp(36px, 4vw, 58px); }
     body[data-route='cover'] .notebook { background: transparent; border-color: transparent; box-shadow: none; }
+    body[data-route='preface'] .paper-page-left { padding-top: 42px; }
 }
 
 @media (max-width: 760px) {
@@ -606,6 +841,16 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     }
     .year-bookmark { padding-inline: 13px; }
     .paper-page .paper-button, .paper-page .sheet-nav-button { min-height: 42px; }
+    .preface-profile-page { gap: 16px; }
+    .preface-heading h1 { font-size: 40px; }
+    .preface-heading p { font-size: 13px; }
+    .preface-portrait { width: min(210px, 68vw); }
+    .preface-owner-plaque { min-width: min(280px, 90%); }
+    .preface-signature { font-size: 15px; }
+    .preface-facts dt { font-size: 13px; }
+    .preface-facts dd { font-size: 10px; }
+    .preface-tool-actions { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+    .preface-tools-panel .preface-tool-section .paper-button { min-height: 46px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

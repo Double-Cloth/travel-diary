@@ -6,7 +6,7 @@
     <title>Travel Diary</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232b160f'/%3E%3Cpath d='M32 7l5.6 18.7L57 32l-19.4 6.3L32 57l-5.6-18.7L7 32l19.4-6.3L32 7z' fill='%23d8b467'/%3E%3C/svg%3E">
     <link rel="preload" as="image" href="assets/images/pages/leather-mountain-cover.png">
-    <link rel="stylesheet" href="css/journal.css?v=20260928-book-motion-v30">
+    <link rel="stylesheet" href="css/journal.css?v=20260928-book-motion-v31">
 </head>
 <body>
     <a class="skip-link" href="#journalStage">跳到档案内容</a>
@@ -21,17 +21,17 @@
             </a>
 
             <nav class="chapter-tabs" id="chapterTabs" aria-label="章节导航">
-                <a href="#cover" class="chapter-tab" data-route-link="cover">
-                    <span class="chapter-icon" aria-hidden="true">封</span>
-                    <span>封面</span>
+                <a href="#preface" class="chapter-tab" data-route-link="preface">
+                    <span class="chapter-icon" aria-hidden="true">序</span>
+                    <span>自序</span>
                 </a>
                 <a href="#ledger" class="chapter-tab" data-route-link="ledger">
-                    <span class="chapter-icon" aria-hidden="true">路</span>
-                    <span>旅行路径</span>
+                    <span class="chapter-icon" aria-hidden="true">目</span>
+                    <span>日记目录</span>
                 </a>
                 <a href="#archive" class="chapter-tab" data-route-link="archive">
-                    <span class="chapter-icon" aria-hidden="true">档</span>
-                    <span>个人主页</span>
+                    <span class="chapter-icon" aria-hidden="true">归</span>
+                    <span>日记归档</span>
                 </a>
             </nav>
 
@@ -44,7 +44,7 @@
                 <span class="tool-divider" aria-hidden="true"></span>
                 <button class="spine-tool spine-profile" type="button" data-action="upload-profile-picture" aria-label="更换头像" title="点击更换头像">
                     <span class="spine-profile-fallback" aria-hidden="true">旅</span>
-                    <img data-src="data/profile/profile-picture.png" alt="" aria-hidden="true" hidden>
+                    <img data-src="data/profile/profile-picture.png" src="data/profile/profile-picture.png" data-profile-picture-image alt="" aria-hidden="true" hidden>
                 </button>
                 <input id="profilePictureInput" type="file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
             </div>
@@ -77,6 +77,6 @@
         </main>
     </div>
 
-    <script type="module" src="js/app.js?v=20260928-book-motion-v26"></script>
+    <script type="module" src="js/app.js?v=20260928-book-motion-v27"></script>
 </body>
 </html>

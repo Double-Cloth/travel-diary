@@ -257,7 +257,7 @@ function cacheRefs() {
     refs.profilePictureInput?.addEventListener('cancel', () => {
         profilePictureCapability = null;
     });
-    const profilePicture = document.querySelector('.spine-profile img');
+    const profilePicture = document.querySelector('.spine-profile [data-profile-picture-image]');
     if (profilePicture) {
         const profilePictureUrl = new URL(profilePicture.dataset.src, window.location.href);
         void fetch(profilePictureUrl, { method: 'HEAD' })
@@ -275,21 +275,32 @@ function cacheRefs() {
 }
 
 function refreshProfilePicture() {
-    const profilePicture = refs.profilePictureButton?.querySelector('img');
-    if (!profilePicture) return;
-    const profilePictureUrl = new URL(profilePicture.dataset.src, window.location.href);
-    profilePictureUrl.searchParams.set('v', getRefreshKey());
-    profilePicture.addEventListener('load', () => {
-        profilePicture.hidden = false;
-    }, { once: true });
-    profilePicture.src = profilePictureUrl.href;
+    syncProfilePictureImages(document, getRefreshKey());
 }
 
 function resetProfilePicture() {
-    const profilePicture = refs.profilePictureButton?.querySelector('img');
-    if (!profilePicture) return;
-    profilePicture.hidden = true;
-    profilePicture.removeAttribute('src');
+    document.querySelectorAll('[data-profile-picture-image]').forEach((profilePicture) => {
+        profilePicture.hidden = true;
+        profilePicture.removeAttribute('src');
+    });
+}
+
+function syncProfilePictureImages(root = document, cacheKey = '') {
+    root.querySelectorAll?.('[data-profile-picture-image]').forEach((profilePicture) => {
+        const source = profilePicture.dataset.src || 'data/profile/profile-picture.png';
+        const profilePictureUrl = new URL(source, window.location.href);
+        if (cacheKey) profilePictureUrl.searchParams.set('v', cacheKey);
+        profilePicture.hidden = true;
+        profilePicture.addEventListener('load', () => {
+            if (profilePicture.naturalWidth > 1 || profilePicture.naturalHeight > 1) {
+                profilePicture.hidden = false;
+            }
+        }, { once: true });
+        profilePicture.addEventListener('error', () => {
+            profilePicture.hidden = true;
+        }, { once: true });
+        profilePicture.src = profilePictureUrl.href;
+    });
 }
 
 async function handleProfilePictureSelection(input) {
@@ -352,6 +363,8 @@ function parseRoute(hash = window.location.hash) {
     switch (routeName || 'cover') {
         case 'cover':
             return { name: 'cover', params: {}, valid: true };
+        case 'preface':
+            return { name: 'preface', params: {}, valid: true };
         case 'ledger':
             return {
                 name: 'ledger',
@@ -418,6 +431,8 @@ function serializeRoute(route) {
     switch (route.name) {
         case 'cover':
             return '#cover';
+        case 'preface':
+            return '#preface';
         case 'ledger':
             {
                 const ledgerParams = normalizeLedgerParams(route.params);
@@ -492,7 +507,7 @@ function renderRoute(route, options = {}) {
         return;
     }
     const isSameChapter = previousRoute?.name === route.name
-        && ['cover', 'ledger', 'archive'].includes(route.name);
+        && ['cover', 'preface', 'ledger', 'archive'].includes(route.name);
     const render = () => {
         refs.shell.dataset.route = route.name;
         document.body.dataset.route = route.name;
@@ -500,6 +515,9 @@ function renderRoute(route, options = {}) {
         switch (route.name) {
             case 'cover':
                 renderCover();
+                break;
+            case 'preface':
+                renderPreface();
                 break;
             case 'ledger':
                 renderLedger(route.params, options);
@@ -876,6 +894,78 @@ function renderCover() {
     setPages('', '');
 }
 
+function renderPreface() {
+    const firstDate = travelModel.records.length
+        ? travelModel.records.reduce((earliest, record) => !earliest || record.date < earliest ? record.date : earliest, '')
+        : '等待第一篇';
+
+    setPages(`
+        <article class="preface-profile-page" aria-labelledby="prefaceTitle">
+            <header class="preface-heading">
+                <h1 id="prefaceTitle">自序</h1>
+                <p>先认识写下这些路途的人，再翻进山川与年月。</p>
+            </header>
+
+            <button class="preface-portrait" type="button" data-action="upload-profile-picture" aria-label="更换自序头像">
+                <span class="preface-portrait-fallback" aria-hidden="true">旅</span>
+                <img data-profile-picture-image data-src="data/profile/profile-picture.png" alt="日记主人的头像" hidden>
+                <span class="preface-photo-corner preface-photo-corner-left" aria-hidden="true"></span>
+                <span class="preface-photo-corner preface-photo-corner-right" aria-hidden="true"></span>
+                <small>点击照片更换头像</small>
+            </button>
+
+            <div class="preface-owner-plaque">
+                <span>TRAVEL DIARY OWNER</span>
+                <strong>这本日记的主人</strong>
+            </div>
+
+            <blockquote class="preface-signature">“把走过的路，写成自己的时间。”</blockquote>
+
+            <dl class="preface-facts" aria-label="日记概况">
+                <div><dt>${travelModel.stats.total}</dt><dd>篇日记</dd></div>
+                <div><dt>${travelModel.stats.localities}</dt><dd>个目的地</dd></div>
+                <div><dt>${escapeHtml(firstDate)}</dt><dd>开始记录</dd></div>
+            </dl>
+
+            ${renderMobileContextToggle('打开日记工具箱', '新增、备份与安全管理')}
+        </article>
+    `, `
+        ${renderContextPanelHeading('自序', '日记工具箱')}
+        <p class="preface-tools-intro">常用维护功能收在这里，像书桌抽屉一样，需要时再打开。</p>
+
+        <section class="preface-tool-section" aria-labelledby="prefaceWritingTitle">
+            <h3 id="prefaceWritingTitle">日记维护</h3>
+            <p>继续写下一段旅程，或替换自序中的个人头像。</p>
+            <div class="preface-tool-actions">
+                <button class="paper-button" type="button" data-action="add-record">新增旅行日记</button>
+                <button class="paper-button" type="button" data-action="upload-profile-picture">更换个人头像</button>
+            </div>
+        </section>
+
+        <section class="preface-tool-section archive-data-transfer" aria-labelledby="prefaceDataTitle">
+            <h3 id="prefaceDataTitle">数据备份</h3>
+            <p>完整导出或导入旅行记录、媒体文件和认证配置。</p>
+            <div class="preface-tool-actions">
+                <button class="paper-button" type="button" data-action="export-all-data">导出全部数据</button>
+                <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
+            </div>
+            <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="preface-tool-section archive-access-security" aria-labelledby="prefaceSecurityTitle">
+            <h3 id="prefaceSecurityTitle">访问安全</h3>
+            <p>验证当前密码后设置新的 6 位数字密码；再次输入到第 6 位时会自动提交。</p>
+            <button class="paper-button" type="button" data-action="change-password">修改访问密码</button>
+        </section>
+
+        <section class="preface-tool-section archive-danger-zone" aria-labelledby="prefaceDangerTitle">
+            <h3 id="prefaceDangerTitle">危险操作</h3>
+            <p>永久清空所有旅行记录和自定义头像。操作前请先导出备份。</p>
+            <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
+        </section>
+    `, 'dossier-page context-panel preface-tools-panel');
+}
+
 function getCoverRecentRecordCount() {
     const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 720;
     const pageHeight = refs.leftPage?.clientHeight || refs.stage?.clientHeight || viewportHeight;
@@ -1203,7 +1293,7 @@ function renderArchive(params = {}) {
     setPages(`
         <div class="archive-page">
             <header class="page-head">
-                <p class="journal-label">个人主页</p>
+                <p class="journal-label">日记归档</p>
                 <p class="page-copy">"I was surprised, as always, by how easy the act of leaving was, and how good it felt. The world was suddenly rich with possibility."</p>
             </header>
             <label class="field-label" for="archiveSearch">搜索国家、一级行政区或目的地</label>
@@ -1251,24 +1341,6 @@ function renderArchive(params = {}) {
                     ${renderBroadAdminAreaInsight(broadestAdminArea)}
                     ${renderRepeatLocationInsights(travelModel.repeatLocations)}
                 </div>
-            </section>
-            <section class="archive-overview-block archive-data-transfer" aria-labelledby="archiveDataTitle">
-                <h3 id="archiveDataTitle">数据备份</h3>
-                <div>
-                    <button class="paper-button" type="button" data-action="export-all-data">导出全部数据</button>
-                    <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
-                </div>
-                <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
-            </section>
-            <section class="archive-overview-block archive-access-security" aria-labelledby="archiveSecurityTitle">
-                <h3 id="archiveSecurityTitle">访问安全</h3>
-                <p>验证当前密码后设置新的 6 位数字密码；再次输入到第 6 位时会自动提交。</p>
-                <button class="paper-button" type="button" data-action="change-password">修改访问密码</button>
-            </section>
-            <section class="archive-overview-block archive-danger-zone" aria-labelledby="archiveDangerTitle">
-                <h3 id="archiveDangerTitle">危险操作</h3>
-                <p>永久清空所有旅行记录和自定义头像。操作前请先导出备份。</p>
-                <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
             </section>
     `, 'dossier-page context-panel');
 }
@@ -2948,7 +3020,7 @@ function cloneTurningPage(page) {
 
 // 章节顺序与书签一致；地点和附件属于向内阅读，返回所属章节时反向翻页。
 function getTurnDirection(previous, next) {
-    const order = { cover: 0, ledger: 1, archive: 2, place: 3, entry: 4, photos: 5 };
+    const order = { cover: 0, preface: 1, ledger: 2, archive: 3, place: 4, entry: 5, photos: 6 };
     return (order[next?.name] ?? 0) < (order[previous?.name] ?? 0) ? 'back' : 'forward';
 }
 
@@ -3172,7 +3244,7 @@ function getPageCurlStripCount(width) {
 function handleDocumentClick(event) {
     if (event.target.closest('[data-action="open-book"]')) {
         event.preventDefault();
-        navigateTo('#ledger');
+        navigateTo('#preface');
         return;
     }
 
@@ -3673,7 +3745,9 @@ function updateLedgerRoute(nextParams, options = {}) {
 }
 
 function updateChapterTabs(routeName) {
-    const activeName = routeName === 'entry' || routeName === 'photos' ? 'ledger' : routeName;
+    const activeName = routeName === 'entry' || routeName === 'photos'
+        ? 'ledger'
+        : (routeName === 'place' ? 'archive' : routeName);
     document.querySelectorAll('[data-route-link]').forEach((link) => {
         const isActive = link.dataset.routeLink === activeName;
         link.classList.toggle('chapter-tab-active', isActive);
@@ -3811,6 +3885,8 @@ function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
     refs.leftPage.innerHTML = leftHtml;
     refs.rightPage.className = ['paper-page', 'paper-page-right', rightPageMode].filter(Boolean).join(' ');
     refs.rightPage.innerHTML = rightHtml;
+    syncProfilePictureImages(refs.leftPage);
+    syncProfilePictureImages(refs.rightPage);
     enhanceCustomSelects(refs.leftPage);
     enhanceCustomSelects(refs.rightPage);
     isMobileContextPanelOpen = keepContextPanelOpen;

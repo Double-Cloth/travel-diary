@@ -64,6 +64,26 @@ test('路线页不存在重复筛选入口', () => {
     assert.doesNotMatch(appJs, /ledger-feature-actions|ledger-feature-add|ledger-filter-jump/);
 });
 
+test('左侧三个章节入口更新为自序、日记目录与日记归档', () => {
+    assert.match(indexHtml, /href="#preface"[^>]*data-route-link="preface"[\s\S]*>自序</);
+    assert.match(indexHtml, /href="#ledger"[^>]*data-route-link="ledger"[\s\S]*>日记目录</);
+    assert.match(indexHtml, /href="#archive"[^>]*data-route-link="archive"[\s\S]*>日记归档</);
+    assert.match(appJs, /data-action="open-book"[\s\S]*navigateTo\('#preface'\)/);
+});
+
+test('自序桌面双页展示个人信息与工具，移动端工具页默认使用折叠夹层', () => {
+    assert.match(appJs, /function renderPreface\(\)/);
+    assert.match(appJs, /class="preface-portrait"[\s\S]*data-profile-picture-image/);
+    assert.match(appJs, /class="preface-signature"/);
+    assert.match(appJs, /renderMobileContextToggle\('打开日记工具箱'/);
+    for (const action of ['add-record', 'upload-profile-picture', 'export-all-data', 'import-all-data', 'change-password', 'clear-all-data']) {
+        assert.match(appJs, new RegExp(`data-action="${action}"`));
+    }
+    assert.match(appJs, /'dossier-page context-panel preface-tools-panel'/);
+    assert.match(journalCss, /\.preface-portrait\s*{/);
+    assert.match(journalCss, /\.preface-tool-section\s*{/);
+});
+
 test('索引夹层包含完整且唯一的高级筛选工作台', () => {
     assert.match(appJs, /function renderLedgerFilterWorkbench/);
     for (const key of ['month', 'country', 'area', 'locality', 'sort']) {
