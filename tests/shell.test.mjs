@@ -76,7 +76,7 @@ test('桌面端实体书签为标题和铆钉保留独立空间且不会伸出�
     assert.match(journalCss, /\.journal-spine\s*\{[\s\S]*left: calc\(50% - 11px\);[\s\S]*width: min\(1220px, calc\(100% - 178px\)\);/);
     assert.match(journalCss, /\.chapter-tabs\s*\{[\s\S]*right: -82px;[\s\S]*grid-template-columns: 126px;/);
     assert.match(journalCss, /\.chapter-tab\s*\{[\s\S]*grid-template-columns: 25px minmax\(0, 1fr\) 10px;[\s\S]*column-gap: 6px;[\s\S]*width: 126px;/);
-    assert.match(journalCss, /\.chapter-tab::after\s*\{[\s\S]*right: 10px;/);
+    assert.match(journalCss, /\.chapter-tab::after\s*\{[\s\S]*right: 15px;/);
 });
 
 test('扉页桌面双页展示个人信息与工具，移动端工具页默认使用折叠夹层', () => {

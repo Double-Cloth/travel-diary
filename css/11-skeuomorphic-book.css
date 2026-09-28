@@ -917,7 +917,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         content: '';
         position: absolute;
         top: 50%;
-        right: 10px;
+        right: 15px;
         bottom: auto;
         left: auto;
         width: 8px;
@@ -974,7 +974,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     }
     .chapter-tab-active::after {
         top: 50%;
-        right: 10px;
+        right: 15px;
         bottom: auto;
         width: 9px;
         height: 9px;
