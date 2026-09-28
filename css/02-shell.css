@@ -243,7 +243,7 @@
     isolation: isolate;
 }
 
-/* 翻页只在书芯内部叠加；章节书签与合上按钮始终压在静止纸页之上。 */
+/* 翻页只在书芯内部叠加；桌面端章节书签会按页序分别落在纸页前后。 */
 .page-spread:is(.turn-back, .turn-forward) { z-index: 10; }
 .page-spread:is(.turn-back, .turn-forward) > .paper-page:not(.book-page-copy) { z-index: 0; pointer-events: none; }
 

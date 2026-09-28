@@ -574,7 +574,13 @@ test('章节书签保留语义导航并贴合书页上沿', () => {
     assert.match(journalCss, /\.page-spread\s*{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*gap: 0;/);
 });
 
-test('翻页时不整体抬高书本遮挡两侧实体书签', () => {
+test('桌面章节书签按已翻开和未翻开状态分处书页前后', () => {
+    assert.match(journalCss, /\.chapter-tab-unturned\s*\{[\s\S]*?clip-path:\s*polygon\(26px 0,/);
+    assert.match(journalCss, /\.chapter-tab-unturned:hover,[\s\S]*?clip-path:\s*polygon\(20px 0,/);
+    assert.match(appJs, /const chapterOrder = \['preface', 'ledger', 'archive'\];/);
+    assert.match(appJs, /const isTurned = activeIndex >= 0 && chapterIndex <= activeIndex;/);
+    assert.match(appJs, /classList\.toggle\('chapter-tab-turned', isTurned\);/);
+    assert.match(appJs, /classList\.toggle\('chapter-tab-unturned', !isTurned\);/);
     assert.match(journalCss, /\.journal-spine\s*{[^}]*z-index:\s*80;/);
     assert.match(journalCss, /\.page-spread:is\(\.turn-back, \.turn-forward\)\s*{\s*z-index:\s*10;/);
     assert.match(journalCss, /\.mobile-page-transition\s*{[^}]*z-index:\s*70;/);

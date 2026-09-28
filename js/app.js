@@ -3765,9 +3765,15 @@ function updateChapterTabs(routeName) {
     const activeName = routeName === 'entry' || routeName === 'photos'
         ? 'ledger'
         : (routeName === 'place' ? 'archive' : routeName);
+    const chapterOrder = ['preface', 'ledger', 'archive'];
+    const activeIndex = chapterOrder.indexOf(activeName);
     document.querySelectorAll('[data-route-link]').forEach((link) => {
         const isActive = link.dataset.routeLink === activeName;
+        const chapterIndex = chapterOrder.indexOf(link.dataset.routeLink);
+        const isTurned = activeIndex >= 0 && chapterIndex <= activeIndex;
         link.classList.toggle('chapter-tab-active', isActive);
+        link.classList.toggle('chapter-tab-turned', isTurned);
+        link.classList.toggle('chapter-tab-unturned', !isTurned);
         link.setAttribute('aria-current', isActive ? 'page' : 'false');
     });
 }

@@ -874,7 +874,11 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         writing-mode: horizontal-tb;
         transform: translateX(0) rotate(.35deg);
         transform-origin: left center;
-        transition: transform 220ms cubic-bezier(.18,.72,.2,1), filter 180ms, color 180ms;
+        transition: transform 220ms cubic-bezier(.18,.72,.2,1), clip-path 220ms cubic-bezier(.18,.72,.2,1), filter 180ms, color 180ms;
+    }
+    /* 未翻到的书签隐藏伸入书芯的部分，让右页自然盖住布条；翻过后再露出完整书签。 */
+    .chapter-tab-unturned {
+        clip-path: polygon(26px 0, 100% 0, 91% 50%, 100% 100%, 26px 100%);
     }
     .chapter-tab:nth-child(2) {
         --bookmark-cloth: #914e3d;
@@ -926,6 +930,10 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .chapter-tab:focus-visible {
         transform: translateX(6px) rotate(0);
         filter: brightness(1.08) drop-shadow(6px 7px 5px #120a0778);
+    }
+    .chapter-tab-unturned:hover,
+    .chapter-tab-unturned:focus-visible {
+        clip-path: polygon(20px 0, 100% 0, 91% 50%, 100% 100%, 20px 100%);
     }
     .chapter-tab.chapter-tab-active,
     .chapter-tab.chapter-tab-active:hover,
