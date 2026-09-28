@@ -773,6 +773,9 @@ test('移动端视频进度条使用独立触摸拖动状态连续更新时间',
     assert.match(appJs, /function updateVideoSeekFromPointer\(event,[\s\S]*getBoundingClientRect\(\)[\s\S]*video\.currentTime = currentTime;/);
     assert.match(appJs, /photoGestureState\.videoSeekPointerId === null && document\.activeElement !== seek/);
     assert.match(journalCss, /\.video-viewer-seek\s*{[\s\S]*height: 32px;[\s\S]*touch-action: none;/);
+    assert.match(journalCss, /--video-range-progress, 0%/);
+    assert.match(appJs, /function syncVideoRangeProgress\(range\)[\s\S]*--video-range-progress/);
+    assert.doesNotMatch(journalCss, /\.photo-viewer-toolbar::before/);
 });
 
 test('文件设置在常见手机宽度下改为单列并保持可读字号', () => {

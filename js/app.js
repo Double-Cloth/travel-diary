@@ -2035,8 +2035,10 @@ function syncVideoViewerControls() {
         seek.max = String(duration);
         seek.value = String(Math.min(video.currentTime || 0, duration || 0));
     }
+    syncVideoRangeProgress(seek);
     const volume = root.querySelector('[data-video-volume]');
     if (volume && document.activeElement !== volume) volume.value = String(video.volume);
+    syncVideoRangeProgress(volume);
     const rate = root.querySelector('[data-video-rate]');
     if (rate && document.activeElement !== rate) rate.value = String(video.playbackRate);
     const play = root.querySelector('[data-video-play]');
@@ -2065,6 +2067,15 @@ function syncVideoViewerControls() {
         photoViewerState.videoMuted = video.muted;
         photoViewerState.videoRate = video.playbackRate;
     }
+}
+
+function syncVideoRangeProgress(range) {
+    if (!range) return;
+    const min = Number(range.min) || 0;
+    const max = Number(range.max) || 0;
+    const value = Number(range.value) || 0;
+    const progress = max > min ? clamp((value - min) / (max - min), 0, 1) * 100 : 0;
+    range.style.setProperty('--video-range-progress', `${progress}%`);
 }
 
 function formatVideoTime(value) {
