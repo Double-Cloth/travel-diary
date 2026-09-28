@@ -3104,7 +3104,8 @@ function renderWithPageTurn(renderFn, options = {}) {
         Object.assign(viewport.style, { left: `${bounds.left}px`, width: `${bounds.width}px` });
         Object.assign(snapshot.style, { width: `${bounds.width}px`, top: `${bounds.top}px` });
         viewport.append(snapshot);
-        document.body.append(viewport);
+        // 过渡层留在日记壳层内：覆盖正文，但不越过顶部导航与回到封面的书签。
+        refs.shell.append(viewport);
         renderFn();
         const shift = options.direction === 'back' ? -12 : 12;
         const timing = { duration: 300, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'both' };

@@ -500,7 +500,7 @@ test('手机切页的过期完成回调不能清理新动画，完成后移除�
     globalThis.document = { createElement: createNode, body: createNode() };
     globalThis.window = { matchMedia: query => ({ matches: !query.includes('reduced-motion') }) };
     globalThis.getComputedStyle = () => ({ background: '#fff' });
-    app.setTestState({ spread: createNode(), leftPage: createNode(), rightPage: createNode() });
+    app.setTestState({ shell: createNode(), spread: createNode(), leftPage: createNode(), rightPage: createNode() });
     let rendered;
     app.renderWithPageTurn(() => { rendered = '第一页'; });
     const first = animations[0];

@@ -561,6 +561,14 @@ test('章节书签保留语义导航并贴合书页上沿', () => {
     assert.match(journalCss, /\.page-spread\s*{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*gap: 0;/);
 });
 
+test('翻页时不整体抬高书本遮挡两侧实体书签', () => {
+    assert.match(journalCss, /\.journal-spine\s*{[^}]*z-index:\s*80;/);
+    assert.match(journalCss, /\.page-spread:is\(\.turn-back, \.turn-forward\)\s*{\s*z-index:\s*10;/);
+    assert.match(journalCss, /\.mobile-page-transition\s*{[^}]*z-index:\s*70;/);
+    assert.doesNotMatch(journalCss, /:has\(\.book-turn-leaf\)[^{]*\.journal-stage\s*{[^}]*z-index/);
+    assert.match(appJs, /refs\.shell\.append\(viewport\);/);
+});
+
 test('空数据目录使用扉页内置头像并仅在自定义头像存在时替换', () => {
     assert.match(appJs, /class="preface-portrait-fallback"[^>]*>旅<\/span>/);
     assert.match(appJs, /<img data-profile-picture-image data-src="data\/profile\/profile-picture\.png"[^>]*hidden>/);

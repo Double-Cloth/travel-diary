@@ -1079,12 +1079,12 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .journal-shell *, .journal-shell *::before, .journal-shell *::after { animation: none !important; transition: none !important; }
 }
 
-/* 旧页只保留首屏交接，层级低于导航和模态层。 */
+/* 旧页只保留首屏交接，并在日记壳层内位于导航下、正文上。 */
 .mobile-page-transition {
     position: fixed;
     top: 0;
     bottom: 0;
-    z-index: 90;
+    z-index: 70;
     overflow: clip;
     pointer-events: none;
 }

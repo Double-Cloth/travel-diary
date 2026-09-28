@@ -243,9 +243,8 @@
     isolation: isolate;
 }
 
-/* 翻页期间整个书页层高于包角、书脊与书签，内部纸面再覆盖静态控件。 */
+/* 翻页只在书芯内部叠加；章节书签与合上按钮始终压在静止纸页之上。 */
 .page-spread:is(.turn-back, .turn-forward) { z-index: 10; }
-.journal-shell:has(.book-turn-leaf) .journal-stage { position: relative; z-index: 90; }
 .page-spread:is(.turn-back, .turn-forward) > .paper-page:not(.book-page-copy) { z-index: 0; pointer-events: none; }
 
 .page-spread::before,
