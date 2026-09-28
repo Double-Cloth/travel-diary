@@ -294,7 +294,7 @@ body[data-route="cover"] .page-spread { visibility: hidden; }
 
     .brand-lockup strong { font-size: 0; }
     .brand-lockup strong::after {
-        content: "合上手记";
+        content: "合上日记";
         font-size: 14px;
         letter-spacing: 0.14em;
     }

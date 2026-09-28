@@ -194,7 +194,7 @@ body[data-route='archive'] .paper-page {
     pointer-events: none;
 }
 
-/* 千禧年桌面软件的凸起标签与铭牌，沿用手记的纸、皮革和黄铜。 */
+/* 千禧年桌面软件的凸起标签与铭牌，沿用日记的纸、皮革和黄铜。 */
 .paper-page .journal-label {
     position: relative;
     min-height: 29px;
@@ -429,7 +429,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         background: var(--leather-grain), linear-gradient(90deg, #68422f, #895c43 45%, #513020);
         box-shadow: inset 0 0 0 3px #bb97632c, 0 4px 7px #130c0755;
     }
-    .brand-lockup strong::after { content: '合上手记'; font-size: 12px; }
+    .brand-lockup strong::after { content: '合上日记'; font-size: 12px; }
     .chapter-tab {
         --tab-color: #536349;
         border: 1px solid #26180f;

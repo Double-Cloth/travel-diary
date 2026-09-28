@@ -1025,7 +1025,7 @@ function renderLedgerFeaturePage(snapshot, resultLabel, ledgerParams) {
                 <span class="ledger-feature-caption">
                     <small>最近抵达 · ${escapeHtml(latestRecord?.date || '')}</small>
                     <strong>${escapeHtml(latestPlace)}</strong>
-                    <span>打开最近一篇手记</span>
+                    <span>打开最近一篇日记</span>
                 </span>
             </a>
 

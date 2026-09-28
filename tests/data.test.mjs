@@ -7,8 +7,8 @@ const { buildMarkdown } = await import('../js/record-input.mjs');
 const record = { date: '2024-02-29', country: '中国', locality: '苏州市', desc_md: 'data/note.md' };
 
 test('编辑器预览与保存后的日记使用相同 Markdown 解析，导出源码保留格式且过滤危险内容', async t => {
-    const markdown = buildMarkdown({ title: ' 苏州手记 ', body: '## 雨后\r\n\r\n**茶馆**与`<script>`。\r\n\r\n[危险](javascript:alert) <img src=x onerror=evil>' });
-    assert.ok(markdown.startsWith('# 苏州手记\n\n## 雨后\n'));
+    const markdown = buildMarkdown({ title: ' 苏州日记 ', body: '## 雨后\r\n\r\n**茶馆**与`<script>`。\r\n\r\n[危险](javascript:alert) <img src=x onerror=evil>' });
+    assert.ok(markdown.startsWith('# 苏州日记\n\n## 雨后\n'));
     const preview = parseMarkdown(markdown);
     const loaded = await renderMarkdown(t, markdown);
     assert.equal(preview.title, loaded.descTitle);
