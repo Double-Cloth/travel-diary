@@ -1516,7 +1516,7 @@ function renderEntryRoute(params = {}) {
             <div class="entry-book-index">
                 <div class="entry-book-summary">
                     <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回旅行路径</a>
-                    <p class="journal-label">旅行手记</p>
+                    <p class="journal-label">旅行日记</p>
                     <h1>没有找到这篇日记</h1>
                 </div>
             </div>
@@ -1555,7 +1555,7 @@ function renderEntryRoute(params = {}) {
         </article>
     `, `
         <article class="entry-book-article" aria-label="${escapeHtml(record.title)}正文">
-            <header class="entry-running-head"><span>旅行手记</span><span>${String(position).padStart(2, '0')} / ${navigation.total || 1}</span></header>
+            <header class="entry-running-head"><span>旅行日记</span><span>${String(position).padStart(2, '0')} / ${navigation.total || 1}</span></header>
             <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
             ${media.length ? renderPhotoSleeve(record, {
                 previewRows: ENTRY_PHOTO_PREVIEW_ROWS,

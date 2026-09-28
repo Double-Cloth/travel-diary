@@ -245,7 +245,7 @@ body[data-route="cover"] .page-spread { visibility: hidden; }
 }
 
 .entry-book-article::before {
-    content: "旅行手记 · JOURNAL";
+    content: "旅行日记 · JOURNAL";
     display: block;
     margin-bottom: 18px;
     color: var(--ink-muted);
