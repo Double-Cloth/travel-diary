@@ -586,6 +586,14 @@ test('页脊不再显示新增与头像圆形快捷组件', () => {
     assert.doesNotMatch(journalCss, /\.spine-tools|\.spine-tool|\.spine-profile|\.tool-divider/);
 });
 
+test('扉页头像不显示操作提示小字，章节入口使用实体书签细节', () => {
+    assert.doesNotMatch(appJs, /点击照片 · 更换头像/);
+    assert.doesNotMatch(journalCss, /\.preface-portrait small/);
+    assert.match(journalCss, /clip-path:\s*polygon\(0 0, 100% 0, 91% 50%, 100% 100%, 0 100%\)/);
+    assert.match(journalCss, /\.chapter-icon\s*{[\s\S]*display:\s*grid;/);
+    assert.match(journalCss, /\.chapter-tab::before\s*{[\s\S]*border:\s*1px dashed/);
+});
+
 test('省份详情页在左页提供返回与相邻省份导航', () => {
     assert.doesNotMatch(appJs, /<div class="place-page">\s*<a class="location-back location-close"/);
     assert.match(appJs, /<a class="ribbon-back" href="#archive">返回档案夹<\/a>/);

@@ -269,16 +269,6 @@ body[data-route='preface'] .paper-page {
     text-shadow: 0 -1px #2b1a10, 0 2px #a5825666;
 }
 
-.preface-portrait small {
-    position: absolute;
-    right: 14px;
-    bottom: 11px;
-    left: 14px;
-    color: #71583b;
-    font: 10px/1.2 var(--font-code);
-    letter-spacing: .06em;
-}
-
 .preface-photo-corner {
     position: absolute;
     z-index: 3;
@@ -789,28 +779,116 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         box-shadow: inset 0 0 0 3px #bb97632c, 0 4px 7px #130c0755;
     }
     .brand-lockup strong::after { content: '合上日记'; font-size: 12px; }
-    .chapter-tab {
-        --tab-color: #536349;
-        border: 1px solid #26180f;
-        border-left: 0;
-        border-radius: 0 12px 12px 0;
-        background: linear-gradient(90deg, #00000070, #ffffff24 18%, #ffffff08 44%, #00000036 82%, #f8d99f47 95%), linear-gradient(#ffffff24, #ffffff05 38%, #00000038 48%, #ffffff0b 73%), var(--leather-grain), var(--tab-color);
-        box-shadow: inset 0 0 0 2px #d6b9798a, inset 0 0 0 4px #26150f70, inset 0 2px #fff1c047, 3px 5px 8px #140b087d;
-        text-shadow: 0 -1px #241b13, 0 1px 1px #fff4cf47;
+    /* 三条布书签从书芯右侧伸出，燕尾切口、缝线和铆钉共同建立实体感。 */
+    .chapter-tabs {
+        top: 132px;
+        right: -85px;
+        grid-template-columns: 118px;
+        gap: 12px;
     }
-    .chapter-tab:nth-child(2) { --tab-color: #8d4a39; }
-    .chapter-tab:nth-child(3) { --tab-color: #5f6247; }
+    .chapter-tab {
+        --bookmark-cloth: #59684d;
+        display: grid;
+        grid-template-columns: 25px minmax(0, 1fr);
+        place-items: center;
+        min-width: 118px;
+        min-height: 48px;
+        padding: 8px 18px 8px 9px;
+        border: 0;
+        border-radius: 0;
+        color: #f8ebcd;
+        background:
+            linear-gradient(90deg, #1c120d8c 0 4px, transparent 12px),
+            repeating-linear-gradient(0deg, #ffffff0b 0 1px, transparent 1px 4px),
+            repeating-linear-gradient(90deg, transparent 0 3px, #1b110c12 3px 4px),
+            linear-gradient(180deg, #ffffff2e, transparent 30%, #120b0833 74%, #ffffff12),
+            var(--bookmark-cloth);
+        box-shadow: none;
+        filter: drop-shadow(4px 5px 4px #120a076f);
+        clip-path: polygon(0 0, 100% 0, 91% 50%, 100% 100%, 0 100%);
+        font-size: 14px;
+        font-weight: 600;
+        letter-spacing: .08em;
+        text-shadow: 0 -1px #1f140f, 0 1px #fff5d13b;
+        writing-mode: horizontal-tb;
+        transform: translateX(0) rotate(.35deg);
+        transform-origin: left center;
+        transition: transform 220ms cubic-bezier(.18,.72,.2,1), filter 180ms, color 180ms;
+    }
+    .chapter-tab:nth-child(2) {
+        --bookmark-cloth: #914e3d;
+        transform: translateX(0) rotate(-.45deg);
+    }
+    .chapter-tab:nth-child(3) {
+        --bookmark-cloth: #746044;
+        transform: translateX(0) rotate(.18deg);
+    }
+    .chapter-tab::before {
+        content: '';
+        position: absolute;
+        display: block;
+        inset: 5px 14px 5px 5px;
+        border: 1px dashed #f7e5bd7a;
+        border-right: 0;
+        pointer-events: none;
+    }
+    .chapter-tab::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        right: 16px;
+        bottom: auto;
+        left: auto;
+        width: 7px;
+        height: 7px;
+        border: 1px solid #49331e;
+        border-radius: 50%;
+        background: radial-gradient(circle at 35% 30%, #fff0ad, #b28243 45%, #56381d 78%);
+        box-shadow: inset 0 1px #fff2b7, 0 1px 2px #160b076e;
+        transform: translateY(-50%);
+    }
+    .chapter-icon {
+        display: grid;
+        place-items: center;
+        width: 23px;
+        height: 23px;
+        border: 1px solid #f2dcaa7d;
+        border-radius: 50%;
+        color: #fff0cf;
+        background: #27170f2e;
+        box-shadow: inset 0 1px 2px #150b0870, 0 1px #fff3c329;
+        font-size: 11px;
+        font-weight: 500;
+        line-height: 1;
+    }
+    .chapter-tab:hover,
+    .chapter-tab:focus-visible {
+        transform: translateX(7px) rotate(0);
+        filter: brightness(1.08) drop-shadow(6px 7px 5px #120a0778);
+    }
     .chapter-tab.chapter-tab-active,
     .chapter-tab.chapter-tab-active:hover,
     .chapter-tab.chapter-tab-active:focus-visible {
-        color: #49301f;
-        background: var(--plaque-face);
-        box-shadow: inset 0 0 0 2px #fff4d1, inset 0 0 0 4px #8f6d43, 0 3px 0 #67472a, 5px 8px 12px #140b087d;
-        text-shadow: 0 1px #fff6d8;
-        filter: none;
-        transform: translateX(9px);
+        color: #fff7e2;
+        background:
+            linear-gradient(90deg, #1b110c91 0 4px, transparent 12px),
+            repeating-linear-gradient(0deg, #ffffff12 0 1px, transparent 1px 4px),
+            repeating-linear-gradient(90deg, transparent 0 3px, #1b110c12 3px 4px),
+            linear-gradient(180deg, #ffffff45, transparent 28%, #120b0838 74%, #ffffff16),
+            var(--bookmark-cloth);
+        text-shadow: 0 -1px #1b100b, 0 1px #fff8dc57;
+        filter: brightness(1.12) saturate(1.05) drop-shadow(7px 8px 6px #120a0785);
+        transform: translateX(13px) rotate(0);
     }
-    .chapter-tab-active::after { top: auto; bottom: 9px; background: #8b6238; box-shadow: 0 1px #fff5d1; }
+    .chapter-tab-active::after {
+        top: 50%;
+        right: 16px;
+        bottom: auto;
+        width: 8px;
+        height: 8px;
+        background: radial-gradient(circle at 35% 30%, #fff8ca, #d3a85b 43%, #654321 78%);
+        box-shadow: inset 0 1px #fff7c8, 0 0 0 2px #2a190f42, 0 2px 3px #160b077d;
+    }
     .paper-page,
     .paper-page-right.map-pocket,
     .paper-page-right.dossier-page {
@@ -937,23 +1015,35 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     }
     .brand-lockup strong::after { color: #f4dfb6; text-shadow: 0 -1px #28150c; }
     .brand-lockup small { color: #dac4a0; }
-    .chapter-tabs { gap: 5px; padding: 3px 0 5px; }
+    .chapter-tabs { gap: 7px; padding: 0 0 2px; }
     .chapter-tab,
     .chapter-tab:nth-child(2),
     .chapter-tab:nth-child(3) {
-        min-height: 38px;
-        padding: 10px 4px;
-        border: 1px solid #301b11;
-        border-radius: 4px;
-        color: #e4cfab;
-        background: linear-gradient(#90674b, #5e3c2a);
-        box-shadow: inset 0 1px #cfaf7844, 0 1px #d0ae7744;
+        min-height: 46px;
+        padding: 9px 5px 13px;
+        border: 0;
+        border-radius: 2px 2px 0 0;
+        color: #efe0bd;
+        background:
+            repeating-linear-gradient(90deg, #ffffff0a 0 1px, transparent 1px 4px),
+            linear-gradient(#9b7153, #604231);
+        box-shadow: inset 0 1px #efd4a459, inset 1px 0 #fff0c422, inset -1px 0 #1e100b4a, 0 2px 3px #25150e4d;
+        clip-path: polygon(0 0, 100% 0, 100% 84%, 50% 100%, 0 84%);
         font-size: 13px;
+        text-shadow: 0 -1px #2b180f;
+    }
+    .chapter-tab:nth-child(2) { background: repeating-linear-gradient(90deg, #ffffff0a 0 1px, transparent 1px 4px), linear-gradient(#9a5847, #67382f); }
+    .chapter-tab:nth-child(3) { background: repeating-linear-gradient(90deg, #ffffff0a 0 1px, transparent 1px 4px), linear-gradient(#7c7454, #4f4d39); }
+    .chapter-tab::before {
+        display: block;
+        inset: 4px 4px 9px;
+        border: 1px dashed #f6e4bd59;
+        border-bottom: 0;
     }
     .chapter-tab-active,
     .chapter-tab-active:nth-child(2),
-    .chapter-tab-active:nth-child(3) { color: #fff1d3; background: linear-gradient(#42291e, #70503a); box-shadow: inset 0 2px 4px #1f100a77; }
-    .chapter-tab-active::after { display: none; }
+    .chapter-tab-active:nth-child(3) { color: #fff6df; filter: brightness(1.15) saturate(1.06); transform: translateY(3px); }
+    .chapter-tab::after { display: none; }
     .paper-page {
         border-inline: 5px solid #bfa780;
         box-shadow: inset 3px 0 7px #85643e22;
@@ -969,7 +1059,6 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .preface-sheet-kicker { padding-inline: 8px; font-size: 8px; }
     .preface-profile-composition { grid-template-columns: minmax(112px, .82fr) minmax(0, 1.18fr); gap: 14px; padding-inline: 2px; }
     .preface-portrait { padding: 8px 8px 33px; }
-    .preface-portrait small { right: 7px; left: 7px; font-size: 8px; }
     .preface-owner-copy { gap: 9px; }
     .preface-owner-index { font-size: 8px; }
     .preface-owner-plaque { padding: 8px 10px 9px; }

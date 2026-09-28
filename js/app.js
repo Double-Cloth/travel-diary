@@ -907,7 +907,6 @@ function renderPreface() {
                         <img data-profile-picture-image data-src="data/profile/profile-picture.png" alt="日记主人的头像" hidden>
                         <span class="preface-photo-corner preface-photo-corner-left" aria-hidden="true"></span>
                         <span class="preface-photo-corner preface-photo-corner-right" aria-hidden="true"></span>
-                        <small>点击照片 · 更换头像</small>
                     </button>
 
                     <div class="preface-owner-copy">
