@@ -838,40 +838,46 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         box-shadow: inset 0 0 0 3px #bb97632c, 0 4px 7px #130c0755;
     }
     .brand-lockup strong::after { content: '合上日记'; font-size: 12px; }
-    /* 三条布书签从书芯右侧伸出，燕尾切口、缝线和铆钉共同建立实体感。 */
+    /* 三条布书签从书芯右侧伸出：织纹、压边缝线和黄铜铆钉共同建立实体感。 */
     .chapter-tabs {
         top: 132px;
         right: -82px;
         grid-template-columns: 126px;
         gap: 12px;
+        pointer-events: none;
     }
     .chapter-tab {
-        --bookmark-cloth: #59684d;
+        --bookmark-cloth: #516954;
+        --bookmark-cloth-light: #788a73;
+        --bookmark-cloth-dark: #2f4537;
+        --bookmark-thread: #ead9b2;
         display: grid;
-        grid-template-columns: 25px minmax(0, 1fr) 9px;
-        column-gap: 5px;
+        grid-template-columns: 25px minmax(0, 1fr) 10px;
+        column-gap: 6px;
         place-items: center;
         width: 126px;
         min-width: 126px;
-        min-height: 48px;
-        padding: 8px 9px;
+        min-height: 50px;
+        padding: 8px 10px 8px 9px;
         border: 0;
         border-radius: 0;
         color: #f8ebcd;
         background:
-            linear-gradient(90deg, #1c120d8c 0 4px, transparent 12px),
-            repeating-linear-gradient(0deg, #ffffff0b 0 1px, transparent 1px 4px),
-            repeating-linear-gradient(90deg, transparent 0 3px, #1b110c12 3px 4px),
-            linear-gradient(180deg, #ffffff2e, transparent 30%, #120b0833 74%, #ffffff12),
-            var(--bookmark-cloth);
+            linear-gradient(90deg, #160e0ba3 0 4px, #fff1ca1a 4px 7px, transparent 14px),
+            linear-gradient(90deg, transparent 68%, #100a0829 100%),
+            repeating-linear-gradient(0deg, #ffffff0d 0 1px, transparent 1px 3px),
+            repeating-linear-gradient(90deg, transparent 0 2px, #160e0b16 2px 3px),
+            linear-gradient(180deg, var(--bookmark-cloth-light), var(--bookmark-cloth) 34%, var(--bookmark-cloth-dark) 100%);
         box-shadow: none;
-        filter: drop-shadow(4px 5px 4px #120a076f);
+        filter: drop-shadow(4px 6px 5px #120a076b);
         clip-path: polygon(0 0, 100% 0, 91% 50%, 100% 100%, 0 100%);
-        font-size: 14px;
+        isolation: isolate;
+        font-size: 13px;
         font-weight: 600;
-        letter-spacing: .08em;
-        text-shadow: 0 -1px #1f140f, 0 1px #fff5d13b;
+        letter-spacing: .1em;
+        text-shadow: 0 -1px #1d120e, 0 1px #fff5d14a;
         writing-mode: horizontal-tb;
+        pointer-events: auto;
         transform: translateX(0) rotate(.35deg);
         transform-origin: left center;
         transition: transform 220ms cubic-bezier(.18,.72,.2,1), clip-path 220ms cubic-bezier(.18,.72,.2,1), filter 180ms, color 180ms;
@@ -879,22 +885,32 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     /* 未翻到的书签隐藏伸入书芯的部分，让右页自然盖住布条；翻过后再露出完整书签。 */
     .chapter-tab-unturned {
         clip-path: polygon(26px 0, 100% 0, 91% 50%, 100% 100%, 26px 100%);
+        color: #eadcbc;
+        filter: brightness(.83) saturate(.78) drop-shadow(2px 4px 4px #120a075c);
     }
     .chapter-tab:nth-child(2) {
-        --bookmark-cloth: #914e3d;
+        --bookmark-cloth: #92503f;
+        --bookmark-cloth-light: #b36b58;
+        --bookmark-cloth-dark: #63362f;
+        --bookmark-thread: #f1d6ad;
         transform: translateX(0) rotate(-.45deg);
     }
     .chapter-tab:nth-child(3) {
-        --bookmark-cloth: #746044;
+        --bookmark-cloth: #746145;
+        --bookmark-cloth-light: #95815b;
+        --bookmark-cloth-dark: #4b402f;
+        --bookmark-thread: #ead7a9;
         transform: translateX(0) rotate(.18deg);
     }
     .chapter-tab::before {
         content: '';
         position: absolute;
         display: block;
-        inset: 5px 10px 5px 5px;
-        border: 1px dashed #f7e5bd7a;
+        inset: 5px 11px 5px 6px;
+        border: 1px dashed color-mix(in srgb, var(--bookmark-thread) 62%, transparent);
         border-right: 0;
+        border-radius: 2px 0 0 2px;
+        box-shadow: inset 0 1px #fff7df0d;
         pointer-events: none;
     }
     .chapter-tab::after {
@@ -904,12 +920,12 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         right: 10px;
         bottom: auto;
         left: auto;
-        width: 7px;
-        height: 7px;
-        border: 1px solid #49331e;
+        width: 8px;
+        height: 8px;
+        border: 1px solid #3f2b18;
         border-radius: 50%;
-        background: radial-gradient(circle at 35% 30%, #fff0ad, #b28243 45%, #56381d 78%);
-        box-shadow: inset 0 1px #fff2b7, 0 1px 2px #160b076e;
+        background: radial-gradient(circle at 34% 28%, #fff7ca 0 12%, #d8ad62 25%, #a37438 58%, #503018 82%);
+        box-shadow: inset 0 1px #fff1b5, 0 0 0 1px #ead69d3d, 0 2px 3px #160b0775;
         transform: translateY(-50%);
     }
     .chapter-icon {
@@ -917,14 +933,19 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         place-items: center;
         width: 23px;
         height: 23px;
-        border: 1px solid #f2dcaa7d;
-        border-radius: 50%;
+        border: 1px solid color-mix(in srgb, var(--bookmark-thread) 58%, transparent);
+        border-radius: 4px;
         color: #fff0cf;
-        background: #27170f2e;
-        box-shadow: inset 0 1px 2px #150b0870, 0 1px #fff3c329;
+        background: linear-gradient(145deg, #fff6d116, #160e0b31);
+        box-shadow: inset 0 1px 2px #150b0870, 0 1px #fff3c32f;
         font-size: 11px;
         font-weight: 500;
         line-height: 1;
+    }
+    .chapter-tab > span:last-child {
+        position: relative;
+        top: -1px;
+        white-space: nowrap;
     }
     .chapter-tab:hover,
     .chapter-tab:focus-visible {
@@ -934,27 +955,29 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .chapter-tab-unturned:hover,
     .chapter-tab-unturned:focus-visible {
         clip-path: polygon(20px 0, 100% 0, 91% 50%, 100% 100%, 20px 100%);
+        color: #f4e7c8;
+        filter: brightness(.96) saturate(.9) drop-shadow(5px 7px 5px #120a0772);
     }
     .chapter-tab.chapter-tab-active,
     .chapter-tab.chapter-tab-active:hover,
     .chapter-tab.chapter-tab-active:focus-visible {
         color: #fff7e2;
         background:
-            linear-gradient(90deg, #1b110c91 0 4px, transparent 12px),
-            repeating-linear-gradient(0deg, #ffffff12 0 1px, transparent 1px 4px),
-            repeating-linear-gradient(90deg, transparent 0 3px, #1b110c12 3px 4px),
-            linear-gradient(180deg, #ffffff45, transparent 28%, #120b0838 74%, #ffffff16),
-            var(--bookmark-cloth);
+            linear-gradient(90deg, #160e0ba3 0 4px, #fff1ca21 4px 7px, transparent 14px),
+            linear-gradient(90deg, transparent 68%, #100a0824 100%),
+            repeating-linear-gradient(0deg, #ffffff16 0 1px, transparent 1px 3px),
+            repeating-linear-gradient(90deg, transparent 0 2px, #160e0b14 2px 3px),
+            linear-gradient(180deg, color-mix(in srgb, var(--bookmark-cloth-light) 88%, white), var(--bookmark-cloth) 38%, var(--bookmark-cloth-dark) 100%);
         text-shadow: 0 -1px #1b100b, 0 1px #fff8dc57;
-        filter: brightness(1.12) saturate(1.05) drop-shadow(7px 8px 6px #120a0785);
-        transform: translateX(10px) rotate(0);
+        filter: brightness(1.08) saturate(1.04) drop-shadow(7px 8px 6px #120a0785);
+        transform: translateX(9px) rotate(0);
     }
     .chapter-tab-active::after {
         top: 50%;
         right: 10px;
         bottom: auto;
-        width: 8px;
-        height: 8px;
+        width: 9px;
+        height: 9px;
         background: radial-gradient(circle at 35% 30%, #fff8ca, #d3a85b 43%, #654321 78%);
         box-shadow: inset 0 1px #fff7c8, 0 0 0 2px #2a190f42, 0 2px 3px #160b077d;
     }
@@ -1127,30 +1150,42 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .chapter-tab,
     .chapter-tab:nth-child(2),
     .chapter-tab:nth-child(3) {
+        --bookmark-cloth: #7d5a43;
+        --bookmark-cloth-light: #a17a5c;
+        --bookmark-cloth-dark: #563b2d;
         min-height: 46px;
         padding: 9px 5px 13px;
         border: 0;
         border-radius: 2px 2px 0 0;
         color: #efe0bd;
         background:
-            repeating-linear-gradient(90deg, #ffffff0a 0 1px, transparent 1px 4px),
-            linear-gradient(#9b7153, #604231);
-        box-shadow: inset 0 1px #efd4a459, inset 1px 0 #fff0c422, inset -1px 0 #1e100b4a, 0 2px 3px #25150e4d;
+            linear-gradient(90deg, transparent 0 76%, #170e0a21 100%),
+            repeating-linear-gradient(90deg, #ffffff0b 0 1px, transparent 1px 3px),
+            linear-gradient(var(--bookmark-cloth-light), var(--bookmark-cloth) 45%, var(--bookmark-cloth-dark));
+        box-shadow: inset 0 1px #efd4a45c, inset 1px 0 #fff0c426, inset -1px 0 #1e100b52, 0 3px 5px #25150e59;
         clip-path: polygon(0 0, 100% 0, 100% 84%, 50% 100%, 0 84%);
         font-size: 13px;
         text-shadow: 0 -1px #2b180f;
     }
-    .chapter-tab:nth-child(2) { background: repeating-linear-gradient(90deg, #ffffff0a 0 1px, transparent 1px 4px), linear-gradient(#9a5847, #67382f); }
-    .chapter-tab:nth-child(3) { background: repeating-linear-gradient(90deg, #ffffff0a 0 1px, transparent 1px 4px), linear-gradient(#7c7454, #4f4d39); }
+    .chapter-tab:nth-child(2) {
+        --bookmark-cloth: #8f493d;
+        --bookmark-cloth-light: #b76554;
+        --bookmark-cloth-dark: #5e302b;
+    }
+    .chapter-tab:nth-child(3) {
+        --bookmark-cloth: #6a6749;
+        --bookmark-cloth-light: #898460;
+        --bookmark-cloth-dark: #444431;
+    }
     .chapter-tab::before {
         display: block;
         inset: 4px 4px 9px;
-        border: 1px dashed #f6e4bd59;
+        border: 1px dashed #f6e4bd66;
         border-bottom: 0;
     }
     .chapter-tab-active,
     .chapter-tab-active:nth-child(2),
-    .chapter-tab-active:nth-child(3) { color: #fff6df; filter: brightness(1.15) saturate(1.06); transform: translateY(3px); }
+    .chapter-tab-active:nth-child(3) { color: #fff6df; filter: brightness(1.12) saturate(1.04); transform: translateY(3px); }
     .chapter-tab::after { display: none; }
     .paper-page {
         border-inline: 5px solid #bfa780;

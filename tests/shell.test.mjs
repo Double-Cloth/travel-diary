@@ -75,7 +75,7 @@ test('桌面端实体书签为标题和铆钉保留独立空间且不会伸出�
     assert.match(journalCss, /@media \(min-width: 761px\)[\s\S]*\.journal-shell\s*\{[^}]*padding: 28px 100px 28px 78px;/);
     assert.match(journalCss, /\.journal-spine\s*\{[\s\S]*left: calc\(50% - 11px\);[\s\S]*width: min\(1220px, calc\(100% - 178px\)\);/);
     assert.match(journalCss, /\.chapter-tabs\s*\{[\s\S]*right: -82px;[\s\S]*grid-template-columns: 126px;/);
-    assert.match(journalCss, /\.chapter-tab\s*\{[\s\S]*grid-template-columns: 25px minmax\(0, 1fr\) 9px;[\s\S]*column-gap: 5px;[\s\S]*width: 126px;/);
+    assert.match(journalCss, /\.chapter-tab\s*\{[\s\S]*grid-template-columns: 25px minmax\(0, 1fr\) 10px;[\s\S]*column-gap: 6px;[\s\S]*width: 126px;/);
     assert.match(journalCss, /\.chapter-tab::after\s*\{[\s\S]*right: 10px;/);
 });
 
@@ -577,6 +577,8 @@ test('章节书签保留语义导航并贴合书页上沿', () => {
 test('桌面章节书签按已翻开和未翻开状态分处书页前后', () => {
     assert.match(journalCss, /\.chapter-tab-unturned\s*\{[\s\S]*?clip-path:\s*polygon\(26px 0,/);
     assert.match(journalCss, /\.chapter-tab-unturned:hover,[\s\S]*?clip-path:\s*polygon\(20px 0,/);
+    assert.match(journalCss, /\.chapter-tabs\s*\{[\s\S]*?pointer-events:\s*none;/);
+    assert.match(journalCss, /\.chapter-tab\s*\{[\s\S]*?pointer-events:\s*auto;/);
     assert.match(appJs, /const chapterOrder = \['preface', 'ledger', 'archive'\];/);
     assert.match(appJs, /const isTurned = activeIndex >= 0 && chapterIndex <= activeIndex;/);
     assert.match(appJs, /classList\.toggle\('chapter-tab-turned', isTurned\);/);
@@ -617,6 +619,9 @@ test('扉页头像不显示操作提示小字，章节入口使用实体书签�
     assert.doesNotMatch(appJs, /点击照片 · 更换头像/);
     assert.doesNotMatch(journalCss, /\.preface-portrait small/);
     assert.match(journalCss, /clip-path:\s*polygon\(0 0, 100% 0, 91% 50%, 100% 100%, 0 100%\)/);
+    assert.match(journalCss, /--bookmark-cloth-light:\s*#788a73;/);
+    assert.match(journalCss, /--bookmark-cloth-dark:\s*#2f4537;/);
+    assert.match(journalCss, /linear-gradient\(180deg, var\(--bookmark-cloth-light\), var\(--bookmark-cloth\) 34%, var\(--bookmark-cloth-dark\) 100%\)/);
     assert.match(journalCss, /\.chapter-icon\s*{[\s\S]*display:\s*grid;/);
     assert.match(journalCss, /\.chapter-tab::before\s*{[\s\S]*border:\s*1px dashed/);
 });
