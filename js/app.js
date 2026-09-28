@@ -1083,11 +1083,17 @@ function renderLedger(params = {}, options = {}) {
                 <h1>出发，到新的爱与喧闹中去！</h1>
             </header>
             ${renderLedgerControls(ledgerParams, 'ledgerSearch')}
-            <div class="year-bookmarks" aria-label="年份书签">
-                ${yearLink('全部', 'all', ledgerParams)}
-                ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
-            </div>
-            <p class="result-count" aria-live="polite">${escapeHtml(resultLabel)}</p>
+            <nav class="ledger-year-nav" aria-label="按年份浏览日记">
+                <span class="ledger-year-label">年份</span>
+                <div class="year-bookmarks">
+                    ${yearLink('全部', 'all', ledgerParams)}
+                    ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
+                </div>
+            </nav>
+            <p class="result-count" aria-live="polite">
+                <span>${escapeHtml(resultLabel)}</span>
+                ${hasActiveLedgerFilter(ledgerParams) ? '' : `<strong>${filtered.length} 篇</strong>`}
+            </p>
             <div class="timeline-list" id="ledgerList">
                 ${filtered.length
                     ? renderLedgerGroups(filtered, ledgerParams)
@@ -3969,16 +3975,34 @@ function getPlaceRecords(params) {
 }
 
 function renderLedgerControls(params, inputId) {
+    const activeFilterCount = countLedgerWorkbenchFilters(params);
+    const filterLabel = activeFilterCount
+        ? `筛选与排序，已启用 ${activeFilterCount} 项`
+        : '筛选与排序';
+
     return `
         <div class="ledger-controls">
             <label class="field-label" for="${inputId}">搜索路线</label>
             <div class="ink-field search-field">
-                <input id="${inputId}" type="search" value="${escapeHtml(params.q)}" autocomplete="off" placeholder="搜索国家、行政区、目的地或日记内容">
+                <input id="${inputId}" type="search" value="${escapeHtml(params.q)}" autocomplete="off" aria-label="搜索国家、行政区、目的地或日记内容" placeholder="搜索地点或日记内容">
                 ${params.q ? '<button class="search-clear" type="button" data-action="clear-search" data-target="ledger" aria-label="清空路线搜索">×</button>' : ''}
             </div>
-            <button class="paper-button ledger-filter-trigger" type="button" data-action="show-ledger-filters" aria-controls="ledgerFilters">筛选与排序</button>
+            <button class="paper-button ledger-filter-trigger" type="button" data-action="show-ledger-filters" aria-controls="ledgerFilters" aria-label="${filterLabel}">
+                <svg class="ledger-filter-icon" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M4 6h16M7 12h10M10 18h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+                <span>筛选<span class="ledger-filter-label-wide">与排序</span></span>
+                ${activeFilterCount ? `<span class="ledger-filter-count" aria-hidden="true">${activeFilterCount}</span>` : ''}
+            </button>
         </div>
     `;
+}
+
+function countLedgerWorkbenchFilters(params) {
+    const normalized = normalizeLedgerParams(params);
+    const filterKeys = ['month', 'country', 'area', 'locality', 'visit', 'media', 'note'];
+    const filterCount = filterKeys.reduce((count, key) => count + (normalized[key] !== 'all' ? 1 : 0), 0);
+    return filterCount + (normalized.sort !== DEFAULT_LEDGER_SORT ? 1 : 0);
 }
 
 function renderLedgerGroups(records, params = {}) {

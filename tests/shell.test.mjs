@@ -537,6 +537,11 @@ test('移动端夹层滚动条轨道可以贴到底部', () => {
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.paper-page-right\.context-panel::-webkit-scrollbar-track\s*{[\s\S]*margin: 0;/);
 });
 
+test('日记目录筛选夹层在桌面和移动端保留底部滚动缓冲', () => {
+    assert.match(journalCss, /\.paper-page-right\.context-panel\s*{[^}]*scroll-padding-block: 76px max\(28px, env\(safe-area-inset-bottom\)\);[^}]*}/);
+    assert.match(journalCss, /\.paper-page-right\.context-panel \.ledger-feature-filters\s*{[^}]*padding-bottom: max\(28px, env\(safe-area-inset-bottom\)\);[^}]*}/);
+});
+
 test('右侧档案页滚动条没有底部原生箭头占位', () => {
     assert.match(journalCss, /\.paper-page-right\.map-pocket::-webkit-scrollbar-track,\s*\.paper-page-right\.dossier-page::-webkit-scrollbar-track\s*{[\s\S]*margin: 0;/);
     assert.match(journalCss, /\.paper-page-right\.map-pocket::-webkit-scrollbar-track-piece,\s*\.paper-page-right\.dossier-page::-webkit-scrollbar-track-piece\s*{[\s\S]*margin: 0;/);
