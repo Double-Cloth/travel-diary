@@ -1,26 +1,3 @@
-.archive-overview-hero {
-    display: grid;
-    gap: 8px;
-    padding: 16px;
-    border: 1px dashed rgba(88, 58, 28, 0.3);
-    color: var(--ink-soft);
-    background:
-        linear-gradient(180deg, rgba(255, 250, 229, 0.42), transparent),
-        rgba(255, 246, 222, 0.42);
-}
-
-.archive-overview-hero span,
-.archive-overview-hero small {
-    font-family: var(--font-code);
-    font-size: 12px;
-}
-
-.archive-overview-hero strong {
-    color: var(--ink);
-    font-size: 24px;
-    line-height: 1.2;
-}
-
 .overview-metric-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
 }

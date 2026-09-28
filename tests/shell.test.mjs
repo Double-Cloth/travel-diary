@@ -62,6 +62,8 @@ test('路线页不存在重复筛选入口', () => {
     assert.doesNotMatch(appJs, /data-action="open-drawer"|打开筛选面板/);
     assert.equal(appJs.match(/<button[^>]*data-action="show-ledger-filters"/g)?.length, 1);
     assert.doesNotMatch(appJs, /ledger-feature-actions|ledger-feature-add|ledger-filter-jump/);
+    assert.doesNotMatch(appJs, /沿途拾光|ledger-feature-visual|ledger-feature-quote/);
+    assert.match(appJs, /function renderArchive[\s\S]*class="archive-journey-stats"[\s\S]*段旅程[\s\S]*次出发[\s\S]*个年份/);
 });
 
 test('左侧三个章节入口更新为扉页、日记目录与日记归档', () => {

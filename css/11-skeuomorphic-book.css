@@ -626,22 +626,7 @@ body[data-route='preface'] .paper-page {
 }
 .entry-date-chip strong { color: #713927; text-shadow: 0 1px #fff4d4; }
 .entry-date-chip span { color: #684b30; border-top: 1px solid #a9855a88; }
-.ledger-feature-visual {
-    border: 9px solid #fff9e9;
-    border-bottom-width: 13px;
-    outline: 1px solid #a88c5e45;
-    overflow: visible;
-    box-shadow: 1px 3px 3px #57371933, 0 12px 19px #583c2024;
-}
-.ledger-feature-visual::before,
-.ledger-feature-visual::after {
-    top: -16px;
-    height: 26px;
-    border-inline: 1px dashed #a0875640;
-    background: repeating-linear-gradient(90deg, #d8c492b8 0 2px, #dbc89ab8 2px 4px);
-    box-shadow: 0 1px 2px #5e492822;
-}
-.ledger-feature-stats {
+.archive-journey-stats {
     border: 1px solid #ae916548;
     border-radius: 7px;
     background: linear-gradient(#fff8e57d, #e6d4ae69);
@@ -672,13 +657,6 @@ body[data-route='preface'] .paper-page {
 .closed-book-clasp i { top: 14px; }
 .closed-book-corner { width: 38px; height: 38px; }
 
-/* 内容有固定的阅读层级，辅助动作收在同一行，不与标题争夺空间。 */
-.ledger-feature-photo { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.ledger-feature-map { position: absolute; inset: 0; pointer-events: none; }
-.ledger-feature-photo + .ledger-feature-map { background: linear-gradient(transparent 35%, #1b170bd9); }
-.ledger-feature-caption { padding: 18px 20px; text-shadow: 0 2px 5px #0008; }
-.ledger-feature-caption small { color: #fff5e4; }
-.ledger-feature-caption span { color: #fff5e4; }
 .ledger-controls .ledger-filter-trigger {
     display: inline-flex;
     align-items: center;
@@ -1023,17 +1001,9 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     }
     .page-spread::before, .page-spread::after { opacity: .85; }
     .page-head h1 { font-size: clamp(28px, 2.35vw, 36px); line-height: 1.4; }
-    .ledger-feature-head h2 { font-size: clamp(27px, 2.15vw, 33px); line-height: 1.4; }
-    .ledger-feature-page { gap: 22px; }
-    .ledger-feature-visual { min-height: clamp(165px, 24vh, 240px); }
-    .ledger-feature-stats { padding-block: 17px; }
-    .ledger-feature-quote { font-size: 16px; line-height: 1.75; }
     .ledger-entry { padding: 16px 6px; }
     .ledger-entry:hover { transform: translateX(2px); background: #fff7df66; }
-    .ledger-feature-head .journal-label { margin-bottom: 12px; }
     .page-head h1 { text-wrap: balance; }
-    .ledger-feature-mark { width: 40px; height: 40px; font-size: 11px; }
-    .ledger-feature-filters { margin-top: 4px; padding-top: 25px; }
     .chapter-tab { transition: transform 240ms cubic-bezier(.2,.7,.2,1), filter 180ms; }
     .entry-date-chip { padding: 6px 3px; }
     .entry-book-page { padding-top: 48px; padding-bottom: 40px; }

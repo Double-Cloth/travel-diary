@@ -1101,54 +1101,20 @@ function renderLedger(params = {}, options = {}) {
             </div>
         </div>
     `, `
-            ${renderLedgerFeaturePage(snapshot, resultLabel, ledgerParams)}
+            ${renderLedgerContextPanel(snapshot, resultLabel, ledgerParams)}
     `, 'map-pocket context-panel', {
         preserveRightScroll: options.preserveRightScroll,
         keepContextPanelOpen: options.keepContextPanelOpen
     });
 }
 
-function renderLedgerFeaturePage(snapshot, resultLabel, ledgerParams) {
-    const tripCount = new Set(travelModel.records.map(record => record.visitKey).filter(Boolean)).size;
-    const latestRecord = travelModel.recordsDesc[0];
-    const latestPhoto = latestRecord ? getRecordMedia(latestRecord).find(item => item.kind === 'image') : null;
-    const latestHref = latestRecord ? `#entry?id=${encodeURIComponent(latestRecord.id)}` : '#ledger';
-    const latestPlace = latestRecord ? (latestRecord.locality || latestRecord.adminArea || latestRecord.country) : '下一站';
-
+function renderLedgerContextPanel(snapshot, resultLabel, ledgerParams) {
     return `
-        <div class="ledger-feature-page">
-            <header class="ledger-feature-head">
-                <div>
-                    <p class="journal-label">沿途拾光</p>
-                    <h2>山河辽阔，<br>人间值得一再出发。</h2>
-                </div>
-                <span class="ledger-feature-mark" aria-hidden="true">TD</span>
-            </header>
-
-            <a class="ledger-feature-visual" href="${latestHref}" aria-label="打开最近一篇旅行记录：${escapeHtml(latestPlace)}">
-                ${latestPhoto ? `<img class="ledger-feature-photo" src="${escapeHtml(latestPhoto.src)}" alt="" decoding="async">` : ''}
-                <span class="ledger-feature-map" aria-hidden="true"></span>
-                <span class="ledger-feature-caption">
-                    <small>最近抵达 · ${escapeHtml(latestRecord?.date || '')}</small>
-                    <strong>${escapeHtml(latestPlace)}</strong>
-                    <span>打开最近一篇日记</span>
-                </span>
-            </a>
-
-            <blockquote class="ledger-feature-quote">“旅行不是逃离生活，而是让生活不再只是一种可能。”</blockquote>
-
-            <dl class="ledger-feature-stats" aria-label="旅行档案概览">
-                <div><dt>${travelModel.records.length}</dt><dd>段旅程</dd></div>
-                <div><dt>${tripCount}</dt><dd>次出发</dd></div>
-                <div><dt>${travelModel.years.length}</dt><dd>个年份</dd></div>
-            </dl>
-
-            <div class="ledger-feature-filters" id="ledgerFilters" tabindex="-1">
-                ${renderContextPanelHeading('索引夹层', '高级筛选')}
-                ${renderLedgerSnapshot(snapshot, resultLabel)}
-                ${renderLedgerResetAction(ledgerParams)}
-                ${renderLedgerFilterWorkbench(ledgerParams)}
-            </div>
+        <div class="ledger-feature-filters" id="ledgerFilters" tabindex="-1">
+            ${renderContextPanelHeading('索引夹层', '高级筛选')}
+            ${renderLedgerSnapshot(snapshot, resultLabel)}
+            ${renderLedgerResetAction(ledgerParams)}
+            ${renderLedgerFilterWorkbench(ledgerParams)}
         </div>
     `;
 }
@@ -1291,6 +1257,7 @@ function renderLedgerSelect(label, key, options, activeValue, visuallyHiddenLabe
 function renderArchive(params = {}) {
     const query = (params.q || '').trim().toLowerCase();
     const latest = travelModel.latestRecord;
+    const tripCount = new Set(travelModel.records.map(record => record.visitKey).filter(Boolean)).size;
     const topYear = getTopYearStat(travelModel.yearStats);
     const topMonth = getTopMonthStat(travelModel.monthStats);
     const leadingAdminArea = travelModel.topAdminAreas[0] || null;
@@ -1325,25 +1292,40 @@ function renderArchive(params = {}) {
             </div>
         </div>
     `, `
+        <div class="archive-overview-page">
             ${renderContextPanelHeading('旅行概览', '足迹摘要')}
-            <section class="archive-overview-hero" aria-label="旅行记录摘要">
-                <span>记录跨度</span>
+            <dl class="archive-journey-stats" aria-label="旅行档案概览">
+                <div><dt>${travelModel.records.length}</dt><dd>段旅程</dd></div>
+                <div><dt>${tripCount}</dt><dd>次出发</dd></div>
+                <div><dt>${travelModel.years.length}</dt><dd>个年份</dd></div>
+            </dl>
+            <section class="archive-overview-span" aria-labelledby="archiveTimelineTitle">
+                <h3 id="archiveTimelineTitle">记录时间轴</h3>
                 <strong>${escapeHtml(travelModel.dateRangeLabel)}</strong>
-                <small>${travelModel.stats.total} 篇日记${latest ? ` · 最近 ${escapeHtml(latest.date || '')} 写到 ${escapeHtml(getLocationText(latest))}` : ''}</small>
+                <small>${travelModel.stats.total} 篇日记，持续收录走过的地方与重逢的风景</small>
+                ${latest ? `
+                    <a class="archive-latest-entry" href="#entry?id=${encodeURIComponent(latest.id)}">
+                        <span>最新一页</span>
+                        <strong>${escapeHtml(latest.locality || latest.adminArea || latest.country)}</strong>
+                        <small>${escapeHtml(latest.date || '')} · 打开日记</small>
+                    </a>
+                ` : ''}
             </section>
-            <section class="archive-overview-block">
-                <h3>覆盖范围</h3>
+            <section class="archive-overview-block archive-overview-scope">
+                <h3>足迹分布</h3>
                 <div class="overview-metric-grid">
                     ${renderOverviewMetric('国家', travelModel.stats.countries)}
                     ${renderOverviewMetric('一级行政区', travelModel.stats.adminAreas)}
                     ${renderOverviewMetric('目的地', travelModel.stats.localities)}
+                </div>
+            </section>
+            <section class="archive-overview-block archive-overview-rhythm">
+                <h3>记录节奏</h3>
+                <div class="archive-rhythm-metrics">
                     ${renderOverviewMetric('活跃年份', travelModel.overviewAnalytics.activeYearCount)}
                     ${renderOverviewMetric('活跃月份', `${travelModel.overviewAnalytics.activeMonthCount} / ${travelModel.overviewAnalytics.activeMonthCapacity}`)}
                     ${renderOverviewMetric('复访地点', `${travelModel.overviewAnalytics.repeatLocationCount} 处`)}
                 </div>
-            </section>
-            <section class="archive-overview-block">
-                <h3>记录节奏</h3>
                 <div class="overview-insight-list">
                     ${renderTopYearInsight(topYear)}
                     ${renderTopMonthInsight(topMonth)}
@@ -1358,6 +1340,7 @@ function renderArchive(params = {}) {
                     ${renderRepeatLocationInsights(travelModel.repeatLocations)}
                 </div>
             </section>
+        </div>
     `, 'dossier-page context-panel');
 }
 

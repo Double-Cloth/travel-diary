@@ -41,164 +41,11 @@ body::after {
     border-radius: 2px;
 }
 
-/* 路线页右页：由“筛选工具面板”重构为有节奏的旅行概览页。 */
-.ledger-feature-page {
-    display: grid;
-    align-content: start;
-    min-height: 100%;
-    gap: clamp(18px, 2.2vw, 28px);
-}
-
-.ledger-feature-head {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 24px;
-}
-
-.ledger-feature-head .journal-label {
-    margin: 0 0 12px;
-}
-
-.ledger-feature-head h2 {
-    margin: 0;
-    max-width: 13em;
-    color: var(--ink);
-    font-size: clamp(29px, 2.7vw, 42px);
-    font-weight: 500;
-    line-height: 1.25;
-    letter-spacing: -0.035em;
-}
-
-.ledger-feature-mark {
-    display: grid;
-    place-items: center;
-    flex: 0 0 auto;
-    width: 52px;
-    height: 52px;
-    border: 1px solid rgba(155, 61, 46, 0.28);
-    border-radius: 50%;
-    color: var(--stamp);
-    font: 700 13px/1 var(--font-code);
-    letter-spacing: 0.06em;
-    transform: rotate(8deg);
-}
-
-.ledger-feature-visual {
-    position: relative;
-    display: block;
-    min-height: clamp(220px, 31vh, 320px);
-    overflow: hidden;
-    border: 1px solid rgba(72, 47, 30, 0.18);
-    background:
-        linear-gradient(180deg, transparent 48%, rgba(32, 19, 12, 0.72)),
-        url("../assets/images/pages/home-hero-travel-diary.png") center 46% / cover;
-    box-shadow: 0 14px 28px rgba(55, 33, 18, 0.13);
-    transform: rotate(0.25deg);
-    transition: transform 180ms ease, box-shadow 180ms ease;
-}
-
-.ledger-feature-visual::before,
-.ledger-feature-visual::after {
-    content: "";
-    position: absolute;
-    z-index: 2;
-    top: -7px;
-    width: 72px;
-    height: 20px;
-    background: rgba(216, 195, 151, 0.66);
-    box-shadow: 0 1px 3px rgba(65, 42, 24, 0.12);
-}
-
-.ledger-feature-visual::before { left: 13%; transform: rotate(-3deg); }
-.ledger-feature-visual::after { right: 13%; transform: rotate(2deg); }
-
-.ledger-feature-visual:hover,
-.ledger-feature-visual:focus-visible {
-    transform: rotate(0) translateY(-2px);
-    box-shadow: 0 18px 32px rgba(55, 33, 18, 0.18);
-}
-
-.ledger-feature-caption {
-    position: absolute;
-    z-index: 3;
-    right: 0;
-    bottom: 0;
-    left: 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: end;
-    gap: 3px 16px;
-    padding: 22px 24px 20px;
-    color: #fff8e9;
-}
-
-.ledger-feature-caption small {
-    grid-column: 1;
-    color: rgba(255, 248, 233, 0.72);
-    font: 11px/1.4 var(--font-code);
-    letter-spacing: 0.05em;
-}
-
-.ledger-feature-caption strong {
-    grid-column: 1;
-    font-size: 26px;
-    font-weight: 500;
-}
-
-.ledger-feature-caption span {
-    grid-column: 2;
-    grid-row: 1 / span 2;
-    color: rgba(255, 248, 233, 0.8);
-    font-size: 13px;
-}
-
-.ledger-feature-quote {
-    margin: 0;
-    padding: 0 0 0 20px;
-    border-left: 2px solid rgba(155, 61, 46, 0.5);
-    color: var(--ink-soft);
-    font-size: clamp(15px, 1.35vw, 18px);
-    line-height: 1.8;
-}
-
-.ledger-feature-stats {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    margin: 0;
-    padding: 20px 0;
-    border-top: 1px solid var(--line);
-    border-bottom: 1px solid var(--line);
-}
-
-.ledger-feature-stats div {
-    display: flex;
-    align-items: baseline;
-    justify-content: center;
-    gap: 7px;
-    min-width: 0;
-    padding: 0 12px;
-}
-
-.ledger-feature-stats div + div { border-left: 1px solid var(--line); }
-
-.ledger-feature-stats dt {
-    color: var(--stamp);
-    font: 500 clamp(27px, 2.5vw, 38px)/1 var(--font-serif);
-}
-
-.ledger-feature-stats dd {
-    margin: 0;
-    color: var(--ink-soft);
-    font-size: 13px;
-}
-
+/* 路线页右页专注于筛选，概览内容统一归入“日记归档”。 */
 .ledger-feature-filters {
     display: grid;
     gap: 16px;
-    margin-top: 8px;
-    padding-top: 28px;
-    border-top: 1px dashed var(--hairline);
+    min-height: 100%;
 }
 
 /* 统一书页内控件：不再用厚重渐变与悬浮卡片模拟网页按钮。 */
@@ -293,7 +140,52 @@ body::after {
 .luggage-tag span,
 .luggage-tag small { font-size: 11px; }
 
-.archive-overview-hero,
+.archive-overview-page {
+    display: grid;
+    align-content: start;
+}
+
+.archive-overview-page > .context-panel-heading {
+    margin-bottom: 22px;
+}
+
+.archive-journey-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    margin: 0 0 26px;
+    padding: 18px 0;
+    border: 1px solid rgba(72, 47, 30, 0.18);
+    border-radius: 6px;
+    background: rgba(255, 250, 235, 0.42);
+}
+
+.archive-journey-stats div {
+    display: flex;
+    align-items: baseline;
+    justify-content: center;
+    gap: 7px;
+    min-width: 0;
+    padding: 0 12px;
+}
+
+.archive-journey-stats div + div {
+    border-left: 1px solid var(--line);
+}
+
+.archive-journey-stats dt {
+    color: var(--stamp);
+    font: 500 clamp(28px, 2.55vw, 40px)/1 var(--font-serif);
+    font-variant-numeric: tabular-nums;
+}
+
+.archive-journey-stats dd {
+    margin: 0;
+    color: var(--ink-soft);
+    font-size: 13px;
+    white-space: nowrap;
+}
+
+.archive-overview-span,
 .archive-overview-block {
     padding: 20px 0;
     border: 0;
@@ -301,8 +193,94 @@ body::after {
     background: transparent;
 }
 
-.archive-overview-hero { padding-top: 0; }
-.archive-overview-hero strong { font-size: clamp(22px, 2.2vw, 30px); font-weight: 500; }
+.archive-overview-span {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(138px, 0.54fr);
+    grid-template-areas:
+        "title title"
+        "range latest"
+        "copy latest";
+    gap: 7px 24px;
+    padding-top: 0;
+}
+
+.archive-overview-span h3,
+.archive-overview-block h3 {
+    margin: 0 0 8px;
+    color: var(--stamp);
+    font: 12px/1.4 var(--font-code);
+    letter-spacing: 0.08em;
+}
+
+.archive-overview-span h3 { grid-area: title; }
+
+.archive-overview-span > strong {
+    grid-area: range;
+    align-self: end;
+    color: var(--ink);
+    font: 500 clamp(22px, 2.2vw, 30px)/1.2 var(--font-serif);
+    font-variant-numeric: tabular-nums;
+}
+
+.archive-overview-span > small {
+    grid-area: copy;
+    color: var(--ink-soft);
+    font: 11px/1.7 var(--font-code);
+}
+
+.archive-latest-entry {
+    grid-area: latest;
+    display: grid;
+    align-content: center;
+    gap: 4px;
+    min-width: 0;
+    padding-left: 20px;
+    border-left: 1px solid var(--line);
+    color: var(--ink);
+    transition: color 160ms ease, transform 160ms ease;
+}
+
+.archive-latest-entry span,
+.archive-latest-entry small {
+    color: var(--ink-soft);
+    font: 11px/1.5 var(--font-code);
+}
+
+.archive-latest-entry strong {
+    overflow: hidden;
+    font-size: 18px;
+    font-weight: 500;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.archive-latest-entry:hover,
+.archive-latest-entry:focus-visible {
+    color: var(--stamp);
+    transform: translateX(2px);
+}
+
+.archive-overview-scope .overview-metric-grid,
+.archive-rhythm-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+}
+
+.archive-rhythm-metrics {
+    margin-bottom: 12px;
+}
+
+.archive-overview-scope .overview-metric,
+.archive-rhythm-metrics .overview-metric {
+    padding: 9px 12px 12px;
+    border-bottom: 0;
+}
+
+.archive-overview-scope .overview-metric + .overview-metric,
+.archive-rhythm-metrics .overview-metric + .overview-metric {
+    border-left: 1px solid var(--line);
+}
 
 .overview-metric,
 .overview-insight,
@@ -804,7 +782,6 @@ body::after {
     .repeat-stamp { min-height: 0; padding: 0 5px; border-radius: 2px; background: transparent; font-size: 9px; }
     .trip-stamp { min-width: 44px; height: 19px; padding: 0 5px; border: 0; border-radius: 2px; font-size: 9px; }
 
-    .paper-page-right.context-panel .ledger-feature-page > :not(.ledger-feature-filters) { display: none; }
     .paper-page-right.context-panel .ledger-feature-filters { margin: 0; padding: 0; border: 0; }
     .ledger-feature-filters .context-panel-heading { display: grid; }
 
@@ -866,10 +843,28 @@ body::after {
         transform: none;
     }
 
-    .ledger-feature-head h2 { font-size: 32px; }
-    .ledger-feature-caption { padding: 18px; }
-    .ledger-feature-caption span { display: none; }
-    .ledger-feature-stats div { display: grid; justify-items: center; gap: 4px; }
+    .archive-overview-page > .context-panel-heading { margin-bottom: 18px; }
+    .archive-journey-stats { margin-bottom: 22px; padding-block: 15px; }
+    .archive-journey-stats div { display: grid; justify-items: center; gap: 4px; padding-inline: 7px; }
+    .archive-journey-stats dt { font-size: clamp(27px, 9vw, 34px); }
+    .archive-journey-stats dd { font-size: 11px; }
+    .archive-overview-span {
+        grid-template-columns: 1fr;
+        grid-template-areas:
+            "title"
+            "range"
+            "copy"
+            "latest";
+        gap: 7px;
+    }
+    .archive-latest-entry {
+        margin-top: 10px;
+        padding: 12px 0 0;
+        border-top: 1px solid var(--line);
+        border-left: 0;
+    }
+    .archive-overview-scope .overview-metric,
+    .archive-rhythm-metrics .overview-metric { padding-inline: 8px; }
 }
 
 @media (max-width: 380px) {
@@ -880,4 +875,5 @@ body::after {
     .chapter-tab,
     .chapter-tab:nth-child(2),
     .chapter-tab:nth-child(3) { font-size: 13px; }
+    .archive-journey-stats dd { font-size: 10px; }
 }
