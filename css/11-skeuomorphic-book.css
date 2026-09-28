@@ -752,7 +752,8 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
 .entry-book-article .markdown-content img { border: 6px solid #fff8e7; box-shadow: 0 3px 9px #5f432c24; }
 
 @media (min-width: 761px) {
-    .journal-shell { --book-height: min(820px, calc(100dvh - 100px)); padding: 28px 78px; }
+    /* 右侧为实体书签保留更宽书桌空间，避免中等桌面宽度下被视口裁切。 */
+    .journal-shell { --book-height: min(820px, calc(100dvh - 100px)); padding: 28px 100px 28px 78px; }
     .journal-stage { perspective: 2400px; }
     .notebook,
     body[data-route='cover'] .notebook {
@@ -771,7 +772,11 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .notebook::after { width: 84px; left: calc(50% - 42px); opacity: .95; }
     .book-corner-hardware { display: block; width: 29px; height: 29px; }
     .book-page-stack { bottom: 14px; }
-    .journal-spine { width: min(1220px, calc(100% - 156px)); height: max(420px, var(--book-height)); }
+    .journal-spine {
+        left: calc(50% - 11px);
+        width: min(1220px, calc(100% - 178px));
+        height: max(420px, var(--book-height));
+    }
     .brand-lockup {
         left: -27px;
         border: 1px solid #281810;
@@ -782,18 +787,20 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     /* 三条布书签从书芯右侧伸出，燕尾切口、缝线和铆钉共同建立实体感。 */
     .chapter-tabs {
         top: 132px;
-        right: -85px;
-        grid-template-columns: 118px;
+        right: -82px;
+        grid-template-columns: 126px;
         gap: 12px;
     }
     .chapter-tab {
         --bookmark-cloth: #59684d;
         display: grid;
-        grid-template-columns: 25px minmax(0, 1fr);
+        grid-template-columns: 25px minmax(0, 1fr) 9px;
+        column-gap: 5px;
         place-items: center;
-        min-width: 118px;
+        width: 126px;
+        min-width: 126px;
         min-height: 48px;
-        padding: 8px 18px 8px 9px;
+        padding: 8px 9px;
         border: 0;
         border-radius: 0;
         color: #f8ebcd;
@@ -827,7 +834,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         content: '';
         position: absolute;
         display: block;
-        inset: 5px 14px 5px 5px;
+        inset: 5px 10px 5px 5px;
         border: 1px dashed #f7e5bd7a;
         border-right: 0;
         pointer-events: none;
@@ -836,7 +843,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         content: '';
         position: absolute;
         top: 50%;
-        right: 16px;
+        right: 10px;
         bottom: auto;
         left: auto;
         width: 7px;
@@ -863,7 +870,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     }
     .chapter-tab:hover,
     .chapter-tab:focus-visible {
-        transform: translateX(7px) rotate(0);
+        transform: translateX(6px) rotate(0);
         filter: brightness(1.08) drop-shadow(6px 7px 5px #120a0778);
     }
     .chapter-tab.chapter-tab-active,
@@ -878,11 +885,11 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
             var(--bookmark-cloth);
         text-shadow: 0 -1px #1b100b, 0 1px #fff8dc57;
         filter: brightness(1.12) saturate(1.05) drop-shadow(7px 8px 6px #120a0785);
-        transform: translateX(13px) rotate(0);
+        transform: translateX(10px) rotate(0);
     }
     .chapter-tab-active::after {
         top: 50%;
-        right: 16px;
+        right: 10px;
         bottom: auto;
         width: 8px;
         height: 8px;

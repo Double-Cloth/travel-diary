@@ -71,6 +71,14 @@ test('左侧三个章节入口更新为扉页、日记目录与日记归档', ()
     assert.match(appJs, /data-action="open-book"[\s\S]*navigateTo\('#preface'\)/);
 });
 
+test('桌面端实体书签为标题和铆钉保留独立空间且不会伸出视口', () => {
+    assert.match(journalCss, /@media \(min-width: 761px\)[\s\S]*\.journal-shell\s*\{[^}]*padding: 28px 100px 28px 78px;/);
+    assert.match(journalCss, /\.journal-spine\s*\{[\s\S]*left: calc\(50% - 11px\);[\s\S]*width: min\(1220px, calc\(100% - 178px\)\);/);
+    assert.match(journalCss, /\.chapter-tabs\s*\{[\s\S]*right: -82px;[\s\S]*grid-template-columns: 126px;/);
+    assert.match(journalCss, /\.chapter-tab\s*\{[\s\S]*grid-template-columns: 25px minmax\(0, 1fr\) 9px;[\s\S]*column-gap: 5px;[\s\S]*width: 126px;/);
+    assert.match(journalCss, /\.chapter-tab::after\s*\{[\s\S]*right: 10px;/);
+});
+
 test('扉页桌面双页展示个人信息与工具，移动端工具页默认使用折叠夹层', () => {
     assert.match(appJs, /function renderPreface\(\)/);
     assert.match(appJs, /id="prefaceTitle">扉页</);
