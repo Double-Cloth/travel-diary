@@ -335,14 +335,6 @@ body[data-route="cover"] .page-spread { visibility: hidden; }
         transform: translateY(-50%);
     }
 
-    .spine-tools {
-        position: absolute;
-        top: 20px;
-        right: 22px;
-        display: flex;
-        pointer-events: auto;
-    }
-
     .paper-page-left::after,
     .paper-page-right::after {
         content: "";

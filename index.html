@@ -6,7 +6,7 @@
     <title>Travel Diary</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%232b160f'/%3E%3Cpath d='M32 7l5.6 18.7L57 32l-19.4 6.3L32 57l-5.6-18.7L7 32l19.4-6.3L32 7z' fill='%23d8b467'/%3E%3C/svg%3E">
     <link rel="preload" as="image" href="assets/images/pages/leather-mountain-cover.png">
-    <link rel="stylesheet" href="css/journal.css?v=20260928-book-motion-v31">
+    <link rel="stylesheet" href="css/journal.css?v=20260928-book-motion-v32">
 </head>
 <body>
     <a class="skip-link" href="#journalStage">跳到档案内容</a>
@@ -22,8 +22,8 @@
 
             <nav class="chapter-tabs" id="chapterTabs" aria-label="章节导航">
                 <a href="#preface" class="chapter-tab" data-route-link="preface">
-                    <span class="chapter-icon" aria-hidden="true">序</span>
-                    <span>自序</span>
+                    <span class="chapter-icon" aria-hidden="true">扉</span>
+                    <span>扉页</span>
                 </a>
                 <a href="#ledger" class="chapter-tab" data-route-link="ledger">
                     <span class="chapter-icon" aria-hidden="true">目</span>
@@ -35,19 +35,7 @@
                 </a>
             </nav>
 
-            <div class="spine-tools" aria-label="快捷入口">
-                <button class="spine-tool spine-add" type="button" data-action="add-record" aria-label="新增旅行记录" title="新增旅行记录">
-                    <svg class="spine-add-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                        <path d="M12 5v14M5 12h14"></path>
-                    </svg>
-                </button>
-                <span class="tool-divider" aria-hidden="true"></span>
-                <button class="spine-tool spine-profile" type="button" data-action="upload-profile-picture" aria-label="更换头像" title="点击更换头像">
-                    <span class="spine-profile-fallback" aria-hidden="true">旅</span>
-                    <img data-src="data/profile/profile-picture.png" src="data/profile/profile-picture.png" data-profile-picture-image alt="" aria-hidden="true" hidden>
-                </button>
-                <input id="profilePictureInput" type="file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
-            </div>
+            <input id="profilePictureInput" type="file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
         </header>
 
         <main class="journal-stage" id="journalStage" tabindex="-1">
@@ -77,6 +65,6 @@
         </main>
     </div>
 
-    <script type="module" src="js/app.js?v=20260928-book-motion-v27"></script>
+    <script type="module" src="js/app.js?v=20260928-book-motion-v28"></script>
 </body>
 </html>

@@ -252,26 +252,10 @@ function cacheRefs() {
     refs.leftPage = document.getElementById('leftPage');
     refs.rightPage = document.getElementById('rightPage');
     refs.closedBookCover = document.getElementById('closedBookCover');
-    refs.profilePictureButton = document.querySelector('.spine-profile');
     refs.profilePictureInput = document.getElementById('profilePictureInput');
     refs.profilePictureInput?.addEventListener('cancel', () => {
         profilePictureCapability = null;
     });
-    const profilePicture = document.querySelector('.spine-profile [data-profile-picture-image]');
-    if (profilePicture) {
-        const profilePictureUrl = new URL(profilePicture.dataset.src, window.location.href);
-        void fetch(profilePictureUrl, { method: 'HEAD' })
-            .then(response => {
-                if (!response.ok) return;
-                profilePicture.addEventListener('load', () => {
-                    if (profilePicture.naturalWidth > 1 || profilePicture.naturalHeight > 1) {
-                        profilePicture.hidden = false;
-                    }
-                }, { once: true });
-                profilePicture.src = profilePictureUrl.href;
-            })
-            .catch(() => {});
-    }
 }
 
 function refreshProfilePicture() {
@@ -316,8 +300,11 @@ async function handleProfilePictureSelection(input) {
         });
         return;
     }
-    refs.profilePictureButton?.setAttribute('aria-busy', 'true');
-    if (refs.profilePictureButton) refs.profilePictureButton.disabled = true;
+    const profilePictureButtons = [...document.querySelectorAll('[data-action="upload-profile-picture"]')];
+    profilePictureButtons.forEach((button) => {
+        button.setAttribute('aria-busy', 'true');
+        button.disabled = true;
+    });
     try {
         const picture = await prepareProfilePicture(file);
         await uploadProfilePicture(picture, capability);
@@ -329,8 +316,10 @@ async function handleProfilePictureSelection(input) {
             title: '无法使用这张图片'
         });
     } finally {
-        refs.profilePictureButton?.removeAttribute('aria-busy');
-        if (refs.profilePictureButton) refs.profilePictureButton.disabled = false;
+        profilePictureButtons.forEach((button) => {
+            button.removeAttribute('aria-busy');
+            button.disabled = false;
+        });
     }
 }
 
@@ -902,40 +891,62 @@ function renderPreface() {
     setPages(`
         <article class="preface-profile-page" aria-labelledby="prefaceTitle">
             <header class="preface-heading">
-                <h1 id="prefaceTitle">自序</h1>
-                <p>先认识写下这些路途的人，再翻进山川与年月。</p>
+                <h1 id="prefaceTitle">扉页</h1>
+                <p>把沿途的光影、风声与偶遇，装订成只属于自己的时间。</p>
             </header>
 
-            <button class="preface-portrait" type="button" data-action="upload-profile-picture" aria-label="更换自序头像">
-                <span class="preface-portrait-fallback" aria-hidden="true">旅</span>
-                <img data-profile-picture-image data-src="data/profile/profile-picture.png" alt="日记主人的头像" hidden>
-                <span class="preface-photo-corner preface-photo-corner-left" aria-hidden="true"></span>
-                <span class="preface-photo-corner preface-photo-corner-right" aria-hidden="true"></span>
-                <small>点击照片更换头像</small>
-            </button>
+            <section class="preface-identity-sheet" aria-label="日记主人与旅程概况">
+                <div class="preface-sheet-kicker" aria-hidden="true">
+                    <span>TRAVEL DIARY</span>
+                    <span>PERSONAL EDITION</span>
+                </div>
 
-            <div class="preface-owner-plaque">
-                <span>TRAVEL DIARY OWNER</span>
-                <strong>这本日记的主人</strong>
-            </div>
+                <div class="preface-profile-composition">
+                    <button class="preface-portrait" type="button" data-action="upload-profile-picture" aria-label="更换扉页头像">
+                        <span class="preface-portrait-fallback" aria-hidden="true">旅</span>
+                        <img data-profile-picture-image data-src="data/profile/profile-picture.png" alt="日记主人的头像" hidden>
+                        <span class="preface-photo-corner preface-photo-corner-left" aria-hidden="true"></span>
+                        <span class="preface-photo-corner preface-photo-corner-right" aria-hidden="true"></span>
+                        <small>点击照片 · 更换头像</small>
+                    </button>
 
-            <blockquote class="preface-signature">“把走过的路，写成自己的时间。”</blockquote>
+                    <div class="preface-owner-copy">
+                        <p class="preface-owner-index">OWNER · 001</p>
+                        <div class="preface-owner-plaque">
+                            <span>TRAVEL DIARY OWNER</span>
+                            <strong>旅途收藏者</strong>
+                        </div>
+                        <blockquote class="preface-signature">把走过的路，<br>写成自己的时间。</blockquote>
+                        <span class="preface-seal" aria-hidden="true">
+                            <strong>MEMORY</strong>
+                            <small>ARCHIVE</small>
+                        </span>
+                    </div>
+                </div>
 
-            <dl class="preface-facts" aria-label="日记概况">
-                <div><dt>${travelModel.stats.total}</dt><dd>篇日记</dd></div>
-                <div><dt>${travelModel.stats.localities}</dt><dd>个目的地</dd></div>
-                <div><dt>${escapeHtml(firstDate)}</dt><dd>开始记录</dd></div>
-            </dl>
+                <div class="preface-route-rule" aria-hidden="true"><span></span><i></i><span></span></div>
+
+                <dl class="preface-facts" aria-label="日记概况">
+                    <div><dt>${travelModel.stats.total}</dt><dd>篇日记</dd></div>
+                    <div><dt>${travelModel.stats.localities}</dt><dd>个目的地</dd></div>
+                    <div><dt>${escapeHtml(firstDate)}</dt><dd>开始记录</dd></div>
+                </dl>
+
+                <footer class="preface-colophon" aria-hidden="true">
+                    <span>PRIVATE TRAVEL NOTES</span>
+                    <span>KEEP EVERY MILE</span>
+                </footer>
+            </section>
 
             ${renderMobileContextToggle('打开日记工具箱', '新增、备份与安全管理')}
         </article>
     `, `
-        ${renderContextPanelHeading('自序', '日记工具箱')}
+        ${renderContextPanelHeading('扉页', '日记工具箱')}
         <p class="preface-tools-intro">常用维护功能收在这里，像书桌抽屉一样，需要时再打开。</p>
 
         <section class="preface-tool-section" aria-labelledby="prefaceWritingTitle">
             <h3 id="prefaceWritingTitle">日记维护</h3>
-            <p>继续写下一段旅程，或替换自序中的个人头像。</p>
+            <p>继续写下一段旅程，或替换扉页中的个人头像。</p>
             <div class="preface-tool-actions">
                 <button class="paper-button" type="button" data-action="add-record">新增旅行日记</button>
                 <button class="paper-button" type="button" data-action="upload-profile-picture">更换个人头像</button>

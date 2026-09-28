@@ -122,10 +122,6 @@
         display: none;
     }
 
-    .spine-tools {
-        display: none;
-    }
-
     .notebook {
         min-height: calc(100dvh - 86px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
         height: auto;

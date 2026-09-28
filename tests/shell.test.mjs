@@ -64,15 +64,17 @@ test('路线页不存在重复筛选入口', () => {
     assert.doesNotMatch(appJs, /ledger-feature-actions|ledger-feature-add|ledger-filter-jump/);
 });
 
-test('左侧三个章节入口更新为自序、日记目录与日记归档', () => {
-    assert.match(indexHtml, /href="#preface"[^>]*data-route-link="preface"[\s\S]*>自序</);
+test('左侧三个章节入口更新为扉页、日记目录与日记归档', () => {
+    assert.match(indexHtml, /href="#preface"[^>]*data-route-link="preface"[\s\S]*>扉页</);
     assert.match(indexHtml, /href="#ledger"[^>]*data-route-link="ledger"[\s\S]*>日记目录</);
     assert.match(indexHtml, /href="#archive"[^>]*data-route-link="archive"[\s\S]*>日记归档</);
     assert.match(appJs, /data-action="open-book"[\s\S]*navigateTo\('#preface'\)/);
 });
 
-test('自序桌面双页展示个人信息与工具，移动端工具页默认使用折叠夹层', () => {
+test('扉页桌面双页展示个人信息与工具，移动端工具页默认使用折叠夹层', () => {
     assert.match(appJs, /function renderPreface\(\)/);
+    assert.match(appJs, /id="prefaceTitle">扉页</);
+    assert.match(appJs, /class="preface-identity-sheet"/);
     assert.match(appJs, /class="preface-portrait"[\s\S]*data-profile-picture-image/);
     assert.match(appJs, /class="preface-signature"/);
     assert.match(appJs, /renderMobileContextToggle\('打开日记工具箱'/);
@@ -559,15 +561,15 @@ test('章节书签保留语义导航并贴合书页上沿', () => {
     assert.match(journalCss, /\.page-spread\s*{[^}]*grid-template-columns: repeat\(2, minmax\(0, 1fr\)\);[^}]*gap: 0;/);
 });
 
-test('空数据目录使用内置头像并仅在自定义头像存在时替换', () => {
-    assert.match(indexHtml, /class="spine-profile-fallback"[^>]*>旅<\/span>/);
-    assert.match(indexHtml, /<img data-src="data\/profile\/profile-picture\.png"[^>]*hidden>/);
-    assert.match(appJs, /fetch\(profilePictureUrl, \{ method: 'HEAD' \}\)/);
+test('空数据目录使用扉页内置头像并仅在自定义头像存在时替换', () => {
+    assert.match(appJs, /class="preface-portrait-fallback"[^>]*>旅<\/span>/);
+    assert.match(appJs, /<img data-profile-picture-image data-src="data\/profile\/profile-picture\.png"[^>]*hidden>/);
+    assert.match(appJs, /function syncProfilePictureImages\(root = document, cacheKey = ''\)/);
     assert.match(appJs, /profilePicture\.naturalWidth > 1 \|\| profilePicture\.naturalHeight > 1/);
 });
 
 test('点击头像先验证密码，再选择常见图片并写入服务更新固定头像文件', () => {
-    assert.match(indexHtml, /data-action="upload-profile-picture"/);
+    assert.match(appJs, /data-action="upload-profile-picture"/);
     assert.match(indexHtml, /id="profilePictureInput"[^>]*accept="image\/jpeg,image\/png,image\/gif,image\/webp"[^>]*hidden/);
     assert.match(appJs, /prepareProfilePicture/);
     assert.match(appJs, /createPasswordGate\(capability => \{\s*profilePictureCapability = capability;\s*refs\.profilePictureInput\?\.click\(\);/);
@@ -577,6 +579,11 @@ test('点击头像先验证密码，再选择常见图片并写入服务更新�
     assert.match(profilePictureJs, /'X-Travel-Token': capability\.token/);
     assert.match(serverJs, /'\/api\/travel-profile'/);
     assert.match(recordStoreJs, /saveProfilePicture/);
+});
+
+test('页脊不再显示新增与头像圆形快捷组件', () => {
+    assert.doesNotMatch(indexHtml, /class="spine-tools"|class="spine-tool|class="spine-profile"/);
+    assert.doesNotMatch(journalCss, /\.spine-tools|\.spine-tool|\.spine-profile|\.tool-divider/);
 });
 
 test('省份详情页在左页提供返回与相邻省份导航', () => {

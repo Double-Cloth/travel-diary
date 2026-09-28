@@ -439,32 +439,6 @@ body::after {
         background: rgba(255, 248, 231, 0.72);
     }
 
-    .spine-tools {
-        position: absolute;
-        top: 27px;
-        right: 28px;
-        gap: 9px;
-        pointer-events: auto;
-    }
-
-    .spine-tool {
-        width: 38px;
-        height: 38px;
-        border: 1px solid rgba(80, 52, 32, 0.18);
-        border-radius: 50%;
-        color: var(--ink-soft);
-        background: rgba(250, 244, 228, 0.8);
-        box-shadow: 0 4px 10px rgba(60, 38, 20, 0.12);
-    }
-
-    .spine-tool:hover { color: var(--stamp); background: #fffaf0; box-shadow: 0 6px 12px rgba(60, 38, 20, 0.16); }
-    .spine-add-icon { width: 19px; height: 19px; stroke-width: 1.8; }
-    .spine-profile { width: 40px; height: 40px; padding: 2px; border-radius: 50%; }
-    .spine-profile img,
-    .spine-profile-fallback,
-    .spine-profile::after { border-radius: 50%; }
-    .tool-divider { display: none; }
-
     .paper-page {
         padding: clamp(30px, 3vw, 46px);
         background:
@@ -650,16 +624,6 @@ body::after {
     .brand-lockup strong { font-size: 0; font-weight: 500; letter-spacing: 0.08em; text-shadow: none; }
     .brand-lockup strong::after { content: "旅行日记"; color: var(--ink); font-size: 23px; }
     .brand-lockup small { display: block; margin-top: 3px; color: var(--ink-muted); font: 8px/1.2 var(--font-code); letter-spacing: 0.16em; }
-
-    .spine-tools { grid-column: 2; grid-row: 1; align-self: center; gap: 8px; }
-    .spine-tool { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 50%; color: var(--ink-soft); background: transparent; box-shadow: none; }
-    .spine-tool:hover { color: var(--stamp); background: rgba(155, 61, 46, 0.05); box-shadow: none; }
-    .spine-add-icon { width: 19px; height: 19px; stroke-width: 1.8; }
-    .spine-profile { width: 38px; height: 38px; padding: 2px; border-radius: 50%; }
-    .spine-profile img,
-    .spine-profile-fallback,
-    .spine-profile::after { border-radius: 50%; }
-    .tool-divider { display: none; }
 
     .chapter-tabs {
         grid-column: 1 / -1;

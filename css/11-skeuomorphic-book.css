@@ -116,45 +116,119 @@ body[data-route='preface'] .paper-page {
     --page-art: url('../assets/images/pages/left-page-profile-travel-diary.png');
 }
 
-/* 自序像千禧年旅行相册的扉页：冲印照片、金属铭牌、横线便笺与压入式工具键。 */
+/* 扉页像千禧年旅行相册的身份页：冲印照片、黄铜铭牌、手写题记与归档印章。 */
 .preface-profile-page {
     display: grid;
-    justify-items: center;
+    justify-items: stretch;
     align-content: start;
-    gap: 18px;
+    gap: 22px;
     min-height: 100%;
-    text-align: center;
+}
+
+.preface-heading {
+    position: relative;
+    padding: 0 0 16px 4px;
+    text-align: left;
+}
+
+.preface-heading::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 3px;
+    border-block: 1px solid #8f6d465c;
+    background: #fff8e466;
 }
 
 .preface-heading h1 {
     margin: 0;
     color: #3f2a1d;
-    font-size: clamp(38px, 4.4vw, 58px);
+    font-size: clamp(42px, 4.2vw, 56px);
     line-height: 1;
-    letter-spacing: .12em;
+    letter-spacing: .18em;
     text-shadow: 0 1px #fff8df, 0 3px 4px #5c3c1c24;
 }
 
 .preface-heading p {
-    max-width: 30em;
-    margin: 12px 0 0;
+    max-width: 34em;
+    margin: 13px 0 0;
     color: #715b43;
     font-size: 14px;
-    line-height: 1.75;
+    line-height: 1.8;
+}
+
+.preface-identity-sheet {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    gap: 15px;
+    width: min(100%, 540px);
+    margin-inline: auto;
+    padding: 16px 19px 13px;
+    border: 1px solid #9a784f;
+    border-radius: 2px;
+    background:
+        linear-gradient(102deg, transparent 0 42%, #fff9e34d 42.4% 42.8%, transparent 43.2%),
+        linear-gradient(145deg, #fff8e8e8, #ead7b8e8 72%, #cfb080e8),
+        url('../assets/textures/paper-grain.png');
+    box-shadow:
+        inset 0 0 0 3px #fff7df9c,
+        inset 0 -2px #9a7448,
+        0 3px 0 #745233,
+        0 13px 22px #4c301b30;
+    transform: rotate(-.24deg);
+}
+
+.preface-identity-sheet::before,
+.preface-identity-sheet::after {
+    content: '';
+    position: absolute;
+    z-index: 2;
+    top: 10px;
+    width: 7px;
+    height: 7px;
+    border: 1px solid #74512e;
+    border-radius: 50%;
+    background: radial-gradient(circle at 36% 30%, #fff3c2, #a87b43 48%, #54341e 82%);
+    box-shadow: inset 0 1px #fff2c4, 0 1px 2px #321b0c55;
+}
+
+.preface-identity-sheet::before { left: 10px; }
+.preface-identity-sheet::after { right: 10px; }
+
+.preface-sheet-kicker {
+    display: flex;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 0 10px 9px;
+    border-bottom: 1px dashed #89684473;
+    color: #785e42;
+    font: 9px/1.2 var(--font-code);
+    letter-spacing: .17em;
+}
+
+.preface-profile-composition {
+    display: grid;
+    grid-template-columns: minmax(150px, .86fr) minmax(0, 1.14fr);
+    align-items: center;
+    gap: clamp(19px, 2.3vw, 29px);
+    padding: 2px 5px 0;
 }
 
 .preface-portrait {
     position: relative;
     display: grid;
-    width: min(238px, 72%);
-    aspect-ratio: 4 / 4.7;
-    padding: 13px 13px 43px;
+    width: 100%;
+    aspect-ratio: 4 / 4.75;
+    padding: 10px 10px 37px;
     border: 1px solid #9c7c55;
     border-radius: 3px;
     color: #70583d;
     background: linear-gradient(135deg, #fffef6, #ead9b8 74%, #c9ad7b);
     box-shadow: inset 0 0 0 3px #fff8e4, 0 3px 0 #96734d, 0 12px 18px #4a301b38;
-    transform: rotate(-1.4deg);
+    transform: rotate(-2deg);
     cursor: pointer;
     transition: transform 180ms cubic-bezier(.2,.7,.2,1), filter 180ms, box-shadow 180ms;
 }
@@ -162,7 +236,7 @@ body[data-route='preface'] .paper-page {
 .preface-portrait:hover,
 .preface-portrait:focus-visible {
     filter: brightness(1.04);
-    transform: rotate(-.5deg) translateY(-2px);
+    transform: rotate(-.7deg) translateY(-3px);
     box-shadow: inset 0 0 0 3px #fff8e4, 0 3px 0 #96734d, 0 16px 24px #4a301b45;
 }
 
@@ -198,11 +272,11 @@ body[data-route='preface'] .paper-page {
 .preface-portrait small {
     position: absolute;
     right: 14px;
-    bottom: 13px;
+    bottom: 11px;
     left: 14px;
     color: #71583b;
     font: 10px/1.2 var(--font-code);
-    letter-spacing: .08em;
+    letter-spacing: .06em;
 }
 
 .preface-photo-corner {
@@ -229,11 +303,27 @@ body[data-route='preface'] .paper-page {
         linear-gradient(#c49f5f 0 0) right / 9px 100% no-repeat;
 }
 
+.preface-owner-copy {
+    position: relative;
+    display: grid;
+    align-content: center;
+    gap: 11px;
+    min-width: 0;
+    text-align: left;
+}
+
+.preface-owner-index {
+    margin: 0;
+    color: #89694a;
+    font: 10px/1.2 var(--font-code);
+    letter-spacing: .14em;
+}
+
 .preface-owner-plaque {
     display: grid;
     gap: 3px;
-    min-width: min(290px, 86%);
-    padding: 9px 24px 10px;
+    width: 100%;
+    padding: 10px 17px 11px;
     border: 1px solid #76532e;
     border-radius: 5px;
     color: #563921;
@@ -247,39 +337,82 @@ body[data-route='preface'] .paper-page {
     letter-spacing: .18em;
 }
 
-.preface-owner-plaque strong { font-size: 18px; letter-spacing: .08em; }
+.preface-owner-plaque strong { font-size: clamp(17px, 1.7vw, 20px); letter-spacing: .12em; }
 
 .preface-signature {
-    width: min(430px, 94%);
     margin: 0;
-    padding: 18px 20px 15px;
-    border: 1px solid #b69a6f;
-    border-radius: 2px;
+    padding: 15px 14px 13px 19px;
+    border: 0;
+    border-block: 1px solid #b69a6f8c;
     color: #624834;
     background:
-        linear-gradient(90deg, transparent 29px, #ad675d40 29px 30px, transparent 30px),
-        repeating-linear-gradient(0deg, #fff8e6 0 27px, #9da8a54a 27px 28px);
-    box-shadow: 0 2px 0 #9f8058, 0 7px 12px #51351c24;
-    font-size: 17px;
-    line-height: 1.8;
-    transform: rotate(.55deg);
+        linear-gradient(90deg, transparent 8px, #ad675d40 8px 9px, transparent 9px),
+        repeating-linear-gradient(0deg, #fff8e638 0 26px, #9da8a53d 26px 27px);
+    box-shadow: inset 0 1px #fff9e5;
+    font-size: clamp(16px, 1.55vw, 19px);
+    line-height: 1.65;
+    transform: rotate(.35deg);
+}
+
+.preface-seal {
+    justify-self: end;
+    display: grid;
+    place-content: center;
+    width: 78px;
+    aspect-ratio: 1;
+    border: 2px solid #91493dc7;
+    border-radius: 50%;
+    color: #91493dd1;
+    background: radial-gradient(circle, transparent 53%, #91493d17 54% 64%, transparent 65%);
+    box-shadow: inset 0 0 0 3px #f3dfc2, inset 0 0 0 5px #91493d8c;
+    text-align: center;
+    transform: rotate(-9deg);
+    opacity: .88;
+}
+
+.preface-seal strong { font: 700 11px/1 var(--font-code); letter-spacing: .08em; }
+.preface-seal small { margin-top: 4px; font: 8px/1 var(--font-code); letter-spacing: .16em; }
+
+.preface-route-rule {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 9px;
+    color: #86643f;
+}
+
+.preface-route-rule span { height: 1px; background: #8d6b474f; }
+.preface-route-rule i {
+    width: 9px;
+    height: 9px;
+    border: 1px solid #75502d;
+    background: linear-gradient(135deg, #ecd29e, #9e713e);
+    box-shadow: inset 0 1px #fff1c8, 0 1px 2px #59381d47;
+    transform: rotate(45deg);
 }
 
 .preface-facts {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    width: min(430px, 94%);
     margin: 0;
-    border: 1px solid #9e7d53;
-    border-radius: 5px;
-    background: linear-gradient(#e8d4ad, #fff6dc 36%, #e3c99b);
-    box-shadow: inset 0 1px #fff9e8, inset 0 -1px #9d784c, 0 4px 8px #5f402128;
+    background: #fff8e23d;
 }
 
-.preface-facts div { min-width: 0; padding: 11px 8px; }
+.preface-facts div { min-width: 0; padding: 7px 8px 6px; text-align: center; }
 .preface-facts div + div { border-left: 1px solid #9f7c504d; }
-.preface-facts dt { color: #52351f; font: 700 16px/1.15 var(--font-code); overflow-wrap: anywhere; }
+.preface-facts dt { color: #52351f; font: 700 15px/1.15 var(--font-code); overflow-wrap: anywhere; }
 .preface-facts dd { margin: 5px 0 0; color: #786149; font-size: 11px; }
+
+.preface-colophon {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    padding-top: 9px;
+    border-top: 1px dashed #89684473;
+    color: #85694d;
+    font: 8px/1.2 var(--font-code);
+    letter-spacing: .13em;
+}
 
 .preface-tools-panel { gap: 18px; }
 
@@ -534,14 +667,6 @@ body[data-route='preface'] .paper-page {
 .luggage-tag::before { background: #5c4230; box-shadow: 0 1px #fff5d7, inset 0 1px 2px #160c0a; }
 .luggage-tag:hover { background: #f5e7c9; box-shadow: 1px 4px 7px #76553725; }
 
-.spine-tool {
-    border: 1px solid #7d5a30;
-    color: #5f4026;
-    background: radial-gradient(circle at 34% 22%, #fff0b9, #d6b777 55%, #a78148);
-    box-shadow: inset 0 0 0 2px #edcf96, inset 0 0 0 3px #9b763f, 0 3px 0 #5a3f23, 0 5px 7px #2b180a40;
-}
-.spine-tool:hover { background: radial-gradient(circle at 34% 22%, #fff6ce, #e2c38a 55%, #b48e55); }
-.spine-tool:active { transform: translateY(2px); }
 .closed-book-cover {
     background: #52301e url('../assets/images/pages/leather-mountain-cover.png') center / 100% 100%;
     transition: transform 320ms ease, box-shadow 320ms ease;
@@ -686,7 +811,6 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         transform: translateX(9px);
     }
     .chapter-tab-active::after { top: auto; bottom: 9px; background: #8b6238; box-shadow: 0 1px #fff5d1; }
-    .spine-tools { top: 25px; right: 30px; }
     .paper-page,
     .paper-page-right.map-pocket,
     .paper-page-right.dossier-page {
@@ -710,9 +834,6 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .ledger-entry:hover { transform: translateX(2px); background: #fff7df66; }
     .ledger-feature-head .journal-label { margin-bottom: 12px; }
     .page-head h1 { text-wrap: balance; }
-    .spine-tools { top: -46px; right: 8px; gap: 10px; }
-    .spine-tool { width: 32px; height: 32px; }
-    .spine-profile { width: 34px; height: 34px; }
     .ledger-feature-mark { width: 40px; height: 40px; font-size: 11px; }
     .ledger-feature-filters { margin-top: 4px; padding-top: 25px; }
     .chapter-tab { transition: transform 240ms cubic-bezier(.2,.7,.2,1), filter 180ms; }
@@ -816,7 +937,6 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     }
     .brand-lockup strong::after { color: #f4dfb6; text-shadow: 0 -1px #28150c; }
     .brand-lockup small { color: #dac4a0; }
-    .spine-tools { display: flex; }
     .chapter-tabs { gap: 5px; padding: 3px 0 5px; }
     .chapter-tab,
     .chapter-tab:nth-child(2),
@@ -841,14 +961,27 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     }
     .year-bookmark { padding-inline: 13px; }
     .paper-page .paper-button, .paper-page .sheet-nav-button { min-height: 42px; }
-    .preface-profile-page { gap: 16px; }
-    .preface-heading h1 { font-size: 40px; }
+    .preface-profile-page { gap: 17px; }
+    .preface-heading { padding-bottom: 13px; }
+    .preface-heading h1 { font-size: 42px; }
     .preface-heading p { font-size: 13px; }
-    .preface-portrait { width: min(210px, 68vw); }
-    .preface-owner-plaque { min-width: min(280px, 90%); }
-    .preface-signature { font-size: 15px; }
+    .preface-identity-sheet { gap: 12px; padding: 14px 13px 11px; }
+    .preface-sheet-kicker { padding-inline: 8px; font-size: 8px; }
+    .preface-profile-composition { grid-template-columns: minmax(112px, .82fr) minmax(0, 1.18fr); gap: 14px; padding-inline: 2px; }
+    .preface-portrait { padding: 8px 8px 33px; }
+    .preface-portrait small { right: 7px; left: 7px; font-size: 8px; }
+    .preface-owner-copy { gap: 9px; }
+    .preface-owner-index { font-size: 8px; }
+    .preface-owner-plaque { padding: 8px 10px 9px; }
+    .preface-owner-plaque span { font-size: 7px; }
+    .preface-owner-plaque strong { font-size: 16px; }
+    .preface-signature { padding: 12px 8px 10px 14px; font-size: 14px; }
+    .preface-seal { width: 64px; }
+    .preface-seal strong { font-size: 9px; }
+    .preface-seal small { font-size: 7px; }
     .preface-facts dt { font-size: 13px; }
     .preface-facts dd { font-size: 10px; }
+    .preface-colophon { font-size: 7px; letter-spacing: .08em; }
     .preface-tool-actions { grid-template-columns: minmax(0, 1fr); gap: 10px; }
     .preface-tools-panel .preface-tool-section .paper-button { min-height: 46px; }
 }
