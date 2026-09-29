@@ -174,6 +174,14 @@ test('移动端多选筛选重绘后不因面板聚焦关闭菜单', () => {
     assert.match(appJs, /if \(isMobileContextPanelOpen\)\s*{\s*requestAnimationFrame\(\(\) => {\s*if \(refs\.rightPage\?\.contains\(document\.activeElement\)\) return;\s*refs\.rightPage\?\.focus\(\{ preventScroll: true \}\);\s*}\);\s*}/);
 });
 
+test('移动端多选筛选勾选重绘后保持菜单滚动位置', () => {
+    assert.match(customSelectJs, /const previousScrollTop = menu\.scrollTop;\s*wrapper\.dataset\.customSelectScrollTop = String\(previousScrollTop\);\s*menu\.innerHTML = '';/);
+    assert.match(customSelectJs, /if \(previousScrollTop\) menu\.scrollTop = previousScrollTop;/);
+    assert.match(appJs, /const selectScrollTop = filter\.multiple[\s\S]*?filter\.closest\('\.custom-select'\)\?\.dataset\.customSelectScrollTop/);
+    assert.match(appJs, /reopenSelectId: filter\.multiple \? filter\.id : '',\s*selectScrollTop,/);
+    assert.match(appJs, /function restoreFocus\(focusId, reopenSelectId = '', selectScrollTop = 0\)[\s\S]*const menu = wrapper\.querySelector\('\[data-custom-select-menu\]'\);\s*if \(menu\) menu\.scrollTop = selectScrollTop;/);
+});
+
 test('索引夹层排序菜单靠右弹出且移动端重置不聚焦搜索框', () => {
     assert.match(customSelectJs, /const alignsRight = wrapper\.closest\('\.index-sort-field'\);[\s\S]*\? Math\.min\(Math\.max\(triggerRect\.right - menuWidth/);
     assert.match(appJs, /focusId:\s*isMobileLayout\(\) \? 'ledgerFilters' : 'ledgerSearch'/);
@@ -262,11 +270,11 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260929-mobile-video-seek-v2/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260929-multi-select-scroll-v1/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260929-mobile-video-seek-v2/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
-    assert.match(appJs, /\.\/custom-select\.js\?v=20260929-multi-select-v2/);
-    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260929-multi-select-v2/);
+    assert.match(appJs, /\.\/custom-select\.js\?v=20260929-multi-select-scroll-v1/);
+    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260929-multi-select-scroll-v1/);
 });
 
 test('自定义下拉框初始方向和打开后的箭头都随弹出方向变化', () => {

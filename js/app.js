@@ -8,7 +8,7 @@ import { confirmFeedback, showFeedback } from './feedback-dialog.js';
 import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20260914-profile-upload-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
-import { enhanceCustomSelects } from './custom-select.js?v=20260929-multi-select-v2';
+import { enhanceCustomSelects } from './custom-select.js?v=20260929-multi-select-scroll-v1';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
@@ -499,7 +499,7 @@ function renderRoute(route, options = {}) {
     if (shouldRestoreReadingScroll && renderedPageHash === serializeRoute(route)) {
         clearPageTurn();
         restoreReadingScrollPosition();
-        restoreFocus(options.focusId, options.reopenSelectId);
+        restoreFocus(options.focusId, options.reopenSelectId, options.selectScrollTop);
         return;
     }
     const isSameChapter = previousRoute?.name === route.name
@@ -539,7 +539,7 @@ function renderRoute(route, options = {}) {
         } else if (!isSameChapter && !options.initial && isMobileLayout()) {
             window.scrollTo({ top: 0, behavior: 'instant' });
         }
-        restoreFocus(options.focusId, options.reopenSelectId);
+        restoreFocus(options.focusId, options.reopenSelectId, options.selectScrollTop);
     };
     const shouldAnimate = options.animate !== false && !options.initial && !isSameChapter;
     const crossesCover = previousRoute && (previousRoute.name === 'cover' || route.name === 'cover')
@@ -3602,6 +3602,9 @@ function handleDocumentChange(event) {
         ? [...filter.selectedOptions].map(option => option.value)
         : (filter.value || 'all');
     const nextParams = { [key]: value };
+    const selectScrollTop = filter.multiple
+        ? Number(filter.closest('.custom-select')?.dataset.customSelectScrollTop || 0)
+        : 0;
 
     if (key === 'country') {
         nextParams.area = [];
@@ -3614,6 +3617,7 @@ function handleDocumentChange(event) {
         replace: true,
         focusId: filter.id || '',
         reopenSelectId: filter.multiple ? filter.id : '',
+        selectScrollTop,
         animate: false,
         preserveRightScroll: true,
         keepContextPanelOpen: isMobileContextPanelOpen
@@ -4504,7 +4508,7 @@ function formatDateForRange(dateStr, precision) {
     return `${year}.${month}`;
 }
 
-function restoreFocus(focusId, reopenSelectId = '') {
+function restoreFocus(focusId, reopenSelectId = '', selectScrollTop = 0) {
     if (!focusId) return;
 
     if (reopenSelectId === focusId) {
@@ -4514,6 +4518,8 @@ function restoreFocus(focusId, reopenSelectId = '') {
         wrapper.classList.add('is-reopening');
         trigger.focus({ preventScroll: true });
         trigger.click();
+        const menu = wrapper.querySelector('[data-custom-select-menu]');
+        if (menu) menu.scrollTop = selectScrollTop;
         requestAnimationFrame(() => wrapper.classList.remove('is-reopening'));
         return;
     }

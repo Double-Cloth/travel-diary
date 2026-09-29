@@ -112,6 +112,8 @@ function renderCustomSelect(wrapper) {
     wrapper.classList.toggle('is-multiple', select.multiple);
     if (select.multiple) menu.setAttribute('aria-multiselectable', 'true');
     else menu.removeAttribute('aria-multiselectable');
+    const previousScrollTop = menu.scrollTop;
+    wrapper.dataset.customSelectScrollTop = String(previousScrollTop);
     menu.innerHTML = '';
     [...select.options].forEach((nativeOption, index) => {
         const option = document.createElement('span');
@@ -128,6 +130,7 @@ function renderCustomSelect(wrapper) {
     triggerLabel.textContent = select.multiple
         ? (selected.length > 1 ? `${selected[0].textContent} 等 ${selected.length} 项` : (selected[0]?.textContent || defaultLabel))
         : (select.options[select.selectedIndex]?.textContent || '');
+    if (previousScrollTop) menu.scrollTop = previousScrollTop;
 }
 
 function selectCustomOption(wrapper, option) {
