@@ -143,6 +143,10 @@ test('索引夹层总数只保留一个视觉锚点', () => {
     assert.doesNotMatch(appJs, /class="result-count"/);
 });
 
+test('筛选计数徽标不继承按钮文字阴影', () => {
+    assert.match(journalCss, /\.ledger-filter-count\s*{[^}]*text-shadow:\s*none;/);
+});
+
 test('索引夹层筛选支持同维度多选且排序仍保持单选', () => {
     for (const key of ['month', 'country', 'area', 'locality']) {
         assert.match(appJs, new RegExp(`renderLedgerSelect\\([^;]+['"]${key}['"][^;]+multiple: true`));
@@ -250,7 +254,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(indexHtml, /js\/app\.js\?v=20260929-ledger-filter-fixes-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260929-ledger-filter-fixes-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260929-ledger-filter-count-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260929-multi-select-v2/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260929-multi-select-v2/);

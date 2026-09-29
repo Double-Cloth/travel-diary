@@ -684,6 +684,7 @@ body[data-route='preface'] .paper-page {
     font-weight: 700;
     font-variant-numeric: tabular-nums;
     line-height: 1;
+    text-shadow: none;
 }
 .ledger-year-nav {
     display: grid;
