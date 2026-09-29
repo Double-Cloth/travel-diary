@@ -3918,7 +3918,10 @@ function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
     syncMobileContextPanelState();
 
     if (isMobileContextPanelOpen) {
-        requestAnimationFrame(() => refs.rightPage?.focus({ preventScroll: true }));
+        requestAnimationFrame(() => {
+            if (refs.rightPage?.contains(document.activeElement)) return;
+            refs.rightPage?.focus({ preventScroll: true });
+        });
     }
 }
 

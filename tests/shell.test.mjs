@@ -170,6 +170,10 @@ test('索引夹层多选使用稳定勾选样式并在重绘后无闪动恢复�
     assert.match(journalCss, /\.custom-select\.is-reopening \.custom-select-menu\s*{[^}]*transition:\s*none !important;/);
 });
 
+test('移动端多选筛选重绘后不因面板聚焦关闭菜单', () => {
+    assert.match(appJs, /if \(isMobileContextPanelOpen\)\s*{\s*requestAnimationFrame\(\(\) => {\s*if \(refs\.rightPage\?\.contains\(document\.activeElement\)\) return;\s*refs\.rightPage\?\.focus\(\{ preventScroll: true \}\);\s*}\);\s*}/);
+});
+
 test('索引夹层排序菜单靠右弹出且移动端重置不聚焦搜索框', () => {
     assert.match(customSelectJs, /const alignsRight = wrapper\.closest\('\.index-sort-field'\);[\s\S]*\? Math\.min\(Math\.max\(triggerRect\.right - menuWidth/);
     assert.match(appJs, /focusId:\s*isMobileLayout\(\) \? 'ledgerFilters' : 'ledgerSearch'/);
