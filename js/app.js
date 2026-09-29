@@ -63,6 +63,8 @@ const ROUTE_MAP_SLOTS = [
 const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
 const DEFAULT_VIDEO_VOLUME = 0.85;
 const VIDEO_SEEK_INPUT_HOLD_MS = 400;
+const VIDEO_DEBUG_ENABLED = typeof window !== 'undefined'
+    && new URLSearchParams(window.location.search).has('video-debug');
 const VIDEO_PLAY_ICON_PATH = 'M8 5.5v13l10-6.5z';
 const VIDEO_PAUSE_ICON_PATH = 'M7 5h4v14H7zm6 0h4v14h-4z';
 
@@ -1947,6 +1949,7 @@ function renderVideoControls() {
                 <svg class="video-viewer-more-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 6.5 6 1.5l5 5"></path></svg>
             </button>
             <output class="video-viewer-time" data-video-time>00:00 / --:--</output>
+            <output class="video-viewer-debug" data-video-debug hidden></output>
             ${renderTransformControls('视频', 'video-viewer-transform-controls')}
             <div class="video-viewer-secondary-controls">
                 <button class="photo-viewer-control video-viewer-mute" type="button" data-video-action="toggle-mute" data-video-mute aria-label="静音">静音</button>
@@ -2162,6 +2165,19 @@ function syncVideoViewerControls() {
     }
     const time = root.querySelector('[data-video-time]');
     if (time) time.textContent = `${formatVideoTime(video.currentTime)} / ${duration ? formatVideoTime(duration) : '--:--'}`;
+    const debug = root.querySelector('[data-video-debug]');
+    if (debug) {
+        if (VIDEO_DEBUG_ENABLED) {
+            const seekable = [];
+            for (let i = 0; i < video.seekable.length; i += 1) {
+                seekable.push(`${video.seekable.start(i).toFixed(1)}-${video.seekable.end(i).toFixed(1)}`);
+            }
+            debug.hidden = false;
+            debug.textContent = `t=${video.currentTime.toFixed(2)} d=${video.duration} rs=${video.readyState} ns=${video.networkState} seeking=${video.seeking} sk=[${seekable.join(',')}] err=${video.error ? video.error.code : '-'} target=${photoGestureState.videoSeekTarget === null ? '-' : photoGestureState.videoSeekTarget.toFixed(2)}`;
+        } else {
+            debug.hidden = true;
+        }
+    }
     if (photoViewerState) {
         photoViewerState.videoVolume = video.volume;
         photoViewerState.videoMuted = video.muted;

@@ -839,6 +839,17 @@
     white-space: nowrap;
 }
 
+.video-viewer-debug {
+    grid-column: 1 / -1;
+    padding: 4px 6px;
+    color: #ffe07a;
+    background: rgba(0, 0, 0, 0.72);
+    font: 11px var(--font-code);
+    line-height: 1.4;
+    text-align: left;
+    word-break: break-all;
+}
+
 .video-viewer-rate-label span {
     color: rgba(255, 247, 223, 0.72);
     font-size: 12px;
