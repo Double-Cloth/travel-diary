@@ -1932,7 +1932,7 @@ function renderVideoControls() {
                 <button class="photo-viewer-control video-viewer-play" type="button" data-video-action="toggle-play" data-video-play aria-label="播放视频">${renderVideoPlaybackIcon()}</button>
                 <button class="photo-viewer-control video-viewer-skip" type="button" data-video-action="forward" aria-label="前进 10 秒">+10s</button>
             </div>
-            <span class="video-viewer-seek-label"><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek aria-label="播放进度"></span>
+            <span class="video-viewer-seek-label"><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek aria-label="播放进度"><span class="video-viewer-seek-hit" data-video-seek-hit aria-hidden="true"></span></span>
             <button class="photo-viewer-control video-viewer-more-toggle" type="button" data-video-action="toggle-controls" data-video-more-toggle aria-expanded="false" aria-label="展开更多视频控制">
                 <span>更多</span>
                 <svg class="video-viewer-more-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 6.5 6 1.5l5 5"></path></svg>
@@ -2119,6 +2119,7 @@ function syncVideoViewerControls() {
     if (seek) {
         seek.max = String(duration);
         if (photoGestureState.videoSeekPointerId === null
+            && !video.seeking
             && Date.now() - photoGestureState.videoSeekActiveAt > VIDEO_SEEK_INPUT_HOLD_MS) {
             seek.value = String(Math.min(video.currentTime || 0, duration || 0));
         }
@@ -2512,10 +2513,18 @@ function clearPhotoRotationTimer() {
 }
 
 function handlePhotoPointerDown(event) {
-    const videoSeek = event.target.closest?.('[data-video-seek]');
-    if (videoSeek && event.pointerType !== 'mouse') {
-        beginVideoSeek(event, videoSeek);
-        return;
+    const seekSurface = event.target.closest?.('[data-video-seek-hit], [data-video-seek]');
+    if (seekSurface) {
+        const isHitLayer = seekSurface.matches('[data-video-seek-hit]');
+        if (isHitLayer || event.pointerType !== 'mouse') {
+            const seek = isHitLayer
+                ? seekSurface.closest('.video-viewer-seek-label')?.querySelector('[data-video-seek]')
+                : seekSurface;
+            if (seek) {
+                beginVideoSeek(event, seek);
+                return;
+            }
+        }
     }
 
     const stage = event.target.closest?.('[data-photo-viewer-stage]');
