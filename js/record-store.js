@@ -14,6 +14,7 @@ const MAXIMUM_RECORD_BYTES = 768 * 1024 * 1024;
 const MAXIMUM_ARCHIVE_BYTES = 256 * 1024 * 1024;
 const MAXIMUM_PROFILE_BYTES = 8 * 1024 * 1024;
 const MAXIMUM_PROFILE_IMAGE_BYTES = 6 * 1024 * 1024;
+const MAXIMUM_OWNER_NAME_LENGTH = 24;
 
 function failure(status, message) {
     return Object.assign(new Error(message), { status });
@@ -207,8 +208,19 @@ function readProfilePicture(payload) {
     return picture;
 }
 
-async function saveProfilePicture(root, payload) {
-    const picture = readProfilePicture(payload);
+function readOwnerName(payload) {
+    const encoded = payload && Object.keys(payload).length === 1 && typeof payload.name === 'string'
+        ? payload.name
+        : '';
+    const name = encoded.replace(/[\u0000-\u001f\u007f]/g, '').trim();
+    if (!name) throw failure(400, '扉页署名不能为空。');
+    if ([...name].length > MAXIMUM_OWNER_NAME_LENGTH) {
+        throw failure(400, `扉页署名不能超过 ${MAXIMUM_OWNER_NAME_LENGTH} 个字符。`);
+    }
+    return name;
+}
+
+async function writeProfileFile(root, fileName, content) {
     const releaseLock = await acquireDataLock(root);
     const suffix = randomBytes(8).toString('hex');
     let temporaryFile = '';
@@ -216,19 +228,19 @@ async function saveProfilePicture(root, payload) {
     let committed = false;
     try {
         const profileDirectory = await checkedDirectory(root, ['data', 'profile'], true);
-        const targetFile = path.join(profileDirectory, 'profile-picture.png');
+        const targetFile = path.join(profileDirectory, fileName);
         try { await checkedFile(targetFile); }
         catch (error) { if (error.code !== 'ENOENT') throw error; }
-        temporaryFile = path.join(profileDirectory, `.profile-picture-${suffix}.tmp`);
+        temporaryFile = path.join(profileDirectory, `.${fileName}-${suffix}.tmp`);
         const handle = await fs.open(temporaryFile, 'wx');
         try {
-            await handle.writeFile(picture);
+            await handle.writeFile(content);
             await handle.sync();
         } finally {
             await handle.close();
         }
         try {
-            backupFile = path.join(profileDirectory, `.profile-picture-${suffix}.bak`);
+            backupFile = path.join(profileDirectory, `.${fileName}-${suffix}.bak`);
             await fs.rename(targetFile, backupFile);
         } catch (error) {
             if (error.code !== 'ENOENT') throw error;
@@ -249,12 +261,30 @@ async function saveProfilePicture(root, payload) {
         }
         if (backupFile) await fs.unlink(backupFile).catch(() => {});
         backupFile = '';
-        return { path: 'data/profile/profile-picture.png' };
+        return { path: `data/profile/${fileName}` };
     } finally {
         if (temporaryFile) await fs.unlink(temporaryFile).catch(() => {});
         if (committed && backupFile) await fs.unlink(backupFile).catch(() => {});
         await releaseLock();
     }
+}
+
+async function saveProfilePicture(root, payload) {
+    const picture = readProfilePicture(payload);
+    return writeProfileFile(root, 'profile-picture.png', picture);
+}
+
+async function saveOwnerName(root, payload) {
+    const name = readOwnerName(payload);
+    return writeProfileFile(root, 'owner-name.txt', name);
+}
+
+async function saveProfile(root, payload) {
+    if (payload && typeof payload === 'object' && !Array.isArray(payload)
+        && Object.prototype.hasOwnProperty.call(payload, 'name')) {
+        return saveOwnerName(root, payload);
+    }
+    return saveProfilePicture(root, payload);
 }
 
 async function replaceIndex(dataDir, indexFile, previous, records) {
@@ -948,7 +978,7 @@ function createRecordApi(root, options = {}) {
         }
         if (requestPath === '/api/travel-profile') {
             if (req.method !== 'PUT') {
-                send(405, { error: '头像接口仅支持更新操作。' }, { Allow: 'PUT' });
+                send(405, { error: '个人资料接口仅支持更新操作。' }, { Allow: 'PUT' });
                 return;
             }
             if (!session) {
@@ -960,16 +990,16 @@ function createRecordApi(root, options = {}) {
                 return;
             }
             if (!hasMediaType(req, 'application/json')) {
-                send(415, { error: '头像更新请求必须使用 application/json。' });
+                send(415, { error: '个人资料更新请求必须使用 application/json。' });
                 return;
             }
             try {
                 const payload = await readJsonBody(req, MAXIMUM_PROFILE_BYTES);
-                const result = await saveProfilePicture(root, payload);
+                const result = await saveProfile(root, payload);
                 send(200, { saved: true, ...result });
             } catch (error) {
                 send(error.status || 500, {
-                    error: error.status ? error.message : '头像保存失败，请检查数据目录权限和磁盘空间。'
+                    error: error.status ? error.message : '个人资料保存失败，请检查数据目录权限和磁盘空间。'
                 });
             }
             return;

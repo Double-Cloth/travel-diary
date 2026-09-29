@@ -42,6 +42,7 @@ assets/
 | `assets/images/pages/left-page-ledger-travel-diary.png` | 路径页左页背景。 |
 | `assets/images/pages/left-page-profile-travel-diary.png` | 个人档案左页背景。 |
 | `data/profile/profile-picture.png` | 书脊头像入口。 |
+| `data/profile/owner-name.txt` | 扉页署名；缺失时前端回退为默认署名。 |
 | `assets/textures/paper-grain.png` | 纸张纹理叠层。 |
 
 ## 命名规则

@@ -197,6 +197,32 @@ test('remote 模式通过会话与令牌更新头像，并拒绝无效图片', a
     assert.deepEqual(await fs.readFile(path.join(root, 'data/profile/profile-picture.png')), png);
 });
 
+test('remote 模式通过会话与令牌更新扉页署名，并拒绝空署名', async () => {
+    const emptyBody = Buffer.from(JSON.stringify({ name: '   ' }));
+    const invalid = await request({
+        pathname: '/api/travel-profile', method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json', 'Content-Length': emptyBody.length,
+            'X-Travel-Token': token, Cookie: cookie
+        },
+        body: emptyBody
+    });
+    assert.equal(invalid.status, 400);
+
+    const body = Buffer.from(JSON.stringify({ name: '山川过客' }));
+    const updated = await request({
+        pathname: '/api/travel-profile', method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json', 'Content-Length': body.length,
+            'X-Travel-Token': token, Cookie: cookie
+        },
+        body
+    });
+    assert.equal(updated.status, 200, updated.body.toString('utf8'));
+    assert.equal(json(updated).saved, true);
+    assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '山川过客');
+});
+
 test('remote 模式可通过登录会话和令牌导出、导入完整备份', async () => {
     const created = json(await mutate('POST', draft('c', { date: '2026-09-15' }))).record;
     const exported = await request({ pathname: '/api/travel-data', headers: { Cookie: cookie } });

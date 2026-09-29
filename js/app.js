@@ -6,6 +6,8 @@ import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-s
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { confirmFeedback, showFeedback } from './feedback-dialog.js';
 import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20260914-profile-upload-v1';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=20260929-owner-name-v1';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260929-owner-name-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { enhanceCustomSelects } from './custom-select.js?v=20260929-multi-select-scroll-v1';
@@ -73,8 +75,11 @@ let openDeleteRecord;
 let openDataExport;
 let openDataClear;
 let openProfilePictureUpload;
+let openOwnerNameChange;
 let openPasswordChange;
 let profilePictureCapability = null;
+let profileOwnerName = DEFAULT_OWNER_NAME;
+let ownerNameDialog;
 let dataTransfer;
 let travelModel = null;
 let activeRoute = null;
@@ -173,6 +178,7 @@ async function initApp() {
     openDeleteRecord = requestDeleteAuthorization;
     refs.openDeleteRecord = openDeleteRecord;
     dataTransfer = createDataTransfer(async () => {
+        profileOwnerName = await loadOwnerName(getRefreshKey());
         await refreshTravelModel(getRefreshKey());
         syncRouteFromHash({ initial: true });
     });
@@ -193,7 +199,7 @@ async function initApp() {
         void showFeedback(
             result.refreshFailed
                 ? '全部旅行数据已清空，但页面刷新失败。请手动刷新后查看。'
-                : '所有旅行记录、正文、照片、视频和自定义头像均已清空，访问密码保持不变。',
+                : '所有旅行记录、正文、照片、视频、自定义头像和扉页署名均已清空，访问密码保持不变。',
             { label: '数据管理', title: '全部数据已清空' }
         );
     }, {
@@ -203,7 +209,7 @@ async function initApp() {
         actionError: '无法清空全部数据，请重试。',
         staticMessage: '当前站点为静态只读页面，不支持清空全部数据。',
         beforePrompt: () => confirmFeedback(
-            '所有旅行记录、正文、照片、视频和自定义头像都将被永久删除，且无法撤销。访问密码会保留。建议先导出完整备份。',
+            '所有旅行记录、正文、照片、视频、自定义头像和扉页署名都将被永久删除，且无法撤销。访问密码会保留。建议先导出完整备份。',
             {
                 label: '危险操作',
                 title: '确定清空全部数据？',
@@ -222,6 +228,28 @@ async function initApp() {
         actionError: '无法打开头像选择器，请重试。',
         staticMessage: '当前站点为静态只读页面，不支持更换头像。'
     });
+    ownerNameDialog = createOwnerNameDialog();
+    openOwnerNameChange = createPasswordGate(async capability => {
+        try {
+            const nextName = await ownerNameDialog.open(profileOwnerName);
+            if (!nextName) return;
+            profileOwnerName = await saveOwnerName(nextName, capability);
+            refreshProfileOwnerName();
+            document.querySelector('.preface-owner-plaque')?.focus();
+            void showFeedback('扉页署名已更新。', { label: '扉页署名', title: '署名更新成功' });
+        } catch (error) {
+            void showFeedback(error?.message || '署名保存失败，请重试。', {
+                label: '扉页署名',
+                title: '无法保存署名'
+            });
+        }
+    }, {
+        title: '修改署名验证',
+        description: '输入 6 位数字密码后修改扉页署名。',
+        verifying: '正在验证并准备修改署名…',
+        actionError: '无法修改署名，请重试。',
+        staticMessage: '当前站点为静态只读页面，不支持修改署名。'
+    });
     const showPasswordChange = createPasswordChangeDialog(async () => {
         await showFeedback(
             '访问密码已安全更新，其他设备上的旧登录会话已失效。',
@@ -238,6 +266,7 @@ async function initApp() {
     renderLoading();
 
     try {
+        profileOwnerName = await loadOwnerName();
         const rawRecords = await loadTravelData();
         const hydratedRecords = await loadTravelRecords(rawRecords);
         travelModel = deriveTravelModel(hydratedRecords);
@@ -263,6 +292,11 @@ function cacheRefs() {
 
 function refreshProfilePicture() {
     syncProfilePictureImages(document, getRefreshKey());
+}
+
+function refreshProfileOwnerName() {
+    renderedPageHash = '';
+    if (activeRoute) renderRoute(activeRoute, { initial: true });
 }
 
 function resetProfilePicture() {
@@ -918,10 +952,10 @@ function renderPreface() {
 
                     <div class="preface-owner-copy">
                         <p class="preface-owner-index">OWNER · 007</p>
-                        <div class="preface-owner-plaque">
+                        <button class="preface-owner-plaque" type="button" data-action="edit-owner-name" aria-label="修改扉页署名" title="修改扉页署名">
                             <span>TRAVEL DIARY OWNER</span>
-                            <strong>Double-Cloth</strong>
-                        </div>
+                            <strong>${escapeHtml(profileOwnerName)}</strong>
+                        </button>
                         <blockquote class="preface-signature">且将新火试新茶，<br>诗酒趁年华</blockquote>
                         <span class="preface-seal" aria-hidden="true">
                             <strong>MEMORY</strong>
@@ -951,10 +985,11 @@ function renderPreface() {
 
         <section class="preface-tool-section" aria-labelledby="prefaceWritingTitle">
             <h3 id="prefaceWritingTitle">日记维护</h3>
-            <p>继续写下一段旅程，或更改扉页中的个人头像。</p>
+            <p>继续写下一段旅程，或更改扉页中的个人头像与署名。</p>
             <div class="preface-tool-actions">
                 <button class="paper-button" type="button" data-action="add-record">新增旅行日记</button>
                 <button class="paper-button" type="button" data-action="upload-profile-picture">更换个人头像</button>
+                <button class="paper-button" type="button" data-action="edit-owner-name">修改扉页署名</button>
             </div>
         </section>
 
@@ -976,7 +1011,7 @@ function renderPreface() {
 
         <section class="preface-tool-section archive-danger-zone" aria-labelledby="prefaceDangerTitle">
             <h3 id="prefaceDangerTitle">危险操作</h3>
-            <p>永久清空所有旅行记录和自定义头像。操作前请先导出备份。</p>
+            <p>永久清空所有旅行记录、自定义头像和扉页署名。操作前请先导出备份。</p>
             <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
         </section>
     `, 'dossier-page context-panel preface-tools-panel');
@@ -3245,6 +3280,11 @@ function handleDocumentClick(event) {
         event.preventDefault();
         profilePictureCapability = null;
         void openProfilePictureUpload().catch(error => showFeedback(error.message));
+        return;
+    }
+    if (event.target.closest('[data-action="edit-owner-name"]')) {
+        event.preventDefault();
+        void openOwnerNameChange().catch(error => showFeedback(error.message));
         return;
     }
     if (event.target.closest('[data-action="add-record"]')) {

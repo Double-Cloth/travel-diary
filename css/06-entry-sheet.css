@@ -1234,6 +1234,7 @@ dialog.record-password.entry-sheet,
 dialog.data-import-confirm.entry-sheet,
 dialog.data-import-success.entry-sheet,
 dialog.record-delete-dialog.entry-sheet,
+dialog.profile-owner-dialog.entry-sheet,
 dialog.feedback-dialog.entry-sheet {
     width: min(420px, calc(100% - 32px));
     max-height: calc(100dvh - 32px);
@@ -1245,6 +1246,7 @@ dialog.feedback-dialog.entry-sheet {
 .data-import-confirm::backdrop,
 .data-import-success::backdrop,
 .record-delete-dialog::backdrop,
+.profile-owner-dialog::backdrop,
 .feedback-dialog::backdrop { background: rgba(17, 9, 4, 0.72); backdrop-filter: blur(5px); }
 .record-password-card { position: relative; padding: 32px 38px 36px; text-align: center; }
 .record-password-close { position: absolute; top: 18px; right: 18px; width: auto; padding: 7px 11px; font-size: 12px; }
@@ -1429,6 +1431,41 @@ dialog.feedback-dialog.entry-sheet {
 .feedback-dialog-actions .feedback-dialog-confirm { color: var(--paper-50); border-color: rgba(45, 56, 34, 0.56); background: linear-gradient(180deg, #596747, #35422b); }
 .feedback-dialog-confirmation .feedback-dialog-actions .feedback-dialog-confirm { border-color: rgba(91, 27, 20, 0.52); background: linear-gradient(180deg, #a84a39, #76271e); }
 
+.profile-owner-dialog-card { padding: 32px 38px 36px; text-align: center; }
+.profile-owner-dialog-seal {
+    display: grid;
+    place-items: center;
+    width: 58px;
+    height: 58px;
+    margin: 2px auto 18px;
+    border: 2px solid rgba(143, 53, 39, 0.76);
+    border-radius: 50%;
+    color: var(--stamp);
+    background: rgba(143, 53, 39, 0.06);
+    box-shadow: inset 0 0 0 4px rgba(143, 53, 39, 0.07);
+    transform: rotate(-3deg);
+}
+.profile-owner-dialog-seal svg { width: 30px; height: 30px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.profile-owner-dialog .journal-label { margin: 0 auto 8px; }
+.profile-owner-dialog h2 { margin: 0; color: var(--ink); font-size: 27px; line-height: 1.25; }
+.profile-owner-dialog-note { margin: 10px 0 18px; color: var(--ink-soft); font-size: 14px; line-height: 1.8; }
+.profile-owner-dialog-input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1px solid rgba(102, 68, 36, 0.34);
+    border-radius: 6px;
+    color: var(--ink);
+    background: rgba(255, 251, 235, 0.7);
+    box-shadow: inset 0 1px 3px rgba(67, 39, 17, 0.12);
+    font: 16px var(--font-serif);
+    text-align: center;
+}
+.profile-owner-dialog-input:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+.profile-owner-dialog-error { min-height: 20px; margin: 8px 0 0; color: var(--stamp); font-size: 13px; line-height: 1.5; }
+.profile-owner-dialog-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-top: 14px; }
+.profile-owner-dialog-actions button { min-width: 0; padding-inline: 12px; }
+.profile-owner-dialog-actions .profile-owner-dialog-submit { color: var(--paper-50); border-color: rgba(45, 56, 34, 0.56); background: linear-gradient(180deg, #596747, #35422b); }
+
 @keyframes passwordShake {
     0%, 100% { transform: translateX(0); }
     30% { transform: translateX(-6px); }
@@ -1453,6 +1490,7 @@ dialog.feedback-dialog.entry-sheet {
     dialog.data-import-confirm.entry-sheet,
     dialog.data-import-success.entry-sheet,
     dialog.record-delete-dialog.entry-sheet,
+    dialog.profile-owner-dialog.entry-sheet,
     dialog.feedback-dialog.entry-sheet { width: calc(100% - 24px); }
     .record-password-card { padding: 28px 24px 26px; }
     .record-password .record-password-close { top: 14px; right: 14px; width: auto; padding: 7px 11px; }
@@ -1468,6 +1506,9 @@ dialog.feedback-dialog.entry-sheet {
     .feedback-dialog-card { padding: 28px 24px 26px; }
     .feedback-dialog-seal { width: 52px; height: 52px; margin-bottom: 14px; }
     .feedback-dialog h2 { font-size: 24px; }
+    .profile-owner-dialog-card { padding: 28px 24px 26px; }
+    .profile-owner-dialog-seal { width: 52px; height: 52px; margin-bottom: 14px; }
+    .profile-owner-dialog h2 { font-size: 24px; }
     .feedback-dialog-confirmation .feedback-dialog-actions { grid-template-columns: minmax(0, 1fr); }
     .data-import-success h2 { font-size: 24px; }
     .record-delete-dialog-card { padding: 28px 24px 26px; }

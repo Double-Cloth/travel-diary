@@ -58,6 +58,20 @@ test('完整 ZIP 包含 data 与认证配置，并可恢复访问密码', async 
     assert.equal((await fs.readdir(root)).some(name => name.startsWith('.travel-')), false);
 });
 
+test('扉页署名文件随全部数据导出并可导入恢复', async t => {
+    const root = await fixture(t, 'travel-diary-archive-owner-name-');
+    await fs.mkdir(path.join(root, 'data/profile'), { recursive: true });
+    await fs.writeFile(path.join(root, 'data/profile/owner-name.txt'), '山川过客');
+
+    const archive = await exportDataArchive(root);
+    assert.equal(readZip(archive).some(entry => entry.name === 'data/profile/owner-name.txt'), true);
+
+    await fs.rm(path.join(root, 'data/profile/owner-name.txt'));
+    const result = await importDataArchive(root, archive);
+    assert.equal(result.files, 3);
+    assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '山川过客');
+});
+
 test('清空全部数据会重建空目录与默认头像并保留认证配置', async t => {
     const root = await fixture(t, 'travel-diary-clear-all-');
     await fs.mkdir(path.join(root, 'data/travel-diary/2026'), { recursive: true });

@@ -13,6 +13,8 @@ const recordDeleteDialogJs = await readFile(new URL('../js/record-delete-dialog.
 const recordPasswordJs = await readFile(new URL('../js/record-password.js', import.meta.url), 'utf8');
 const feedbackDialogJs = await readFile(new URL('../js/feedback-dialog.js', import.meta.url), 'utf8');
 const profilePictureJs = await readFile(new URL('../js/profile-picture.js', import.meta.url), 'utf8');
+const profileOwnerJs = await readFile(new URL('../js/profile-owner.js', import.meta.url), 'utf8');
+const profileOwnerDialogJs = await readFile(new URL('../js/profile-owner-dialog.js', import.meta.url), 'utf8');
 const recordStoreJs = await readFile(new URL('../js/record-store.js', import.meta.url), 'utf8');
 const writerCapabilityJs = await readFile(new URL('../js/writer-capability.js', import.meta.url), 'utf8');
 const authJs = await readFile(new URL('../js/auth.js', import.meta.url), 'utf8');
@@ -270,7 +272,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260929-multi-select-scroll-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260929-owner-name-v1/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260929-mobile-video-seek-v2/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260929-multi-select-scroll-v1/);
@@ -675,6 +677,35 @@ test('点击头像先验证密码，再选择常见图片并写入服务更新�
     assert.match(profilePictureJs, /'X-Travel-Token': capability\.token/);
     assert.match(serverJs, /'\/api\/travel-profile'/);
     assert.match(recordStoreJs, /saveProfilePicture/);
+});
+
+test('扉页署名像头像一样验证后修改并随完整备份导出', () => {
+    assert.match(appJs, /import \{ DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName \} from '\.\/profile-owner\.js\?v=20260929-owner-name-v1';/);
+    assert.match(appJs, /import \{ createOwnerNameDialog \} from '\.\/profile-owner-dialog\.js\?v=20260929-owner-name-v1';/);
+    assert.match(appJs, /let profileOwnerName = DEFAULT_OWNER_NAME;/);
+    assert.match(appJs, /profileOwnerName = await loadOwnerName\(\);/);
+    assert.match(appJs, /class="preface-owner-plaque" type="button" data-action="edit-owner-name"/);
+    assert.match(appJs, /<strong>\$\{escapeHtml\(profileOwnerName\)\}<\/strong>/);
+    assert.match(appJs, /data-action="edit-owner-name">修改扉页署名<\/button>/);
+    assert.match(appJs, /const nextName = await ownerNameDialog\.open\(profileOwnerName\);/);
+    assert.match(appJs, /profileOwnerName = await saveOwnerName\(nextName, capability\);/);
+    assert.match(appJs, /function refreshProfileOwnerName\(\)/);
+    assert.match(appJs, /profileOwnerName = await loadOwnerName\(getRefreshKey\(\)\);/);
+    assert.match(profileOwnerJs, /const OWNER_NAME_PATH = 'data\/profile\/owner-name\.txt';/);
+    assert.match(profileOwnerJs, /export const DEFAULT_OWNER_NAME = '山川过客';/);
+    assert.match(profileOwnerJs, /export async function loadOwnerName\(cacheKey = ''\)/);
+    assert.match(profileOwnerJs, /export async function saveOwnerName\(name, capability\)/);
+    assert.match(profileOwnerJs, /api\/travel-profile/);
+    assert.match(profileOwnerJs, /JSON\.stringify\(\{ name: normalized \}\)/);
+    assert.match(profileOwnerDialogJs, /export function createOwnerNameDialog\(\)/);
+    assert.match(profileOwnerDialogJs, /data-owner-name-input/);
+    assert.match(profileOwnerDialogJs, /normalizeOwnerName\(input\.value\)/);
+    assert.match(recordStoreJs, /async function saveOwnerName\(root, payload\)/);
+    assert.match(recordStoreJs, /async function saveProfile\(root, payload\)/);
+    assert.match(recordStoreJs, /owner-name\.txt/);
+    assert.match(journalCss, /\.preface-owner-plaque:hover,/);
+    assert.match(journalCss, /\.profile-owner-dialog-card\s*{/);
+    assert.match(journalCss, /dialog\.profile-owner-dialog\.entry-sheet/);
 });
 
 test('页脊不再显示新增与头像圆形快捷组件', () => {
