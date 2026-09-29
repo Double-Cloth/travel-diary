@@ -127,7 +127,7 @@ export function createDataTransfer(onImported) {
 
     const requestImportAuthorization = createPasswordGate(chooseImportWithAuthorization, {
         title: '导入数据验证',
-        description: '输入 6 位数字密码后选择备份。导入不会修改当前密码。',
+        description: '输入 6 位数字密码后选择备份。导入不会修改当前服务器密码。',
         verifying: '正在验证并选择备份…',
         actionError: '无法开始导入，请重试。',
         staticMessage: '当前站点为静态只读页面，不提供全部数据导入。'
