@@ -727,7 +727,7 @@
     width: 32px;
     height: 32px;
 }
-.video-viewer-seek-label { position: relative; min-width: 0; }
+.video-viewer-seek-label { min-width: 0; }
 
 .video-viewer-range {
     width: 100%;
@@ -796,16 +796,7 @@
 
 .video-viewer-seek {
     height: 32px;
-    pointer-events: none;
     touch-action: none;
-}
-
-.video-viewer-seek-hit {
-    position: absolute;
-    inset: 0;
-    display: block;
-    touch-action: none;
-    cursor: pointer;
 }
 
 .video-viewer-volume { width: 76px; }
@@ -837,17 +828,6 @@
     text-align: center;
     text-shadow: 0 0 7px rgba(226, 172, 75, 0.22);
     white-space: nowrap;
-}
-
-.video-viewer-debug {
-    grid-column: 1 / -1;
-    padding: 4px 6px;
-    color: #ffe07a;
-    background: rgba(0, 0, 0, 0.72);
-    font: 11px var(--font-code);
-    line-height: 1.4;
-    text-align: left;
-    word-break: break-all;
 }
 
 .video-viewer-rate-label span {

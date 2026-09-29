@@ -63,8 +63,6 @@ const ROUTE_MAP_SLOTS = [
 const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
 const DEFAULT_VIDEO_VOLUME = 0.85;
 const VIDEO_SEEK_INPUT_HOLD_MS = 400;
-const VIDEO_DEBUG_ENABLED = typeof window !== 'undefined'
-    && new URLSearchParams(window.location.search).has('video-debug');
 const VIDEO_PLAY_ICON_PATH = 'M8 5.5v13l10-6.5z';
 const VIDEO_PAUSE_ICON_PATH = 'M7 5h4v14H7zm6 0h4v14h-4z';
 
@@ -340,10 +338,6 @@ function bindGlobalEvents() {
     document.addEventListener('pointermove', handlePhotoPointerMove);
     document.addEventListener('pointerup', handlePhotoPointerEnd);
     document.addEventListener('pointercancel', handlePhotoPointerEnd);
-    document.addEventListener('touchstart', handleVideoSeekTouchStart, { passive: false });
-    document.addEventListener('touchmove', handleVideoSeekTouchMove, { passive: false });
-    document.addEventListener('touchend', handleVideoSeekTouchEnd);
-    document.addEventListener('touchcancel', handleVideoSeekTouchEnd);
     document.addEventListener('dblclick', handlePhotoDoubleClick);
     document.addEventListener('wheel', handlePhotoWheel, { passive: false });
     document.addEventListener('fullscreenchange', handlePhotoViewerFullscreenChange);
@@ -1793,12 +1787,7 @@ function openPhotoViewer(photos, index = 0) {
         translateY: 0,
         videoVolume: DEFAULT_VIDEO_VOLUME,
         videoMuted: false,
-        videoRate: 1,
-        videoDuration: 0,
-        videoBlobUrl: null,
-        videoBlobSource: '',
-        videoBlobPending: false,
-        videoCaptionBackup: ''
+        videoRate: 1
     };
     photoGestureState = createPhotoGestureState();
     renderPhotoViewer();
@@ -1810,7 +1799,6 @@ function renderPhotoViewer() {
     const previousFrame = previousImage?.complete && previousImage.naturalWidth
         ? previousImage.closest('[data-photo-viewer-frame]').cloneNode(true) : null;
     document.querySelector('[data-photo-viewer]')?.remove();
-    releaseVideoBlob();
     const root = getPhotoViewerRoot();
     if (!photoViewerState || !root) {
         return;
@@ -1862,22 +1850,11 @@ function renderPhotoViewer() {
             for (const eventName of ['durationchange', 'timeupdate', 'play', 'pause', 'ended', 'volumechange', 'ratechange']) {
                 video.addEventListener(eventName, syncVideoViewerControls);
             }
-            video.addEventListener('seeked', () => {
-                if (video !== getViewerVideo()) return;
-                flushVideoSeek();
-                syncVideoViewerControls();
-            });
             video.addEventListener('click', handleViewerVideoClick);
             video.addEventListener('loadedmetadata', () => {
                 if (video !== getViewerVideo()) return;
-                const caption = getPhotoViewerRoot()?.querySelector('.photo-viewer-caption');
-                if (caption && photoViewerState?.videoCaptionBackup) {
-                    caption.textContent = photoViewerState.videoCaptionBackup;
-                    photoViewerState.videoCaptionBackup = '';
-                }
                 fitPhotoToStage();
                 syncVideoViewerControls();
-                flushVideoSeek();
             });
             video.addEventListener('error', showVideoPlaybackError, { once: true });
             if (video.readyState >= 1) fitPhotoToStage();
@@ -1928,7 +1905,6 @@ function renderPhotoViewer() {
 function closePhotoViewerDialog() {
     stopObservingPhotoViewerStage();
     document.querySelector('[data-photo-viewer]')?.remove();
-    releaseVideoBlob();
     photoViewerState = null;
     photoGestureState = createPhotoGestureState();
     clearPhotoRotationTimer();
@@ -1956,13 +1932,12 @@ function renderVideoControls() {
                 <button class="photo-viewer-control video-viewer-play" type="button" data-video-action="toggle-play" data-video-play aria-label="播放视频">${renderVideoPlaybackIcon()}</button>
                 <button class="photo-viewer-control video-viewer-skip" type="button" data-video-action="forward" aria-label="前进 10 秒">+10s</button>
             </div>
-            <span class="video-viewer-seek-label"><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek aria-label="播放进度"><span class="video-viewer-seek-hit" data-video-seek-hit aria-hidden="true"></span></span>
+            <span class="video-viewer-seek-label"><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek aria-label="播放进度"></span>
             <button class="photo-viewer-control video-viewer-more-toggle" type="button" data-video-action="toggle-controls" data-video-more-toggle aria-expanded="false" aria-label="展开更多视频控制">
                 <span>更多</span>
                 <svg class="video-viewer-more-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 6.5 6 1.5l5 5"></path></svg>
             </button>
             <output class="video-viewer-time" data-video-time>00:00 / --:--</output>
-            <output class="video-viewer-debug" data-video-debug hidden></output>
             ${renderTransformControls('视频', 'video-viewer-transform-controls')}
             <div class="video-viewer-secondary-controls">
                 <button class="photo-viewer-control video-viewer-mute" type="button" data-video-action="toggle-mute" data-video-mute aria-label="静音">静音</button>
@@ -2142,15 +2117,8 @@ function syncVideoViewerControls() {
     const duration = Number.isFinite(video.duration) ? video.duration : 0;
     const seek = root.querySelector('[data-video-seek]');
     if (seek) {
-        if (duration > 0) {
-            seek.max = String(duration);
-            if (photoViewerState) photoViewerState.videoDuration = duration;
-        }
-        if (photoGestureState.videoSeekPointerId === null
-            && photoGestureState.videoSeekTouchId === null
-            && photoGestureState.videoSeekTarget === null
-            && !video.seeking
-            && Date.now() - photoGestureState.videoSeekActiveAt > VIDEO_SEEK_INPUT_HOLD_MS) {
+        seek.max = String(duration);
+        if (Date.now() - photoGestureState.videoSeekActiveAt > VIDEO_SEEK_INPUT_HOLD_MS) {
             seek.value = String(Math.min(video.currentTime || 0, duration || 0));
         }
     }
@@ -2181,19 +2149,6 @@ function syncVideoViewerControls() {
     }
     const time = root.querySelector('[data-video-time]');
     if (time) time.textContent = `${formatVideoTime(video.currentTime)} / ${duration ? formatVideoTime(duration) : '--:--'}`;
-    const debug = root.querySelector('[data-video-debug]');
-    if (debug) {
-        if (VIDEO_DEBUG_ENABLED) {
-            const seekable = [];
-            for (let i = 0; i < video.seekable.length; i += 1) {
-                seekable.push(`${video.seekable.start(i).toFixed(1)}-${video.seekable.end(i).toFixed(1)}`);
-            }
-            debug.hidden = false;
-            debug.textContent = `t=${video.currentTime.toFixed(2)} d=${video.duration} rs=${video.readyState} ns=${video.networkState} seeking=${video.seeking} sk=[${seekable.join(',')}] err=${video.error ? video.error.code : '-'} target=${photoGestureState.videoSeekTarget === null ? '-' : photoGestureState.videoSeekTarget.toFixed(2)}`;
-        } else {
-            debug.hidden = true;
-        }
-    }
     if (photoViewerState) {
         photoViewerState.videoVolume = video.volume;
         photoViewerState.videoMuted = video.muted;
@@ -2255,14 +2210,11 @@ function handleMediaLoadError(event) {
 function showViewerMediaError(media) {
     const current = photoViewerState?.photos?.[photoViewerState.index] || {};
     const kind = media?.matches?.('video') ? 'video' : 'image';
-    const isVideoBlob = kind === 'video' && Boolean(photoViewerState?.videoBlobUrl || photoViewerState?.videoBlobPending);
-    const message = isVideoBlob
-        ? '视频缓存后仍无法播放，可能是文件编码不受支持。'
-        : formatMediaReferenceError({
-            kind,
-            name: media?.dataset?.mediaName || current.name,
-            src: media?.currentSrc || media?.src || current.src
-        });
+    const message = formatMediaReferenceError({
+        kind,
+        name: media?.dataset?.mediaName || current.name,
+        src: media?.currentSrc || media?.src || current.src
+    });
     const root = getPhotoViewerRoot();
     const notice = root?.querySelector('[data-photo-viewer-media-error]');
     const frame = root?.querySelector('[data-photo-viewer-frame]');
@@ -2559,15 +2511,6 @@ function clearPhotoRotationTimer() {
 }
 
 function handlePhotoPointerDown(event) {
-    const seekSurface = event.target.closest?.('[data-video-seek-hit], [data-video-seek]');
-    if (seekSurface) {
-        if (event.pointerType === 'mouse') {
-            const seek = resolveVideoSeekInput(seekSurface);
-            if (seek) beginVideoSeek(event, seek);
-        }
-        return;
-    }
-
     const stage = event.target.closest?.('[data-photo-viewer-stage]');
     if (!stage || !photoViewerState || (event.pointerType === 'mouse' && event.button !== 0)) {
         return;
@@ -2592,11 +2535,6 @@ function handlePhotoPointerDown(event) {
 }
 
 function handlePhotoPointerMove(event) {
-    if (photoGestureState.videoSeekPointerId === event.pointerId) {
-        updateVideoSeekFromPointer(event);
-        return;
-    }
-
     if (!photoViewerState || !photoGestureState.pointers.has(event.pointerId)) {
         return;
     }
@@ -2638,14 +2576,6 @@ function handlePhotoPointerMove(event) {
 }
 
 function handlePhotoPointerEnd(event) {
-    if (photoGestureState.videoSeekPointerId === event.pointerId) {
-        if (event.type === 'pointerup') updateVideoSeekFromPointer(event);
-        photoGestureState.videoSeekPointerId = null;
-        photoGestureState.videoSeekActiveAt = Date.now();
-        syncVideoViewerControls();
-        return;
-    }
-
     if (!photoGestureState.pointers.has(event.pointerId)) {
         return;
     }
@@ -2661,189 +2591,6 @@ function handlePhotoPointerEnd(event) {
         photoGestureState.suppressClick = true;
         handleVideoViewerAction('toggle-play');
     }
-}
-
-function beginVideoSeek(event, seek) {
-    const video = getViewerVideo();
-    if (!video || getVideoSeekMax(video) <= 0 || event.button !== 0) return;
-
-    event.preventDefault();
-    photoGestureState.videoSeekPointerId = event.pointerId;
-    seek.setPointerCapture?.(event.pointerId);
-    updateVideoSeekFromPointer(event, seek);
-}
-
-function updateVideoSeekFromPointer(event, seek = getPhotoViewerRoot()?.querySelector('[data-video-seek]')) {
-    event.preventDefault();
-    updateVideoSeekFromPoint(event.clientX, seek);
-}
-
-function handleVideoSeekTouchStart(event) {
-    const seek = resolveVideoSeekInput(event.target);
-    if (!seek) return;
-    const touch = event.changedTouches[0];
-    if (!touch) return;
-
-    event.preventDefault();
-    photoGestureState.videoSeekTouchId = touch.identifier;
-    updateVideoSeekFromPoint(touch.clientX, seek);
-}
-
-function handleVideoSeekTouchMove(event) {
-    if (photoGestureState.videoSeekTouchId === null) return;
-    const touch = findChangedTouch(event.changedTouches, photoGestureState.videoSeekTouchId);
-    if (!touch) return;
-
-    event.preventDefault();
-    updateVideoSeekFromPoint(touch.clientX);
-}
-
-function handleVideoSeekTouchEnd(event) {
-    if (photoGestureState.videoSeekTouchId === null) return;
-    if (!findChangedTouch(event.changedTouches, photoGestureState.videoSeekTouchId)) return;
-
-    photoGestureState.videoSeekTouchId = null;
-    photoGestureState.videoSeekActiveAt = Date.now();
-    flushVideoSeek();
-    syncVideoViewerControls();
-}
-
-function resolveVideoSeekInput(target) {
-    const surface = target?.closest?.('[data-video-seek-hit], [data-video-seek]');
-    if (!surface) return null;
-    return surface.matches('[data-video-seek-hit]')
-        ? surface.closest('.video-viewer-seek-label')?.querySelector('[data-video-seek]') || null
-        : surface;
-}
-
-function findChangedTouch(list, identifier) {
-    if (!list) return null;
-    for (const touch of list) {
-        if (touch.identifier === identifier) return touch;
-    }
-    return null;
-}
-
-function updateVideoSeekFromPoint(clientX, seek = getPhotoViewerRoot()?.querySelector('[data-video-seek]')) {
-    const video = getViewerVideo();
-    const max = (video ? getVideoSeekMax(video) : 0) || photoViewerState?.videoDuration || 0;
-    const rect = seek?.getBoundingClientRect();
-    if (!video || max <= 0 || !rect?.width) return;
-
-    const currentTime = clamp((clientX - rect.left) / rect.width, 0, 1) * max;
-    photoGestureState.videoSeekActiveAt = Date.now();
-    photoGestureState.videoSeekTarget = currentTime;
-    photoGestureState.videoSeekTargetAt = Date.now();
-    seek.value = String(currentTime);
-    flushVideoSeek();
-    syncVideoViewerControls();
-}
-
-function flushVideoSeek() {
-    const video = getViewerVideo();
-    const target = photoGestureState.videoSeekTarget;
-    if (!video || target === null) return;
-    if (!isVideoSeekable(video)) {
-        upgradeViewerVideoToBlob();
-        return;
-    }
-    if (video.seeking || video.readyState < 1) return;
-    if (Date.now() - photoGestureState.videoSeekTargetAt > 4000) {
-        photoGestureState.videoSeekTarget = null;
-        return;
-    }
-
-    const max = getVideoSeekMax(video) || photoViewerState?.videoDuration || 0;
-    if (max <= 0) return;
-    const time = clamp(target, 0, max);
-    video.currentTime = time;
-    if (Math.abs(video.currentTime - time) < 0.25) {
-        photoGestureState.videoSeekTarget = null;
-    }
-}
-
-function isVideoSeekable(video) {
-    const seekable = video?.seekable;
-    return Boolean(seekable && seekable.length && seekable.end(seekable.length - 1) > 0);
-}
-
-function releaseVideoBlob() {
-    if (!photoViewerState) return;
-    if (photoViewerState.videoBlobUrl) {
-        URL.revokeObjectURL(photoViewerState.videoBlobUrl);
-    }
-    photoViewerState.videoBlobUrl = null;
-    photoViewerState.videoBlobSource = '';
-    photoViewerState.videoBlobPending = false;
-    photoViewerState.videoCaptionBackup = '';
-}
-
-function upgradeViewerVideoToBlob() {
-    const video = getViewerVideo();
-    if (!video || !photoViewerState) return;
-    if (photoViewerState.videoBlobUrl || photoViewerState.videoBlobPending) return;
-    const source = (video.getAttribute('src') || '').split('#')[0];
-    if (!source || source.startsWith('blob:') || source.startsWith('data:')) return;
-
-    photoViewerState.videoBlobPending = true;
-    const root = getPhotoViewerRoot();
-    const caption = root?.querySelector('.photo-viewer-caption');
-    photoViewerState.videoCaptionBackup = caption?.textContent || '';
-    if (caption) caption.textContent = '正在缓存视频以便拖动进度…';
-
-    const wasPlaying = !video.paused && !video.ended;
-    const volume = video.volume;
-    const muted = video.muted;
-    const rate = video.playbackRate;
-
-    // 先断开原始视频流，避免 fetch 与媒体加载同时请求同一文件时被移动端浏览器中断。
-    video.pause();
-    video.removeAttribute('src');
-    video.load();
-
-    fetch(source, { credentials: 'same-origin', cache: 'no-store' })
-        .then(response => {
-            if (!response.ok) throw new Error(String(response.status));
-            return response.blob();
-        })
-        .then(blob => {
-            if (!photoViewerState?.videoBlobPending || video !== getViewerVideo()) return;
-            const url = URL.createObjectURL(blob);
-            photoViewerState.videoBlobUrl = url;
-            photoViewerState.videoBlobPending = false;
-            photoViewerState.videoBlobSource = source;
-            video.volume = volume;
-            video.muted = muted;
-            video.playbackRate = rate;
-            video.src = url;
-            video.load();
-            if (wasPlaying) video.play().catch(() => {});
-        })
-        .catch(() => {
-            if (!photoViewerState) return;
-            photoViewerState.videoBlobPending = false;
-            photoViewerState.videoCaptionBackup = '';
-            if (video === getViewerVideo()) {
-                video.volume = volume;
-                video.muted = muted;
-                video.playbackRate = rate;
-                video.src = source;
-                video.load();
-                if (wasPlaying) video.play().catch(() => {});
-            }
-            if (caption) caption.textContent = '视频服务不支持跳转，暂时无法拖动进度。';
-        });
-}
-
-function getVideoSeekMax(video) {
-    if (!video) return 0;
-    let max = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
-    const seekable = video.seekable;
-    if (seekable && seekable.length) {
-        const end = seekable.end(seekable.length - 1);
-        if (Number.isFinite(end)) max = Math.max(max, end);
-    }
-    return max;
 }
 
 function handlePhotoWheel(event) {
@@ -2911,10 +2658,6 @@ function createPhotoGestureState() {
         pinchStart: null,
         suppressClick: false,
         videoTapPointerId: null,
-        videoSeekPointerId: null,
-        videoSeekTouchId: null,
-        videoSeekTarget: null,
-        videoSeekTargetAt: 0,
         videoSeekActiveAt: 0
     };
 }
