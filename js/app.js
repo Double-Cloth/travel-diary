@@ -1113,6 +1113,7 @@ function renderRouteMap(records) {
 
 function renderLedger(params = {}, options = {}) {
     const ledgerParams = normalizeLedgerParams(params);
+    const yearBookmarksScrollLeft = refs.leftPage?.querySelector('.year-bookmarks')?.scrollLeft || 0;
     const filtered = getLedgerRecords(ledgerParams);
     const resultLabel = createLedgerResultLabel(filtered.length, ledgerParams);
     const snapshot = buildRecordSetSnapshot(filtered);
@@ -1147,6 +1148,13 @@ function renderLedger(params = {}, options = {}) {
         preserveRightScroll: options.preserveRightScroll,
         keepContextPanelOpen: options.keepContextPanelOpen
     });
+
+    if (yearBookmarksScrollLeft) {
+        const yearBookmarks = refs.leftPage?.querySelector('.year-bookmarks');
+        if (yearBookmarks) {
+            yearBookmarks.scrollLeft = yearBookmarksScrollLeft;
+        }
+    }
 }
 
 function renderLedgerContextPanel(snapshot, resultLabel, ledgerParams) {
