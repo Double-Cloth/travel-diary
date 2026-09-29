@@ -125,7 +125,7 @@ test('索引夹层重置筛选位于筛选项之前且随内容滚动', () => {
 });
 
 test('索引夹层筛选更新时保留右页滚动位置', () => {
-    assert.match(appJs, /updateLedgerRoute\(\{ \[key\]: toggleLedgerFilterValue\(currentValues, value\) \}, \{[\s\S]*preserveRightScroll: true,[\s\S]*keepContextPanelOpen: isMobileContextPanelOpen/);
+    assert.match(appJs, /updateLedgerRoute\(\{ \[key\]: selectLedgerFilterValue\(currentValues, value\) \}, \{[\s\S]*preserveRightScroll: true,[\s\S]*keepContextPanelOpen: isMobileContextPanelOpen/);
     assert.match(appJs, /updateLedgerRoute\(nextParams, \{[\s\S]*focusId: filter\.id \|\| '',[\s\S]*preserveRightScroll: true,[\s\S]*keepContextPanelOpen: isMobileContextPanelOpen/);
     assert.match(appJs, /function setPages\(leftHtml, rightHtml, rightPageMode = '', options = \{\}\)/);
     assert.match(appJs, /const rightScrollTop = options\.preserveRightScroll \? refs\.rightPage\.scrollTop : 0;/);
@@ -147,12 +147,17 @@ test('筛选计数徽标不继承按钮文字阴影', () => {
     assert.match(journalCss, /\.ledger-filter-count\s*{[^}]*text-shadow:\s*none;/);
 });
 
-test('索引夹层筛选支持同维度多选且排序仍保持单选', () => {
+test('索引夹层地点筛选支持同维度多选，记录特征筛选保持单选', () => {
     for (const key of ['month', 'country', 'area', 'locality']) {
         assert.match(appJs, new RegExp(`renderLedgerSelect\\([^;]+['"]${key}['"][^;]+multiple: true`));
     }
     assert.match(appJs, /filter\.multiple\s*\?[\s\S]*filter\.selectedOptions/);
     assert.match(appJs, /function toggleLedgerFilterValue/);
+    assert.match(appJs, /updateLedgerRoute\(\{ \[key\]: selectLedgerFilterValue\(currentValues, value\) \}/);
+    assert.match(appJs, /function selectLedgerFilterValue\(activeValues, value\)[\s\S]*return values\.includes\(value\) \? \[\] : \[value\];/);
+    for (const key of ['normalizeVisit', 'normalizeMedia', 'normalizeNote']) {
+        assert.match(appJs, new RegExp(`function ${key}\\([^)]*\\) \\{[\\s\\S]*\\.slice\\(0, 1\\);`));
+    }
     assert.match(customSelectJs, /select\.multiple[\s\S]*nativeOption\.selected = !nativeOption\.selected/);
     assert.match(customSelectJs, /aria-multiselectable/);
     assert.match(journalCss, /\.custom-select\.is-multiple \.custom-select-menu > \[role="option"\]::before/);

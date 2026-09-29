@@ -3419,7 +3419,7 @@ function handleDocumentClick(event) {
         const value = ledgerToggle.getAttribute('data-value') || 'all';
         if (key) {
             const currentValues = normalizeLedgerParams(activeRoute?.params)[key];
-            updateLedgerRoute({ [key]: toggleLedgerFilterValue(currentValues, value) }, {
+            updateLedgerRoute({ [key]: selectLedgerFilterValue(currentValues, value) }, {
                 replace: true,
                 animate: false,
                 preserveRightScroll: true,
@@ -4259,6 +4259,13 @@ function toggleLedgerFilterValue(activeValues, value) {
         : [...values, value];
 }
 
+function selectLedgerFilterValue(activeValues, value) {
+    if (value === 'all') return [];
+
+    const values = normalizeFilterValues(activeValues);
+    return values.includes(value) ? [] : [value];
+}
+
 function matchesLedgerFilterValue(activeValues, value) {
     return activeValues.length === 0 || activeValues.includes(value);
 }
@@ -4335,15 +4342,15 @@ function normalizeFilterValues(value, validate = () => true) {
 }
 
 function normalizeVisit(visit) {
-    return normalizeFilterValues(visit, value => value === 'first' || value === 'repeat');
+    return normalizeFilterValues(visit, value => value === 'first' || value === 'repeat').slice(0, 1);
 }
 
 function normalizeMedia(media) {
-    return normalizeFilterValues(media, value => ['any', 'photos', 'videos', 'none'].includes(value));
+    return normalizeFilterValues(media, value => ['any', 'photos', 'videos', 'none'].includes(value)).slice(0, 1);
 }
 
 function normalizeNote(note) {
-    return normalizeFilterValues(note, value => value === 'filled' || value === 'empty');
+    return normalizeFilterValues(note, value => value === 'filled' || value === 'empty').slice(0, 1);
 }
 
 function normalizeLedgerSort(sort) {
