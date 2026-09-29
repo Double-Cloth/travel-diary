@@ -1044,6 +1044,9 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     body[data-route='preface'] .paper-page-left { padding-top: 42px; }
 }
 
+/* 移动端页眉右侧头像：桌面端不显示，避免破坏书脊布局。 */
+.spine-avatar { display: none; }
+
 @media (max-width: 760px) {
     .book-transition-backdrop {
         background:
@@ -1194,13 +1197,75 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .chapter-tab-active,
     .chapter-tab-active:nth-child(2),
     .chapter-tab-active:nth-child(3) {
-        color: #fff6df;
-        box-shadow: inset 0 1px #fff2c58a, inset 0 0 0 2px #f2d89a66, 0 4px 7px #25150e66;
-        filter: brightness(1.12) saturate(1.04);
-        text-shadow: 0 -1px #2b180f, 0 0 5px #ffe8af52;
-        transform: none;
+        color: #fffaf0;
+        background:
+            linear-gradient(90deg, transparent 0 76%, #170e0a18 100%),
+            repeating-linear-gradient(90deg, #ffffff14 0 1px, transparent 1px 3px),
+            linear-gradient(
+                color-mix(in srgb, var(--bookmark-cloth-light) 82%, white),
+                color-mix(in srgb, var(--bookmark-cloth) 80%, white) 45%,
+                color-mix(in srgb, var(--bookmark-cloth-dark) 74%, white)
+            );
+        box-shadow:
+            inset 0 1px #fff6d2,
+            inset 0 0 0 2px #ffe1a0,
+            inset 0 -16px 20px -12px #ffe6ac73,
+            0 5px 11px #1c0f096e,
+            0 0 0 1px #f6dfa6cc,
+            0 0 12px #f4d88d59;
+        filter: brightness(1.18) saturate(1.06);
+        text-shadow: 0 -1px #2b180f, 0 0 6px #ffe8af8f;
+        transform: translateY(-3px);
     }
     .chapter-tab::after { display: none; }
+    .chapter-tab-active::after {
+        content: "";
+        position: absolute;
+        bottom: 10px;
+        left: 50%;
+        display: block;
+        width: 28px;
+        height: 3px;
+        border-radius: 3px;
+        background: linear-gradient(90deg, #a97a38, #fff1c4 50%, #a97a38);
+        box-shadow: 0 0 7px #ffe6acb3;
+        transform: translateX(-50%);
+    }
+    .spine-avatar {
+        position: relative;
+        display: grid;
+        place-items: center;
+        align-self: center;
+        justify-self: end;
+        width: 42px;
+        height: 42px;
+        padding: 0;
+        border: 1px solid #f0d79a;
+        border-radius: 50%;
+        overflow: hidden;
+        background: radial-gradient(circle at 35% 28%, #b98a5c, #5d3a26 72%);
+        box-shadow: inset 0 1px #ffeec0a8, 0 0 0 2px #2f1d1459, 0 2px 6px #1a0d078f;
+        cursor: pointer;
+        transition: filter 160ms ease, transform 160ms ease;
+    }
+    .spine-avatar:hover,
+    .spine-avatar:focus-visible {
+        filter: brightness(1.08);
+        transform: translateY(-1px);
+    }
+    .spine-avatar-fallback {
+        color: #f6e3b8;
+        font-size: 16px;
+        font-weight: 500;
+        text-shadow: 0 -1px #2b180f;
+    }
+    .spine-avatar img {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
     .paper-page {
         border-inline: 5px solid #bfa780;
         box-shadow: inset 3px 0 7px #85643e22;

@@ -247,6 +247,7 @@ async function initApp() {
 
 function cacheRefs() {
     refs.shell = document.getElementById('appShell');
+    refs.spine = document.querySelector('.journal-spine');
     refs.stage = document.getElementById('journalStage');
     refs.spread = document.getElementById('pageSpread');
     refs.leftPage = document.getElementById('leftPage');
@@ -3905,6 +3906,7 @@ function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
     refs.rightPage.innerHTML = rightHtml;
     syncProfilePictureImages(refs.leftPage);
     syncProfilePictureImages(refs.rightPage);
+    syncProfilePictureImages(refs.spine);
     enhanceCustomSelects(refs.leftPage);
     enhanceCustomSelects(refs.rightPage);
     isMobileContextPanelOpen = keepContextPanelOpen;
