@@ -84,6 +84,15 @@ test('新增旅行记录不再提供正文导出或照片张数上限', () => {
     // options to export the body or limit the number of photos.
 });
 
+test('修改目的地时会在编辑器中按新地点重新生成正文与媒体目录', () => {
+    assert.match(recordEditorSource, /function regenerateDerivedPaths\(\) \{/);
+    assert.match(recordEditorSource, /const markdownPath = suggestedMarkdownPath\(input\);/);
+    assert.match(recordEditorSource, /field\('desc_md'\)\.value = markdownPath;/);
+    assert.match(recordEditorSource, /field\('photo_folder'\)\.value = `data\/photos\/\$\{slug\}`;/);
+    assert.match(recordEditorSource, /field\('video_folder'\)\.value = `data\/videos\/\$\{slug\}`;/);
+    assert.match(recordEditorSource, /if \(derivedLocationChanged\(\)\) derivedPathsActivated = true;\s*regenerateDerivedPaths\(\);/);
+});
+
 test('自动文件路径使用日期与目的地，照片保留可读名称并为重名添加序号', () => {
     assert.equal(recordSlug(' 苏州市 '), 'suzhou');
     assert.equal(recordSlug('重庆市'), 'chongqing');

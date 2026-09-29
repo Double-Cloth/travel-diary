@@ -342,3 +342,60 @@ test('拒绝覆盖已有 Markdown、异常索引和带链接的数据目录', as
     assert.equal((await post(draft('f', { date: '2027-01-01' }))).status, 403);
     assert.equal(await fs.readFile(indexFile, 'utf8'), previous);
 });
+
+test('修改目的地会同步搬迁正文与媒体目录并清理旧目录', async () => {
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=';
+    const created = (await (await post({
+        ...draft('4', { date: '2030-05-05', locality: '苏州市-4' }),
+        uploads: [{ id: '4'.repeat(32), name: '湖边.png', data: png }]
+    })).json()).record;
+    const oldFolder = created.photo_folder;
+    assert.equal(oldFolder, 'data/photos/suzhoushi-4');
+    assert.deepEqual(await fs.readFile(path.join(root, oldFolder, created.photos[0])), Buffer.from(png, 'base64'));
+
+    const edited = draft('4', {
+        date: '2030-05-05',
+        locality: '无锡市',
+        desc_md: 'data/travel-diary/2030/2030-05-05-wuxi.md',
+        photo_folder: 'data/photos/wuxi',
+        photos: [...created.photos]
+    });
+    const response = await put(created.desc_md, edited);
+    assert.equal(response.status, 200);
+    const updated = (await response.json()).record;
+    assert.equal(updated.desc_md, 'data/travel-diary/2030/2030-05-05-wuxi.md');
+    assert.equal(updated.photo_folder, 'data/photos/wuxi');
+    assert.deepEqual(updated.photos, created.photos);
+    assert.deepEqual(await fs.readFile(path.join(root, 'data/photos/wuxi', created.photos[0])), Buffer.from(png, 'base64'));
+    await assert.rejects(fs.stat(path.join(root, created.desc_md)), { code: 'ENOENT' });
+    await assert.rejects(fs.stat(path.join(root, oldFolder)), { code: 'ENOENT' });
+});
+
+test('目的地变更时仍被其他记录引用的媒体不会被删除', async () => {
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=';
+    const created = (await (await post({
+        ...draft('3', { date: '2030-06-06', locality: '苏州市-3' }),
+        uploads: [{ id: '3'.repeat(32), name: '分享.png', data: png }]
+    })).json()).record;
+    const sharedFolder = created.photo_folder;
+    const sharedName = created.photos[0];
+
+    const referencing = draft('e', {
+        date: '2030-06-07',
+        locality: '苏州市-e',
+        photo_folder: sharedFolder,
+        photos: [sharedName]
+    });
+    assert.equal((await post(referencing)).status, 201);
+
+    const edited = draft('3', {
+        date: '2030-06-06',
+        locality: '无锡市-3',
+        desc_md: 'data/travel-diary/2030/2030-06-06-wuxi.md',
+        photo_folder: 'data/photos/wuxi',
+        photos: [sharedName]
+    });
+    assert.equal((await put(created.desc_md, edited)).status, 200);
+    assert.deepEqual(await fs.readFile(path.join(root, 'data/photos/wuxi', sharedName)), Buffer.from(png, 'base64'));
+    assert.deepEqual(await fs.readFile(path.join(root, sharedFolder, sharedName)), Buffer.from(png, 'base64'));
+});

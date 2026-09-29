@@ -300,6 +300,21 @@ async function replaceIndex(dataDir, indexFile, previous, records) {
     }
 }
 
+async function findMediaContent(root, name, folders) {
+    for (const folder of folders) {
+        if (!folder) continue;
+        try {
+            const directory = await checkedDirectory(root, folder.split('/'));
+            const file = path.join(directory, name);
+            await checkedFile(file);
+            return await fs.readFile(file);
+        } catch (error) {
+            if (error.status === 403) throw error;
+        }
+    }
+    return null;
+}
+
 async function stageRecordMediaType(root, record, uploads, sourceMedia, options) {
     const createdFiles = [];
     let createdMediaDir;
@@ -309,52 +324,76 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
     };
     const names = record[options.listField] || [];
     const folder = record[options.folderField] || '';
+    const sourceNames = sourceMedia.names || [];
+    if (!names.length && !uploads.length) return { rollback };
+
+    // 记录修改目的地后目录会变化，原目录作为回退来源，用于搬运已有媒体。
+    const sourceFolders = [sourceMedia.folder, ...(options.fallbackFolders || [])].filter(Boolean);
 
     if (!uploads.length) {
-        if (!names.length) return { rollback };
+        let present = false;
         try {
             const mediaDir = await checkedDirectory(root, folder.split('/'));
-            for (const name of names) await checkedFile(path.join(mediaDir, name));
+            present = true;
+            for (const name of names) {
+                try { await checkedFile(path.join(mediaDir, name)); }
+                catch (error) { if (error.status) throw error; present = false; break; }
+            }
         } catch (error) {
             if (error.status) throw error;
-            throw failure(400, `${options.label}目录或文件不存在、不可读。请先将${options.label}放入项目对应目录，再保存记录。`);
         }
-        return { rollback };
+        if (present) return { rollback };
     }
 
-    const mediaContents = [];
-    if (sourceMedia.names.length) {
-        const sourceDir = await checkedDirectory(root, sourceMedia.folder.split('/'));
-        for (const name of sourceMedia.names) {
-            await checkedFile(path.join(sourceDir, name));
-            mediaContents.push(await fs.readFile(path.join(sourceDir, name)));
+    let mediaDir;
+    const ensureMediaDir = async () => {
+        if (mediaDir) return mediaDir;
+        const parent = await checkedDirectory(root, ['data', options.storageDirectory], true);
+        const target = path.join(parent, path.basename(folder));
+        try {
+            await fs.mkdir(target);
+            createdMediaDir = target;
+        } catch (error) {
+            if (error.code !== 'EEXIST') throw error;
+            await checkedDirectory(root, folder.split('/'));
         }
-    }
-    for (const media of uploads) {
-        const buffer = Buffer.from(media.data, 'base64');
-        if (buffer.toString('base64') !== media.data) throw failure(400, `${options.label}编码无效。`);
-        mediaContents.push(buffer);
-    }
-
-    const parent = await checkedDirectory(root, ['data', options.storageDirectory], true);
-    const mediaDir = path.join(parent, path.basename(folder));
-    try {
-        await fs.mkdir(mediaDir);
-        createdMediaDir = mediaDir;
-    } catch (error) {
-        if (error.code !== 'EEXIST') throw error;
-        await checkedDirectory(root, folder.split('/'));
-    }
+        mediaDir = target;
+        return mediaDir;
+    };
+    const writeMedia = async (name, content) => {
+        const directory = await ensureMediaDir();
+        const mediaPath = path.join(directory, name);
+        const handle = await fs.open(mediaPath, 'wx');
+        createdFiles.push(mediaPath);
+        try { await handle.writeFile(content); await handle.sync(); }
+        finally { await handle.close(); }
+    };
 
     try {
-        for (let index = 0; index < names.length; index += 1) {
-            if (index < sourceMedia.names.length && sourceMedia.folder === folder
-                && names[index] === sourceMedia.names[index]) continue;
-            const mediaPath = path.join(mediaDir, names[index]);
-            const handle = await fs.open(mediaPath, 'wx');
-            createdFiles.push(mediaPath);
-            try { await handle.writeFile(mediaContents[index]); await handle.sync(); }
-            finally { await handle.close(); }
+        for (let index = 0; index < sourceNames.length; index += 1) {
+            const name = names[index];
+            if (!name) continue;
+            let exists = false;
+            try {
+                const target = await checkedDirectory(root, folder.split('/'));
+                await checkedFile(path.join(target, name));
+                exists = true;
+            } catch (error) {
+                if (error.status) throw error;
+            }
+            if (exists) continue;
+            const content = await findMediaContent(root, sourceNames[index], sourceFolders);
+            if (!content) {
+                throw failure(400, `${options.label}目录或文件不存在、不可读。请先将${options.label}放入项目对应目录，再保存记录。`);
+            }
+            await writeMedia(name, content);
+        }
+        for (let index = 0; index < uploads.length; index += 1) {
+            const name = names[sourceNames.length + index];
+            if (!name) continue;
+            const buffer = Buffer.from(uploads[index].data, 'base64');
+            if (buffer.toString('base64') !== uploads[index].data) throw failure(400, `${options.label}编码无效。`);
+            await writeMedia(name, buffer);
         }
         return { rollback };
     } catch (error) {
@@ -364,22 +403,47 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
     }
 }
 
-async function stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos) {
+async function stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos, previousMedia = {}) {
     const stages = [];
     const rollback = async () => {
         for (const stage of [...stages].reverse()) await stage.rollback();
     };
     try {
         stages.push(await stageRecordMediaType(root, record, uploads.filter(upload => upload.kind === 'image'), sourcePhotos, {
-            label: '照片', storageDirectory: 'photos', folderField: 'photo_folder', listField: 'photos'
+            label: '照片', storageDirectory: 'photos', folderField: 'photo_folder', listField: 'photos',
+            fallbackFolders: [previousMedia.photo_folder]
         }));
         stages.push(await stageRecordMediaType(root, record, uploads.filter(upload => upload.kind === 'video'), sourceVideos, {
-            label: '视频', storageDirectory: 'videos', folderField: 'video_folder', listField: 'videos'
+            label: '视频', storageDirectory: 'videos', folderField: 'video_folder', listField: 'videos',
+            fallbackFolders: [previousMedia.video_folder]
         }));
         return { rollback };
     } catch (error) {
         await rollback();
         throw error;
+    }
+}
+
+async function removeRelocatedMedia(root, records, previous, next) {
+    for (const { folderField, listField } of [
+        { folderField: 'photo_folder', listField: 'photos' },
+        { folderField: 'video_folder', listField: 'videos' }
+    ]) {
+        const oldFolder = previous[folderField] || '';
+        if (!oldFolder || oldFolder === (next[folderField] || '')) continue;
+        const oldNames = previous[listField] || [];
+        if (!oldNames.length) continue;
+        let directory;
+        try { directory = await checkedDirectory(root, oldFolder.split('/')); }
+        catch { continue; }
+        const stillReferenced = new Set(records
+            .filter(record => record && record[folderField] === oldFolder)
+            .flatMap(record => record[listField] || []));
+        for (const name of oldNames) {
+            if (stillReferenced.has(name) || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) continue;
+            await fs.unlink(path.join(directory, name)).catch(() => {});
+        }
+        await fs.rmdir(directory).catch(() => {});
     }
 }
 
@@ -533,7 +597,9 @@ async function updateRecord(root, payload) {
             return { record: updatedRecord, alreadySaved: true };
         }
 
-        mediaStage = await stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos);
+        mediaStage = await stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos, {
+            photo_folder: existing.photo_folder, video_folder: existing.video_folder
+        });
         if (newDiaryFile === oldDiaryFile) {
             if (oldMarkdown !== markdown) {
                 temporaryMarkdown = path.join(path.dirname(newDiaryFile), `.travel-edit-${randomBytes(16).toString('hex')}.tmp`);
@@ -563,6 +629,8 @@ async function updateRecord(root, payload) {
         backupMarkdown = null;
         if (oldDiaryFile !== newDiaryFile) await fs.unlink(oldDiaryFile).catch(() => {});
         createdMarkdown = null;
+        // 提交成功后，将已搬迁且无其他记录引用的旧媒体目录清理掉。
+        await removeRelocatedMedia(root, nextRecords, existing, updatedRecord).catch(() => {});
         return { record: updatedRecord, alreadySaved: false };
     } finally {
         if (!committed) {

@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260919-video-upload-v2';
+import { createRecordEditor } from './record-editor.js?v=20260930-path-follow-locality-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20260920-password-change-v1';
 import { createDataTransfer } from './data-transfer.js?v=20260920-import-missing-media-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';

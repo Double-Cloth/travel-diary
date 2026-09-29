@@ -8,7 +8,7 @@ import {
     readUploads
 } from './photo-uploads.mjs';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
-import { getRecordAutofill, getRecordOptions, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20260929-multi-select-scroll-v1';
@@ -42,6 +42,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let initialized = false;
     let opening = false;
     let editingRecord = null;
+    let originalDerivedLocation = null;
+    let derivedPathsActivated = false;
     let bodyView = 'source';
     let uploads = [];
     let readingPhotos = false;
@@ -51,6 +53,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let suppressAutocompleteClick = false;
     const userEditedAutofillFields = new Set();
     const autoFilledValues = new Map();
+    const userEditedPaths = new Set();
 
     const field = name => dialog.querySelector(`[name="${name}"]`);
     const status = message => { dialog.querySelector('[data-editor-status]').textContent = message; };
@@ -305,7 +308,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         bodyView = 'source';
         userEditedAutofillFields.clear();
         autoFilledValues.clear();
+        userEditedPaths.clear();
         const initialInput = editing ? getRecordInput(record) : { date, country_code: 'CN' };
+        originalDerivedLocation = editing ? { date: initialInput.date, locality: initialInput.locality } : null;
+        derivedPathsActivated = !editing;
         for (const key of RECORD_FIELDS) {
             const value = initialInput[key] ?? (['photos', 'videos'].includes(key) ? [] : '');
             field(key).value = ['photos', 'videos'].includes(key) ? value.join('\n') : value;
@@ -348,6 +354,30 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         field('trip_id').placeholder = suggestedTripId(getDraft().input) || '填写地点后自动生成';
     }
 
+    function derivedLocationChanged() {
+        if (!editingRecord || !originalDerivedLocation) return true;
+        return field('date').value !== originalDerivedLocation.date
+            || field('locality').value !== originalDerivedLocation.locality;
+    }
+
+    function regenerateDerivedPaths() {
+        if (!derivedPathsActivated) return;
+        const input = getDraft().input;
+        const slug = recordSlug(input.locality);
+        const markdownPath = suggestedMarkdownPath(input);
+        if (markdownPath && !userEditedPaths.has('desc_md')) {
+            field('desc_md').value = markdownPath;
+            autoFilledValues.set('desc_md', markdownPath);
+            userEditedAutofillFields.delete('desc_md');
+        }
+        if (slug && !userEditedPaths.has('photo_folder')) {
+            field('photo_folder').value = `data/photos/${slug}`;
+        }
+        if (slug && input.videos.length && !userEditedPaths.has('video_folder')) {
+            field('video_folder').value = `data/videos/${slug}`;
+        }
+    }
+
     function updateAutofill() {
         const input = getDraft().input;
         const records = getRecords() || [];
@@ -377,6 +407,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             }
             autoFilledValues.set(name, value);
         });
+        if (derivedLocationChanged()) derivedPathsActivated = true;
+        regenerateDerivedPaths();
         updatePathHint();
         renderOptionLists(getRecordOptions(getDraft().input, countries, records, chinaLocations));
         const hint = dialog.querySelector('[data-editor-autofill]');
@@ -582,6 +614,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         updateMarkdownHighlight('');
         userEditedAutofillFields.clear();
         autoFilledValues.clear();
+        userEditedPaths.clear();
         dirty = false;
         dialog.querySelector('.record-editor-files').open = false;
         updateCountry();
@@ -720,6 +753,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             userEditedAutofillFields.add(event.target.name);
             autoFilledValues.delete(event.target.name);
         }
+        if (['desc_md', 'photo_folder', 'video_folder'].includes(event.target.name)) userEditedPaths.add(event.target.name);
         if (['country_code', 'date', 'admin_area', 'locality'].includes(event.target.name)) updateAutofill();
         if (event.target.name === 'title') updateBodyView(bodyView);
     });
@@ -870,9 +904,11 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             dirty = true;
             userEditedAutofillFields.clear();
             autoFilledValues.clear();
+            userEditedPaths.clear();
             for (const name of ['country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'desc_md']) {
                 userEditedAutofillFields.add(name);
             }
+            for (const name of ['desc_md', 'photo_folder', 'video_folder']) userEditedPaths.add(name);
             updateCountry();
             updatePathHint();
             updateAutofill();
