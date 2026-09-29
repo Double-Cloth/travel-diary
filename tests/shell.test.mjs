@@ -154,6 +154,18 @@ test('索引夹层筛选支持同维度多选且排序仍保持单选', () => {
     assert.match(journalCss, /\.custom-select\.is-multiple \.custom-select-menu > \[role="option"\]::before/);
 });
 
+test('索引夹层多选使用稳定勾选样式并在重绘后无闪动恢复菜单', () => {
+    assert.match(journalCss, /\.custom-select\.is-multiple \.custom-select-menu > \[role="option"\]\s*{[^}]*gap:\s*8px;/);
+    assert.match(journalCss, /\[aria-selected="true"\]::after\s*{[^}]*border-right:\s*2px solid #fff8e9;[^}]*border-bottom:\s*2px solid #fff8e9;/);
+    assert.match(appJs, /if \(reopenSelectId === focusId\)[\s\S]*wrapper\.classList\.add\('is-reopening'\);[\s\S]*trigger\.click\(\);/);
+    assert.match(journalCss, /\.custom-select\.is-reopening \.custom-select-menu\s*{[^}]*transition:\s*none !important;/);
+});
+
+test('索引夹层排序菜单靠右弹出且移动端重置不聚焦搜索框', () => {
+    assert.match(customSelectJs, /const alignsRight = wrapper\.closest\('\.index-sort-field'\);[\s\S]*\? Math\.min\(Math\.max\(triggerRect\.right - menuWidth/);
+    assert.match(appJs, /focusId:\s*isMobileLayout\(\) \? 'ledgerFilters' : 'ledgerSearch'/);
+});
+
 test('索引夹层分段按钮具备拟物化层次', () => {
     assert.match(journalCss, /\.index-segment::before/);
     assert.match(journalCss, /\.index-segment::after/);
@@ -237,11 +249,11 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260929-ledger-multi-filter-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260929-ledger-multi-filter-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260929-ledger-filter-fixes-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260929-ledger-filter-fixes-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
-    assert.match(appJs, /\.\/custom-select\.js\?v=20260929-multi-select-v1/);
-    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260929-multi-select-v1/);
+    assert.match(appJs, /\.\/custom-select\.js\?v=20260929-multi-select-v2/);
+    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260929-multi-select-v2/);
 });
 
 test('自定义下拉框初始方向和打开后的箭头都随弹出方向变化', () => {
@@ -259,7 +271,7 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
     assert.match(journalCss, /\.custom-select\.is-open\.is-open-upward \.custom-select-chevron\s*\{\s*transform: translateY\(-65%\) rotate\(45deg\);\s*\}/);
     assert.match(journalCss, /.custom-select\.is-open-upward \.custom-select-menu\s*\{\s*inset: auto 0 calc\(100% \+ 8px\);\s*\}/);
     assert.match(appJs, /class="index-filter-field\$\{visuallyHiddenLabel \? ' index-sort-field' : ''\}"/);
-    assert.match(journalEntryCss, /08-custom-select\.css\?v=20260929-multi-select-v1/);
+    assert.match(journalEntryCss, /08-custom-select\.css\?v=20260929-multi-select-v2/);
     assert.doesNotMatch(journalCss, /\.index-sort-field \.custom-select-chevron\s*\{/);
     assert.doesNotMatch(journalCss, /\.index-filter-section:last-child\s*\{\s*padding-bottom:/);
 });

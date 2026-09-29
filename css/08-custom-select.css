@@ -164,11 +164,17 @@
     transition: color 0.12s ease, background 0.12s ease;
 }
 
+.custom-select.is-multiple .custom-select-menu > [role="option"] {
+    position: relative;
+    gap: 8px;
+}
+
 .custom-select.is-multiple .custom-select-menu > [role="option"]::before {
     content: "";
     flex: 0 0 auto;
-    width: 13px;
-    height: 13px;
+    box-sizing: border-box;
+    width: 15px;
+    height: 15px;
     border: 1px solid rgba(88, 56, 28, 0.42);
     border-radius: 2px;
     background: rgba(255, 252, 239, 0.7);
@@ -177,10 +183,24 @@
 
 .custom-select.is-multiple .custom-select-menu > [role="option"][aria-selected="true"]::before {
     border-color: var(--stamp);
-    background:
-        linear-gradient(135deg, transparent 44%, #fff8e9 45% 56%, transparent 57%) 1px 0 / 7px 7px no-repeat,
-        linear-gradient(45deg, transparent 42%, #fff8e9 43% 56%, transparent 57%) 5px 4px / 8px 8px no-repeat,
-        var(--stamp);
+    background: var(--stamp);
+    box-shadow: none;
+}
+
+.custom-select.is-multiple .custom-select-menu > [role="option"][aria-selected="true"]::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 17px;
+    width: 4px;
+    height: 8px;
+    border-right: 2px solid #fff8e9;
+    border-bottom: 2px solid #fff8e9;
+    transform: translateY(-62%) rotate(45deg);
+}
+
+.custom-select.is-reopening .custom-select-menu {
+    transition: none !important;
 }
 
 .custom-select-menu > [role="option"]:hover,

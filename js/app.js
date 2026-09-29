@@ -8,7 +8,7 @@ import { confirmFeedback, showFeedback } from './feedback-dialog.js';
 import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20260914-profile-upload-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
-import { enhanceCustomSelects } from './custom-select.js?v=20260929-multi-select-v1';
+import { enhanceCustomSelects } from './custom-select.js?v=20260929-multi-select-v2';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
@@ -3404,7 +3404,7 @@ function handleDocumentClick(event) {
             { ...LEDGER_FILTER_DEFAULTS },
             {
                 replace: true,
-                focusId: 'ledgerSearch',
+                focusId: isMobileLayout() ? 'ledgerFilters' : 'ledgerSearch',
                 animate: false,
                 keepContextPanelOpen: isMobileContextPanelOpen
             }
@@ -4533,13 +4533,21 @@ function formatDateForRange(dateStr, precision) {
 function restoreFocus(focusId, reopenSelectId = '') {
     if (!focusId) return;
 
+    if (reopenSelectId === focusId) {
+        const trigger = document.getElementById(`${focusId}Button`);
+        const wrapper = trigger?.closest('[data-custom-select]');
+        if (!trigger || !wrapper) return;
+        wrapper.classList.add('is-reopening');
+        trigger.focus({ preventScroll: true });
+        trigger.click();
+        requestAnimationFrame(() => wrapper.classList.remove('is-reopening'));
+        return;
+    }
+
     requestAnimationFrame(() => {
         const target = document.getElementById(focusId);
         if (!target) return;
         target.focus({ preventScroll: true });
-        if (reopenSelectId === focusId) {
-            document.getElementById(`${focusId}Button`)?.click();
-        }
         if (typeof target.setSelectionRange === 'function') {
             const end = target.value.length;
             target.setSelectionRange(end, end);

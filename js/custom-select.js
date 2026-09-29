@@ -58,7 +58,10 @@ function updateCustomSelectPlacement(wrapper) {
         const boundaryLeft = Math.max(8, boundaryRect.left + 8);
         const boundaryRight = Math.min(window.innerWidth - 8, boundaryRect.right - 8);
         const menuWidth = Math.max(0, Math.min(320, Math.max(240, triggerRect.width), boundaryRight - boundaryLeft));
-        const menuLeft = Math.min(Math.max(triggerRect.left, boundaryLeft), boundaryRight - menuWidth);
+        const alignsRight = wrapper.closest('.index-sort-field');
+        const menuLeft = alignsRight
+            ? Math.min(Math.max(triggerRect.right - menuWidth, boundaryLeft), boundaryRight - menuWidth)
+            : Math.min(Math.max(triggerRect.left, boundaryLeft), boundaryRight - menuWidth);
         menu.style.width = `${menuWidth}px`;
         menu.style.left = `${menuLeft - wrapper.getBoundingClientRect().left}px`;
         menu.style.right = 'auto';
