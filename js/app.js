@@ -951,7 +951,7 @@ function renderPreface() {
                     </button>
 
                     <div class="preface-owner-copy">
-                        <p class="preface-owner-index">OWNER · 007</p>
+                        <p class="preface-owner-index">No.007</p>
                         <button class="preface-owner-plaque" type="button" data-action="edit-owner-name" aria-label="修改扉页署名" title="修改扉页署名">
                             <span>TRAVEL DIARY OWNER</span>
                             <strong>${escapeHtml(profileOwnerName)}</strong>
