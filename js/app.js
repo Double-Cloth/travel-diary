@@ -985,7 +985,7 @@ function renderPreface() {
 
         <section class="preface-tool-section" aria-labelledby="prefaceWritingTitle">
             <h3 id="prefaceWritingTitle">日记维护</h3>
-            <p>继续写下一段旅程，或更改扉页中的个人头像与署名。</p>
+            <p>更改扉页中的个人头像与署名，或继续写下一段旅程。</p>
             <div class="preface-tool-actions">
                 <button class="paper-button" type="button" data-action="upload-profile-picture">更换个人头像</button>
                 <button class="paper-button" type="button" data-action="edit-owner-name">修改扉页署名</button>
