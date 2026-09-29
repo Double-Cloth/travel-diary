@@ -131,6 +131,22 @@
     gap: 6px;
 }
 
+/* 媒体筛选先判断是否存在媒体，再按媒体类型细分；细分项缩进至“有媒体”之后。 */
+.index-media-filter {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.index-media-filter-primary {
+    grid-column: 1 / -1;
+}
+
+.index-media-filter-details {
+    grid-column: 2 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .index-segment {
     position: relative;
     z-index: 0;

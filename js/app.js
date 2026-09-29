@@ -1214,12 +1214,16 @@ function renderLedgerFilterWorkbench(params) {
                 ${filterToggleButton('再次到访', 'visit', 'repeat', params.visit)}
             </div>
             <span class="field-label">媒体状态</span>
-            <div class="index-segment-group" aria-label="媒体状态">
-                ${filterToggleButton('全部', 'media', 'all', params.media)}
-                ${filterToggleButton('有媒体', 'media', 'any', params.media)}
-                ${filterToggleButton('无媒体', 'media', 'none', params.media)}
-                ${filterToggleButton('有图片', 'media', 'photos', params.media)}
-                ${filterToggleButton('有视频', 'media', 'videos', params.media)}
+            <div class="index-media-filter" aria-label="媒体状态">
+                <div class="index-segment-group index-media-filter-primary">
+                    ${filterToggleButton('全部', 'media', 'all', params.media)}
+                    ${filterToggleButton('有媒体', 'media', 'any', params.media)}
+                    ${filterToggleButton('无媒体', 'media', 'none', params.media)}
+                </div>
+                <div class="index-segment-group index-media-filter-details" aria-label="有媒体的类型">
+                    ${filterToggleButton('有图片', 'media', 'photos', params.media)}
+                    ${filterToggleButton('有视频', 'media', 'videos', params.media)}
+                </div>
             </div>
             <span class="field-label">笔记内容</span>
             <div class="index-segment-group" aria-label="笔记内容">
