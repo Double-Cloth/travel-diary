@@ -338,6 +338,10 @@ function bindGlobalEvents() {
     document.addEventListener('pointermove', handlePhotoPointerMove);
     document.addEventListener('pointerup', handlePhotoPointerEnd);
     document.addEventListener('pointercancel', handlePhotoPointerEnd);
+    document.addEventListener('touchstart', handleVideoSeekTouchStart, { passive: false });
+    document.addEventListener('touchmove', handleVideoSeekTouchMove, { passive: false });
+    document.addEventListener('touchend', handleVideoSeekTouchEnd);
+    document.addEventListener('touchcancel', handleVideoSeekTouchEnd);
     document.addEventListener('dblclick', handlePhotoDoubleClick);
     document.addEventListener('wheel', handlePhotoWheel, { passive: false });
     document.addEventListener('fullscreenchange', handlePhotoViewerFullscreenChange);
@@ -1850,6 +1854,11 @@ function renderPhotoViewer() {
             for (const eventName of ['durationchange', 'timeupdate', 'play', 'pause', 'ended', 'volumechange', 'ratechange']) {
                 video.addEventListener(eventName, syncVideoViewerControls);
             }
+            video.addEventListener('seeked', () => {
+                if (video !== getViewerVideo()) return;
+                flushVideoSeek();
+                syncVideoViewerControls();
+            });
             video.addEventListener('click', handleViewerVideoClick);
             video.addEventListener('loadedmetadata', () => {
                 if (video !== getViewerVideo()) return;
@@ -2119,6 +2128,8 @@ function syncVideoViewerControls() {
     if (seek) {
         seek.max = String(duration);
         if (photoGestureState.videoSeekPointerId === null
+            && photoGestureState.videoSeekTouchId === null
+            && photoGestureState.videoSeekTarget === null
             && !video.seeking
             && Date.now() - photoGestureState.videoSeekActiveAt > VIDEO_SEEK_INPUT_HOLD_MS) {
             seek.value = String(Math.min(video.currentTime || 0, duration || 0));
@@ -2515,16 +2526,11 @@ function clearPhotoRotationTimer() {
 function handlePhotoPointerDown(event) {
     const seekSurface = event.target.closest?.('[data-video-seek-hit], [data-video-seek]');
     if (seekSurface) {
-        const isHitLayer = seekSurface.matches('[data-video-seek-hit]');
-        if (isHitLayer || event.pointerType !== 'mouse') {
-            const seek = isHitLayer
-                ? seekSurface.closest('.video-viewer-seek-label')?.querySelector('[data-video-seek]')
-                : seekSurface;
-            if (seek) {
-                beginVideoSeek(event, seek);
-                return;
-            }
+        if (event.pointerType === 'mouse') {
+            const seek = resolveVideoSeekInput(seekSurface);
+            if (seek) beginVideoSeek(event, seek);
         }
+        return;
     }
 
     const stage = event.target.closest?.('[data-photo-viewer-stage]');
@@ -2624,8 +2630,7 @@ function handlePhotoPointerEnd(event) {
 
 function beginVideoSeek(event, seek) {
     const video = getViewerVideo();
-    if (!video || !Number.isFinite(video.duration) || video.duration <= 0
-        || (event.pointerType === 'mouse' && event.button !== 0)) return;
+    if (!video || getVideoSeekMax(video) <= 0 || event.button !== 0) return;
 
     event.preventDefault();
     photoGestureState.videoSeekPointerId = event.pointerId;
@@ -2634,17 +2639,98 @@ function beginVideoSeek(event, seek) {
 }
 
 function updateVideoSeekFromPointer(event, seek = getPhotoViewerRoot()?.querySelector('[data-video-seek]')) {
-    const video = getViewerVideo();
-    const duration = video?.duration;
-    const rect = seek?.getBoundingClientRect();
-    if (!video || !Number.isFinite(duration) || duration <= 0 || !rect?.width) return;
+    event.preventDefault();
+    updateVideoSeekFromPoint(event.clientX, seek);
+}
+
+function handleVideoSeekTouchStart(event) {
+    const seek = resolveVideoSeekInput(event.target);
+    if (!seek) return;
+    const touch = event.changedTouches[0];
+    if (!touch) return;
 
     event.preventDefault();
-    const currentTime = clamp((event.clientX - rect.left) / rect.width, 0, 1) * duration;
+    photoGestureState.videoSeekTouchId = touch.identifier;
+    updateVideoSeekFromPoint(touch.clientX, seek);
+}
+
+function handleVideoSeekTouchMove(event) {
+    if (photoGestureState.videoSeekTouchId === null) return;
+    const touch = findChangedTouch(event.changedTouches, photoGestureState.videoSeekTouchId);
+    if (!touch) return;
+
+    event.preventDefault();
+    updateVideoSeekFromPoint(touch.clientX);
+}
+
+function handleVideoSeekTouchEnd(event) {
+    if (photoGestureState.videoSeekTouchId === null) return;
+    if (!findChangedTouch(event.changedTouches, photoGestureState.videoSeekTouchId)) return;
+
+    photoGestureState.videoSeekTouchId = null;
     photoGestureState.videoSeekActiveAt = Date.now();
-    seek.value = String(currentTime);
-    video.currentTime = currentTime;
+    flushVideoSeek();
     syncVideoViewerControls();
+}
+
+function resolveVideoSeekInput(target) {
+    const surface = target?.closest?.('[data-video-seek-hit], [data-video-seek]');
+    if (!surface) return null;
+    return surface.matches('[data-video-seek-hit]')
+        ? surface.closest('.video-viewer-seek-label')?.querySelector('[data-video-seek]') || null
+        : surface;
+}
+
+function findChangedTouch(list, identifier) {
+    if (!list) return null;
+    for (const touch of list) {
+        if (touch.identifier === identifier) return touch;
+    }
+    return null;
+}
+
+function updateVideoSeekFromPoint(clientX, seek = getPhotoViewerRoot()?.querySelector('[data-video-seek]')) {
+    const video = getViewerVideo();
+    const max = video ? getVideoSeekMax(video) : 0;
+    const rect = seek?.getBoundingClientRect();
+    if (!video || max <= 0 || !rect?.width) return;
+
+    const currentTime = clamp((clientX - rect.left) / rect.width, 0, 1) * max;
+    photoGestureState.videoSeekActiveAt = Date.now();
+    photoGestureState.videoSeekTarget = currentTime;
+    photoGestureState.videoSeekTargetAt = Date.now();
+    seek.value = String(currentTime);
+    flushVideoSeek();
+    syncVideoViewerControls();
+}
+
+function flushVideoSeek() {
+    const video = getViewerVideo();
+    const target = photoGestureState.videoSeekTarget;
+    if (!video || target === null || video.seeking || video.readyState < 1) return;
+    if (Date.now() - photoGestureState.videoSeekTargetAt > 4000) {
+        photoGestureState.videoSeekTarget = null;
+        return;
+    }
+
+    const max = getVideoSeekMax(video);
+    if (max <= 0) return;
+    const time = clamp(target, 0, max);
+    video.currentTime = time;
+    if (Math.abs(video.currentTime - time) < 0.25) {
+        photoGestureState.videoSeekTarget = null;
+    }
+}
+
+function getVideoSeekMax(video) {
+    if (!video) return 0;
+    let max = Number.isFinite(video.duration) && video.duration > 0 ? video.duration : 0;
+    const seekable = video.seekable;
+    if (seekable && seekable.length) {
+        const end = seekable.end(seekable.length - 1);
+        if (Number.isFinite(end)) max = Math.max(max, end);
+    }
+    return max;
 }
 
 function handlePhotoWheel(event) {
@@ -2713,6 +2799,9 @@ function createPhotoGestureState() {
         suppressClick: false,
         videoTapPointerId: null,
         videoSeekPointerId: null,
+        videoSeekTouchId: null,
+        videoSeekTarget: null,
+        videoSeekTargetAt: 0,
         videoSeekActiveAt: 0
     };
 }
