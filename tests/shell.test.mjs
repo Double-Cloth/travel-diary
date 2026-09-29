@@ -270,8 +270,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260929-mobile-video-seek-v8/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260929-mobile-video-seek-v8/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260929-mobile-video-seek-v9/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260929-mobile-video-seek-v9/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260929-multi-select-scroll-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260929-multi-select-scroll-v1/);
@@ -914,7 +914,7 @@ test('视频进度条触摸用独立层与触摸事件拖动并暂停自动同�
     assert.match(appJs, /function flushVideoSeek\(\)[\s\S]*video\.currentTime = time;[\s\S]*videoSeekTarget = null;/);
     assert.match(appJs, /function getVideoSeekMax\(video\)[\s\S]*video\.seekable[\s\S]*return max;/);
     assert.match(appJs, /function isVideoSeekable\(video\)[\s\S]*video\.seekable[\s\S]*end\(seekable\.length - 1\)/);
-    assert.match(appJs, /function upgradeViewerVideoToBlob\(\)[\s\S]*fetch\(source, \{ credentials: 'same-origin' \}\)[\s\S]*URL\.createObjectURL\(blob\)/);
+    assert.match(appJs, /function upgradeViewerVideoToBlob\(\)[\s\S]*fetch\(source, \{ credentials: 'same-origin', cache: 'no-store' \}\)[\s\S]*URL\.createObjectURL\(blob\)/);
     assert.match(appJs, /function releaseVideoBlob\(\)[\s\S]*URL\.revokeObjectURL/);
     assert.match(appJs, /const seekSurface = event\.target\.closest\?\.\('\[data-video-seek-hit\], \[data-video-seek\]'\);[\s\S]*event\.pointerType === 'mouse'[\s\S]*beginVideoSeek\(event, seek\);/);
     assert.match(appJs, /function beginVideoSeek\(event, seek\)[\s\S]*videoSeekPointerId = event\.pointerId;[\s\S]*setPointerCapture\?\.\(event\.pointerId\);/);

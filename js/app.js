@@ -1794,6 +1794,7 @@ function openPhotoViewer(photos, index = 0) {
         videoVolume: DEFAULT_VIDEO_VOLUME,
         videoMuted: false,
         videoRate: 1,
+        videoDuration: 0,
         videoBlobUrl: null,
         videoBlobSource: '',
         videoBlobPending: false,
@@ -2141,7 +2142,10 @@ function syncVideoViewerControls() {
     const duration = Number.isFinite(video.duration) ? video.duration : 0;
     const seek = root.querySelector('[data-video-seek]');
     if (seek) {
-        seek.max = String(duration);
+        if (duration > 0) {
+            seek.max = String(duration);
+            if (photoViewerState) photoViewerState.videoDuration = duration;
+        }
         if (photoGestureState.videoSeekPointerId === null
             && photoGestureState.videoSeekTouchId === null
             && photoGestureState.videoSeekTarget === null
@@ -2251,11 +2255,14 @@ function handleMediaLoadError(event) {
 function showViewerMediaError(media) {
     const current = photoViewerState?.photos?.[photoViewerState.index] || {};
     const kind = media?.matches?.('video') ? 'video' : 'image';
-    const message = formatMediaReferenceError({
-        kind,
-        name: media?.dataset?.mediaName || current.name,
-        src: media?.currentSrc || media?.src || current.src
-    });
+    const isVideoBlob = kind === 'video' && Boolean(photoViewerState?.videoBlobUrl || photoViewerState?.videoBlobPending);
+    const message = isVideoBlob
+        ? '视频缓存后仍无法播放，可能是文件编码不受支持。'
+        : formatMediaReferenceError({
+            kind,
+            name: media?.dataset?.mediaName || current.name,
+            src: media?.currentSrc || media?.src || current.src
+        });
     const root = getPhotoViewerRoot();
     const notice = root?.querySelector('[data-photo-viewer-media-error]');
     const frame = root?.querySelector('[data-photo-viewer-frame]');
@@ -2719,7 +2726,7 @@ function findChangedTouch(list, identifier) {
 
 function updateVideoSeekFromPoint(clientX, seek = getPhotoViewerRoot()?.querySelector('[data-video-seek]')) {
     const video = getViewerVideo();
-    const max = video ? getVideoSeekMax(video) : 0;
+    const max = (video ? getVideoSeekMax(video) : 0) || photoViewerState?.videoDuration || 0;
     const rect = seek?.getBoundingClientRect();
     if (!video || max <= 0 || !rect?.width) return;
 
@@ -2746,7 +2753,7 @@ function flushVideoSeek() {
         return;
     }
 
-    const max = getVideoSeekMax(video);
+    const max = getVideoSeekMax(video) || photoViewerState?.videoDuration || 0;
     if (max <= 0) return;
     const time = clamp(target, 0, max);
     video.currentTime = time;
@@ -2789,7 +2796,12 @@ function upgradeViewerVideoToBlob() {
     const muted = video.muted;
     const rate = video.playbackRate;
 
-    fetch(source, { credentials: 'same-origin' })
+    // 先断开原始视频流，避免 fetch 与媒体加载同时请求同一文件时被移动端浏览器中断。
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+
+    fetch(source, { credentials: 'same-origin', cache: 'no-store' })
         .then(response => {
             if (!response.ok) throw new Error(String(response.status));
             return response.blob();
@@ -2810,6 +2822,15 @@ function upgradeViewerVideoToBlob() {
         .catch(() => {
             if (!photoViewerState) return;
             photoViewerState.videoBlobPending = false;
+            photoViewerState.videoCaptionBackup = '';
+            if (video === getViewerVideo()) {
+                video.volume = volume;
+                video.muted = muted;
+                video.playbackRate = rate;
+                video.src = source;
+                video.load();
+                if (wasPlaying) video.play().catch(() => {});
+            }
             if (caption) caption.textContent = '视频服务不支持跳转，暂时无法拖动进度。';
         });
 }
