@@ -271,7 +271,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(indexHtml, /js\/app\.js\?v=20260929-multi-select-scroll-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260929-mobile-video-seek-v2/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260929-mobile-video-seek-v3/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260929-multi-select-scroll-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260929-multi-select-scroll-v1/);
@@ -910,7 +910,7 @@ test('视频进度条使用原生 range 拖动并在拖动期间暂停自动同�
     assert.match(appJs, /const VIDEO_SEEK_INPUT_HOLD_MS = \d+;/);
     assert.doesNotMatch(appJs, /beginVideoSeek|updateVideoSeekFromPointer|videoSeekPointerId/);
     assert.doesNotMatch(appJs, /document\.activeElement !== (?:seek|volume)/);
-    assert.match(journalCss, /\.video-viewer-seek\s*{[\s\S]*height: 32px;[\s\S]*touch-action: none;/);
+    assert.match(journalCss, /\.video-viewer-seek\s*{[\s\S]*height: 32px;[\s\S]*touch-action: pan-y;/);
     assert.match(journalCss, /--video-range-progress, 0%/);
     assert.match(appJs, /function syncVideoRangeProgress\(range\)[\s\S]*--video-range-progress/);
     assert.doesNotMatch(journalCss, /\.photo-viewer-toolbar::before/);
