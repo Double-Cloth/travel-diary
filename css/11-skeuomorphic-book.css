@@ -830,7 +830,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         background: var(--leather-grain), linear-gradient(90deg, #68422f, #895c43 45%, #513020);
         box-shadow: inset 0 0 0 3px #bb97632c, 0 4px 7px #130c0755;
     }
-    .brand-lockup strong::after { content: '合上日记'; font-size: 12px; }
+    .brand-lockup strong::after { content: '合上笔记'; font-size: 12px; }
     /* 三条布书签从书芯右侧伸出：织纹、压边缝线和黄铜铆钉共同建立实体感。 */
     .chapter-tabs {
         top: 132px;

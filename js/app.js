@@ -899,7 +899,7 @@ function renderPreface() {
         <article class="preface-profile-page" aria-labelledby="prefaceTitle">
             <header class="preface-heading">
                 <h1 id="prefaceTitle">扉页</h1>
-                <p>把沿途的光影、风声与偶遇，装订成只属于自己的时间。</p>
+                <p>Travel far enough, you meet yourself.</p>
             </header>
 
             <section class="preface-identity-sheet" aria-label="日记主人与旅程概况">
@@ -917,12 +917,12 @@ function renderPreface() {
                     </button>
 
                     <div class="preface-owner-copy">
-                        <p class="preface-owner-index">OWNER · 001</p>
+                        <p class="preface-owner-index">OWNER · 007</p>
                         <div class="preface-owner-plaque">
                             <span>TRAVEL DIARY OWNER</span>
-                            <strong>旅途收藏者</strong>
+                            <strong>Double-Cloth</strong>
                         </div>
-                        <blockquote class="preface-signature">把走过的路，<br>写成自己的时间。</blockquote>
+                        <blockquote class="preface-signature">且将新火试新茶，<br>诗酒趁年华</blockquote>
                         <span class="preface-seal" aria-hidden="true">
                             <strong>MEMORY</strong>
                             <small>ARCHIVE</small>
@@ -939,8 +939,8 @@ function renderPreface() {
                 </dl>
 
                 <footer class="preface-colophon" aria-hidden="true">
-                    <span>PRIVATE TRAVEL NOTES</span>
-                    <span>KEEP EVERY MILE</span>
+                    <span></span>
+                    <span></span>
                 </footer>
             </section>
 
@@ -948,11 +948,10 @@ function renderPreface() {
         </article>
     `, `
         ${renderContextPanelHeading('扉页', '日记工具箱')}
-        <p class="preface-tools-intro">常用维护功能收在这里，像书桌抽屉一样，需要时再打开。</p>
 
         <section class="preface-tool-section" aria-labelledby="prefaceWritingTitle">
             <h3 id="prefaceWritingTitle">日记维护</h3>
-            <p>继续写下一段旅程，或替换扉页中的个人头像。</p>
+            <p>继续写下一段旅程，或更改扉页中的个人头像。</p>
             <div class="preface-tool-actions">
                 <button class="paper-button" type="button" data-action="add-record">新增旅行日记</button>
                 <button class="paper-button" type="button" data-action="upload-profile-picture">更换个人头像</button>
@@ -971,7 +970,7 @@ function renderPreface() {
 
         <section class="preface-tool-section archive-access-security" aria-labelledby="prefaceSecurityTitle">
             <h3 id="prefaceSecurityTitle">访问安全</h3>
-            <p>验证当前密码后设置新的 6 位数字密码；再次输入到第 6 位时会自动提交。</p>
+            <p>验证当前密码后设置新的 6 位数字密码。</p>
             <button class="paper-button" type="button" data-action="change-password">修改访问密码</button>
         </section>
 
