@@ -1742,12 +1742,14 @@ function getEntryNavigation(record) {
     }
 
     const index = records.findIndex(item => item.id === record.id);
+    const chronological = [...records].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
+    const chronologicalIndex = chronological.findIndex(item => item.id === record.id);
 
     return {
         index,
         total: records.length,
-        previous: index > 0 ? records[index - 1] : null,
-        next: index >= 0 && index < records.length - 1 ? records[index + 1] : null
+        previous: chronologicalIndex > 0 ? chronological[chronologicalIndex - 1] : null,
+        next: chronologicalIndex >= 0 && chronologicalIndex < chronological.length - 1 ? chronological[chronologicalIndex + 1] : null
     };
 }
 
