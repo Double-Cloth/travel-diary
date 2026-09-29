@@ -21,7 +21,7 @@ function getOwnerDialog() {
             </div>
             <p class="journal-label">扉页署名</p>
             <h2 id="profileOwnerDialogTitle">修改署名</h2>
-            <p class="profile-owner-dialog-note" id="profileOwnerDialogNote">署名显示在扉页的收藏铭牌上，并随全部数据备份一起导出。</p>
+            <p class="profile-owner-dialog-note" id="profileOwnerDialogNote">署名显示在扉页的收藏铭牌上。</p>
             <input class="profile-owner-dialog-input" data-owner-name-input type="text" maxlength="${OWNER_NAME_MAX_LENGTH}" autocomplete="off" spellcheck="false" aria-label="日记署名" placeholder="请输入署名">
             <p class="profile-owner-dialog-error" data-owner-name-error role="alert"></p>
             <div class="profile-owner-dialog-actions">
