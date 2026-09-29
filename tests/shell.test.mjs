@@ -270,8 +270,8 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260929-multi-select-scroll-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260929-mobile-video-seek-v3/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260929-mobile-video-seek-v4/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260929-mobile-video-seek-v4/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260929-multi-select-scroll-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260929-multi-select-scroll-v1/);
@@ -903,14 +903,17 @@ test('移动端视频查看器同排显示播放和进度并可折叠其余控�
     assert.match(appJs, /class="photo-viewer-control video-viewer-fullscreen"[\s\S]*data-video-action="fullscreen"/);
 });
 
-test('视频进度条使用原生 range 拖动并在拖动期间暂停自动同步', () => {
+test('视频进度条在触屏使用指针拖动并在拖动期间暂停自动同步', () => {
     assert.match(appJs, /<span class="video-viewer-seek-label"><input class="video-viewer-range video-viewer-seek"[\s\S]*aria-label="播放进度"><\/span>/);
+    assert.match(appJs, /const videoSeek = event\.target\.closest\?\.\('\[data-video-seek\]'\);[\s\S]*if \(videoSeek && event\.pointerType !== 'mouse'\) \{[\s\S]*beginVideoSeek\(event, videoSeek\);[\s\S]*return;/);
+    assert.match(appJs, /function beginVideoSeek\(event, seek\)[\s\S]*videoSeekPointerId = event\.pointerId;[\s\S]*setPointerCapture\?\.\(event\.pointerId\);/);
+    assert.match(appJs, /function handlePhotoPointerMove\(event\)[\s\S]*videoSeekPointerId === event\.pointerId[\s\S]*updateVideoSeekFromPointer\(event\);/);
+    assert.match(appJs, /function updateVideoSeekFromPointer\(event,[\s\S]*getBoundingClientRect\(\)[\s\S]*video\.currentTime = currentTime;/);
     assert.match(appJs, /if \(video && event\.target\.matches\('\[data-video-seek\]'\)\) \{[\s\S]*videoSeekActiveAt = Date\.now\(\);[\s\S]*video\.currentTime = clamp\(Number\(event\.target\.value\)/);
-    assert.match(appJs, /function syncVideoViewerControls\(\)[\s\S]*if \(Date\.now\(\) - photoGestureState\.videoSeekActiveAt > VIDEO_SEEK_INPUT_HOLD_MS\)[\s\S]*seek\.value = String/);
+    assert.match(appJs, /function syncVideoViewerControls\(\)[\s\S]*videoSeekPointerId === null[\s\S]*Date\.now\(\) - photoGestureState\.videoSeekActiveAt > VIDEO_SEEK_INPUT_HOLD_MS[\s\S]*seek\.value = String/);
     assert.match(appJs, /const VIDEO_SEEK_INPUT_HOLD_MS = \d+;/);
-    assert.doesNotMatch(appJs, /beginVideoSeek|updateVideoSeekFromPointer|videoSeekPointerId/);
     assert.doesNotMatch(appJs, /document\.activeElement !== (?:seek|volume)/);
-    assert.match(journalCss, /\.video-viewer-seek\s*{[\s\S]*height: 32px;[\s\S]*touch-action: pan-y;/);
+    assert.match(journalCss, /\.video-viewer-seek\s*{[\s\S]*height: 32px;[\s\S]*touch-action: none;/);
     assert.match(journalCss, /--video-range-progress, 0%/);
     assert.match(appJs, /function syncVideoRangeProgress\(range\)[\s\S]*--video-range-progress/);
     assert.doesNotMatch(journalCss, /\.photo-viewer-toolbar::before/);

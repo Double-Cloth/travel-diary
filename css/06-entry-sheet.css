@@ -796,7 +796,7 @@
 
 .video-viewer-seek {
     height: 32px;
-    touch-action: pan-y;
+    touch-action: none;
 }
 
 .video-viewer-volume { width: 76px; }
