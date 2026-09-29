@@ -1156,14 +1156,36 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         backdrop-filter: none;
     }
     .brand-lockup small { display: none; }
+    /* 千禧年压印黄铜铭牌：金属渐变、立体倒角与顶部高光。 */
     .brand-lockup strong {
-        padding: 3px 9px;
-        border: 1px solid #c9a468;
-        border-radius: 3px;
-        background: linear-gradient(160deg, #ffffff14, #00000014);
-        box-shadow: inset 0 1px #fff3ce33, 0 1px #1a0d0745;
+        position: relative;
+        isolation: isolate;
+        padding: 4px 12px 5px;
+        border: 1px solid #5f4520;
+        border-radius: 6px;
+        background: linear-gradient(180deg, #f4e0ab 0%, #cda660 45%, #97713a 55%, #e6cd93 100%);
+        box-shadow:
+            inset 0 1px 0 #fff9e0,
+            inset 0 -2px 3px #4a321666,
+            inset 0 0 0 1px #7c5a2b,
+            0 1px 0 #241608,
+            0 3px 7px #120a0563;
     }
-    .brand-lockup strong::after { color: #f4dfb6; text-shadow: 0 -1px #28150c; }
+    .brand-lockup strong::before {
+        content: "";
+        position: absolute;
+        z-index: 0;
+        inset: 1px 1px 46%;
+        border-radius: 5px;
+        background: linear-gradient(180deg, #ffffffb8, #ffffff14);
+        pointer-events: none;
+    }
+    .brand-lockup strong::after {
+        position: relative;
+        z-index: 1;
+        color: #4a3213;
+        text-shadow: 0 1px 0 #fff4ccb3, 0 -1px 0 #6b4a1f59;
+    }
     .chapter-tabs { gap: 7px; padding: 0 0 2px; }
     .chapter-tab,
     .chapter-tab:nth-child(2),
