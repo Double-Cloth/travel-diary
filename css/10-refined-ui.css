@@ -485,7 +485,13 @@ body::after {
     .page-head { margin-bottom: 18px; }
     .page-head h1 { max-width: 13em; font-size: clamp(30px, 2.7vw, 42px); line-height: 1.25; letter-spacing: -0.04em; }
 
-    .ledger-controls { margin: 16px 0 12px; }
+    .ledger-page-head { margin-bottom: 20px; }
+    .ledger-catalog-tools {
+        margin-bottom: 20px;
+        padding: 0 0 14px;
+        border-bottom: 1px solid var(--line);
+    }
+    .ledger-controls { margin: 0 0 12px; }
     .ledger-controls .field-label { display: none; }
     .ink-field {
         min-height: 44px;
@@ -507,10 +513,17 @@ body::after {
     }
     .ink-field input { padding-left: 10px; background: transparent; font-size: 13px; }
 
-    .year-bookmarks { gap: 4px 18px; margin: 14px 0 16px; border-bottom: 1px solid var(--line); }
+    .ledger-browse-row {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 16px;
+        align-items: end;
+    }
+    .ledger-year-nav { margin: 0; }
+    .year-bookmarks { gap: 4px 16px; margin: 0; border-bottom: 0; }
     .year-bookmark {
-        min-height: 34px;
-        padding: 5px 2px 9px;
+        min-height: 32px;
+        padding: 5px 2px 7px;
         border: 0;
         border-bottom: 2px solid transparent;
         border-radius: 0;
@@ -522,13 +535,40 @@ body::after {
     .year-bookmark-active:hover,
     .year-bookmark-active:focus-visible { color: var(--stamp); border-color: var(--stamp); background: transparent; box-shadow: none; }
 
-    .result-count { margin: 0 0 12px; }
+    .result-count {
+        display: grid;
+        justify-items: end;
+        gap: 3px;
+        margin: 0 0 7px;
+        white-space: nowrap;
+    }
+    .result-count span { font-size: 10px; }
+    .result-count strong { font-size: 12px; }
     .timeline-list { gap: 0; }
     .ledger-year-group { gap: 0; padding-left: 0; }
     .ledger-year-group + .ledger-year-group { margin-top: 24px; }
-    .ledger-year-divider { min-height: 30px; }
-    .ledger-year-divider span { padding: 0; border: 0; border-radius: 0; background: transparent; }
-    .ledger-year-divider::after { background: linear-gradient(90deg, rgba(155, 61, 46, 0.25), transparent); }
+    .ledger-year-divider {
+        display: grid;
+        grid-template-columns: auto minmax(36px, 1fr) auto;
+        gap: 12px;
+        min-height: 36px;
+        margin-bottom: 2px;
+    }
+    .ledger-year-divider::after { grid-column: 2; grid-row: 1; background: linear-gradient(90deg, rgba(155, 61, 46, 0.28), transparent); }
+    .ledger-year-divider h2 {
+        grid-column: 1;
+        margin: 0;
+        color: var(--stamp);
+        font: 700 18px/1 var(--font-code);
+        letter-spacing: 0.08em;
+    }
+    .ledger-year-divider p {
+        grid-column: 3;
+        margin: 0;
+        color: var(--ink-muted);
+        font: 10px/1 var(--font-code);
+        letter-spacing: 0.06em;
+    }
     .ledger-year-entries { gap: 0; }
     .ledger-year-entries::before,
     .ledger-year-entries .ledger-entry::after,
@@ -557,7 +597,8 @@ body::after {
     .entry-date-chip strong { font-size: 21px; font-weight: 500; }
     .entry-date-chip span { font-size: 9px; }
     .entry-location { font-size: 10px; letter-spacing: 0.01em; }
-    .entry-note h3 { margin: 3px 0 4px; font-size: 18px; font-weight: 500; }
+    .entry-note h3 { margin: 0 0 3px; font-size: 18px; font-weight: 500; }
+    .entry-location { display: block; margin-bottom: 5px; }
     .location-chip { min-height: 0; padding: 0; border: 0; background: transparent; font-size: 11px; }
     .repeat-stamp { min-height: 0; padding: 0 6px; border-radius: 2px; background: transparent; font-size: 10px; }
     .trip-stamp { min-width: 48px; height: 20px; padding: 0 6px; border: 0; border-radius: 2px; font-size: 9px; }
@@ -715,7 +756,9 @@ body::after {
     .page-head h1 { max-width: none; font-size: clamp(30px, 7.5vw, 36px); line-height: 1.28; letter-spacing: -0.04em; }
     .journal-label { color: var(--stamp); font-size: 12px; letter-spacing: 0.14em; }
 
-    .ledger-controls { margin: 18px 0 12px; }
+    .ledger-page-head { margin-bottom: 18px; }
+    .ledger-catalog-tools { margin-bottom: 18px; padding-bottom: 12px; }
+    .ledger-controls { margin: 0 0 12px; }
     .ledger-controls .field-label { display: none; }
     .ink-field { min-height: 48px; border: 0; border-radius: 24px; background: rgba(93, 72, 55, 0.07); box-shadow: none; }
     .ink-field input { padding-left: 18px; background: transparent; font-size: 14px; }
@@ -737,11 +780,17 @@ body::after {
     .mobile-context-toggle > span { color: var(--stamp); font-size: 14px; }
     .mobile-context-toggle small { justify-self: end; font-size: 10px; }
 
+    .ledger-browse-row {
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: 10px;
+        align-items: end;
+    }
+    .ledger-year-nav { min-width: 0; }
     .year-bookmarks {
         flex-wrap: nowrap;
         gap: 8px;
-        margin: 14px -22px 18px;
-        padding: 0 22px 10px;
+        margin: 0;
+        padding: 0 0 5px;
         overflow-x: auto;
         scrollbar-width: none;
     }
@@ -751,12 +800,12 @@ body::after {
     .year-bookmark-active:hover,
     .year-bookmark-active:focus-visible { color: #fff8e9; background: var(--green); box-shadow: none; }
 
-    .result-count { margin-bottom: 8px; }
+    .result-count { margin-bottom: 6px; }
     .timeline-list { gap: 0; }
     .ledger-year-group { gap: 0; padding-left: 0; }
     .ledger-year-group + .ledger-year-group { margin-top: 24px; }
-    .ledger-year-divider span { padding: 0; border: 0; border-radius: 0; background: transparent; }
     .ledger-year-divider::after { background: linear-gradient(90deg, rgba(155, 61, 46, 0.22), transparent); }
+    .ledger-year-divider h2 { font-size: 17px; }
     .ledger-year-entries { gap: 0; }
     .ledger-year-entries::before,
     .ledger-year-entries .ledger-entry::after,
@@ -777,7 +826,8 @@ body::after {
     .entry-date-chip strong { font-size: 22px; font-weight: 500; }
     .entry-date-chip span { font-size: 9px; }
     .entry-location { color: var(--green); font-size: 10px; }
-    .entry-note h3 { margin: 3px 0 5px; font-size: 18px; font-weight: 500; }
+    .entry-note h3 { margin: 0 0 3px; font-size: 18px; font-weight: 500; }
+    .entry-location { margin-bottom: 5px; }
     .location-chip { min-height: 0; padding: 0; border: 0; background: transparent; font-size: 11px; }
     .repeat-stamp { min-height: 0; padding: 0 5px; border-radius: 2px; background: transparent; font-size: 9px; }
     .trip-stamp { min-width: 44px; height: 19px; padding: 0 5px; border: 0; border-radius: 2px; font-size: 9px; }

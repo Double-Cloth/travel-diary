@@ -690,20 +690,19 @@ body[data-route='preface'] .paper-page {
     grid-template-columns: auto minmax(0, 1fr);
     gap: 12px;
     align-items: end;
-    margin: 14px 0 16px;
+    margin: 0;
 }
 .ledger-year-label {
-    padding-bottom: 10px;
+    padding-bottom: 8px;
     color: #71583f;
     font: 700 11px/1 var(--font-code);
     letter-spacing: .1em;
 }
 .ledger-year-nav .year-bookmarks { min-width: 0; margin: 0; }
 .result-count {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
+    display: grid;
+    justify-items: end;
+    gap: 3px;
 }
 .result-count strong {
     flex: 0 0 auto;
@@ -716,6 +715,26 @@ body[data-route='preface'] .paper-page {
 }
 .paper-page-right.context-panel .ledger-feature-filters {
     padding-bottom: max(28px, env(safe-area-inset-bottom));
+}
+.paper-page-right.context-panel .ledger-feature-filters::after {
+    content: "";
+    display: block;
+    height: max(36px, env(safe-area-inset-bottom));
+}
+.ledger-page {
+    min-height: max-content;
+    padding-bottom: 52px;
+    scroll-margin-block-end: 52px;
+}
+body[data-route="ledger"] .paper-page-left {
+    scroll-padding-block-end: 52px;
+}
+body[data-route="ledger"] .paper-page-left::-webkit-scrollbar-track {
+    margin: 0;
+}
+body[data-route="ledger"] .paper-page-left::-webkit-scrollbar-track-piece {
+    margin: 0;
+    background: transparent;
 }
 .ledger-feature-filters:focus { outline: none; }
 .ledger-feature-filters:focus-visible { outline: 2px solid #9b6e42; outline-offset: 8px; }
@@ -1091,7 +1110,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     }
     .ledger-year-nav {
         display: block;
-        margin: 16px 0 12px;
+        margin: 0;
     }
     .ledger-year-label {
         display: block;
@@ -1101,10 +1120,10 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     }
     .ledger-year-nav .year-bookmarks {
         margin: 0;
-        padding: 6px 5px 0;
+        padding: 6px 0 0;
         scroll-padding-inline: 5px;
     }
-    .result-count { margin-bottom: 10px; }
+    .result-count { margin-bottom: 6px; }
     .page-head h1 { text-wrap: balance; }
     .paper-page-right.context-panel .index-dashboard-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
     .paper-page-right.context-panel .index-dashboard-grid span:last-child { grid-column: 1 / -1; border-left: 0; padding: 6px 0 0; border-top: 1px solid var(--line); }

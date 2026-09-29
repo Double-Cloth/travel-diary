@@ -542,6 +542,15 @@ test('移动端夹层滚动条轨道可以贴到底部', () => {
 test('日记目录筛选夹层在桌面和移动端保留底部滚动缓冲', () => {
     assert.match(journalCss, /\.paper-page-right\.context-panel\s*{[^}]*scroll-padding-block: 76px max\(28px, env\(safe-area-inset-bottom\)\);[^}]*}/);
     assert.match(journalCss, /\.paper-page-right\.context-panel \.ledger-feature-filters\s*{[^}]*padding-bottom: max\(28px, env\(safe-area-inset-bottom\)\);[^}]*}/);
+    assert.match(journalCss, /\.paper-page-right\.context-panel \.ledger-feature-filters::after\s*{[^}]*content: "";[^}]*height: max\(36px, env\(safe-area-inset-bottom\)\);[^}]*}/);
+});
+
+test('日记目录左页将查找、年份与结果组织为连续目录并保留真实滚动终点', () => {
+    assert.match(appJs, /class="ledger-catalog-tools"[\s\S]*class="ledger-browse-row"[\s\S]*class="ledger-year-nav"[\s\S]*class="result-count"/);
+    assert.match(appJs, /class="ledger-year-divider"[\s\S]*<h2>[\s\S]*<p>\$\{group\.records\.length\} 篇<\/p>/);
+    assert.match(appJs, /<h3>\$\{escapeHtml\(record\.title\)\}<\/h3>\s*<span class="entry-location">/);
+    assert.match(journalCss, /\.ledger-page\s*{[^}]*min-height: max-content;[^}]*padding-bottom: 52px;/);
+    assert.match(journalCss, /body\[data-route="ledger"\] \.paper-page-left::\-webkit-scrollbar-track\s*{[^}]*margin: 0;/);
 });
 
 test('右侧档案页滚动条没有底部原生箭头占位', () => {

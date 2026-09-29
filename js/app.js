@@ -1078,22 +1078,26 @@ function renderLedger(params = {}, options = {}) {
 
     setPages(`
         <div class="ledger-page">
-            <header class="page-head">
-                <p class="journal-label">路线档案</p>
+            <header class="page-head ledger-page-head">
+                <p class="journal-label">日记目录</p>
                 <h1>出发，到新的爱与喧闹中去！</h1>
             </header>
-            ${renderLedgerControls(ledgerParams, 'ledgerSearch')}
-            <nav class="ledger-year-nav" aria-label="按年份浏览日记">
-                <span class="ledger-year-label">年份</span>
-                <div class="year-bookmarks">
-                    ${yearLink('全部', 'all', ledgerParams)}
-                    ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
+            <section class="ledger-catalog-tools" aria-label="查找与浏览日记">
+                ${renderLedgerControls(ledgerParams, 'ledgerSearch')}
+                <div class="ledger-browse-row">
+                    <nav class="ledger-year-nav" aria-label="按年份浏览日记">
+                        <span class="ledger-year-label">按年份</span>
+                        <div class="year-bookmarks">
+                            ${yearLink('全部', 'all', ledgerParams)}
+                            ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
+                        </div>
+                    </nav>
+                    <p class="result-count" aria-live="polite">
+                        <span>${escapeHtml(resultLabel)}</span>
+                        <strong>${filtered.length} 篇</strong>
+                    </p>
                 </div>
-            </nav>
-            <p class="result-count" aria-live="polite">
-                <span>${escapeHtml(resultLabel)}</span>
-                ${hasActiveLedgerFilter(ledgerParams) ? '' : `<strong>${filtered.length} 篇</strong>`}
-            </p>
+            </section>
             <div class="timeline-list" id="ledgerList">
                 ${filtered.length
                     ? renderLedgerGroups(filtered, ledgerParams)
@@ -4019,10 +4023,10 @@ function renderLedgerGroups(records, params = {}) {
 
     return groups.map(group => `
         <section class="ledger-year-group" aria-label="${escapeHtml(getLedgerGroupAriaLabel(group.label, sort))}">
-            <div class="ledger-year-divider">
-                <span>${escapeHtml(group.label)}</span>
-                <small>${group.records.length} 条记录</small>
-            </div>
+            <header class="ledger-year-divider">
+                <h2>${escapeHtml(group.label)}</h2>
+                <p>${group.records.length} 篇</p>
+            </header>
             <div class="ledger-year-entries">
                 ${group.records.map(renderLedgerEntry).join('')}
             </div>
@@ -4063,8 +4067,8 @@ function renderLedgerEntry(record) {
                 <span>${escapeHtml((record.date || '').slice(0, 7) || '')}</span>
             </time>
             <div class="entry-note">
-                <span class="entry-location">${escapeHtml(getLocationText(record))}</span>
                 <h3>${escapeHtml(record.title)}</h3>
+                <span class="entry-location">${escapeHtml(getLocationText(record))}</span>
                 <div class="entry-tags">
                     <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(record.adminArea || record.country)}</a>
                     ${record.isRepeated ? '<span class="repeat-stamp">再次到访</span>' : ''}
