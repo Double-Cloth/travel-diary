@@ -290,29 +290,29 @@
     flex-wrap: nowrap;
     gap: 8px;
     margin: 12px 0 12px;
-    padding-bottom: 7px;
+    padding-bottom: 6px;
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: thin;
-    scrollbar-color: rgba(78, 51, 27, 0.42) transparent;
+    scrollbar-color: rgba(120, 88, 54, 0.28) transparent;
 }
 
 .year-bookmarks::-webkit-scrollbar {
-    height: 8px;
+    height: 6px;
 }
 
 .year-bookmarks::-webkit-scrollbar-track {
-    border-radius: 999px;
-    background: rgba(83, 56, 30, 0.08);
+    background: transparent;
 }
 
 .year-bookmarks::-webkit-scrollbar-thumb {
     border-radius: 999px;
-    background: rgba(78, 51, 27, 0.36);
+    background: rgba(120, 88, 54, 0.24);
+    transition: background 0.2s ease;
 }
 
 .year-bookmarks::-webkit-scrollbar-thumb:hover {
-    background: rgba(78, 51, 27, 0.52);
+    background: rgba(120, 88, 54, 0.44);
 }
 
 .year-bookmark {

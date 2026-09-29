@@ -1130,7 +1130,7 @@ function renderLedger(params = {}, options = {}) {
                         <span class="ledger-year-label">按年份</span>
                         <div class="year-bookmarks">
                             ${yearToggleButton('全部', 'all', ledgerParams.year)}
-                            ${travelModel.years.map(year => yearToggleButton(year, year, ledgerParams.year)).join('')}
+                            ${[...travelModel.years].sort((a, b) => a.localeCompare(b)).map(year => yearToggleButton(year, year, ledgerParams.year)).join('')}
                         </div>
                     </nav>
                 </div>

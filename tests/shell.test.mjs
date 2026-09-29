@@ -608,12 +608,12 @@ test('日记目录年份方框支持多选并在年份过多时横向滚动', ()
     assert.match(appJs, /function yearToggleButton\(label, value, activeYears\)/);
     assert.match(appJs, /data-ledger-toggle="year"/);
     assert.match(appJs, /yearToggleButton\('全部', 'all', ledgerParams\.year\)/);
-    assert.match(appJs, /travelModel\.years\.map\(year => yearToggleButton\(year, year, ledgerParams\.year\)\)/);
+    assert.match(appJs, /\[\.\.\.travelModel\.years\]\.sort\(\(a, b\) => a\.localeCompare\(b\)\)\.map\(year => yearToggleButton\(year, year, ledgerParams\.year\)\)/);
     assert.match(appJs, /year: normalizeFilterValues\(params\.year\)/);
     assert.match(appJs, /const yearMatch = matchesLedgerFilterValue\(normalized\.year, record\.year\);/);
     assert.match(appJs, /appendLedgerFilterParams\(params, 'year', ledgerParams\.year\)/);
     assert.match(journalCss, /\.year-bookmarks\s*{[^}]*flex-wrap: nowrap;[^}]*overflow-x: auto;/);
-    assert.match(journalCss, /\.year-bookmarks::-webkit-scrollbar\s*{[^}]*height: 8px;/);
+    assert.match(journalCss, /\.year-bookmarks::-webkit-scrollbar\s*{[^}]*height: 6px;/);
 });
 
 test('右侧档案页滚动条没有底部原生箭头占位', () => {
