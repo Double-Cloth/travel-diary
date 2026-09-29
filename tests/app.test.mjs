@@ -119,7 +119,8 @@ test('路由搜索保留查询值中的后续问号', () => {
 });
 
 test('目录地点筛选保留同一维度的多个选项，记录特征只保留单个选项', () => {
-    const route = app.parseRoute('#ledger?month=07&month=08&visit=first&visit=repeat&media=photos&media=videos');
+    const route = app.parseRoute('#ledger?year=2025&year=2026&month=07&month=08&visit=first&visit=repeat&media=photos&media=videos');
+    assert.deepEqual(route.params.year, ['2025', '2026']);
     assert.deepEqual(route.params.month, ['07', '08']);
     assert.deepEqual(route.params.visit, ['first']);
     assert.deepEqual(route.params.media, ['photos']);

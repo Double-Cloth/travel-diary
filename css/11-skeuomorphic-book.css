@@ -597,7 +597,7 @@ body[data-route='preface'] .paper-page {
 
 .year-bookmarks {
     gap: 3px;
-    padding: 6px 6px 0;
+    padding: 6px 6px 7px;
     border-bottom: 2px solid #bca47c;
     border-radius: 5px 5px 0 0;
     background: linear-gradient(#b79b6b39, #e1cda47d);

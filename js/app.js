@@ -32,7 +32,7 @@ import {
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_SORT_OPTIONS = new Set(['desc', 'asc', 'location', 'area', 'title']);
 const LEDGER_FILTER_DEFAULTS = {
-    year: 'all',
+    year: [],
     month: [],
     country: [],
     area: [],
@@ -395,7 +395,7 @@ function parseRoute(hash = window.location.hash) {
             return {
                 name: 'ledger',
                 params: {
-                    year: normalizeYear(params.get('year')),
+                    year: normalizeFilterValues(params.getAll('year')),
                     month: normalizeMonth(params.getAll('month')),
                     country: normalizeFilterValues(params.getAll('country')),
                     area: normalizeFilterValues(params.getAll('area').length ? params.getAll('area') : params.getAll('province')),
@@ -462,7 +462,7 @@ function serializeRoute(route) {
         case 'ledger':
             {
                 const ledgerParams = normalizeLedgerParams(route.params);
-                if (ledgerParams.year !== 'all') params.set('year', ledgerParams.year);
+                appendLedgerFilterParams(params, 'year', ledgerParams.year);
                 appendLedgerFilterParams(params, 'month', ledgerParams.month);
                 appendLedgerFilterParams(params, 'country', ledgerParams.country);
                 appendLedgerFilterParams(params, 'area', ledgerParams.area);
@@ -1129,8 +1129,8 @@ function renderLedger(params = {}, options = {}) {
                     <nav class="ledger-year-nav" aria-label="按年份浏览日记">
                         <span class="ledger-year-label">按年份</span>
                         <div class="year-bookmarks">
-                            ${yearLink('全部', 'all', ledgerParams)}
-                            ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
+                            ${yearToggleButton('全部', 'all', ledgerParams.year)}
+                            ${travelModel.years.map(year => yearToggleButton(year, year, ledgerParams.year)).join('')}
                         </div>
                     </nav>
                 </div>
@@ -3423,7 +3423,10 @@ function handleDocumentClick(event) {
         const value = ledgerToggle.getAttribute('data-value') || 'all';
         if (key) {
             const currentValues = normalizeLedgerParams(activeRoute?.params)[key];
-            updateLedgerRoute({ [key]: selectLedgerFilterValue(currentValues, value) }, {
+            const nextValues = key === 'year'
+                ? toggleLedgerFilterValue(currentValues, value)
+                : selectLedgerFilterValue(currentValues, value);
+            updateLedgerRoute({ [key]: nextValues }, {
                 replace: true,
                 animate: false,
                 preserveRightScroll: true,
@@ -3932,7 +3935,7 @@ function getLedgerRecords(params) {
     const normalized = normalizeLedgerParams(params);
     const query = normalized.q.toLowerCase();
     const records = travelModel.records.filter((record) => {
-        const yearMatch = normalized.year === 'all' || record.year === normalized.year;
+        const yearMatch = matchesLedgerFilterValue(normalized.year, record.year);
         const monthMatch = matchesLedgerFilterValue(normalized.month, record.month);
         const countryMatch = matchesLedgerFilterValue(normalized.country, record.countryKey);
         const adminAreaMatch = matchesLedgerFilterValue(normalized.area, record.adminAreaKey);
@@ -4303,7 +4306,7 @@ function getLocalityFilterOptions(country, area) {
 function hasActiveLedgerFilter(params) {
     const normalized = normalizeLedgerParams(params);
 
-    return normalized.year !== 'all'
+    return normalized.year.length > 0
         || normalized.month.length > 0
         || normalized.country.length > 0
         || normalized.area.length > 0
@@ -4314,15 +4317,14 @@ function hasActiveLedgerFilter(params) {
         || Boolean(normalized.q);
 }
 
-function yearLink(label, year, params) {
-    const nextParams = normalizeLedgerParams({ ...params, year });
-    const active = nextParams.year === normalizeLedgerParams(params).year;
-    return `<a class="year-bookmark${active ? ' year-bookmark-active' : ''}" href="${serializeRoute({ name: 'ledger', params: nextParams })}">${escapeHtml(label)}</a>`;
+function yearToggleButton(label, value, activeYears) {
+    const active = isLedgerFilterValueSelected(activeYears, value);
+    return `<button class="year-bookmark${active ? ' year-bookmark-active' : ''}" type="button" data-ledger-toggle="year" data-value="${escapeHtml(value)}" aria-pressed="${active ? 'true' : 'false'}">${escapeHtml(label)}</button>`;
 }
 
 function normalizeLedgerParams(params = {}) {
     return {
-        year: normalizeYear(params.year),
+        year: normalizeFilterValues(params.year),
         month: normalizeMonth(params.month),
         country: normalizeFilterValues(params.country),
         area: normalizeFilterValues(params.area || params.province),
@@ -4333,10 +4335,6 @@ function normalizeLedgerParams(params = {}) {
         q: (params.q || '').trim(),
         sort: normalizeLedgerSort(params.sort)
     };
-}
-
-function normalizeYear(year) {
-    return year && year !== 'All' ? String(year) : 'all';
 }
 
 function normalizeMonth(month) {

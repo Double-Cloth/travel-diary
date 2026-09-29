@@ -127,7 +127,7 @@ test('索引夹层重置筛选位于筛选项之前且随内容滚动', () => {
 });
 
 test('索引夹层筛选更新时保留右页滚动位置', () => {
-    assert.match(appJs, /updateLedgerRoute\(\{ \[key\]: selectLedgerFilterValue\(currentValues, value\) \}, \{[\s\S]*preserveRightScroll: true,[\s\S]*keepContextPanelOpen: isMobileContextPanelOpen/);
+    assert.match(appJs, /updateLedgerRoute\(\{ \[key\]: nextValues \}, \{[\s\S]*preserveRightScroll: true,[\s\S]*keepContextPanelOpen: isMobileContextPanelOpen/);
     assert.match(appJs, /updateLedgerRoute\(nextParams, \{[\s\S]*focusId: filter\.id \|\| '',[\s\S]*preserveRightScroll: true,[\s\S]*keepContextPanelOpen: isMobileContextPanelOpen/);
     assert.match(appJs, /function setPages\(leftHtml, rightHtml, rightPageMode = '', options = \{\}\)/);
     assert.match(appJs, /const rightScrollTop = options\.preserveRightScroll \? refs\.rightPage\.scrollTop : 0;/);
@@ -155,7 +155,8 @@ test('索引夹层地点筛选支持同维度多选，记录特征筛选保持�
     }
     assert.match(appJs, /filter\.multiple\s*\?[\s\S]*filter\.selectedOptions/);
     assert.match(appJs, /function toggleLedgerFilterValue/);
-    assert.match(appJs, /updateLedgerRoute\(\{ \[key\]: selectLedgerFilterValue\(currentValues, value\) \}/);
+    assert.match(appJs, /key === 'year'[\s\S]*\? toggleLedgerFilterValue\(currentValues, value\)[\s\S]*: selectLedgerFilterValue\(currentValues, value\)/);
+    assert.match(appJs, /updateLedgerRoute\(\{ \[key\]: nextValues \}/);
     assert.match(appJs, /function selectLedgerFilterValue\(activeValues, value\)[\s\S]*return values\.includes\(value\) \? \[\] : \[value\];/);
     for (const key of ['normalizeVisit', 'normalizeMedia', 'normalizeNote']) {
         assert.match(appJs, new RegExp(`function ${key}\\([^)]*\\) \\{[\\s\\S]*\\.slice\\(0, 1\\);`));
@@ -601,6 +602,18 @@ test('日记目录左页将查找与年份组织为连续目录并保留真实�
     assert.match(appJs, /<h3>\$\{escapeHtml\(record\.title\)\}<\/h3>\s*<span class="entry-location">/);
     assert.match(journalCss, /\.ledger-page\s*{[^}]*min-height: max-content;[^}]*padding-bottom: 52px;/);
     assert.match(journalCss, /body\[data-route="ledger"\] \.paper-page-left::\-webkit-scrollbar-track\s*{[^}]*margin: 0;/);
+});
+
+test('日记目录年份方框支持多选并在年份过多时横向滚动', () => {
+    assert.match(appJs, /function yearToggleButton\(label, value, activeYears\)/);
+    assert.match(appJs, /data-ledger-toggle="year"/);
+    assert.match(appJs, /yearToggleButton\('全部', 'all', ledgerParams\.year\)/);
+    assert.match(appJs, /travelModel\.years\.map\(year => yearToggleButton\(year, year, ledgerParams\.year\)\)/);
+    assert.match(appJs, /year: normalizeFilterValues\(params\.year\)/);
+    assert.match(appJs, /const yearMatch = matchesLedgerFilterValue\(normalized\.year, record\.year\);/);
+    assert.match(appJs, /appendLedgerFilterParams\(params, 'year', ledgerParams\.year\)/);
+    assert.match(journalCss, /\.year-bookmarks\s*{[^}]*flex-wrap: nowrap;[^}]*overflow-x: auto;/);
+    assert.match(journalCss, /\.year-bookmarks::-webkit-scrollbar\s*{[^}]*height: 8px;/);
 });
 
 test('右侧档案页滚动条没有底部原生箭头占位', () => {
