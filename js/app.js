@@ -62,6 +62,7 @@ const ROUTE_MAP_SLOTS = [
 ];
 const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
 const DEFAULT_VIDEO_VOLUME = 0.85;
+const VIDEO_SEEK_INPUT_HOLD_MS = 400;
 const VIDEO_PLAY_ICON_PATH = 'M8 5.5v13l10-6.5z';
 const VIDEO_PAUSE_ICON_PATH = 'M7 5h4v14H7zm6 0h4v14h-4z';
 
@@ -1931,7 +1932,7 @@ function renderVideoControls() {
                 <button class="photo-viewer-control video-viewer-play" type="button" data-video-action="toggle-play" data-video-play aria-label="播放视频">${renderVideoPlaybackIcon()}</button>
                 <button class="photo-viewer-control video-viewer-skip" type="button" data-video-action="forward" aria-label="前进 10 秒">+10s</button>
             </div>
-            <label class="video-viewer-seek-label"><span class="sr-only">播放进度</span><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek></label>
+            <span class="video-viewer-seek-label"><input class="video-viewer-range video-viewer-seek" type="range" min="0" max="0" step="0.05" value="0" data-video-seek aria-label="播放进度"></span>
             <button class="photo-viewer-control video-viewer-more-toggle" type="button" data-video-action="toggle-controls" data-video-more-toggle aria-expanded="false" aria-label="展开更多视频控制">
                 <span>更多</span>
                 <svg class="video-viewer-more-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 6.5 6 1.5l5 5"></path></svg>
@@ -2117,7 +2118,7 @@ function syncVideoViewerControls() {
     const seek = root.querySelector('[data-video-seek]');
     if (seek) {
         seek.max = String(duration);
-        if (photoGestureState.videoSeekPointerId === null) {
+        if (Date.now() - photoGestureState.videoSeekActiveAt > VIDEO_SEEK_INPUT_HOLD_MS) {
             seek.value = String(Math.min(video.currentTime || 0, duration || 0));
         }
     }
@@ -2510,12 +2511,6 @@ function clearPhotoRotationTimer() {
 }
 
 function handlePhotoPointerDown(event) {
-    const videoSeek = event.target.closest?.('[data-video-seek]');
-    if (videoSeek) {
-        beginVideoSeek(event, videoSeek);
-        return;
-    }
-
     const stage = event.target.closest?.('[data-photo-viewer-stage]');
     if (!stage || !photoViewerState || (event.pointerType === 'mouse' && event.button !== 0)) {
         return;
@@ -2540,11 +2535,6 @@ function handlePhotoPointerDown(event) {
 }
 
 function handlePhotoPointerMove(event) {
-    if (photoGestureState.videoSeekPointerId === event.pointerId) {
-        if (event.pointerType !== 'mouse') updateVideoSeekFromPointer(event);
-        return;
-    }
-
     if (!photoViewerState || !photoGestureState.pointers.has(event.pointerId)) {
         return;
     }
@@ -2586,13 +2576,6 @@ function handlePhotoPointerMove(event) {
 }
 
 function handlePhotoPointerEnd(event) {
-    if (photoGestureState.videoSeekPointerId === event.pointerId) {
-        if (event.type === 'pointerup' && event.pointerType !== 'mouse') updateVideoSeekFromPointer(event);
-        photoGestureState.videoSeekPointerId = null;
-        syncVideoViewerControls();
-        return;
-    }
-
     if (!photoGestureState.pointers.has(event.pointerId)) {
         return;
     }
@@ -2608,32 +2591,6 @@ function handlePhotoPointerEnd(event) {
         photoGestureState.suppressClick = true;
         handleVideoViewerAction('toggle-play');
     }
-}
-
-function beginVideoSeek(event, seek) {
-    const video = getViewerVideo();
-    if (!video || !Number.isFinite(video.duration) || video.duration <= 0
-        || (event.pointerType === 'mouse' && event.button !== 0)) return;
-
-    photoGestureState.videoSeekPointerId = event.pointerId;
-    if (event.pointerType !== 'mouse') {
-        event.preventDefault();
-        seek.setPointerCapture?.(event.pointerId);
-        updateVideoSeekFromPointer(event, seek);
-    }
-}
-
-function updateVideoSeekFromPointer(event, seek = getPhotoViewerRoot()?.querySelector('[data-video-seek]')) {
-    const video = getViewerVideo();
-    const duration = video?.duration;
-    const rect = seek?.getBoundingClientRect();
-    if (!video || !Number.isFinite(duration) || duration <= 0 || !rect?.width) return;
-
-    event.preventDefault();
-    const currentTime = clamp((event.clientX - rect.left) / rect.width, 0, 1) * duration;
-    seek.value = String(currentTime);
-    video.currentTime = currentTime;
-    syncVideoViewerControls();
 }
 
 function handlePhotoWheel(event) {
@@ -2701,7 +2658,7 @@ function createPhotoGestureState() {
         pinchStart: null,
         suppressClick: false,
         videoTapPointerId: null,
-        videoSeekPointerId: null
+        videoSeekActiveAt: 0
     };
 }
 
@@ -3602,6 +3559,7 @@ function restoreReadingScrollPosition() {
 function handleDocumentInput(event) {
     const video = getViewerVideo();
     if (video && event.target.matches('[data-video-seek]')) {
+        photoGestureState.videoSeekActiveAt = Date.now();
         video.currentTime = clamp(Number(event.target.value), 0, Number.isFinite(video.duration) ? video.duration : 0);
         syncVideoViewerControls();
         return;
