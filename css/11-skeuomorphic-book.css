@@ -1197,22 +1197,11 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .chapter-tab-active,
     .chapter-tab-active:nth-child(2),
     .chapter-tab-active:nth-child(3) {
-        color: #fff8e8;
-        background:
-            linear-gradient(90deg, transparent 0 76%, #170e0a18 100%),
-            repeating-linear-gradient(90deg, #ffffff12 0 1px, transparent 1px 3px),
-            linear-gradient(
-                color-mix(in srgb, var(--bookmark-cloth-light) 70%, white),
-                color-mix(in srgb, var(--bookmark-cloth) 66%, white) 45%,
-                color-mix(in srgb, var(--bookmark-cloth-dark) 60%, white)
-            );
-        box-shadow:
-            inset 0 1px #fff6d2,
-            inset 0 0 0 2px #f3d9a088,
-            0 4px 9px #1c0f0961;
-        filter: brightness(1.13) saturate(1.03);
-        text-shadow: 0 -1px #2b180f, 0 0 5px #ffe8af59;
-        transform: translateY(-2px);
+        color: #fff6df;
+        box-shadow: inset 0 1px #fff2c58a, inset 0 0 0 2px #f2d89a66, 0 4px 7px #25150e66;
+        filter: brightness(1.12) saturate(1.04);
+        text-shadow: 0 -1px #2b180f, 0 0 5px #ffe8af52;
+        transform: none;
     }
     .chapter-tab::after { display: none; }
     .spine-avatar {
