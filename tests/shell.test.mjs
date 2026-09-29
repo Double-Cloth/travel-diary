@@ -615,6 +615,7 @@ test('日记目录年份方框支持多选并在年份过多时横向滚动', ()
     assert.match(appJs, /const yearBookmarksScrollLeft = refs\.leftPage\?\.querySelector\('\.year-bookmarks'\)\?\.scrollLeft \|\| 0;/);
     assert.match(appJs, /yearBookmarks\.scrollLeft = yearBookmarksScrollLeft;/);
     assert.match(journalCss, /\.year-bookmarks\s*{[^}]*flex-wrap: nowrap;[^}]*overflow-x: auto;/);
+    assert.match(journalCss, /\.year-bookmarks\s*{[^}]*border-bottom: 1px solid var\(--line\);/);
     assert.match(journalCss, /\.year-bookmarks::-webkit-scrollbar\s*{[^}]*height: 6px;/);
 });
 

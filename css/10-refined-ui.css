@@ -488,8 +488,8 @@ body::after {
     .ledger-page-head { margin-bottom: 20px; }
     .ledger-catalog-tools {
         margin-bottom: 20px;
-        padding: 0 0 14px;
-        border-bottom: 1px solid var(--line);
+        padding: 0;
+        border-bottom: 0;
     }
     .ledger-controls { margin: 0 0 12px; }
     .ledger-controls .field-label { display: none; }
@@ -519,7 +519,7 @@ body::after {
         align-items: end;
     }
     .ledger-year-nav { margin: 0; }
-    .year-bookmarks { gap: 4px 16px; margin: 0; border-bottom: 0; }
+    .year-bookmarks { gap: 4px 16px; margin: 0; border-bottom: 1px solid var(--line); }
     .year-bookmark {
         min-height: 32px;
         padding: 5px 2px 7px;

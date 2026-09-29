@@ -294,7 +294,7 @@
     overflow-x: auto;
     overscroll-behavior-x: contain;
     scrollbar-width: thin;
-    scrollbar-color: rgba(120, 88, 54, 0.28) transparent;
+    scrollbar-color: rgba(120, 88, 54, 0.3) transparent;
 }
 
 .year-bookmarks::-webkit-scrollbar {
@@ -302,17 +302,21 @@
 }
 
 .year-bookmarks::-webkit-scrollbar-track {
+    margin-inline: 2px;
     background: transparent;
 }
 
 .year-bookmarks::-webkit-scrollbar-thumb {
+    border: 1.5px solid transparent;
     border-radius: 999px;
-    background: rgba(120, 88, 54, 0.24);
+    background: rgba(120, 88, 54, 0.28);
+    background-clip: padding-box;
     transition: background 0.2s ease;
 }
 
 .year-bookmarks::-webkit-scrollbar-thumb:hover {
-    background: rgba(120, 88, 54, 0.44);
+    background: rgba(120, 88, 54, 0.46);
+    background-clip: padding-box;
 }
 
 .year-bookmark {
