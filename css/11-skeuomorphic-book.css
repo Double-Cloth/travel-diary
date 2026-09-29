@@ -699,17 +699,6 @@ body[data-route='preface'] .paper-page {
     letter-spacing: .1em;
 }
 .ledger-year-nav .year-bookmarks { min-width: 0; margin: 0; }
-.result-count {
-    display: grid;
-    justify-items: end;
-    gap: 3px;
-}
-.result-count strong {
-    flex: 0 0 auto;
-    color: #724635;
-    font: 700 11px/1 var(--font-code);
-    letter-spacing: .04em;
-}
 .paper-page-right.context-panel {
     scroll-padding-block: 76px max(28px, env(safe-area-inset-bottom));
 }
@@ -1123,7 +1112,6 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         padding: 6px 0 0;
         scroll-padding-inline: 5px;
     }
-    .result-count { margin-bottom: 6px; }
     .page-head h1 { text-wrap: balance; }
     .paper-page-right.context-panel .index-dashboard-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
     .paper-page-right.context-panel .index-dashboard-grid span:last-child { grid-column: 1 / -1; border-left: 0; padding: 6px 0 0; border-top: 1px solid var(--line); }

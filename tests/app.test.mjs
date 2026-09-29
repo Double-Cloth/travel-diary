@@ -118,6 +118,13 @@ test('路由搜索保留查询值中的后续问号', () => {
     assert.equal(app.parseRoute('#archive?q=?').params.q, '?');
 });
 
+test('目录筛选路由保留同一维度的多个选项', () => {
+    const route = app.parseRoute('#ledger?month=07&month=08&visit=first&visit=repeat&media=photos&media=videos');
+    assert.deepEqual(route.params.month, ['07', '08']);
+    assert.deepEqual(route.params.visit, ['first', 'repeat']);
+    assert.deepEqual(route.params.media, ['photos', 'videos']);
+});
+
 test('同名或缺少正文路径的记录保留独立身份及原始顺序', () => {
     const records = [
         { date: '2026-01-02', desc_md: 'data/a/note.md', locality: '甲' },
@@ -160,6 +167,7 @@ test('有媒体筛选同时匹配图片或视频记录', () => {
     assert.equal(app.matchesMediaFilter({ photos: [], videos: [] }, 'any'), false);
     assert.equal(app.matchesMediaFilter({ photos: ['a.jpg'], videos: [] }, 'videos'), false);
     assert.equal(app.matchesMediaFilter({ photos: [], videos: [] }, 'none'), true);
+    assert.equal(app.matchesMediaFilter({ photos: ['a.jpg'], videos: [] }, ['none', 'photos']), true);
 });
 
 test('媒体引用错误指出文件、索引字段与实际路径', () => {

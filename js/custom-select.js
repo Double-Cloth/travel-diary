@@ -106,6 +106,9 @@ function renderCustomSelect(wrapper) {
     const triggerLabel = wrapper.querySelector('[data-custom-select-label]');
     const menu = wrapper.querySelector('[data-custom-select-menu]');
     if (!select || !triggerLabel || !menu) return;
+    wrapper.classList.toggle('is-multiple', select.multiple);
+    if (select.multiple) menu.setAttribute('aria-multiselectable', 'true');
+    else menu.removeAttribute('aria-multiselectable');
     menu.innerHTML = '';
     [...select.options].forEach((nativeOption, index) => {
         const option = document.createElement('span');
@@ -117,13 +120,35 @@ function renderCustomSelect(wrapper) {
         option.textContent = nativeOption.textContent;
         menu.append(option);
     });
-    triggerLabel.textContent = select.options[select.selectedIndex]?.textContent || '';
+    const selected = [...select.selectedOptions].filter(option => option.value !== 'all');
+    const defaultLabel = [...select.options].find(option => option.value === 'all')?.textContent || '';
+    triggerLabel.textContent = select.multiple
+        ? (selected.length > 1 ? `${selected[0].textContent} 等 ${selected.length} 项` : (selected[0]?.textContent || defaultLabel))
+        : (select.options[select.selectedIndex]?.textContent || '');
 }
 
 function selectCustomOption(wrapper, option) {
     const select = wrapper.querySelector('select');
     const trigger = wrapper.querySelector('[data-custom-select-trigger]');
     if (!select || select.disabled || !option) return;
+    if (select.multiple) {
+        const nativeOption = [...select.options].find(item => item.value === option.dataset.customSelectValue);
+        if (!nativeOption) return;
+        if (nativeOption.value === 'all') {
+            [...select.options].forEach(item => { item.selected = item.value === 'all'; });
+        } else {
+            const allOption = [...select.options].find(item => item.value === 'all');
+            if (allOption) allOption.selected = false;
+            nativeOption.selected = !nativeOption.selected;
+            if (![...select.options].some(item => item.value !== 'all' && item.selected) && allOption) {
+                allOption.selected = true;
+            }
+        }
+        renderCustomSelect(wrapper);
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+        trigger?.focus({ preventScroll: true });
+        return;
+    }
     if (select.value !== option.dataset.customSelectValue) {
         select.value = option.dataset.customSelectValue;
         select.dispatchEvent(new Event('change', { bubbles: true }));
@@ -180,6 +205,7 @@ function enhanceCustomSelect(select) {
     menu.className = 'custom-select-menu';
     menu.dataset.customSelectMenu = '';
     menu.setAttribute('role', 'listbox');
+    if (select.multiple) menu.setAttribute('aria-multiselectable', 'true');
     menu.hidden = true;
     wrapper.append(menu);
 

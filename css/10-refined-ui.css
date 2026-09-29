@@ -515,8 +515,7 @@ body::after {
 
     .ledger-browse-row {
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 16px;
+        grid-template-columns: minmax(0, 1fr);
         align-items: end;
     }
     .ledger-year-nav { margin: 0; }
@@ -535,15 +534,6 @@ body::after {
     .year-bookmark-active:hover,
     .year-bookmark-active:focus-visible { color: var(--stamp); border-color: var(--stamp); background: transparent; box-shadow: none; }
 
-    .result-count {
-        display: grid;
-        justify-items: end;
-        gap: 3px;
-        margin: 0 0 7px;
-        white-space: nowrap;
-    }
-    .result-count span { font-size: 10px; }
-    .result-count strong { font-size: 12px; }
     .timeline-list { gap: 0; }
     .ledger-year-group { gap: 0; padding-left: 0; }
     .ledger-year-group + .ledger-year-group { margin-top: 24px; }
@@ -781,8 +771,7 @@ body::after {
     .mobile-context-toggle small { justify-self: end; font-size: 10px; }
 
     .ledger-browse-row {
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 10px;
+        grid-template-columns: minmax(0, 1fr);
         align-items: end;
     }
     .ledger-year-nav { min-width: 0; }
@@ -800,7 +789,6 @@ body::after {
     .year-bookmark-active:hover,
     .year-bookmark-active:focus-visible { color: #fff8e9; background: var(--green); box-shadow: none; }
 
-    .result-count { margin-bottom: 6px; }
     .timeline-list { gap: 0; }
     .ledger-year-group { gap: 0; padding-left: 0; }
     .ledger-year-group + .ledger-year-group { margin-top: 24px; }

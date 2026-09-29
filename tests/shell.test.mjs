@@ -117,14 +117,15 @@ test('索引夹层包含完整且唯一的高级筛选工作台', () => {
 
 test('索引夹层重置筛选位于筛选项之前且随内容滚动', () => {
     assert.match(appJs, /renderLedgerSnapshot\(snapshot, resultLabel\)\}\s+\$\{renderLedgerResetAction\(ledgerParams\)\}\s+\$\{renderLedgerFilterWorkbench\(ledgerParams\)\}/);
-    assert.match(appJs, /function renderLedgerResetAction\(params\)[\s\S]*if \(!canReset\) return '';/);
+    assert.match(appJs, /function renderLedgerResetAction\(params\)[\s\S]*data-action="reset-ledger-filters"\$\{canReset \? '' : ' disabled'\}/);
+    assert.doesNotMatch(appJs, /function renderLedgerResetAction\(params\)[\s\S]*if \(!canReset\) return '';/);
     assert.doesNotMatch(journalCss, /\.index-reset-anchor\s*{[^}]*position:\s*sticky;/);
     assert.match(journalCss, /\.index-reset-anchor\s*{[^}]*background: transparent;/);
     assert.doesNotMatch(journalCss, /\.index-reset-anchor\s*{[^}]*linear-gradient/);
 });
 
 test('索引夹层筛选更新时保留右页滚动位置', () => {
-    assert.match(appJs, /updateLedgerRoute\(\{ \[key\]: value \}, \{[\s\S]*preserveRightScroll: true,[\s\S]*keepContextPanelOpen: isMobileContextPanelOpen/);
+    assert.match(appJs, /updateLedgerRoute\(\{ \[key\]: toggleLedgerFilterValue\(currentValues, value\) \}, \{[\s\S]*preserveRightScroll: true,[\s\S]*keepContextPanelOpen: isMobileContextPanelOpen/);
     assert.match(appJs, /updateLedgerRoute\(nextParams, \{[\s\S]*focusId: filter\.id \|\| '',[\s\S]*preserveRightScroll: true,[\s\S]*keepContextPanelOpen: isMobileContextPanelOpen/);
     assert.match(appJs, /function setPages\(leftHtml, rightHtml, rightPageMode = '', options = \{\}\)/);
     assert.match(appJs, /const rightScrollTop = options\.preserveRightScroll \? refs\.rightPage\.scrollTop : 0;/);
@@ -139,6 +140,18 @@ test('索引夹层总数只保留一个视觉锚点', () => {
     assert.match(journalCss, /\.index-dashboard-main > span,/);
     assert.doesNotMatch(journalCss, /\.index-dashboard-main span,/);
     assert.doesNotMatch(appJs, /共 \$\{total\} 条旅行记录/);
+    assert.doesNotMatch(appJs, /class="result-count"/);
+});
+
+test('索引夹层筛选支持同维度多选且排序仍保持单选', () => {
+    for (const key of ['month', 'country', 'area', 'locality']) {
+        assert.match(appJs, new RegExp(`renderLedgerSelect\\([^;]+['"]${key}['"][^;]+multiple: true`));
+    }
+    assert.match(appJs, /filter\.multiple\s*\?[\s\S]*filter\.selectedOptions/);
+    assert.match(appJs, /function toggleLedgerFilterValue/);
+    assert.match(customSelectJs, /select\.multiple[\s\S]*nativeOption\.selected = !nativeOption\.selected/);
+    assert.match(customSelectJs, /aria-multiselectable/);
+    assert.match(journalCss, /\.custom-select\.is-multiple \.custom-select-menu > \[role="option"\]::before/);
 });
 
 test('索引夹层分段按钮具备拟物化层次', () => {
@@ -224,11 +237,11 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=\d{8}-book-motion-v\d+/);
-    assert.match(indexHtml, /css\/journal\.css\?v=\d{8}-book-motion-v\d+/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260929-ledger-multi-filter-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260929-ledger-multi-filter-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260919-video-upload-v2/);
-    assert.match(appJs, /\.\/custom-select\.js\?v=20260924-page-polish-v1/);
-    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260924-page-polish-v1/);
+    assert.match(appJs, /\.\/custom-select\.js\?v=20260929-multi-select-v1/);
+    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260929-multi-select-v1/);
 });
 
 test('自定义下拉框初始方向和打开后的箭头都随弹出方向变化', () => {
@@ -246,7 +259,7 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
     assert.match(journalCss, /\.custom-select\.is-open\.is-open-upward \.custom-select-chevron\s*\{\s*transform: translateY\(-65%\) rotate\(45deg\);\s*\}/);
     assert.match(journalCss, /.custom-select\.is-open-upward \.custom-select-menu\s*\{\s*inset: auto 0 calc\(100% \+ 8px\);\s*\}/);
     assert.match(appJs, /class="index-filter-field\$\{visuallyHiddenLabel \? ' index-sort-field' : ''\}"/);
-    assert.match(journalEntryCss, /08-custom-select\.css\?v=20260924-page-polish-v1/);
+    assert.match(journalEntryCss, /08-custom-select\.css\?v=20260929-multi-select-v1/);
     assert.doesNotMatch(journalCss, /\.index-sort-field \.custom-select-chevron\s*\{/);
     assert.doesNotMatch(journalCss, /\.index-filter-section:last-child\s*\{\s*padding-bottom:/);
 });
@@ -545,8 +558,10 @@ test('日记目录筛选夹层在桌面和移动端保留底部滚动缓冲', ()
     assert.match(journalCss, /\.paper-page-right\.context-panel \.ledger-feature-filters::after\s*{[^}]*content: "";[^}]*height: max\(36px, env\(safe-area-inset-bottom\)\);[^}]*}/);
 });
 
-test('日记目录左页将查找、年份与结果组织为连续目录并保留真实滚动终点', () => {
-    assert.match(appJs, /class="ledger-catalog-tools"[\s\S]*class="ledger-browse-row"[\s\S]*class="ledger-year-nav"[\s\S]*class="result-count"/);
+test('日记目录左页将查找与年份组织为连续目录并保留真实滚动终点', () => {
+    assert.match(appJs, /class="ledger-catalog-tools"[\s\S]*class="ledger-browse-row"[\s\S]*class="ledger-year-nav"/);
+    assert.doesNotMatch(appJs, /class="result-count"/);
+    assert.match(journalCss, /\.ledger-browse-row\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
     assert.match(appJs, /class="ledger-year-divider"[\s\S]*<h2>[\s\S]*<p>\$\{group\.records\.length\} 篇<\/p>/);
     assert.match(appJs, /<h3>\$\{escapeHtml\(record\.title\)\}<\/h3>\s*<span class="entry-location">/);
     assert.match(journalCss, /\.ledger-page\s*{[^}]*min-height: max-content;[^}]*padding-bottom: 52px;/);

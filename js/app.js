@@ -8,7 +8,7 @@ import { confirmFeedback, showFeedback } from './feedback-dialog.js';
 import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20260914-profile-upload-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
-import { enhanceCustomSelects } from './custom-select.js?v=20260924-page-polish-v1';
+import { enhanceCustomSelects } from './custom-select.js?v=20260929-multi-select-v1';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
@@ -31,13 +31,13 @@ const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_SORT_OPTIONS = new Set(['desc', 'asc', 'location', 'area', 'title']);
 const LEDGER_FILTER_DEFAULTS = {
     year: 'all',
-    month: 'all',
-    country: 'all',
-    area: 'all',
-    locality: 'all',
-    visit: 'all',
-    media: 'all',
-    note: 'all',
+    month: [],
+    country: [],
+    area: [],
+    locality: [],
+    visit: [],
+    media: [],
+    note: [],
     q: '',
     sort: DEFAULT_LEDGER_SORT
 };
@@ -359,13 +359,13 @@ function parseRoute(hash = window.location.hash) {
                 name: 'ledger',
                 params: {
                     year: normalizeYear(params.get('year')),
-                    month: normalizeMonth(params.get('month')),
-                    country: normalizeFilterValue(params.get('country')),
-                    area: normalizeFilterValue(params.get('area') || params.get('province')),
-                    locality: normalizeFilterValue(params.get('locality') || params.get('city')),
-                    visit: normalizeVisit(params.get('visit')),
-                    media: normalizeMedia(params.get('media')),
-                    note: normalizeNote(params.get('note')),
+                    month: normalizeMonth(params.getAll('month')),
+                    country: normalizeFilterValues(params.getAll('country')),
+                    area: normalizeFilterValues(params.getAll('area').length ? params.getAll('area') : params.getAll('province')),
+                    locality: normalizeFilterValues(params.getAll('locality').length ? params.getAll('locality') : params.getAll('city')),
+                    visit: normalizeVisit(params.getAll('visit')),
+                    media: normalizeMedia(params.getAll('media')),
+                    note: normalizeNote(params.getAll('note')),
                     q: (params.get('q') || '').trim(),
                     sort: normalizeLedgerSort(params.get('sort'))
                 },
@@ -426,13 +426,13 @@ function serializeRoute(route) {
             {
                 const ledgerParams = normalizeLedgerParams(route.params);
                 if (ledgerParams.year !== 'all') params.set('year', ledgerParams.year);
-                if (ledgerParams.month !== 'all') params.set('month', ledgerParams.month);
-                if (ledgerParams.country !== 'all') params.set('country', ledgerParams.country);
-                if (ledgerParams.area !== 'all') params.set('area', ledgerParams.area);
-                if (ledgerParams.locality !== 'all') params.set('locality', ledgerParams.locality);
-                if (ledgerParams.visit !== 'all') params.set('visit', ledgerParams.visit);
-                if (ledgerParams.media !== 'all') params.set('media', ledgerParams.media);
-                if (ledgerParams.note !== 'all') params.set('note', ledgerParams.note);
+                appendLedgerFilterParams(params, 'month', ledgerParams.month);
+                appendLedgerFilterParams(params, 'country', ledgerParams.country);
+                appendLedgerFilterParams(params, 'area', ledgerParams.area);
+                appendLedgerFilterParams(params, 'locality', ledgerParams.locality);
+                appendLedgerFilterParams(params, 'visit', ledgerParams.visit);
+                appendLedgerFilterParams(params, 'media', ledgerParams.media);
+                appendLedgerFilterParams(params, 'note', ledgerParams.note);
                 if (ledgerParams.q) params.set('q', ledgerParams.q);
                 if (ledgerParams.sort !== DEFAULT_LEDGER_SORT) params.set('sort', ledgerParams.sort);
             }
@@ -454,6 +454,10 @@ function serializeRoute(route) {
         default:
             return '#cover';
     }
+}
+
+function appendLedgerFilterParams(params, key, values) {
+    values.forEach(value => params.append(key, value));
 }
 
 function syncRouteFromHash(options = {}) {
@@ -492,7 +496,7 @@ function renderRoute(route, options = {}) {
     if (shouldRestoreReadingScroll && renderedPageHash === serializeRoute(route)) {
         clearPageTurn();
         restoreReadingScrollPosition();
-        restoreFocus(options.focusId);
+        restoreFocus(options.focusId, options.reopenSelectId);
         return;
     }
     const isSameChapter = previousRoute?.name === route.name
@@ -532,7 +536,7 @@ function renderRoute(route, options = {}) {
         } else if (!isSameChapter && !options.initial && isMobileLayout()) {
             window.scrollTo({ top: 0, behavior: 'instant' });
         }
-        restoreFocus(options.focusId);
+        restoreFocus(options.focusId, options.reopenSelectId);
     };
     const shouldAnimate = options.animate !== false && !options.initial && !isSameChapter;
     const crossesCover = previousRoute && (previousRoute.name === 'cover' || route.name === 'cover')
@@ -1073,7 +1077,7 @@ function renderRouteMap(records) {
 function renderLedger(params = {}, options = {}) {
     const ledgerParams = normalizeLedgerParams(params);
     const filtered = getLedgerRecords(ledgerParams);
-    const resultLabel = createLedgerResultLabel(filtered.length, travelModel.records.length, ledgerParams);
+    const resultLabel = createLedgerResultLabel(filtered.length, ledgerParams);
     const snapshot = buildRecordSetSnapshot(filtered);
 
     setPages(`
@@ -1092,10 +1096,6 @@ function renderLedger(params = {}, options = {}) {
                             ${travelModel.years.map(year => yearLink(year, year, ledgerParams)).join('')}
                         </div>
                     </nav>
-                    <p class="result-count" aria-live="polite">
-                        <span>${escapeHtml(resultLabel)}</span>
-                        <strong>${filtered.length} 篇</strong>
-                    </p>
                 </div>
             </section>
             <div class="timeline-list" id="ledgerList">
@@ -1123,7 +1123,7 @@ function renderLedgerContextPanel(snapshot, resultLabel, ledgerParams) {
     `;
 }
 
-function createLedgerResultLabel(count, total, params) {
+function createLedgerResultLabel(count, params) {
     const hasFilter = hasActiveLedgerFilter(params);
 
     if (!hasFilter) {
@@ -1139,7 +1139,7 @@ function renderLedgerSnapshot(snapshot, resultLabel) {
         : '暂无匹配记录';
 
     return `
-        <div class="index-dashboard" aria-label="筛选结果快照">
+        <div class="index-dashboard" aria-label="筛选结果快照" aria-live="polite">
             <div class="index-dashboard-main">
                 <span>${escapeHtml(resultLabel)}</span>
                 <strong class="index-dashboard-value">
@@ -1157,7 +1157,7 @@ function renderLedgerSnapshot(snapshot, resultLabel) {
 }
 
 function renderLedgerFilterWorkbench(params) {
-    const adminAreaLabel = getAdminAreaFilterLabel(travelModel.records, params.country);
+    const adminAreaLabel = getAdminAreaFilterLabel(travelModel.records, params.country.length === 1 ? params.country[0] : 'all');
     const adminAreaOptions = getAdminAreaFilterOptions(params.country);
     const localityOptions = getLocalityFilterOptions(params.country, params.area);
     const monthOptions = [
@@ -1175,14 +1175,14 @@ function renderLedgerFilterWorkbench(params) {
         { value: 'all', label: `全部${adminAreaLabel}` },
         ...adminAreaOptions.map(item => ({
             value: item.value,
-            label: params.country === 'all' ? `${item.label} · ${item.country}` : `${item.label} · ${item.count}`
+            label: params.country.length === 0 ? `${item.label} · ${item.country}` : `${item.label} · ${item.count}`
         }))
     ];
     const scopedLocalityOptions = [
         { value: 'all', label: '全部城市 / 目的地' },
         ...localityOptions.map(item => ({
             value: item.value,
-            label: params.area === 'all'
+            label: params.area.length === 0
                 ? `${item.label} · ${item.adminArea || item.country}`
                 : item.label
         }))
@@ -1199,10 +1199,10 @@ function renderLedgerFilterWorkbench(params) {
         <section class="index-filter-section" aria-labelledby="indexLocationFilters">
             <h3 id="indexLocationFilters">时间与地点</h3>
             <div class="index-filter-grid">
-                ${renderLedgerSelect('月份', 'month', monthOptions, params.month)}
-                ${renderLedgerSelect('国家 / 地区', 'country', countryOptions, params.country)}
-                ${renderLedgerSelect(adminAreaLabel, 'area', scopedAdminAreaOptions, params.area)}
-                ${renderLedgerSelect('城市 / 目的地', 'locality', scopedLocalityOptions, params.locality)}
+                ${renderLedgerSelect('月份', 'month', monthOptions, params.month, { multiple: true })}
+                ${renderLedgerSelect('国家 / 地区', 'country', countryOptions, params.country, { multiple: true })}
+                ${renderLedgerSelect(adminAreaLabel, 'area', scopedAdminAreaOptions, params.area, { multiple: true })}
+                ${renderLedgerSelect('城市 / 目的地', 'locality', scopedLocalityOptions, params.locality, { multiple: true })}
             </div>
         </section>
         <section class="index-filter-section" aria-labelledby="indexRecordFilters">
@@ -1230,29 +1230,29 @@ function renderLedgerFilterWorkbench(params) {
         </section>
         <section class="index-filter-section" aria-labelledby="indexSortFilter">
             <h3 id="indexSortFilter">排序方式</h3>
-            ${renderLedgerSelect('排序方式', 'sort', sortOptions, params.sort, true)}
+            ${renderLedgerSelect('排序方式', 'sort', sortOptions, params.sort, { visuallyHiddenLabel: true })}
         </section>
     `;
 }
 
 function renderLedgerResetAction(params) {
     const canReset = hasActiveLedgerFilter(params) || params.sort !== DEFAULT_LEDGER_SORT;
-    if (!canReset) return '';
 
     return `
         <div class="index-reset-anchor">
-            <button class="paper-button index-reset" type="button" data-action="reset-ledger-filters">清除筛选与排序</button>
+            <button class="paper-button index-reset" type="button" data-action="reset-ledger-filters"${canReset ? '' : ' disabled'}>清除筛选与排序</button>
         </div>
     `;
 }
 
-function renderLedgerSelect(label, key, options, activeValue, visuallyHiddenLabel = false) {
+function renderLedgerSelect(label, key, options, activeValue, settings = {}) {
+    const { multiple = false, visuallyHiddenLabel = false } = settings;
     const id = `ledgerFilter${key[0].toUpperCase()}${key.slice(1)}`;
     return `
         <label class="index-filter-field${visuallyHiddenLabel ? ' index-sort-field' : ''}" for="${id}Button">
             <span class="field-label${visuallyHiddenLabel ? ' sr-only' : ''}">${escapeHtml(label)}</span>
-            <select id="${id}" aria-label="${escapeHtml(label)}" data-custom-select data-ledger-filter="${escapeHtml(key)}">
-                ${options.map(option => `<option value="${escapeHtml(option.value)}"${activeValue === option.value ? ' selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}
+            <select id="${id}" aria-label="${escapeHtml(label)}" data-custom-select data-ledger-filter="${escapeHtml(key)}"${multiple ? ' multiple' : ''}>
+                ${options.map(option => `<option value="${escapeHtml(option.value)}"${isLedgerFilterValueSelected(activeValue, option.value) ? ' selected' : ''}>${escapeHtml(option.label)}</option>`).join('')}
             </select>
         </label>
     `;
@@ -3418,7 +3418,8 @@ function handleDocumentClick(event) {
         const key = ledgerToggle.getAttribute('data-ledger-toggle');
         const value = ledgerToggle.getAttribute('data-value') || 'all';
         if (key) {
-            updateLedgerRoute({ [key]: value }, {
+            const currentValues = normalizeLedgerParams(activeRoute?.params)[key];
+            updateLedgerRoute({ [key]: toggleLedgerFilterValue(currentValues, value) }, {
                 replace: true,
                 animate: false,
                 preserveRightScroll: true,
@@ -3633,19 +3634,22 @@ function handleDocumentChange(event) {
     }
 
     const key = filter.getAttribute('data-ledger-filter');
-    const value = filter.value || 'all';
+    const value = filter.multiple
+        ? [...filter.selectedOptions].map(option => option.value)
+        : (filter.value || 'all');
     const nextParams = { [key]: value };
 
     if (key === 'country') {
-        nextParams.area = 'all';
-        nextParams.locality = 'all';
+        nextParams.area = [];
+        nextParams.locality = [];
     } else if (key === 'area') {
-        nextParams.locality = 'all';
+        nextParams.locality = [];
     }
 
     updateLedgerRoute(nextParams, {
         replace: true,
         focusId: filter.id || '',
+        reopenSelectId: filter.multiple ? filter.id : '',
         animate: false,
         preserveRightScroll: true,
         keepContextPanelOpen: isMobileContextPanelOpen
@@ -3917,14 +3921,16 @@ function getLedgerRecords(params) {
     const query = normalized.q.toLowerCase();
     const records = travelModel.records.filter((record) => {
         const yearMatch = normalized.year === 'all' || record.year === normalized.year;
-        const monthMatch = normalized.month === 'all' || record.month === normalized.month;
-        const countryMatch = normalized.country === 'all' || record.countryKey === normalized.country;
-        const adminAreaMatch = normalized.area === 'all' || record.adminAreaKey === normalized.area;
-        const localityMatch = normalized.locality === 'all' || record.locationKey === normalized.locality;
-        const visitMatch = normalized.visit === 'all' || (normalized.visit === 'repeat' ? record.isRepeated : !record.isRepeated);
+        const monthMatch = matchesLedgerFilterValue(normalized.month, record.month);
+        const countryMatch = matchesLedgerFilterValue(normalized.country, record.countryKey);
+        const adminAreaMatch = matchesLedgerFilterValue(normalized.area, record.adminAreaKey);
+        const localityMatch = matchesLedgerFilterValue(normalized.locality, record.locationKey);
+        const visitMatch = normalized.visit.length === 0
+            || normalized.visit.some(value => value === 'repeat' ? record.isRepeated : !record.isRepeated);
         const mediaMatch = matchesMediaFilter(record, normalized.media);
         const hasNote = hasRecordNoteContent(record);
-        const noteMatch = normalized.note === 'all' || (normalized.note === 'filled' ? hasNote : !hasNote);
+        const noteMatch = normalized.note.length === 0
+            || normalized.note.some(value => value === 'filled' ? hasNote : !hasNote);
         const searchMatch = !query || record.searchText.includes(query);
         return yearMatch && monthMatch && countryMatch && adminAreaMatch && localityMatch && visitMatch && mediaMatch && noteMatch && searchMatch;
     });
@@ -3932,15 +3938,18 @@ function getLedgerRecords(params) {
     return records.sort((a, b) => compareLedgerRecords(a, b, normalized.sort));
 }
 
-function matchesMediaFilter(record, media = 'all') {
+function matchesMediaFilter(record, media = []) {
+    const filters = normalizeMedia(media);
     const hasPhotos = Array.isArray(record?.photos) && record.photos.length > 0;
     const hasVideos = Array.isArray(record?.videos) && record.videos.length > 0;
     const hasMedia = hasPhotos || hasVideos;
-    if (media === 'any') return hasMedia;
-    if (media === 'photos') return hasPhotos;
-    if (media === 'videos') return hasVideos;
-    if (media === 'none') return !hasMedia;
-    return true;
+    if (filters.length === 0) return true;
+    return filters.some(value => (
+        (value === 'any' && hasMedia)
+        || (value === 'photos' && hasPhotos)
+        || (value === 'videos' && hasVideos)
+        || (value === 'none' && !hasMedia)
+    ));
 }
 
 function compareLedgerRecords(a, b, sort) {
@@ -3994,7 +4003,7 @@ function renderLedgerControls(params, inputId) {
 function countLedgerWorkbenchFilters(params) {
     const normalized = normalizeLedgerParams(params);
     const filterKeys = ['month', 'country', 'area', 'locality', 'visit', 'media', 'note'];
-    const filterCount = filterKeys.reduce((count, key) => count + (normalized[key] !== 'all' ? 1 : 0), 0);
+    const filterCount = filterKeys.reduce((count, key) => count + (normalized[key].length > 0 ? 1 : 0), 0);
     return filterCount + (normalized.sort !== DEFAULT_LEDGER_SORT ? 1 : 0);
 }
 
@@ -4227,7 +4236,7 @@ function getPhotoSleeveColumnCount(sleeve) {
 }
 
 function filterToggleButton(label, key, value, activeValue) {
-    const active = value === activeValue;
+    const active = isLedgerFilterValueSelected(activeValue, value);
 
     return `
         <button class="index-segment${active ? ' index-segment-active' : ''}" type="button" data-ledger-toggle="${escapeHtml(key)}" data-value="${escapeHtml(value)}" aria-pressed="${active ? 'true' : 'false'}">
@@ -4236,21 +4245,39 @@ function filterToggleButton(label, key, value, activeValue) {
     `;
 }
 
+function isLedgerFilterValueSelected(activeValues, value) {
+    const values = normalizeFilterValues(activeValues);
+    return value === 'all' ? values.length === 0 : values.includes(value);
+}
+
+function toggleLedgerFilterValue(activeValues, value) {
+    if (value === 'all') return [];
+
+    const values = normalizeFilterValues(activeValues);
+    return values.includes(value)
+        ? values.filter(item => item !== value)
+        : [...values, value];
+}
+
+function matchesLedgerFilterValue(activeValues, value) {
+    return activeValues.length === 0 || activeValues.includes(value);
+}
+
 function getAdminAreaFilterOptions(country) {
-    const normalizedCountry = normalizeFilterValue(country);
+    const normalizedCountries = normalizeFilterValues(country);
 
     return travelModel.filterOptions.adminAreas.filter(area => (
-        normalizedCountry === 'all' || area.countryKey === normalizedCountry
+        normalizedCountries.length === 0 || normalizedCountries.includes(area.countryKey)
     ));
 }
 
 function getLocalityFilterOptions(country, area) {
-    const normalizedCountry = normalizeFilterValue(country);
-    const normalizedArea = normalizeFilterValue(area);
+    const normalizedCountries = normalizeFilterValues(country);
+    const normalizedAreas = normalizeFilterValues(area);
 
     return travelModel.filterOptions.localities.filter(locality => (
-        (normalizedCountry === 'all' || locality.countryKey === normalizedCountry)
-        && (normalizedArea === 'all' || locality.adminAreaKey === normalizedArea)
+        (normalizedCountries.length === 0 || normalizedCountries.includes(locality.countryKey))
+        && (normalizedAreas.length === 0 || normalizedAreas.includes(locality.adminAreaKey))
     ));
 }
 
@@ -4258,13 +4285,13 @@ function hasActiveLedgerFilter(params) {
     const normalized = normalizeLedgerParams(params);
 
     return normalized.year !== 'all'
-        || normalized.month !== 'all'
-        || normalized.country !== 'all'
-        || normalized.area !== 'all'
-        || normalized.locality !== 'all'
-        || normalized.visit !== 'all'
-        || normalized.media !== 'all'
-        || normalized.note !== 'all'
+        || normalized.month.length > 0
+        || normalized.country.length > 0
+        || normalized.area.length > 0
+        || normalized.locality.length > 0
+        || normalized.visit.length > 0
+        || normalized.media.length > 0
+        || normalized.note.length > 0
         || Boolean(normalized.q);
 }
 
@@ -4278,9 +4305,9 @@ function normalizeLedgerParams(params = {}) {
     return {
         year: normalizeYear(params.year),
         month: normalizeMonth(params.month),
-        country: normalizeFilterValue(params.country),
-        area: normalizeFilterValue(params.area || params.province),
-        locality: normalizeFilterValue(params.locality || params.city),
+        country: normalizeFilterValues(params.country),
+        area: normalizeFilterValues(params.area || params.province),
+        locality: normalizeFilterValues(params.locality || params.city),
         visit: normalizeVisit(params.visit),
         media: normalizeMedia(params.media),
         note: normalizeNote(params.note),
@@ -4294,25 +4321,29 @@ function normalizeYear(year) {
 }
 
 function normalizeMonth(month) {
-    const value = String(month || '').padStart(2, '0');
-    return /^(0[1-9]|1[0-2])$/.test(value) ? value : 'all';
+    return normalizeFilterValues(month, value => /^(0[1-9]|1[0-2])$/.test(value.padStart(2, '0')))
+        .map(value => value.padStart(2, '0'));
 }
 
-function normalizeFilterValue(value) {
-    const normalized = String(value || '').trim();
-    return normalized && normalized !== 'All' ? normalized : 'all';
+function normalizeFilterValues(value, validate = () => true) {
+    const source = Array.isArray(value) ? value : [value];
+    const normalized = source
+        .map(item => String(item || ''))
+        .map(item => item.trim())
+        .filter(item => item && item !== 'all' && item !== 'All' && validate(item));
+    return [...new Set(normalized)];
 }
 
 function normalizeVisit(visit) {
-    return visit === 'first' || visit === 'repeat' ? visit : 'all';
+    return normalizeFilterValues(visit, value => value === 'first' || value === 'repeat');
 }
 
 function normalizeMedia(media) {
-    return media === 'any' || media === 'photos' || media === 'videos' || media === 'none' ? media : 'all';
+    return normalizeFilterValues(media, value => ['any', 'photos', 'videos', 'none'].includes(value));
 }
 
 function normalizeNote(note) {
-    return note === 'filled' || note === 'empty' ? note : 'all';
+    return normalizeFilterValues(note, value => value === 'filled' || value === 'empty');
 }
 
 function normalizeLedgerSort(sort) {
@@ -4325,9 +4356,9 @@ function canonicalizeLocationRoute(route) {
 
     if (route.name === 'ledger') {
         const params = normalizeLedgerParams(route.params);
-        const country = resolveCountryFilterValue(params.country);
-        const area = resolveAdminAreaFilterValue(params.area, country);
-        const locality = resolveLocalityFilterValue(params.locality, country, area);
+        const country = resolveCountryFilterValues(params.country);
+        const area = resolveAdminAreaFilterValues(params.area, country);
+        const locality = resolveLocalityFilterValues(params.locality, country, area);
 
         return { ...route, params: { ...params, country, area, locality } };
     }
@@ -4341,6 +4372,33 @@ function canonicalizeLocationRoute(route) {
     }
 
     return route;
+}
+
+function resolveCountryFilterValues(values) {
+    return normalizeFilterValues(values)
+        .map(value => travelModel.filterOptions.countries.find(option => (
+            option.value === value || option.label === value
+        ))?.value)
+        .filter((value, index, all) => value && all.indexOf(value) === index);
+}
+
+function resolveAdminAreaFilterValues(values, countries = []) {
+    return normalizeFilterValues(values)
+        .map(value => travelModel.filterOptions.adminAreas.find(option => (
+            (option.value === value || option.label === value)
+            && (countries.length === 0 || countries.includes(option.countryKey))
+        ))?.value)
+        .filter((value, index, all) => value && all.indexOf(value) === index);
+}
+
+function resolveLocalityFilterValues(values, countries = [], areas = []) {
+    return normalizeFilterValues(values)
+        .map(value => travelModel.filterOptions.localities.find(option => (
+            (option.value === value || option.label === value)
+            && (countries.length === 0 || countries.includes(option.countryKey))
+            && (areas.length === 0 || areas.includes(option.adminAreaKey))
+        ))?.value)
+        .filter((value, index, all) => value && all.indexOf(value) === index);
 }
 
 function resolveCountryFilterValue(value, fallback = 'all') {
@@ -4472,13 +4530,16 @@ function formatDateForRange(dateStr, precision) {
     return `${year}.${month}`;
 }
 
-function restoreFocus(focusId) {
+function restoreFocus(focusId, reopenSelectId = '') {
     if (!focusId) return;
 
     requestAnimationFrame(() => {
         const target = document.getElementById(focusId);
         if (!target) return;
         target.focus({ preventScroll: true });
+        if (reopenSelectId === focusId) {
+            document.getElementById(`${focusId}Button`)?.click();
+        }
         if (typeof target.setSelectionRange === 'function') {
             const end = target.value.length;
             target.setSelectionRange(end, end);
