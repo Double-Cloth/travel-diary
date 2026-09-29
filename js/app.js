@@ -116,6 +116,7 @@ async function refreshTravelModel(cacheKey = '') {
 async function initApp() {
     cacheRefs();
     bindGlobalEvents();
+    syncProfilePictureImages(refs.spine);
     const recordDeleteDialog = createRecordDeleteDialog();
     const handleRecordSaved = async (savedRecord, context = {}) => {
         await refreshTravelModel(getRefreshKey());
@@ -3906,7 +3907,6 @@ function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
     refs.rightPage.innerHTML = rightHtml;
     syncProfilePictureImages(refs.leftPage);
     syncProfilePictureImages(refs.rightPage);
-    syncProfilePictureImages(refs.spine);
     enhanceCustomSelects(refs.leftPage);
     enhanceCustomSelects(refs.rightPage);
     isMobileContextPanelOpen = keepContextPanelOpen;
