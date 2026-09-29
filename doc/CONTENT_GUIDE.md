@@ -241,7 +241,7 @@ npm test
 - 同名地点对应多个省份时保持为空，等待手工选择行政区。
 - 香港、澳门和台湾继续按国家目录中的 `HK`、`MO`、`TW` 独立处理。
 
-目录由 `scripts/update-china-locations.mjs` 从固定版本的 `cn-division` 生成，数据来源与许可信息记录在目录元数据及 `THIRD_PARTY_NOTICES.md` 中。需要更新时运行：
+目录由 `scripts/update-china-locations.mjs` 从固定版本的 `cn-division` 生成，数据来源与许可信息记录在 `assets/catalogs/china-locations.json` 的 `source` 元数据中。需要更新时运行：
 
 ```bash
 npm run china-locations

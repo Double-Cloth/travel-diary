@@ -46,6 +46,7 @@ trace-*.zip
 screenshots/
 test-results/
 playwright-report/
+output/
 
 # Environment
 .env
