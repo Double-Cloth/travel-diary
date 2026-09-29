@@ -1001,12 +1001,14 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .paper-page-right.dossier-page {
         padding: 66px clamp(26px, 3vw, 46px) 36px;
         background: linear-gradient(90deg, #fff8e4c9, #f5e9d2cc 72%, #e9d5b9d6), var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.png')) center / cover, url('../assets/textures/paper-grain.png'), #f3e8cf;
+        background-blend-mode: normal, normal, multiply, normal;
     }
     .paper-page-right,
     .paper-page-right.map-pocket,
     .paper-page-right.dossier-page {
         padding-top: 66px;
         background: linear-gradient(90deg, #e9d5b9db, #fff8e4d9 17%, #f5e9d2d9 82%, #e9d5b9dc), var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.png')) center / cover, url('../assets/textures/paper-grain.png'), #f3e8cf;
+        background-blend-mode: normal, normal, multiply, normal;
     }
     .page-spread::before, .page-spread::after { opacity: .85; }
     .page-head h1 { font-size: clamp(28px, 2.35vw, 36px); line-height: 1.4; }
@@ -1202,7 +1204,14 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .paper-page {
         border-inline: 5px solid #bfa780;
         box-shadow: inset 3px 0 7px #85643e22;
-        background: linear-gradient(#f9efdfdf, #f4e8d7e3), var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.png')) center / cover, url('../assets/textures/paper-grain.png'), #f3e8cf;
+        background:
+            linear-gradient(rgba(249, 239, 223, 0.58), rgba(244, 232, 215, 0.6)),
+            var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.png')) center / cover,
+            url('../assets/textures/paper-grain.png'),
+            #f3e8cf;
+        /* 单列页随正文无限增高，cover 会把图放大到只有中间素纸区域；固定到视口才能像桌面端一样保留页边装饰。 */
+        background-attachment: fixed, fixed, fixed, scroll;
+        background-blend-mode: normal, normal, multiply, normal;
     }
     .year-bookmark { padding-inline: 13px; }
     .paper-page .paper-button, .paper-page .sheet-nav-button { min-height: 42px; }
