@@ -1793,7 +1793,11 @@ function openPhotoViewer(photos, index = 0) {
         translateY: 0,
         videoVolume: DEFAULT_VIDEO_VOLUME,
         videoMuted: false,
-        videoRate: 1
+        videoRate: 1,
+        videoBlobUrl: null,
+        videoBlobSource: '',
+        videoBlobPending: false,
+        videoCaptionBackup: ''
     };
     photoGestureState = createPhotoGestureState();
     renderPhotoViewer();
@@ -1805,6 +1809,7 @@ function renderPhotoViewer() {
     const previousFrame = previousImage?.complete && previousImage.naturalWidth
         ? previousImage.closest('[data-photo-viewer-frame]').cloneNode(true) : null;
     document.querySelector('[data-photo-viewer]')?.remove();
+    releaseVideoBlob();
     const root = getPhotoViewerRoot();
     if (!photoViewerState || !root) {
         return;
@@ -1864,8 +1869,14 @@ function renderPhotoViewer() {
             video.addEventListener('click', handleViewerVideoClick);
             video.addEventListener('loadedmetadata', () => {
                 if (video !== getViewerVideo()) return;
+                const caption = getPhotoViewerRoot()?.querySelector('.photo-viewer-caption');
+                if (caption && photoViewerState?.videoCaptionBackup) {
+                    caption.textContent = photoViewerState.videoCaptionBackup;
+                    photoViewerState.videoCaptionBackup = '';
+                }
                 fitPhotoToStage();
                 syncVideoViewerControls();
+                flushVideoSeek();
             });
             video.addEventListener('error', showVideoPlaybackError, { once: true });
             if (video.readyState >= 1) fitPhotoToStage();
@@ -1916,6 +1927,7 @@ function renderPhotoViewer() {
 function closePhotoViewerDialog() {
     stopObservingPhotoViewerStage();
     document.querySelector('[data-photo-viewer]')?.remove();
+    releaseVideoBlob();
     photoViewerState = null;
     photoGestureState = createPhotoGestureState();
     clearPhotoRotationTimer();
@@ -2723,7 +2735,12 @@ function updateVideoSeekFromPoint(clientX, seek = getPhotoViewerRoot()?.querySel
 function flushVideoSeek() {
     const video = getViewerVideo();
     const target = photoGestureState.videoSeekTarget;
-    if (!video || target === null || video.seeking || video.readyState < 1) return;
+    if (!video || target === null) return;
+    if (!isVideoSeekable(video)) {
+        upgradeViewerVideoToBlob();
+        return;
+    }
+    if (video.seeking || video.readyState < 1) return;
     if (Date.now() - photoGestureState.videoSeekTargetAt > 4000) {
         photoGestureState.videoSeekTarget = null;
         return;
@@ -2736,6 +2753,65 @@ function flushVideoSeek() {
     if (Math.abs(video.currentTime - time) < 0.25) {
         photoGestureState.videoSeekTarget = null;
     }
+}
+
+function isVideoSeekable(video) {
+    const seekable = video?.seekable;
+    return Boolean(seekable && seekable.length && seekable.end(seekable.length - 1) > 0);
+}
+
+function releaseVideoBlob() {
+    if (!photoViewerState) return;
+    if (photoViewerState.videoBlobUrl) {
+        URL.revokeObjectURL(photoViewerState.videoBlobUrl);
+    }
+    photoViewerState.videoBlobUrl = null;
+    photoViewerState.videoBlobSource = '';
+    photoViewerState.videoBlobPending = false;
+    photoViewerState.videoCaptionBackup = '';
+}
+
+function upgradeViewerVideoToBlob() {
+    const video = getViewerVideo();
+    if (!video || !photoViewerState) return;
+    if (photoViewerState.videoBlobUrl || photoViewerState.videoBlobPending) return;
+    const source = (video.getAttribute('src') || '').split('#')[0];
+    if (!source || source.startsWith('blob:') || source.startsWith('data:')) return;
+
+    photoViewerState.videoBlobPending = true;
+    const root = getPhotoViewerRoot();
+    const caption = root?.querySelector('.photo-viewer-caption');
+    photoViewerState.videoCaptionBackup = caption?.textContent || '';
+    if (caption) caption.textContent = '正在缓存视频以便拖动进度…';
+
+    const wasPlaying = !video.paused && !video.ended;
+    const volume = video.volume;
+    const muted = video.muted;
+    const rate = video.playbackRate;
+
+    fetch(source, { credentials: 'same-origin' })
+        .then(response => {
+            if (!response.ok) throw new Error(String(response.status));
+            return response.blob();
+        })
+        .then(blob => {
+            if (!photoViewerState?.videoBlobPending || video !== getViewerVideo()) return;
+            const url = URL.createObjectURL(blob);
+            photoViewerState.videoBlobUrl = url;
+            photoViewerState.videoBlobPending = false;
+            photoViewerState.videoBlobSource = source;
+            video.volume = volume;
+            video.muted = muted;
+            video.playbackRate = rate;
+            video.src = url;
+            video.load();
+            if (wasPlaying) video.play().catch(() => {});
+        })
+        .catch(() => {
+            if (!photoViewerState) return;
+            photoViewerState.videoBlobPending = false;
+            if (caption) caption.textContent = '视频服务不支持跳转，暂时无法拖动进度。';
+        });
 }
 
 function getVideoSeekMax(video) {
