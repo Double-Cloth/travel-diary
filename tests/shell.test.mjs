@@ -109,7 +109,7 @@ test('扉页桌面双页展示个人信息与工具，移动端工具页默认�
     assert.match(journalCss, /\.brand-lockup strong::after\s*\{\s*content: "旅行笔记";/);
     assert.match(journalCss, /\.brand-lockup strong::after\s*\{[\s\S]*position: absolute;[\s\S]*inset: 0;[\s\S]*display: grid;[\s\S]*place-items: center;/);
     assert.match(indexHtml, /class="brand-lockup"[^>]*aria-label="合上旅行笔记"[^>]*title="合上旅行笔记"/);
-    assert.match(journalEntryCss, /11-skeuomorphic-book\.css\?v=20260930-mobile-brand-plaque-v4/);
+    assert.match(journalEntryCss, /11-skeuomorphic-book\.css\?v=20260930-mobile-bookmark-shadow-v1/);
 });
 
 test('索引夹层包含完整且唯一的高级筛选工作台', () => {
@@ -289,7 +289,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(journalCss, /\.custom-select-menu > \[role="option"\],[\s\S]*?white-space: normal;[\s\S]*?overflow-wrap: anywhere;/);
     assert.match(indexHtml, /js\/app\.js\?v=20260930-mobile-video-seek-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260930-mobile-brand-note-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260930-mobile-bookmark-shadow-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260930-path-follow-locality-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);
@@ -694,6 +694,8 @@ test('移动端当前章节以整片金棕材质高亮且标签不再套铭牌',
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*?\.chapter-tab-active,[\s\S]*?background:\s*linear-gradient\(180deg, #fffbe7/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*?\.chapter-tab-active::before\s*\{\s*display:\s*none;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*?\.chapter-tab-active > span:last-child\s*\{[\s\S]*?background:\s*none;[\s\S]*?box-shadow:\s*none;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*?\.chapter-tab-active,[\s\S]*?text-shadow:\s*none;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*?\.chapter-tab-active > span:last-child\s*\{[\s\S]*?text-shadow:\s*0 1px 0 #fff2bf99;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*?\.chapter-tab-active,[\s\S]*?transform:\s*translateY\(-3px\);/);
 });
 
