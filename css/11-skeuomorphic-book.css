@@ -1244,46 +1244,35 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .chapter-tab > span:last-child {
         position: relative;
         z-index: 1;
-        padding: 3px 7px 4px;
-        border: 1px solid transparent;
-        border-radius: 3px;
+        padding: 0;
+        border: 0;
     }
     .chapter-tab-active,
     .chapter-tab-active:nth-child(2),
     .chapter-tab-active:nth-child(3) {
-        color: #43270c;
+        color: #3f260f;
         background:
-            linear-gradient(180deg, #fff2c657 0 2px, transparent 10px),
-            linear-gradient(90deg, transparent 0 76%, #170e0a24 100%),
-            repeating-linear-gradient(90deg, #ffffff14 0 1px, transparent 1px 3px),
-            linear-gradient(var(--bookmark-cloth-light), var(--bookmark-cloth) 45%, var(--bookmark-cloth-dark));
+            linear-gradient(180deg, #fffbe7 0%, #f3dda2 10%, #d8ae64 42%, #b67d3f 72%, #75452a 100%);
         box-shadow:
-            inset 0 1px #fff8d6,
-            inset 0 0 0 2px #f2d89a99,
-            inset 0 -8px 10px #21110b4d,
-            0 5px 8px #25150e7a;
-        filter: brightness(1.08) saturate(1.14) contrast(1.06);
-        text-shadow: none;
-        transform: none;
+            inset 0 2px 1px #fffef6,
+            inset 1px 0 #fff0bc99,
+            inset -1px 0 #351b106b,
+            inset 0 -7px 9px #3d210f66,
+            0 7px 10px #25150e80;
+        filter: saturate(1.08) contrast(1.04);
+        text-shadow: 0 1px #fff2bf, 0 -1px #6d421f59;
+        transform: translateY(-3px);
     }
     .chapter-tab-active::before {
-        border-style: solid;
-        border-color: #ffe8b8d9;
-        box-shadow: inset 0 1px #3b210f38, 0 0 4px #ffe5a538;
+        display: none;
     }
-    /* 当前章节像钉在布签上的黄铜铭牌：比单纯提亮更易在小屏上识别。 */
+    /* 文字直接压在整片高亮书签上，避免书签里再套一层铭牌。 */
     .chapter-tab-active > span:last-child {
-        border-color: #5f421d;
-        color: #43270c;
-        background: linear-gradient(180deg, #fff6d5 0%, #ebcf8e 42%, #c79750 100%);
-        box-shadow:
-            inset 0 1px #fffdf0,
-            inset 0 -2px 2px #6b451f73,
-            inset 0 0 0 1px #d9ad61,
-            0 2px 3px #1d0f0870;
+        color: inherit;
+        background: none;
+        box-shadow: none;
         font-weight: 700;
-        letter-spacing: .02em;
-        text-shadow: 0 1px #fff1be;
+        letter-spacing: .04em;
     }
     .chapter-tab::after { display: none; }
     .spine-avatar {
