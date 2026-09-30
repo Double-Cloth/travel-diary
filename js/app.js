@@ -1922,17 +1922,19 @@ function setVideoMoreControlsOpen(isOpen) {
 function renderPhotoControls() {
     return `
         <div class="photo-viewer-controls photo-viewer-image-controls" aria-label="图片显示控制">
-            ${renderZoomControls('图片缩放')}
+            <div class="photo-viewer-image-primary-controls">
+                ${renderRotateControls('图片旋转')}
+            </div>
             <button class="photo-viewer-control photo-viewer-more-toggle" type="button" data-photo-action="toggle-controls" data-photo-more-toggle aria-expanded="false" aria-label="展开更多图片控制">
                 <span>更多</span>
                 <svg class="video-viewer-more-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 6.5 6 1.5l5 5"></path></svg>
             </button>
             <div class="photo-viewer-image-secondary-controls">
-                <span class="photo-viewer-control-divider" aria-hidden="true"></span>
-                ${renderRotateControls('图片旋转')}
+                ${renderZoomControls('图片缩放')}
                 <button class="photo-viewer-control photo-viewer-reset" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="恢复到初始适配比例">适应</button>
-                <span class="photo-viewer-control-divider" aria-hidden="true"></span>
-                <button class="photo-viewer-control photo-viewer-fullscreen" type="button" data-action="photo-fullscreen" data-photo-action="fullscreen" aria-label="全屏查看图片">全屏</button>
+                <div class="photo-viewer-image-tail-controls">
+                    <button class="photo-viewer-control photo-viewer-fullscreen" type="button" data-action="photo-fullscreen" data-photo-action="fullscreen" aria-label="全屏查看图片">全屏</button>
+                </div>
             </div>
         </div>`;
 }

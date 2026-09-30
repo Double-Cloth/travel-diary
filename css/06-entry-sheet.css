@@ -603,9 +603,34 @@
     display: none;
 }
 
+.photo-viewer-image-primary-controls,
 .photo-viewer-image-secondary-controls {
     display: flex;
     gap: 8px;
+    align-items: center;
+}
+
+.photo-viewer-image-secondary-controls,
+.photo-viewer-image-tail-controls {
+    position: relative;
+    padding-left: 12px;
+}
+
+.photo-viewer-image-secondary-controls::before,
+.photo-viewer-image-tail-controls::before {
+    position: absolute;
+    left: 1px;
+    top: 50%;
+    width: 2px;
+    height: 24px;
+    background: linear-gradient(90deg, rgba(15, 8, 4, 0.74), rgba(241, 210, 149, 0.18));
+    box-shadow: 1px 0 rgba(0, 0, 0, 0.2);
+    content: '';
+    transform: translateY(-50%);
+}
+
+.photo-viewer-image-tail-controls {
+    display: flex;
     align-items: center;
 }
 
