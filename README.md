@@ -1,4 +1,4 @@
-# Travel Diary 旅行手账
+# Travel Diary
 
 ## 开发与运维常用命令
 
@@ -70,4 +70,4 @@ npm test
 
 ## 项目文档
 
-- [项目文档总览](doc/README.md)
+- [项目文档](doc/README.md)
