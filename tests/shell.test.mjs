@@ -98,7 +98,7 @@ test('扉页桌面双页展示个人信息与工具，移动端工具页默认�
     assert.match(journalCss, /\.preface-tool-section\s*{/);
     assert.match(journalCss, /\.preface-identity-sheet\s*{[\s\S]*container-type: inline-size;/);
     assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.preface-profile-composition\s*{[\s\S]*grid-template-columns: minmax\(0, 1fr\);/);
-    assert.match(journalEntryCss, /11-skeuomorphic-book\.css\?v=20260930-preface-layout-v2/);
+    assert.match(journalEntryCss, /11-skeuomorphic-book\.css\?v=20260930-mobile-bookmark-active-v1/);
 });
 
 test('索引夹层包含完整且唯一的高级筛选工作台', () => {
@@ -278,7 +278,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(journalCss, /\.custom-select-menu > \[role="option"\],[\s\S]*?white-space: normal;[\s\S]*?overflow-wrap: anywhere;/);
     assert.match(indexHtml, /js\/app\.js\?v=20260930-select-layout-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260930-preface-layout-v2/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260930-mobile-bookmark-active-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260930-path-follow-locality-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);
@@ -677,6 +677,12 @@ test('章节书签选中态用高亮细节表达且不产生位置缩进', () =>
     assert.match(journalCss, /\.chapter-tab-active \.chapter-icon\s*\{[\s\S]*?radial-gradient/);
     assert.match(journalCss, /\.chapter-tab-active:nth-child\(3\)\s*\{[\s\S]*?transform:\s*none;/);
     assert.doesNotMatch(journalCss, /\.chapter-tab\.chapter-tab-active,[^{]*\{[^}]*transform:\s*translateX\((?!0\))/);
+});
+
+test('移动端章节书签用压印黄铜铭牌清晰标出当前章节', () => {
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*?\.chapter-tab-active > span:last-child\s*\{[\s\S]*?background:\s*linear-gradient\(180deg, #fff6d5/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*?\.chapter-tab-active::before\s*\{[\s\S]*?border-style:\s*solid;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*?\.chapter-tab-active,[\s\S]*?filter:\s*brightness\(1\.08\) saturate\(1\.14\) contrast\(1\.06\);/);
 });
 
 test('空数据目录使用扉页内置头像并仅在自定义头像存在时替换', () => {
