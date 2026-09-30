@@ -599,6 +599,16 @@
     min-width: 52px;
 }
 
+.photo-viewer-more-toggle {
+    display: none;
+}
+
+.photo-viewer-image-secondary-controls {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
 .video-viewer-controls {
     display: grid;
     grid-template-columns: auto minmax(240px, 1fr) auto;

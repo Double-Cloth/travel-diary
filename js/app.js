@@ -1812,6 +1812,7 @@ function renderPhotoViewer() {
         return;
     }
 
+    syncPhotoMoreControlsLayout();
     const image = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]');
     if (previousFrame && image && !prefersReducedMotion()) {
         // 新图加载、适配完成前保留旧图，避免切换大照片时露出空白舞台。
@@ -1920,11 +1921,39 @@ function setVideoMoreControlsOpen(isOpen) {
 
 function renderPhotoControls() {
     return `
-        <div class="photo-viewer-controls" aria-label="图片显示控制">
-            ${renderTransformControls('图片')}
-            <span class="photo-viewer-control-divider" aria-hidden="true"></span>
-            <button class="photo-viewer-control photo-viewer-fullscreen" type="button" data-action="photo-fullscreen" data-photo-action="fullscreen" aria-label="全屏查看图片">全屏</button>
+        <div class="photo-viewer-controls photo-viewer-image-controls" aria-label="图片显示控制">
+            ${renderZoomControls('图片缩放')}
+            <button class="photo-viewer-control photo-viewer-more-toggle" type="button" data-photo-action="toggle-controls" data-photo-more-toggle aria-expanded="false" aria-label="展开更多图片控制">
+                <span>更多</span>
+                <svg class="video-viewer-more-icon" viewBox="0 0 12 8" aria-hidden="true" focusable="false"><path d="M1 6.5 6 1.5l5 5"></path></svg>
+            </button>
+            <div class="photo-viewer-image-secondary-controls">
+                <span class="photo-viewer-control-divider" aria-hidden="true"></span>
+                ${renderRotateControls('图片旋转')}
+                <button class="photo-viewer-control photo-viewer-reset" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="恢复到初始适配比例">适应</button>
+                <span class="photo-viewer-control-divider" aria-hidden="true"></span>
+                <button class="photo-viewer-control photo-viewer-fullscreen" type="button" data-action="photo-fullscreen" data-photo-action="fullscreen" aria-label="全屏查看图片">全屏</button>
+            </div>
         </div>`;
+}
+
+function syncPhotoMoreControlsLayout() {
+    const controls = getPhotoViewerRoot()?.querySelector('.photo-viewer-image-controls');
+    if (!controls) return;
+    const layout = isMobileLayout() ? 'mobile' : 'desktop';
+    if (controls.dataset.photoControlsLayout === layout) return;
+    if (layout === 'mobile') setPhotoMoreControlsOpen(false);
+    controls.dataset.photoControlsLayout = layout;
+}
+
+function setPhotoMoreControlsOpen(isOpen) {
+    const controls = getPhotoViewerRoot()?.querySelector('.photo-viewer-image-controls');
+    const toggle = controls?.querySelector('[data-photo-more-toggle]');
+    if (!controls || !toggle) return;
+    controls.classList.toggle('is-more-open', isOpen);
+    toggle.setAttribute('aria-expanded', String(isOpen));
+    toggle.setAttribute('aria-label', isOpen ? '收起更多图片控制' : '展开更多图片控制');
+    schedulePhotoViewerFit();
 }
 
 function renderTransformControls(mediaLabel, className = '') {
@@ -1994,6 +2023,9 @@ function handlePhotoViewerAction(action) {
             break;
         case 'rotate-right':
             rotatePhoto(90);
+            break;
+        case 'toggle-controls':
+            setPhotoMoreControlsOpen(!getPhotoViewerRoot()?.querySelector('.photo-viewer-image-controls')?.classList.contains('is-more-open'));
             break;
         case 'fullscreen':
             void toggleViewerFullscreen().catch(showViewerFullscreenError);
@@ -3789,6 +3821,7 @@ function handleViewportResize() {
     clearPageTurn();
     syncMobileContextPanelState();
     syncVideoMoreControlsLayout();
+    syncPhotoMoreControlsLayout();
     queuePhotoSleevePreviewSync();
     schedulePhotoViewerFit();
 }

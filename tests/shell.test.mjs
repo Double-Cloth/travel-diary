@@ -918,7 +918,7 @@ test('媒体查看器顶部只保留切换，图片与视频控件统一放在�
     assert.match(appJs, /class="photo-viewer-toolbar">[\s\S]*class="photo-viewer-nav-group[\s\S]*<\/div>\s*<\/div>\s*<button class="photo-viewer-control photo-viewer-close"/);
     assert.match(appJs, /<\/div>\s*\$\{isVideo \? renderVideoControls\(\) : renderPhotoControls\(\)\}\s*<p class="photo-viewer-caption">/);
     assert.match(appJs, /class="photo-viewer-controls video-viewer-controls"/);
-    assert.match(appJs, /function renderPhotoControls\(\)[\s\S]*class="photo-viewer-controls"/);
+    assert.match(appJs, /function renderPhotoControls\(\)[\s\S]*class="photo-viewer-controls[^"]*"/);
     assert.match(appJs, /data-action="photo-fullscreen" data-photo-action="fullscreen" aria-label="全屏查看图片"/);
     assert.match(appJs, /case 'fullscreen':[\s\S]*toggleViewerFullscreen\(\)/);
     assert.match(appJs, /handlePhotoViewerAction\('fullscreen'\);/);
@@ -940,6 +940,16 @@ test('移动端照片查看器充分利用上下空间', () => {
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer\s*{[\s\S]*padding: 8px;/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-panel\s*{[\s\S]*height: 100%;[\s\S]*max-height: calc\(100dvh - 16px\);/);
     assert.doesNotMatch(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-panel\s*{[\s\S]*height: min\(720px, 100%\);/);
+});
+
+test('移动端图片查看器默认单排显示缩放并可折叠其余控件', () => {
+    assert.match(appJs, /data-photo-action="toggle-controls" data-photo-more-toggle aria-expanded="false" aria-label="展开更多图片控制"/);
+    assert.match(appJs, /function syncPhotoMoreControlsLayout\(\)[\s\S]*if \(layout === 'mobile'\) setPhotoMoreControlsOpen\(false\);/);
+    assert.match(appJs, /function setPhotoMoreControlsOpen\(isOpen\)[\s\S]*classList\.toggle\('is-more-open', isOpen\)[\s\S]*schedulePhotoViewerFit\(\);/);
+    assert.match(appJs, /function handlePhotoViewerAction\(action\)[\s\S]*case 'toggle-controls':[\s\S]*setPhotoMoreControlsOpen/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-image-controls\s*{[\s\S]*grid-template-columns: auto auto;[\s\S]*flex-wrap: nowrap;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-more-toggle\s*{[\s\S]*display: inline-grid;/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.photo-viewer-image-controls:not\(\.is-more-open\) \.photo-viewer-image-secondary-controls \{ display: none; \}/);
 });
 
 test('移动端视频查看器同排显示播放和进度并可折叠其余控件', () => {
