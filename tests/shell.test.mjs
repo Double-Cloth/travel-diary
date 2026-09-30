@@ -96,6 +96,7 @@ test('扉页桌面双页展示个人信息与工具，移动端工具页默认�
     assert.match(appJs, /'dossier-page context-panel preface-tools-panel'/);
     assert.match(journalCss, /\.preface-portrait\s*{/);
     assert.match(journalCss, /\.preface-tool-section\s*{/);
+    assert.match(journalCss, /@media \(max-width: 360px\)[\s\S]*\.preface-profile-composition\s*{[\s\S]*grid-template-columns: minmax\(0, 1fr\);/);
 });
 
 test('索引夹层包含完整且唯一的高级筛选工作台', () => {
@@ -185,8 +186,8 @@ test('移动端多选筛选勾选重绘后保持菜单滚动位置', () => {
     assert.match(appJs, /function restoreFocus\(focusId, reopenSelectId = '', selectScrollTop = 0\)[\s\S]*const menu = wrapper\.querySelector\('\[data-custom-select-menu\]'\);\s*if \(menu\) menu\.scrollTop = selectScrollTop;/);
 });
 
-test('索引夹层排序菜单靠右弹出且移动端重置不聚焦搜索框', () => {
-    assert.match(customSelectJs, /const alignsRight = wrapper\.closest\('\.index-sort-field'\);[\s\S]*\? Math\.min\(Math\.max\(triggerRect\.right - menuWidth/);
+test('索引夹层下拉菜单统一靠右弹出且移动端重置不聚焦搜索框', () => {
+    assert.match(customSelectJs, /const alignsRight = isLedgerFilter;[\s\S]*\? Math\.min\(Math\.max\(triggerRect\.right - menuWidth/);
     assert.match(appJs, /focusId:\s*isMobileLayout\(\) \? 'ledgerFilters' : 'ledgerSearch'/);
 });
 
@@ -273,11 +274,12 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260930-path-follow-locality-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260929-mobile-video-seek-v2/);
+    assert.match(journalCss, /\.custom-select-menu > \[role="option"\],[\s\S]*?white-space: normal;[\s\S]*?overflow-wrap: anywhere;/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260930-select-layout-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260930-select-layout-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260930-path-follow-locality-v1/);
-    assert.match(appJs, /\.\/custom-select\.js\?v=20260929-multi-select-scroll-v1/);
-    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260929-multi-select-scroll-v1/);
+    assert.match(appJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);
+    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);
 });
 
 test('自定义下拉框初始方向和打开后的箭头都随弹出方向变化', () => {
@@ -295,7 +297,7 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
     assert.match(journalCss, /\.custom-select\.is-open\.is-open-upward \.custom-select-chevron\s*\{\s*transform: translateY\(-65%\) rotate\(45deg\);\s*\}/);
     assert.match(journalCss, /.custom-select\.is-open-upward \.custom-select-menu\s*\{\s*inset: auto 0 calc\(100% \+ 8px\);\s*\}/);
     assert.match(appJs, /class="index-filter-field\$\{visuallyHiddenLabel \? ' index-sort-field' : ''\}"/);
-    assert.match(journalEntryCss, /08-custom-select\.css\?v=20260929-multi-select-v2/);
+    assert.match(journalEntryCss, /08-custom-select\.css\?v=20260930-select-layout-v1/);
     assert.doesNotMatch(journalCss, /\.index-sort-field \.custom-select-chevron\s*\{/);
     assert.doesNotMatch(journalCss, /\.index-filter-section:last-child\s*\{\s*padding-bottom:/);
 });

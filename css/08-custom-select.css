@@ -158,9 +158,8 @@
     touch-action: pan-y;
     user-select: none;
     -webkit-user-select: none;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow-wrap: anywhere;
     transition: color 0.12s ease, background 0.12s ease;
 }
 

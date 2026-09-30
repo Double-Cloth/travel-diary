@@ -1349,6 +1349,22 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .preface-tools-panel .preface-tool-section .paper-button { min-height: 46px; }
 }
 
+/* 极窄屏改用单列身份卡，避免署名、题记和印章挤出纸页。 */
+@media (max-width: 360px) {
+    .preface-profile-composition {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 16px;
+    }
+    .preface-portrait {
+        justify-self: center;
+        width: min(100%, 156px);
+    }
+    .preface-owner-copy { width: 100%; }
+    .preface-owner-index,
+    .preface-owner-plaque strong,
+    .preface-signature { overflow-wrap: anywhere; }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .journal-shell *, .journal-shell *::before, .journal-shell *::after { animation: none !important; transition: none !important; }
 }

@@ -58,7 +58,7 @@ function updateCustomSelectPlacement(wrapper) {
         const boundaryLeft = Math.max(8, boundaryRect.left + 8);
         const boundaryRight = Math.min(window.innerWidth - 8, boundaryRect.right - 8);
         const menuWidth = Math.max(0, Math.min(320, Math.max(240, triggerRect.width), boundaryRight - boundaryLeft));
-        const alignsRight = wrapper.closest('.index-sort-field');
+        const alignsRight = isLedgerFilter;
         const menuLeft = alignsRight
             ? Math.min(Math.max(triggerRect.right - menuWidth, boundaryLeft), boundaryRight - menuWidth)
             : Math.min(Math.max(triggerRect.left, boundaryLeft), boundaryRight - menuWidth);

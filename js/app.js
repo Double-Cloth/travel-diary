@@ -10,7 +10,7 @@ import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owne
 import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260929-owner-name-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
-import { enhanceCustomSelects } from './custom-select.js?v=20260929-multi-select-scroll-v1';
+import { enhanceCustomSelects } from './custom-select.js?v=20260930-select-layout-v1';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
