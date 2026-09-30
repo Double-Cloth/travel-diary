@@ -106,7 +106,8 @@ test('扉页桌面双页展示个人信息与工具，移动端工具页默认�
     assert.match(journalCss, /\.preface-tool-section\s*{/);
     assert.match(journalCss, /\.preface-identity-sheet\s*{[\s\S]*container-type: inline-size;/);
     assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.preface-profile-composition\s*{[\s\S]*grid-template-columns: minmax\(0, 1fr\);/);
-    assert.match(journalEntryCss, /11-skeuomorphic-book\.css\?v=20260930-mobile-brand-plaque-v3/);
+    assert.match(journalCss, /\.brand-lockup strong::after\s*\{[\s\S]*position: absolute;[\s\S]*inset: 0;[\s\S]*display: grid;[\s\S]*place-items: center;/);
+    assert.match(journalEntryCss, /11-skeuomorphic-book\.css\?v=20260930-mobile-brand-plaque-v4/);
 });
 
 test('索引夹层包含完整且唯一的高级筛选工作台', () => {

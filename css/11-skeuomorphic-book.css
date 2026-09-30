@@ -1212,8 +1212,11 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         pointer-events: none;
     }
     .brand-lockup strong::after {
-        position: relative;
+        position: absolute;
         z-index: 1;
+        inset: 0;
+        display: grid;
+        place-items: center;
         color: #3a260d;
         line-height: 1;
         font-weight: 600;
