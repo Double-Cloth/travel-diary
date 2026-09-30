@@ -1416,7 +1416,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .journal-shell *, .journal-shell *::before, .journal-shell *::after { animation: none !important; transition: none !important; }
 }
 
-/* 旧页只保留首屏交接，并在日记壳层内位于导航下、正文上。 */
+/* 移动端只翻可见纸面，在导航下方裁绘，避免长页撑大三维图层。 */
 .mobile-page-transition {
     position: fixed;
     top: 0;
@@ -1424,12 +1424,45 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     z-index: 70;
     overflow: clip;
     pointer-events: none;
+    perspective: 1400px;
+    perspective-origin: 50% 45%;
+}
+.mobile-page-leaf {
+    position: absolute;
+    inset: 0;
+    transform-style: preserve-3d;
+    will-change: transform, opacity;
+}
+.mobile-page-front,
+.mobile-page-back {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    box-shadow: 8px 0 20px #38251438;
+}
+.mobile-page-back {
+    transform: rotateY(180deg);
+    background: linear-gradient(90deg, #d8bf97, #f3e5c9 16%, #faf0db 75%, #e0c9a4),
+        url('../assets/textures/paper-grain.png');
+}
+.mobile-page-shade,
+.mobile-page-shadow {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    background: linear-gradient(90deg, #392512, transparent 80%);
+}
+.mobile-page-backwards :is(.mobile-page-shade, .mobile-page-shadow) {
+    background: linear-gradient(270deg, #392512, transparent 80%);
 }
 .mobile-page-snapshot.page-spread {
     position: absolute;
     margin: 0;
     transform: none;
     animation: none;
+    perspective: none;
 }
 .mobile-page-snapshot .context-panel { display: none !important; }
 

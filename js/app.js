@@ -44,6 +44,7 @@ const LEDGER_FILTER_DEFAULTS = {
     sort: DEFAULT_LEDGER_SORT
 };
 const PAGE_TURN_MS = 920;
+const MOBILE_PAGE_TURN_MS = 620;
 const BOOK_COVER_TURN_MS = 1180;
 const MOBILE_BOOK_COVER_OPEN_MS = 1040;
 const MOBILE_BOOK_COVER_CLOSE_MS = 920;
@@ -3143,41 +3144,77 @@ function renderWithPageTurn(renderFn, options = {}) {
 
     if (isMobileLayout()) {
         const bounds = refs.spread.getBoundingClientRect();
+        const top = Math.max(0, bounds.top, refs.spine?.getBoundingClientRect().bottom || 0);
         const snapshot = prepareTransitionClone(refs.spread, 'mobile-page-snapshot');
-        snapshot.querySelectorAll('.paper-page').forEach((page, index) => {
-            page.style.background = getComputedStyle([refs.leftPage, refs.rightPage][index]).background;
+        // 固定旧路由的纸面和阅读顺序，尤其是详情页的 display: contents 布局。
+        const selector = '.paper-page, .entry-book-index, .entry-book-summary, .entry-neighbors, .entry-management, .place-page, .place-summary, .place-neighbors, .entry-photos-summary';
+        const originals = [refs.spread, ...refs.spread.querySelectorAll(selector)];
+        [snapshot, ...snapshot.querySelectorAll(selector)].forEach((node, index) => {
+            const style = getComputedStyle(originals[index]);
+            for (const property of ['display', 'flexDirection', 'alignItems', 'gap', 'order',
+                'padding', 'margin', 'border', 'borderRadius', 'background', 'backgroundBlendMode',
+                'backgroundAttachment', 'boxShadow', 'minHeight', 'overflow']) {
+                node.style[property] = style[property];
+            }
         });
+        snapshot.querySelectorAll('.context-panel').forEach(panel => panel.remove());
         const viewport = document.createElement('div');
         viewport.className = 'mobile-page-transition';
         viewport.setAttribute('aria-hidden', 'true');
         viewport.inert = true;
-        Object.assign(viewport.style, { left: `${bounds.left}px`, width: `${bounds.width}px` });
-        Object.assign(snapshot.style, { width: `${bounds.width}px`, top: `${bounds.top}px` });
-        viewport.append(snapshot);
+        const backwards = options.direction === 'back';
+        viewport.classList.add(backwards ? 'mobile-page-backwards' : 'mobile-page-forwards');
+        Object.assign(viewport.style, { left: `${bounds.left}px`, width: `${bounds.width}px`, top: `${top}px` });
+        Object.assign(snapshot.style, { width: `${bounds.width}px`, height: `${bounds.height}px`, top: `${bounds.top - top}px` });
+        const leaf = document.createElement('div');
+        leaf.className = 'mobile-page-leaf';
+        leaf.style.transformOrigin = backwards ? 'right center' : 'left center';
+        const front = document.createElement('div');
+        front.className = 'mobile-page-front';
+        const back = document.createElement('div');
+        back.className = 'mobile-page-back';
+        const shade = document.createElement('div');
+        shade.className = 'mobile-page-shade';
+        const shadow = document.createElement('div');
+        shadow.className = 'mobile-page-shadow';
+        front.append(snapshot, shade);
+        leaf.append(front, back);
+        viewport.append(shadow, leaf);
         // 过渡层留在日记壳层内：覆盖正文，但不越过顶部导航与回到封面的书签。
         refs.shell.append(viewport);
+        const wasInert = refs.spread.inert;
         renderFn();
-        const shift = options.direction === 'back' ? -12 : 12;
-        const timing = { duration: 300, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'both' };
-        const animations = [viewport.animate([
-            { opacity: 1, transform: 'translateX(0)' },
-            { opacity: 0, transform: `translateX(${-shift}px)` }
+        refs.spread.inert = true;
+        const angle = backwards ? 105 : -105;
+        const timing = { duration: MOBILE_PAGE_TURN_MS, easing: 'cubic-bezier(.4,0,.25,1)', fill: 'both' };
+        // 只翻可见区域的副本，长正文和固定夹层无需参与三维变换。
+        const animations = [leaf.animate([
+            { opacity: 1, transform: 'rotateY(0deg)', offset: 0 },
+            { opacity: 1, transform: `rotateY(${angle * .78}deg)`, offset: .78 },
+            { opacity: 0, transform: `rotateY(${angle}deg)`, offset: 1 }
+        ], timing), shade.animate([
+            { opacity: 0 }, { opacity: .22, offset: .6 }, { opacity: .08 }
+        ], timing), shadow.animate([
+            { opacity: 0 }, { opacity: .3, offset: .4 }, { opacity: 0 }
         ], timing)];
-        // 只移动真实纸页，避免变换整本书改变固定筛选夹层的包含块。
-        for (const page of [refs.leftPage, refs.rightPage]) {
-            if (page.classList.contains('context-panel')) continue;
-            animations.push(page.animate([
-                { opacity: 1, transform: `translateX(${shift}px)` },
-                { opacity: 1, transform: 'translateX(0)' }
-            ], timing));
-        }
+        animations.forEach(animation => { animation.pause(); animation.currentTime = 0; });
+        let startFrame = null;
         let cancelled = false;
         pageTurnCleanup = () => {
             cancelled = true;
+            cancelAnimationFrame(startFrame);
             animations.forEach(animation => animation.cancel());
             viewport.remove();
+            refs.spread.inert = wasInert;
         };
-        animations[0].finished.then(() => { if (!cancelled) clearPageTurn(); }, () => {});
+        startFrame = requestAnimationFrame(() => {
+            if (cancelled) return;
+            startFrame = requestAnimationFrame(() => {
+                if (cancelled) return;
+                animations.forEach(animation => animation.play());
+                animations[0].finished.then(() => { if (!cancelled) clearPageTurn(); }, () => {});
+            });
+        });
         return;
     }
 

@@ -519,12 +519,13 @@ test('详情、附件与返回都作为书页路由参与翻页', t => {
     assert.deepEqual(scenario.calls.slice(-2), ['turn', 'entry:a']);
 });
 
-test('手机切页的过期完成回调不能清理新动画，完成后移除全部副本', async t => {
-    const previous = { window: globalThis.window, document: globalThis.document, getComputedStyle: globalThis.getComputedStyle };
+test('手机翻页方向相反，过期完成回调不清理新动画，取消与完成恢复交互', async t => {
+    const previous = { window: globalThis.window, document: globalThis.document, getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame };
     t.after(() => { app.clearPageTurn(); Object.assign(globalThis, previous); });
     const nodes = new Set();
     const animations = [];
     const createNode = () => ({
+        inert: false,
         style: {},
         classList: { add() {}, remove() {}, contains() { return false; } },
         setAttribute() {}, removeAttribute() {}, querySelectorAll() { return []; },
@@ -532,10 +533,10 @@ test('手机切页的过期完成回调不能清理新动画，完成后移除�
         cloneNode: createNode,
         append(...children) { children.forEach(child => nodes.add(child)); },
         remove() { nodes.delete(this); },
-        animate() {
+        animate(keyframes, timing) {
             let finish;
             const finished = new Promise(resolve => { finish = resolve; });
-            const animation = { finished, finish, cancel() { this.cancelled = true; } };
+            const animation = { finished, finish, keyframes, timing, pause() {}, play() {}, cancel() { this.cancelled = true; } };
             animations.push(animation);
             return animation;
         }
@@ -543,12 +544,21 @@ test('手机切页的过期完成回调不能清理新动画，完成后移除�
     globalThis.document = { createElement: createNode, body: createNode() };
     globalThis.window = { matchMedia: query => ({ matches: !query.includes('reduced-motion') }) };
     globalThis.getComputedStyle = () => ({ background: '#fff' });
-    app.setTestState({ shell: createNode(), spread: createNode(), leftPage: createNode(), rightPage: createNode() });
+    globalThis.requestAnimationFrame = callback => { callback(); return 1; };
+    globalThis.cancelAnimationFrame = () => {};
+    const spread = createNode();
+    app.setTestState({ shell: createNode(), spread, leftPage: createNode(), rightPage: createNode() });
     let rendered;
     app.renderWithPageTurn(() => { rendered = '第一页'; });
     const first = animations[0];
+    assert.equal(first.keyframes.at(-1).transform, 'rotateY(-105deg)');
+    assert.equal(first.timing.duration, 620);
+    assert.equal(spread.inert, true);
     app.renderWithPageTurn(() => { rendered = '第二页'; }, { direction: 'back' });
     const second = animations[3];
+    assert.equal(second.keyframes.at(-1).transform, 'rotateY(105deg)');
+    assert.equal([...nodes].findLast(node => node.className === 'mobile-page-leaf').style.transformOrigin, 'right center');
+    assert.equal([...nodes].find(node => node.className === 'mobile-page-transition').style.top, '0px');
     first.finish();
     await Promise.resolve();
     assert.equal(rendered, '第二页');
@@ -559,4 +569,18 @@ test('手机切页的过期完成回调不能清理新动画，完成后移除�
     await Promise.resolve();
     assert.equal(second.cancelled, true);
     assert.equal([...nodes].filter(node => node.className === 'mobile-page-transition').length, 0);
+    assert.equal(spread.inert, false);
+    const pendingFrames = [];
+    globalThis.requestAnimationFrame = callback => { pendingFrames.push(callback); return 2; };
+    app.renderWithPageTurn(() => { rendered = '等待首帧'; });
+    app.renderWithPageTurn(() => { rendered = '取消翻页'; }, { animate: false });
+    pendingFrames.forEach(callback => callback());
+    assert.equal(rendered, '取消翻页');
+    assert.equal(spread.inert, false);
+    assert.equal([...nodes].filter(node => node.className === 'mobile-page-transition').length, 0);
+    globalThis.window.matchMedia = () => ({ matches: true });
+    const animationCount = animations.length;
+    app.renderWithPageTurn(() => { rendered = '减少动态效果'; });
+    assert.equal(rendered, '减少动态效果');
+    assert.equal(animations.length, animationCount);
 });
