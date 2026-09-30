@@ -1,73 +1,58 @@
 # 资产管理规范
 
-## 目录分类
+## 目录与用途
 
-`data/` 保存会因使用者而变化的个人内容，`assets/` 保存可复用的通用资源。判断标准看用途而不是格式：头像属于个人内容，个人主页背景则属于页面设计资源。
+`data/` 保存使用者的个人内容，`assets/` 保存共享资源；按用途分类，头像属于个人资料，页面背景属于设计资产。
 
 ```text
 data/
-├── profile/                 # 头像、个人资料图
-├── photos/                  # 旅行照片
-├── travel-diary/            # 按年份存放的 Markdown 日记
-└── travel_data.json         # 旅行记录索引
-
+├── travel_data.json       # 旅行索引
+├── travel-diary/YYYY/     # Markdown 正文
+├── photos/                # 原始旅行照片
+├── videos/                # 原始旅行视频
+└── profile/               # profile-picture.png、owner-name.txt
 .secrets/
-└── auth.json                # 仅服务端读取的 scrypt 认证哈希配置
-
+└── auth.json              # 服务端认证哈希
 assets/
-├── catalogs/               # 通用参考目录，如 countries.json、china-locations.json
-├── fonts/                  # 本地字体文件
-├── images/
-│   ├── backgrounds/        # 全局背景图
-│   └── pages/              # 纸页、首页和页面主视觉
-└── textures/               # 可复用纹理
+├── catalogs/              # 国家与中国省市区目录
+├── fonts/                 # TTF 源文件及 WOFF2 运行字体
+├── images/backgrounds/    # 桌面背景
+├── images/pages/          # 封面、纸页及页面图像
+└── textures/              # 纸纹等共用材质
 ```
 
-## 当前资产
-
-| 路径 | 用途 |
+| 资源 | 用途 |
 | --- | --- |
-| `assets/catalogs/countries.json` | 通用国家/地区目录，由 `npm run countries` 更新。 |
-| `assets/catalogs/china-locations.json` | 中国省市区目录，由 `npm run china-locations` 更新，用于新增记录地点补全。 |
-| `.secrets/auth.json` | 新增、修改、删除与动态全部数据操作共用的服务端认证哈希；禁止静态访问，不含明文口令。 |
-| `assets/fonts/LXGWWenKaiMono-Regular.ttf` | 正文字体常规字重。 |
-| `assets/fonts/LXGWWenKaiMono-Medium.ttf` | 正文字体加粗字重。 |
-| `assets/fonts/SourceCodePro-Regular.ttf` | 代码和档案编号常规字重。 |
-| `assets/fonts/SourceCodePro-Bold.ttf` | 代码和档案编号加粗字重。 |
-| `assets/fonts/*.woff2` | 页面实际加载的完整压缩字体，必须随仓库分发以支持离线启动。 |
-| `assets/images/backgrounds/body-background-travel-diary.png` | 全局桌面背景。 |
-| `assets/images/pages/home-hero-travel-diary.png` | 首页主视觉。 |
-| `assets/images/pages/leather-mountain-cover.png` | Image Gen 生成的山景皮革封面位图；标题、封扣和交互由 HTML/CSS 单独实现，随项目离线分发。 |
-| `assets/images/pages/left-page-cover-travel-diary.png` | 首页左页背景。 |
-| `assets/images/pages/left-page-ledger-travel-diary.png` | 路径页左页背景。 |
-| `assets/images/pages/left-page-profile-travel-diary.png` | 个人档案左页背景。 |
-| `data/profile/profile-picture.png` | 书脊头像入口。 |
-| `data/profile/owner-name.txt` | 扉页署名；缺失时前端回退为默认署名。 |
-| `assets/textures/paper-grain.png` | 纸张纹理叠层。 |
+| `body-background-travel-diary.png` | 全局桌面背景。 |
+| `leather-mountain-cover.png` | 山景皮革封面位图；标题、封扣和交互由 HTML / CSS 实现。 |
+| `home-hero-travel-diary.png`、`left-page-*.png` | 页面主视觉与纸页背景，保留被当前 CSS 引用的文件。 |
+| `paper-grain.png` | 共用纸纹。 |
+| `data/profile/profile-picture.png` | 个人头像，替换同路径即可更新。 |
+| `data/profile/owner-name.txt` | 扉页署名，缺失时回退默认值。 |
 
-## 命名规则
+## 命名与引用
 
-- 通用资产使用小写英文、数字和连字符；自动生成的日记与照片路径也遵循这一规则。
-- 文件名包含用途，例如 `body-background-*`、`left-page-*`、`profile-*`。
-- 同类资产放在同一子目录，不把页面主视觉直接堆在 `assets/images/` 根目录。
-- 新增纹理前先确认是否能复用 `paper-grain.png`。
+通用资源使用小写英文、数字和连字符，名字表达用途，同类资源放在同一子目录。日记、媒体路径由编辑器生成，规则见 [内容指南](CONTENT_GUIDE.md#文件路径与媒体)。新增纹理前先检查可否复用现有纸纹。
 
-## 引用规则
+HTML 和数据路径相对项目根目录；`css/` 下所有分片使用 `../assets/...`。头像入口使用 `data-src` 惰性加载，不要随意改名。运行字体、图片、拼音与目录均保存在本地，不添加运行时 CDN 依赖。
 
-- HTML 中从项目根目录引用，例如 `data/profile/profile-picture.png`。
-- 个人头像统一使用 `data/profile/profile-picture.png`；替换该文件即可更换头像，无需修改页面代码。
-- CSS 分片全部位于 `css/` 根目录，因此统一从 `css/` 目录相对引用，例如 `../assets/images/pages/home-hero-travel-diary.png`。
-- 不使用远程字体或远程图片，避免离线和部署环境差异。
-- `.secrets/` 不是页面资产，不得从 HTML、CSS 或浏览器 JavaScript 引用；只有 Node 服务可以读取，动态数据备份也不包含它。
-- `npm run fonts` 默认生成完整 WOFF2 字体；生成文件不是临时构建产物，更新后必须纳入版本控制。
-- `npm run fonts:subset` 仅供明确需要缩减字体体积时使用，会按项目文本生成子集并始终保留数字 `0–9`。
+`.secrets/` 不是浏览器资产，不在 HTML、CSS 或前端模块中引用。授权的动态完整备份包含认证哈希，静态发布排除整个目录。个人媒体默认被 Git 忽略，发布前须明确选择文件或由部署流程提供，见 [发布说明](MAINTENANCE.md#静态发布)。
 
-## 清理规则
+## 字体
 
-删除资产前必须至少检查：
+当前使用 LXGW WenKai Mono 常规 / Medium 和 Source Code Pro 常规 / Bold。TTF 是生成源文件，页面加载同名 WOFF2；完整 WOFF2 必须纳入版本控制，使新检出可直接离线启动。Pages 发布仅删除 TTF，不删除 WOFF2。
 
-```bash
-rg -n "file-name.ext" .
-```
+`fonts` 命令默认生成完整压缩字体，需要 Python 与 `fonttools[woff]`，普通启动不需要这些工具。`fonts:subset` 只针对当前项目文字生成子集并保留数字等基础字符；之后新增日记、动态署名或地点可能缺字，采用子集时应重新生成并检查回退。一般内容持续增长的档案使用完整字体。
 
-如果文件只出现在说明文档中，且不再被 `index.html`、`css/`、`js/` 或 `data/` 引用，可以删除；删除后同步更新相关文档和测试。
+## 地点目录
+
+| 文件 | 来源与作用 |
+| --- | --- |
+| `assets/catalogs/countries.json` | ISO alpha-2 范围的 249 项，名称来自固定 Unicode CLDR 48.2.1，含中英文名称、别名和行政区标签。 |
+| `assets/catalogs/china-locations.json` | 固定 `cn-division 2026.0.1`，提供大陆 31 个省级行政区及地级、区县候选，用于中国目的地省份反查。 |
+
+生成文件保存来源信息；以各上游项目的授权说明为准。更新脚本仅在维护时联网，普通启动不会拉取上游。复用项目保留完整目录，不按个人旅行范围裁剪，也不在运行时代码另建一份国家表。
+
+## 清理与替换
+
+替换图片后检查屏幕裁切、长宽比和移动端纸页叠层；修改字体后运行生成和测试；调整已带版本参数的资源时同步更新引用。删除前用 `rg` 检查 `index.html`、`css/`、`js/`、`data/` 和测试中的引用；不要仅凭某页肉眼不可见判断资源无用。删除确定未引用的文件后同步文档，不保留重复备用实现，也不增加构建依赖。

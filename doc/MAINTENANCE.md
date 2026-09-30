@@ -1,166 +1,75 @@
 # 维护与发布指南
 
-## 常用命令
+常用命令集中在 [README](../README.md)。以下说明环境、部署与恢复行为。
 
-| 命令 | 用途 | 是否需要联网 |
+## 运行与写入环境
+
+使用 Node.js 20 或更新版本；普通启动无需安装 npm 依赖。服务器默认绑定 `127.0.0.1:9000`，端口占用时尝试后续端口，以终端输出为准。不会自动打开浏览器。不要用 `file://` 打开模块入口。
+
+缺少数据结构时启动会补齐空索引、日记、图片、视频及资料目录和默认头像，不覆盖已有文件；缺少 `.secrets/` 时创建目录，密码在首次本机写入时设置。
+
+| 环境 | 浏览 | 写入与管理 |
 | --- | --- | --- |
-| `npm start` | 以 `--local --write-mode=local` 默认值启动站点及数据服务。 | 否 |
-| `npm run auth:set` | 仅在认证配置损坏或需要强制恢复时，于交互式终端重建 `.secrets/auth.json`。首次设密直接在页面完成。 | 否 |
-| `npm test` | 运行全部 Node.js 测试。 | 否 |
-| `npm run data:archive` | 将当前 `data/` 生成到本地 `dist/travel-diary-data.zip`（不由 GitHub Pages 发布）。 | 否 |
-| `npm run fonts` | 从 TTF 生成完整 WOFF2 字体。 | 否，但需预装 `fonttools[woff]` |
-| `npm run fonts:subset` | 按项目文本生成 WOFF2 子集。 | 否，但需预装 `fonttools[woff]` |
-| `npm run countries` | 从固定版本的 Unicode CLDR 更新国家目录。 | 是 |
-| `npm run china-locations` | 从固定版本的 `cn-division` 更新中国省市区目录。 | 是 |
-| `node js/server.js --port 8080 --network` | 监听局域网；写入仍保持默认 local 模式。 | 否 |
-| `node js/server.js --local --write-mode=remote --allowed-origin=https://diary.example.com` | 仅允许精确 HTTPS 白名单站点远程写入。 | 否 |
+| 默认 local 模式的 localhost 页面 | 支持 | 认证后支持全部功能。 |
+| `--network`、local 写入模式的远程地址 | 支持 | 拒绝远程认证和写入；监听范围不会自动放开权限。 |
+| remote 模式的白名单 HTTPS 站点 | 支持 | 认证后支持；启动前须已在本机设置密码。 |
+| GitHub Pages / 通用静态托管 | 支持 | 只读编辑器与草稿导入导出；不支持服务器保存或完整数据操作。 |
 
-普通启动不会自动更新字体、国家目录、中国省市区目录或数据备份；若 `.secrets/` 缺失，启动会先创建目录。local 模式尚未创建 `auth.json` 时，页面会在第一次写入操作前要求连续输入两次相同密码并创建配置；若文件已存在但 JSON 损坏、必填字段缺失或算法参数错误，则明确弹窗提示运行 `npm run auth:set` 修复，不会覆盖损坏文件。`--local` / `--network` 只决定监听范围，`--write-mode=local|remote` 单独决定写入策略；默认始终是 local，因此 `--network` 本身不会开放写权限。启动日志会同时显示 Bind 与 Write mode，remote 模式还会输出明显安全警告。
+所有页面资源、字体、拼音和目录随项目分发，本机运行无需外部 CDN。线上没有 Service Worker，断网首次访问或刷新不保证可用。运行目录更新后刷新页面；静态发布更换带版本参数的资源时同步更新引用版本。
 
-首次启动缺少 `data/` 时，服务会自动创建空索引、`travel-diary/`、`photos/`、`profile/` 子目录和默认头像；已存在的索引与头像不会被覆盖。GitHub Pages 构建也会补齐同样的最小结构。
+## 认证与部署边界
 
-remote 模式要求 `.secrets/auth.json` 由当前后端工具生成，并必须声明至少一个精确 HTTPS `--allowed-origin`。密码只保存带随机盐的 `scrypt` 哈希；所有来源合计连续失败 5 次后锁定 15 分钟。成功会话最长 8 小时，使用 `HttpOnly`、`SameSite=Strict`、`Secure` Cookie，并与当前认证哈希绑定。
+密码为 6 位数字，首次设置及换密拒绝重复、连续和常见弱组合。扉页「访问安全」可验证当前密码后换密；配置损坏或强制恢复才使用交互式 `auth:set`。仅换密无需重启。
 
-生产环境必须由 Nginx、Caddy、Apache 或 Cloudflare Tunnel 终止 HTTPS 后转发到 Node HTTP 端口。代理应保留外部 `Host` 和 `Origin`；remote 模式不信任 `X-Forwarded-*` 授权提示，也不接受 HTTP Origin。公网部署仍建议叠加 VPN、Zero Trust 或等效身份控制。
+服务端保存随机盐与 scrypt 哈希。任意来源合计连续失败 5 次后限速 15 分钟；会话最长 8 小时，服务器重启后失效。换密注销其他旧会话并为当前页面签发新会话，数据导入成功则注销所有旧会话。Cookie 为 `HttpOnly`、`SameSite=Strict`，remote 模式增加 `Secure`。
 
-### 生产部署最小要求
+remote 模式仅接受明确配置的完整 HTTPS Origin，允许多次指定；请求 Host 必须与来源对应。反向代理须保留外部 Host 和 Origin，应用不信任 `X-Forwarded-*`。代理与 Node 在同机时保持 `--local`，仅在确有跨主机连接需求时用 `--network`。公网写入在 HTTPS 之外还应有独立身份认证、VPN 或 Zero Trust。
 
-1. 先以 local 模式启动并在本机页面完成首次设密；只有配置损坏或必须强制恢复时才在交互式终端运行 `npm run auth:set`。不要通过 CLI 参数、Shell 历史或聊天传递口令。
-2. 使用专门的低权限系统账户运行 Node；Linux 启动时会把 `.secrets/` 和 `auth.json` 权限收紧为 `0700` / `0600`。Windows 应通过 NTFS ACL 限制为运行账户和管理员可读。
-3. 反向代理只转发请求给 `127.0.0.1:9000`，不要另行把项目根目录作为静态目录发布；如果必须配置静态根目录，应显式拒绝所有点目录。
-4. 对外只开放 HTTPS，启用 HSTS，并保留浏览器看到的外部 Host。不要依据客户端提供的 `X-Forwarded-*` 放宽认证或同源判断。
-5. 当前部署选择将 `.secrets/auth.json` 纳入版本控制，完整数据备份也会包含该哈希；仓库和备份 ZIP 必须保持私有并限制读取权限。若认证哈希曾进入公开 Git 历史，应清理历史并立即换密。
-6. 六位密码不能单独承担公网身份认证；公网必须在反向代理、VPN 或 Zero Trust 层增加独立访问控制。
-7. 动态完整备份包含认证哈希和私密旅行数据，应存入受访问控制的备份位置，不要通过公共网盘或公开附件传递。
+当前项目跟踪 `.secrets/auth.json`，六位数字的哈希不能抵御离线穷举，仓库和完整备份应保持私密。若认证配置曾公开，清理历史并立即换密。Node 永久拒绝静态下载 `.secrets/`；使用其他静态服务器时自行排除该目录。密码只保护写入，日记和媒体阅读权限由部署层控制。
+
+## 备份与恢复
+
+网页「导出全部数据」与命令行 `data:archive` 都包含 `data/` 和有效 `.secrets/auth.json`，默认命令行输出在被 Git 忽略的 `dist/`。导出期间使用统一数据锁，不要同时运行保存或导入。归档采用内存打包，大量媒体会占用明显内存；大规模数据可停服务后直接复制目录备份。
+
+网页导入最多 256 MiB，接受本应用导出的未压缩 ZIP。先验证索引、正文、路径及认证配置，再替换数据；新备份恢复其中的密码，旧备份不含认证文件时保留当前密码。导入后重新登录。清空保留密码，但删除全部个人内容，执行前先备份。
+
+无法网页导入的大备份，或进程异常后的目录恢复：
+
+1. 停止所有本项目服务，另行复制现有 `data/` 和 `.secrets/`，保留回退副本。
+2. 将可信备份解压到独立目录，核对索引、被引用正文和媒体路径；若含认证配置，确认准备恢复的是对应密码。
+3. 用完整备份的 `data/` 替换当前目录；含 `.secrets/auth.json` 时一并恢复，没有时保留现有配置。不要把 ZIP 内未经核对的任意路径直接解压覆盖项目。
+4. 重新启动，检查各页内容及登录，确认成功后再清理回退副本。
+
+## 静态发布
+
+GitHub Pages 工作流在 push 或手动触发时运行：Node.js 20、Python 字体工具、完整字体构建、全部测试，然后发布 `index.html`、`api/`、`assets/`、`css/`、`doc/`、`js/` 和 `data/`。当前没有限制 push 分支；调整触发范围应修改工作流。构建会补齐缺少的空档案和头像，移除发布物中的 TTF 源文件，保留 WOFF2。
+
+发布物不包含 `.secrets/`、完整备份 ZIP 或服务端运行进程。`api/travel-records` 是静态只读标记；发布到其他静态平台时也应保留它，同时排除秘密及运行临时目录。
+
+`data/photos/` 与 `data/videos/` 默认被 Git 忽略，GitHub Actions 只能获取已跟踪文件。要将媒体公开发布，可显式选择需要的文件，例如 `git add -f data/photos/suzhou/canal.jpg`，再与对应索引、正文一起提交；也可由自己的部署流程提供同路径媒体。发布前检查隐私、媒体大小及仓库容量，不要误把「本机保存成功」当成「线上已更新」。
+
+发布前运行测试和 `git diff --check`，浏览封面、扉页、路径、归档、地点、日记与附件页；至少覆盖窄手机、平板、桌面和横屏。重点检查空数据、筛选无结果、长文本、缺失媒体、加载失败、键盘操作和只读编辑器。涉及写入时用临时数据目录验证，避免改动个人档案。
 
 ## 写入故障恢复
 
-| 现象 | 检查项 |
+| 现象 | 处理 |
 | --- | --- |
-| 编辑器显示只读模式 | 确认当前站点能访问 `GET /api/travel-records` 和 `POST /api/travel-auth`。默认 local 模式只允许 localhost / 回环地址；远程写入需显式使用 `--write-mode=remote`；静态托管始终只读。 |
-| remote 模式仍返回 Host / Origin 错误 | 确认页面的完整 HTTPS Origin 已通过 `--allowed-origin` 声明，代理保留外部 Host 和 Origin；不要依靠 `X-Forwarded-*` 绕过判断。 |
-| remote 模式提示认证配置无效 | 在服务器项目目录的交互式终端运行 `npm run auth:set`，重新设置非弱组合的 6 位数字密码。 |
-| 口令正确但无法继续 | 检查 `.secrets/` 与 `auth.json` 是普通目录和普通文件、Node 进程可读；确认反向代理保留 Host、Origin 与 `Set-Cookie`，remote Cookie 带 `Secure`。 |
-| 登录返回 429 | 全局在 15 分钟内连续失败达到 5 次；按 `Retry-After` 等待。若非本人操作，应同时检查上游访问日志。 |
-| 正文路径无效 | 核对年份目录、旅行日期前缀、`.md` 扩展名及文件名字符。 |
-| 照片读取失败 | 确认文件确实是 JPEG、PNG、GIF 或 WebP，且浏览器内存、磁盘空间充足；应用不另设张数或文件大小上限。 |
-| 照片引用无效 | 核对 `photo_folder` 与各文件名的拼接结果、文件存在性和大小写。 |
-| 保存失败 | 检查索引 JSON 格式、目录权限、磁盘空间及路径中的符号链接或 junction。 |
-| 重复提交冲突 | 新增时核对已有正文与草稿；修改或删除结果不确定时，先刷新核对记录。 |
-| 已保存、已导入或已删除，但页面刷新失败 | 数据已经写入，手动刷新后查看，无需再次执行原操作。 |
-| 数据锁被占用 | 等待当前保存、导入或导出结束；若进程异常终止，按下述步骤恢复。 |
-| 全部数据导入失败 | 先重新登录，再确认 ZIP 不超过 256 MiB，包含 `data/travel_data.json` 及索引引用的正文和照片。 |
-| 导入后要求重新登录 | 导入会主动注销全部旧会话，但不会修改当前服务器密码；使用当前密码重新登录。 |
+| 索引加载失败 | 核对 JSON 数组、有效日期、目录权限及网络；重试入口应可见。 |
+| 单篇正文失败 | 核对 `desc_md` 大小写及文件存在性；其他记录仍可浏览。 |
+| 地点候选未加载 | 检查两个 `assets/catalogs/` 文件和请求；失败不会留下半初始化目录，可再次打开编辑器。 |
+| 403 / 无写入能力 | 核对访问地址、write mode、完整 HTTPS Origin、Host 和登录，不靠 `--network` 放开权限。 |
+| 修改提示记录已变化 | 先导出草稿，刷新重开，合并其他窗口或外部文件的更新。 |
+| 已保存但重读失败 | 数据已经落盘，手动刷新核对，无需直接重复原操作。 |
+| 导入失败 | 核对 256 MiB 上限、未压缩 ZIP、索引及 UTF-8 正文；损坏目录或路径会被拒绝。 |
+| 导入后登录失败 | 含认证文件时使用备份中的密码；不含时使用当前密码，旧会话已注销。 |
+| 媒体不显示 | 检查拼接路径、文件名大小写及部署是否包含被忽略的媒体；缺失文件不阻断日记。 |
+| 字体或背景缺失 | 检查 CSS 相对引用及部署文件；完整字体应随仓库提供。 |
+| 数据锁长期占用 | 先确认是否仍有活动操作；异常退出后按下列步骤恢复。 |
 
-异常退出后的恢复步骤：
+异常退出时，先停止全部服务并备份。核对根目录 `.travel-data.lock`、`.travel-data-import-*`、`.travel-data-clear-*`、`.travel-data-backup-*`、`.travel-secrets-backup-*`，以及 `data/` 内的 `.travel-write-*.tmp`、日记临时文件和 `.bak`。备份目录按数据及认证配置成对核对，临时正文先与索引比对；不要删除唯一的内容副本。确认无活动操作后才移除遗留锁，恢复后检查索引、正文、媒体与登录。
 
-1. 停止所有本项目服务器，备份 `data/` 与 `.secrets/`。
-2. 检查根目录 `.travel-data.lock`、`.travel-data-import-*`、`.travel-data-backup-*`、`.travel-secrets-backup-*`，以及 `data/.travel-write-*.tmp`、日记目录中的 `.travel-edit-*.tmp`、`.travel-edit-*.bak`、`.travel-delete-*.bak`、旅行索引、对应 Markdown 文件和照片目录。
-3. 对索引未引用的正文，核对后补充索引，或备份并移走文件后重试原草稿。未被索引引用的照片目录同样应先备份核对。临时索引和正文备份仅在核对内容与索引后用于恢复；不要直接删除唯一的正文备份。
-4. 确认没有活动数据操作后移除遗留锁；若存在备份目录，先成对核对当前 `data/`、`.secrets/` 与对应备份，再决定恢复哪一组，随后重启服务器并核验记录和登录。
+## 测试与资源更新
 
-数据锁、导入临时目录和导入回滚目录不纳入版本控制。本地保存与线上发布相互独立；发布通过提交、推送和 GitHub Pages 工作流完成。
+`npm test` 使用 Node 内置测试运行器，不需安装测试依赖。覆盖路由、统计、目录、Markdown、草稿、媒体、认证、来源策略、写入冲突、ZIP 和失败回滚。写入类测试使用临时目录，不修改仓库个人数据；浏览器辅助加载器不改变项目模块配置。静态断言与单元测试不能替代真实浏览器布局和完整交互验证。
 
-## 发布前检查
-
-1. 运行测试：
-
-   ```bash
-   npm test
-   ```
-
-2. 检查静态资源引用：
-
-   ```bash
-   rg -n "assets/|data/|css/|js/" index.html css js data doc README.md
-   ```
-
-3. 启动本地服务器：
-
-   ```bash
-   npm start
-   ```
-
-4. 在浏览器检查：
-
-   - `#cover`
-   - `#ledger`
-   - `#archive`
-   - 任意一条 `#entry?...`
-   - 任意一个 `#place?...`
-   - 国家、一级行政区和目的地三级筛选是否会依次收窄选项。
-   - 一个旧版 `province/city` 链接是否会自动转换并保持结果。
-   - 新增记录验证、中国目的地反查省份、地点补全、正文双视图、照片选择和草稿导入导出。
-   - 草稿关闭后继续编辑、清空后导入、下拉菜单连续方向键选择及 Esc 分层关闭。
-   - 修改与删除、数据导入导出，以及写入成功但页面刷新失败的提示。
-   - 默认 `npm start` 的 localhost 写入是否可用。
-   - `.secrets/auth.json`、大小写变体和指向该目录的链接是否都无法通过 HTTP 下载。
-   - 未登录时能力端点不返回 token；错误口令限速、会话过期和导入后注销是否正常。
-   - `--network` 未指定 remote write mode 时，局域网页面是否保持只读。
-   - 在本机页面完成首次设密后，`--write-mode=remote --allowed-origin=https://...` 下白名单页面是否可新增、修改、删除和导入；HTTP 与非白名单来源是否被拒绝。
-   - HTTPS 反向代理下，同站点 Origin 与 Host 是否可写，不匹配 Origin 是否被拒绝。
-   - GitHub Pages 或普通静态托管是否免密码打开显式只读编辑器，且不能保存、删除或执行全部数据 ZIP 导入导出。
-   - 写入服务存在时，新增、修改、删除和全部数据导入导出是否都要求密码；API 超时、连接失败、403 与异常响应是否都会中止而非降级。
-
-## 测试说明
-
-| 范围 | 主要测试 |
-| --- | --- |
-| 应用状态、路由、筛选与统计 | `app.test.mjs`、`route-map.test.mjs`、`analytics.test.mjs`、`visits.test.mjs` |
-| 地点模型与地点目录 | `location.test.mjs`、`countries.test.mjs`、`china-locations.test.mjs`、`record-suggestions.test.mjs` |
-| 认证、记录校验、写入、草稿与照片 | `auth.test.mjs`、`record-store.test.mjs`、`record-password.test.mjs`、`markdown-editor.test.mjs`、`photo-viewer-transform.test.mjs` |
-| 全部数据 ZIP 导入导出 | `data-archive.test.mjs`、`data-archive-api.test.mjs`、`data-transfer.test.mjs` |
-| 数据读取与 Markdown 渲染 | `data.test.mjs`、`content.test.mjs`、`performance.test.mjs` |
-| 静态外壳、写入策略与离线约束 | `shell.test.mjs`、`server.test.mjs`、`remote-write.test.mjs`、`offline.test.mjs`、`workflow.test.mjs` |
-
-写入与导入测试均在临时目录中运行，覆盖并发冲突、路径越界、链接文件、重复提交和失败回滚，不会修改仓库中的个人数据。浏览器相关模块通过 `tests/helpers/browser-modules.mjs` 加载，无需改变项目模块配置或安装测试依赖。
-
-## 更新国家目录
-
-国家目录以 Unicode CLDR 固定版本为名称来源，以 ISO 3166-1 为代码范围。更新步骤：
-
-1. 在 `scripts/update-countries.mjs` 更新 `CLDR_VERSION`。
-2. 查阅该 CLDR 版本发布说明，确认国家名称或区域代码变化。
-3. 运行 `npm run countries`。
-4. 检查 `assets/catalogs/countries.json` 的生成差异，特别是新增、删除或更名的代码；生成文件不应写入个人内容目录 `data/`。
-5. 运行 `npm test` 并在浏览器检查国家筛选。
-
-## 更新中国省市区目录
-
-1. 在 `scripts/update-china-locations.mjs` 更新 `CN_DIVISION_VERSION`。
-2. 核对对应版本的 `cn-division` 发布说明及其民政部地名服务数据来源。
-3. 运行 `npm run china-locations`。
-4. 检查 `assets/catalogs/china-locations.json` 的省、市、区县数量及更名差异。
-5. 运行 `npm test`，并在新增记录编辑器验证新城市、省略后缀和跨省重名地点。
-
-## 清理原则
-
-- 先确认入口引用，再删除文件。
-- 不保留未被当前入口加载的“备用实现”。
-- 删除文件后必须同步 README、专题文档和测试。
-- 不为清理引入新依赖或构建步骤。
-
-## 故障排查
-
-页面空白：
-
-- 检查浏览器控制台是否有模块加载失败。
-- 确认 `index.html` 中 `js/app.js` 路径正确。
-- 确认 `data/travel_data.json` 是合法 JSON 数组。
-- 确认 `assets/catalogs/countries.json` 与 `assets/catalogs/china-locations.json` 存在且是合法 JSON；旅行记录的 `country_code` 应能在国家目录中找到。
-
-字体或背景缺失：
-
-- 检查 `css/01-foundation.css` 或相关 CSS 分片中的 `../assets/...` 相对路径。
-- 确认部署平台没有忽略大字体文件。
-
-日记打不开：
-
-- 检查该记录的 `desc_md` 是否存在。
-- 检查 Markdown 文件名大小写是否与 JSON 完全一致。
-
-照片不显示：
-
-- 书脊头像缺失时，检查 `data/profile/profile-picture.png` 是否存在。
-- 检查 `photo_folder` 和 `photos` 拼接后的路径是否存在。
-- 检查图片文件名是否包含空格或大小写不一致。
+更新国家或中国省市区数据时，先调整对应脚本中的固定版本，运行生成命令，核对名称、代码及数量变化，再测试并检查筛选与省份反查。字体源文件更新后重新生成完整 WOFF2。来源与资源清理规则见 [资产管理规范](ASSET_MANAGEMENT.md)。
