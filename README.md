@@ -18,10 +18,6 @@ node js/server.js --help
 
 # 运行全部测试
 npm test
-
-# 检查提交前的空白错误与变更
-git diff --check
-git status --short
 ```
 
 ### 监听与远程写入
@@ -72,4 +68,4 @@ npm test
 
 ## 项目文档
 
-- [项目文档](doc/README.md)
+[项目文档索引](doc/README.md)
