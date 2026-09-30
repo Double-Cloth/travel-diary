@@ -1,16 +1,16 @@
 import { loadTravelData, loadTravelRecords } from './data.js';
-import { createRecordEditor } from './record-editor.js?v=20260930-path-follow-locality-v1';
+import { createRecordEditor } from './record-editor.js?v=20260930-review-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20260920-password-change-v1';
-import { createDataTransfer } from './data-transfer.js?v=20260920-import-missing-media-v1';
+import { createDataTransfer } from './data-transfer.js?v=20260930-review-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { confirmFeedback, showFeedback } from './feedback-dialog.js';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20260914-profile-upload-v1';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=20260929-owner-name-v1';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260929-owner-name-v1';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20260930-review-v1';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=20260930-review-v1';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260930-review-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
-import { enhanceCustomSelects } from './custom-select.js?v=20260930-select-layout-v1';
+import { enhanceCustomSelects } from './custom-select.js?v=20260930-review-v1';
 import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {

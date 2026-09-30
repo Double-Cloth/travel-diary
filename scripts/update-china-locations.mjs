@@ -4,7 +4,7 @@ const CN_DIVISION_VERSION = '2026.0.1';
 const SOURCE_URL = `https://raw.githubusercontent.com/kk-418/cn-division/v${CN_DIVISION_VERSION}/dist/no-code/pca.json`;
 const OUTPUT_URL = new URL('../assets/catalogs/china-locations.json', import.meta.url);
 
-const response = await fetch(SOURCE_URL);
+const response = await fetch(SOURCE_URL, { signal: AbortSignal.timeout(30000) });
 if (!response.ok) {
     throw new Error(`Failed to fetch ${SOURCE_URL} (${response.status}).`);
 }

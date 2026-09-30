@@ -13,6 +13,7 @@ pids/
 # Runtime data
 .travel-data.lock
 .travel-data-import-*/
+.travel-data-clear-*/
 .travel-data-backup-*/
 .travel-secrets-backup-*/
 data/photos/

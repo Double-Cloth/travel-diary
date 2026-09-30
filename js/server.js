@@ -2,7 +2,6 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
-const { spawn } = require('child_process');
 const { createRecordApi, normalizeAllowedOrigins } = require('./record-store.js');
 const { readAuthConfig } = require('./auth.js');
 
@@ -129,29 +128,6 @@ function getLocalIp() {
   }
 
   return '127.0.0.1';
-}
-
-function openBrowser(url) {
-  const platform = process.platform;
-  let command;
-  let args;
-
-  if (platform === 'win32') {
-    command = 'cmd';
-    args = ['/c', 'start', '', url];
-  } else if (platform === 'darwin') {
-    command = 'open';
-    args = [url];
-  } else {
-    command = 'xdg-open';
-    args = [url];
-  }
-
-  const child = spawn(command, args, { stdio: 'ignore', detached: true, windowsHide: true });
-  child.on('error', (error) => {
-    console.warn(`无法自动打开浏览器，请手动访问 ${url}：${error.message}`);
-  });
-  child.unref();
 }
 
 function guessContentType(filePath) {
@@ -527,10 +503,6 @@ async function main() {
   console.log('-'.repeat(60));
   console.log('Tip: refresh the page after file changes. Press Ctrl+C to stop.');
   console.log('='.repeat(60));
-
-  // setTimeout(() => {
-  //   openBrowser(localhostUrl);
-  // }, 500);
 
   process.on('SIGINT', () => {
     console.log('\nStopping server...');

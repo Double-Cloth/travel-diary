@@ -287,7 +287,7 @@ await writeFile(OUTPUT_URL, `${JSON.stringify(catalog, null, 2)}\n`, 'utf8');
 console.log(`Generated ${countries.length} countries at ${OUTPUT_URL.pathname}`);
 
 async function fetchJson(url) {
-    const response = await fetch(url);
+    const response = await fetch(url, { signal: AbortSignal.timeout(30000) });
     if (!response.ok) {
         throw new Error(`Failed to fetch ${url} (${response.status}).`);
     }

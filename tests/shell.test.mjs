@@ -109,7 +109,7 @@ test('扉页桌面双页展示个人信息与工具，移动端工具页默认�
     assert.match(journalCss, /\.brand-lockup strong::after\s*\{\s*content: "旅行笔记";/);
     assert.match(journalCss, /\.brand-lockup strong::after\s*\{[\s\S]*position: absolute;[\s\S]*inset: 0;[\s\S]*display: grid;[\s\S]*place-items: center;/);
     assert.match(indexHtml, /class="brand-lockup"[^>]*aria-label="合上旅行笔记"[^>]*title="合上旅行笔记"/);
-    assert.match(journalEntryCss, /11-skeuomorphic-book\.css\?v=20260930-mobile-bookmark-shadow-v1/);
+    assert.match(journalEntryCss, /11-skeuomorphic-book\.css\?v=20260930-review-v1/);
 });
 
 test('索引夹层包含完整且唯一的高级筛选工作台', () => {
@@ -288,11 +288,11 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(journalCss, /\.custom-select-menu > \[role="option"\],[\s\S]*?white-space: normal;[\s\S]*?overflow-wrap: anywhere;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260930-mobile-video-seek-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260930-mobile-bookmark-shadow-v1/);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20260930-path-follow-locality-v1/);
-    assert.match(appJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);
-    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260930-review-v1/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260930-review-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20260930-review-v1/);
+    assert.match(appJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
+    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
 });
 
 test('自定义下拉框初始方向和打开后的箭头都随弹出方向变化', () => {
@@ -310,7 +310,7 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
     assert.match(journalCss, /\.custom-select\.is-open\.is-open-upward \.custom-select-chevron\s*\{\s*transform: translateY\(-65%\) rotate\(45deg\);\s*\}/);
     assert.match(journalCss, /.custom-select\.is-open-upward \.custom-select-menu\s*\{\s*inset: auto 0 calc\(100% \+ 8px\);\s*\}/);
     assert.match(appJs, /class="index-filter-field\$\{visuallyHiddenLabel \? ' index-sort-field' : ''\}"/);
-    assert.match(journalEntryCss, /08-custom-select\.css\?v=20260930-select-layout-v1/);
+    assert.match(journalEntryCss, /08-custom-select\.css\?v=20260930-review-v1/);
     assert.doesNotMatch(journalCss, /\.index-sort-field \.custom-select-chevron\s*\{/);
     assert.doesNotMatch(journalCss, /\.index-filter-section:last-child\s*\{\s*padding-bottom:/);
 });
@@ -720,8 +720,8 @@ test('点击头像先验证密码，再选择常见图片并写入服务更新�
 });
 
 test('扉页署名像头像一样验证后修改并随完整备份导出', () => {
-    assert.match(appJs, /import \{ DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName \} from '\.\/profile-owner\.js\?v=20260929-owner-name-v1';/);
-    assert.match(appJs, /import \{ createOwnerNameDialog \} from '\.\/profile-owner-dialog\.js\?v=20260929-owner-name-v1';/);
+    assert.match(appJs, /import \{ DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName \} from '\.\/profile-owner\.js\?v=20260930-review-v1';/);
+    assert.match(appJs, /import \{ createOwnerNameDialog \} from '\.\/profile-owner-dialog\.js\?v=20260930-review-v1';/);
     assert.match(appJs, /let profileOwnerName = DEFAULT_OWNER_NAME;/);
     assert.match(appJs, /profileOwnerName = await loadOwnerName\(\);/);
     assert.match(appJs, /class="preface-owner-plaque" type="button" data-action="edit-owner-name"/);

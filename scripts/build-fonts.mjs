@@ -8,7 +8,7 @@ const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 const subsetMode = process.argv.slice(2).includes('--subset');
 const unknownArguments = process.argv.slice(2).filter(argument => argument !== '--subset');
 const textExtensions = new Set(['.html', '.css', '.js', '.mjs', '.json', '.md']);
-const excludedDirs = new Set(['.git', '.github', 'node_modules', '_site']);
+const excludedDirs = new Set(['.git', '.github', '.secrets', '.codex', '.playwright-cli', 'node_modules', '_site', 'dist', 'build', 'coverage', 'tmp', 'temp']);
 const commonUnicodeRanges = 'U+0000-00FF,U+2000-206F,U+3000-303F';
 
 const fontJobs = [
@@ -68,7 +68,7 @@ function collectTextFiles(directory, chunks) {
         const relativePath = relative(projectRoot, fullPath).replaceAll('\\', '/');
 
         if (entry.isDirectory()) {
-            if (!excludedDirs.has(entry.name)) collectTextFiles(fullPath, chunks);
+            if (!excludedDirs.has(entry.name) && !entry.name.startsWith('.travel-')) collectTextFiles(fullPath, chunks);
             continue;
         }
 
