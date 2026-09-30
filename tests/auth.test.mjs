@@ -34,6 +34,17 @@ async function fixture(t, { configured = true, authSource } = {}) {
     return { base, root };
 }
 
+async function assertUnauthenticatedCapability(base, cookie = '') {
+    const response = await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } });
+    const result = await response.json();
+    assert.equal(response.status, 200);
+    assert.equal(result.authenticated, false);
+    assert.equal(result.code, 'AUTH_REQUIRED');
+    assert.deepEqual(result.methods, []);
+    assert.equal(result.token, undefined);
+    assert.equal(response.headers.get('cache-control'), 'no-store');
+}
+
 test('认证配置缺失或内容不完整时接口返回可直接展示的明确错误', async t => {
     await t.test('缺少 auth.json 时提示在页面创建密码', async t => {
         const { base, root } = await fixture(t, { configured: false });
@@ -118,10 +129,12 @@ test('首次设置接口拒绝弱密码和非同源页面', async t => {
 test('能力端点不再公开令牌，登录后签发受限 HttpOnly 会话', async t => {
     const { base } = await fixture(t);
     const anonymous = await fetch(`${base}/api/travel-records`);
-    assert.equal(anonymous.status, 401);
+    assert.equal(anonymous.status, 200);
     const anonymousBody = await anonymous.json();
     assert.equal(anonymousBody.service, 'travel-diary-writer-v1');
     assert.equal(anonymousBody.token, undefined);
+    assert.equal(anonymousBody.authenticated, false);
+    assert.deepEqual(anonymousBody.methods, []);
 
     const missingOrigin = await fetch(`${base}/api/travel-auth`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ password: AUTH_PASSWORD })
@@ -135,7 +148,7 @@ test('能力端点不再公开令牌，登录后签发受限 HttpOnly 会话', a
     assert.doesNotMatch(setCookie, /; Secure/);
     assert.equal(authenticated.token.length, 64);
 
-    assert.equal((await fetch(`${base}/api/travel-records`)).status, 401);
+    await assertUnauthenticatedCapability(base);
     const capability = await fetch(`${base}/api/travel-records`, { headers: { Cookie: authenticated.cookie } });
     assert.equal(capability.status, 200);
     assert.equal((await capability.json()).authenticated, true);
@@ -144,7 +157,22 @@ test('能力端点不再公开令牌，登录后签发受限 HttpOnly 会话', a
         method: 'DELETE', headers: { Cookie: authenticated.cookie, Origin: base }
     });
     assert.equal(logout.status, 200);
-    assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Cookie: authenticated.cookie } })).status, 401);
+    await assertUnauthenticatedCapability(base, authenticated.cookie);
+});
+
+test('正常未登录探测不产生 HTTP 错误，但匿名写入仍拒绝且不修改档案', async t => {
+    const { base, root } = await fixture(t);
+    await assertUnauthenticatedCapability(base);
+    for (const method of ['POST', 'PUT', 'DELETE']) {
+        const response = await fetch(`${base}/api/travel-records`, {
+            method,
+            headers: { Origin: base, 'Content-Type': 'application/json' },
+            body: '{}'
+        });
+        assert.equal(response.status, 401);
+        assert.equal((await response.json()).code, 'AUTH_REQUIRED');
+    }
+    assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]');
 });
 
 test('登录使用慢哈希验证，并在连续失败后限速', async t => {
@@ -173,10 +201,7 @@ test('换密后旧会话立即失效', async t => {
     assert.equal(authenticated.response.status, 200);
     const replacement = await createAuthConfig('590247');
     await fs.writeFile(path.join(root, '.secrets/auth.json'), `${JSON.stringify(replacement, null, 2)}\n`);
-    const capability = await fetch(`${base}/api/travel-records`, {
-        headers: { Cookie: authenticated.cookie }
-    });
-    assert.equal(capability.status, 401);
+    await assertUnauthenticatedCapability(base, authenticated.cookie);
 });
 
 test('登录后可修改密码，自动签发新会话并使其他旧会话失效', async t => {
@@ -200,8 +225,8 @@ test('登录后可修改密码，自动签发新会话并使其他旧会话失�
     assert.equal(result.token.length, 64);
     const changedCookie = changed.headers.get('set-cookie')?.split(';', 1)[0] || '';
     assert.notEqual(changedCookie, current.cookie);
-    assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Cookie: other.cookie } })).status, 401);
-    assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Cookie: current.cookie } })).status, 401);
+    await assertUnauthenticatedCapability(base, other.cookie);
+    await assertUnauthenticatedCapability(base, current.cookie);
     assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Cookie: changedCookie } })).status, 200);
 
     const saved = JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8'));

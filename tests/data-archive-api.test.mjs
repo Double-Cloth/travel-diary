@@ -69,7 +69,11 @@ test('登录会话与写入令牌共同保护导入，成功后失效全部旧�
     assert.equal(imported.status, 200);
     assert.equal((await imported.json()).imported, true);
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
-    assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } })).status, 401);
+    const capability = await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } });
+    assert.equal(capability.status, 200);
+    const capabilityBody = await capability.json();
+    assert.equal(capabilityBody.authenticated, false);
+    assert.equal(capabilityBody.token, undefined);
 });
 
 test('新旧数据备份按内容恢复或保留认证配置', async () => {

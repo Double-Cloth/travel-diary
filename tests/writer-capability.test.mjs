@@ -29,20 +29,25 @@ test('检测到未登录的动态写入服务时仍返回服务能力并要求�
     const previous = { window: globalThis.window, fetch: globalThis.fetch };
     t.after(() => Object.assign(globalThis, previous));
     globalThis.window = { location: { href: 'https://diary.example/' } };
-    globalThis.fetch = async () => ({
-        status: 401,
-        json: async () => ({
-            service: 'travel-diary-writer-v1',
-            authenticated: false,
-            methods: [],
-            writeMode: 'remote'
-        })
-    });
+    for (const status of [200, 401]) {
+        globalThis.fetch = async () => ({
+            ok: status === 200,
+            status,
+            json: async () => ({
+                service: 'travel-diary-writer-v1',
+                authenticated: false,
+                methods: [],
+                writeMode: 'remote'
+            })
+        });
 
-    const capability = await probeWriterService();
-    assert.equal(capability.status, 401);
-    assert.equal(capability.authenticated, false);
-    assert.equal(capability.writeMode, 'remote');
+        const capability = await probeWriterService();
+        assert.equal(capability.status, status);
+        assert.equal(capability.authenticated, false);
+        assert.equal(capability.token, undefined);
+        assert.equal(capability.methods.size, 0);
+        assert.equal(capability.writeMode, 'remote');
+    }
 });
 
 test('写入服务认证配置异常时保留服务端错误码和明确提示', async t => {

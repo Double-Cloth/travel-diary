@@ -992,7 +992,7 @@ function createRecordApi(root, options = {}) {
         }
         if (requestPath === '/api/travel-records' && req.method === 'GET') {
             if (!session) {
-                send(401, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, code: 'AUTH_REQUIRED' });
+                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, code: 'AUTH_REQUIRED' });
                 return;
             }
             send(200, {
