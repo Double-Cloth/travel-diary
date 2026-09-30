@@ -1431,7 +1431,15 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     position: absolute;
     inset: 0;
     transform-style: preserve-3d;
-    will-change: transform, opacity;
+}
+.mobile-page-strip {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    transform-origin: left center;
+    transform-style: preserve-3d;
+    will-change: transform;
 }
 .mobile-page-front,
 .mobile-page-back {
@@ -1440,23 +1448,20 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     overflow: hidden;
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
-    box-shadow: 8px 0 20px #38251438;
 }
 .mobile-page-back {
     transform: rotateY(180deg);
-    background: linear-gradient(90deg, #d8bf97, #f3e5c9 16%, #faf0db 75%, #e0c9a4),
-        url('../assets/textures/paper-grain.png');
+    background: #f3e5c9 url('../assets/textures/paper-grain.png');
 }
 .mobile-page-shade,
 .mobile-page-shadow {
     position: absolute;
     inset: 0;
     opacity: 0;
-    background: linear-gradient(90deg, #392512, transparent 80%);
+    pointer-events: none;
 }
-.mobile-page-backwards :is(.mobile-page-shade, .mobile-page-shadow) {
-    background: linear-gradient(270deg, #392512, transparent 80%);
-}
+.mobile-page-shade { background: #392512; }
+.mobile-page-shadow { background: linear-gradient(90deg, #392512, transparent 85%); }
 .mobile-page-snapshot.page-spread {
     position: absolute;
     margin: 0;

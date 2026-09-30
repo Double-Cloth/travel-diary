@@ -44,7 +44,7 @@ const LEDGER_FILTER_DEFAULTS = {
     sort: DEFAULT_LEDGER_SORT
 };
 const PAGE_TURN_MS = 920;
-const MOBILE_PAGE_TURN_MS = 620;
+const MOBILE_PAGE_TURN_MS = 760;
 const BOOK_COVER_TURN_MS = 1180;
 const MOBILE_BOOK_COVER_OPEN_MS = 1040;
 const MOBILE_BOOK_COVER_CLOSE_MS = 920;
@@ -3134,6 +3134,31 @@ function createPageCurlFrames(width, height, backwards, count = 18) {
     return frames;
 }
 
+// 左侧装订边固定在原点，沿纸宽积分连续曲面；外缘先弯，落页时恢复平整。
+// 返回只反放同一曲面，不镜像书脊或移动翻页支点。
+function createMobilePageCurlFrames(width, count = 18) {
+    const step = width / count;
+    const frames = Array.from({ length: count }, () => []);
+    for (let frame = 0; frame <= 48; frame += 1) {
+        const time = frame / 48;
+        const progress = time * time * (3 - 2 * time);
+        let x = 0;
+        let z = 0;
+        for (let index = 0; index < count; index += 1) {
+            const angle = Math.PI * progress + .9 * Math.sin(Math.PI * progress) * (index + .5) / count;
+            const c = Math.cos(angle);
+            const s = Math.sin(angle);
+            const first = { x, z };
+            x += step * c;
+            z += step * s;
+            frames[index].push({ offset: time,
+                transform: `matrix3d(${c},0,${s},0,0,1,0,0,${-s},0,${c},0,${first.x},0,${first.z},1)`,
+                shade: .22 * Math.sin(angle), first, last: { x, z } });
+        }
+    }
+    return frames;
+}
+
 function renderWithPageTurn(renderFn, options = {}) {
     clearPageTurn();
 
@@ -3145,58 +3170,85 @@ function renderWithPageTurn(renderFn, options = {}) {
     if (isMobileLayout()) {
         const bounds = refs.spread.getBoundingClientRect();
         const top = Math.max(0, bounds.top, refs.spine?.getBoundingClientRect().bottom || 0);
-        const snapshot = prepareTransitionClone(refs.spread, 'mobile-page-snapshot');
-        // 固定旧路由的纸面和阅读顺序，尤其是详情页的 display: contents 布局。
-        const selector = '.paper-page, .entry-book-index, .entry-book-summary, .entry-neighbors, .entry-management, .place-page, .place-summary, .place-neighbors, .entry-photos-summary';
-        const originals = [refs.spread, ...refs.spread.querySelectorAll(selector)];
-        [snapshot, ...snapshot.querySelectorAll(selector)].forEach((node, index) => {
-            const style = getComputedStyle(originals[index]);
-            for (const property of ['display', 'flexDirection', 'alignItems', 'gap', 'order',
-                'padding', 'margin', 'border', 'borderRadius', 'background', 'backgroundBlendMode',
-                'backgroundAttachment', 'boxShadow', 'minHeight', 'overflow']) {
-                node.style[property] = style[property];
-            }
-        });
-        snapshot.querySelectorAll('.context-panel').forEach(panel => panel.remove());
+        const capture = () => {
+            const snapshot = prepareTransitionClone(refs.spread, 'mobile-page-snapshot');
+            // 固定当前路由的纸面和阅读顺序，尤其是详情页的 display: contents 布局。
+            const selector = '.paper-page, .entry-book-index, .entry-book-summary, .entry-neighbors, .entry-management, .place-page, .place-summary, .place-neighbors, .entry-photos-summary';
+            const originals = [refs.spread, ...refs.spread.querySelectorAll(selector)];
+            [snapshot, ...snapshot.querySelectorAll(selector)].forEach((node, index) => {
+                const style = getComputedStyle(originals[index]);
+                for (const property of ['display', 'flexDirection', 'alignItems', 'gap', 'order',
+                    'padding', 'margin', 'border', 'borderRadius', 'background', 'backgroundBlendMode',
+                    'backgroundAttachment', 'boxShadow', 'minHeight', 'overflow']) {
+                    node.style[property] = style[property];
+                }
+            });
+            // 屏外记录只保留占位，减少分段绘制时复制的内容量。
+            const rows = '.ledger-entry, .cover-record, .photo-sleeve-button';
+            const originalRows = refs.spread.querySelectorAll(rows);
+            snapshot.querySelectorAll(rows).forEach((node, index) => {
+                const rect = originalRows[index].getBoundingClientRect();
+                if (rect.bottom >= top - 24 && rect.top <= window.innerHeight + 24) return;
+                node.replaceChildren();
+                Object.assign(node.style, { height: `${rect.height}px`, minHeight: `${rect.height}px`,
+                    boxSizing: 'border-box', visibility: 'hidden' });
+            });
+            snapshot.querySelectorAll('.context-panel').forEach(panel => panel.remove());
+            const rect = refs.spread.getBoundingClientRect();
+            Object.assign(snapshot.style, { width: `${bounds.width}px`, height: `${rect.height}px`, top: `${rect.top - top}px` });
+            return snapshot;
+        };
+        const oldPage = capture();
+        const wasInert = refs.spread.inert;
+        renderFn();
+        refs.spread.inert = true;
+        const backwards = options.direction === 'back';
+        // 前进卷起旧页，返回从左侧展开新页；旧页在新页落稳前保留在下面。
+        const snapshot = backwards ? capture() : oldPage;
         const viewport = document.createElement('div');
         viewport.className = 'mobile-page-transition';
         viewport.setAttribute('aria-hidden', 'true');
         viewport.inert = true;
-        const backwards = options.direction === 'back';
         viewport.classList.add(backwards ? 'mobile-page-backwards' : 'mobile-page-forwards');
         Object.assign(viewport.style, { left: `${bounds.left}px`, width: `${bounds.width}px`, top: `${top}px` });
-        Object.assign(snapshot.style, { width: `${bounds.width}px`, height: `${bounds.height}px`, top: `${bounds.top - top}px` });
         const leaf = document.createElement('div');
         leaf.className = 'mobile-page-leaf';
-        leaf.style.transformOrigin = backwards ? 'right center' : 'left center';
-        const front = document.createElement('div');
-        front.className = 'mobile-page-front';
-        const back = document.createElement('div');
-        back.className = 'mobile-page-back';
-        const shade = document.createElement('div');
-        shade.className = 'mobile-page-shade';
+        leaf.style.transformOrigin = 'left center';
         const shadow = document.createElement('div');
         shadow.className = 'mobile-page-shadow';
-        front.append(snapshot, shade);
-        leaf.append(front, back);
+        if (backwards) viewport.append(oldPage);
         viewport.append(shadow, leaf);
-        // 过渡层留在日记壳层内：覆盖正文，但不越过顶部导航与回到封面的书签。
+        // 过渡层在导航下方，只对可见纸面分段变形，不变换长正文或固定夹层。
         refs.shell.append(viewport);
-        const wasInert = refs.spread.inert;
-        renderFn();
-        refs.spread.inert = true;
-        const angle = backwards ? 105 : -105;
-        const timing = { duration: MOBILE_PAGE_TURN_MS, easing: 'cubic-bezier(.4,0,.25,1)', fill: 'both' };
-        // 只翻可见区域的副本，长正文和固定夹层无需参与三维变换。
-        const animations = [leaf.animate([
-            { opacity: 1, transform: 'rotateY(0deg)', offset: 0 },
-            { opacity: 1, transform: `rotateY(${angle * .78}deg)`, offset: .78 },
-            { opacity: 0, transform: `rotateY(${angle}deg)`, offset: 1 }
-        ], timing), shade.animate([
-            { opacity: 0 }, { opacity: .22, offset: .6 }, { opacity: .08 }
-        ], timing), shadow.animate([
-            { opacity: 0 }, { opacity: .3, offset: .4 }, { opacity: 0 }
-        ], timing)];
+        const timing = { duration: MOBILE_PAGE_TURN_MS, easing: 'linear', fill: 'both',
+            direction: backwards ? 'reverse' : 'normal' };
+        const frames = createMobilePageCurlFrames(bounds.width, getPageCurlStripCount(bounds.width));
+        const stripWidth = bounds.width / frames.length;
+        const animations = [];
+        frames.forEach((keyframes, index) => {
+            const strip = document.createElement('div');
+            strip.className = 'mobile-page-strip';
+            strip.style.width = `${stripWidth + .5}px`;
+            const front = document.createElement('div');
+            front.className = 'mobile-page-front';
+            const copy = snapshot.cloneNode(true);
+            copy.style.left = `${-index * stripWidth}px`;
+            const shade = document.createElement('div');
+            shade.className = 'mobile-page-shade';
+            const back = document.createElement('div');
+            back.className = 'mobile-page-back';
+            front.append(copy, shade);
+            strip.append(front, back);
+            leaf.append(strip);
+            animations.push(strip.animate(keyframes.map(({ offset, transform }) => ({ offset, transform })), timing));
+            animations.push(shade.animate(keyframes.map(({ offset, shade }) => ({ offset, opacity: Math.max(0, shade) })), timing));
+        });
+        animations.push(shadow.animate([
+            { opacity: 0 }, { opacity: .28, offset: .5 }, { opacity: 0 }
+        ], timing));
+        if (backwards) animations.push(oldPage.animate([
+            { opacity: 1, offset: 0 }, { opacity: 1, offset: .88 }, { opacity: 0, offset: 1 }
+        ], { ...timing, direction: 'normal' }));
         animations.forEach(animation => { animation.pause(); animation.currentTime = 0; });
         let startFrame = null;
         let cancelled = false;

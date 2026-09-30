@@ -6,7 +6,7 @@ import { normalizeTravelLocation } from '../js/location.mjs';
 globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
-    renderWithPageTurn, renderWithBookCover, clearPageTurn, cloneTurningPage, createPageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
+    renderWithPageTurn, renderWithBookCover, clearPageTurn, cloneTurningPage, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick };
 export function renderTestEntry(record, navigation) {
@@ -461,6 +461,22 @@ test('卷曲从下角向内扩散，纸面共享边界且正反向准确落页',
     }
 });
 
+test('手机柔性纸页始终固定左侧装订边，分段曲面连续并能反向展开', () => {
+    for (const width of [360, 640, 760]) {
+        const frames = app.createMobilePageCurlFrames(width);
+        for (let frame = 0; frame <= 48; frame += 1) {
+            assert.deepEqual(frames[0][frame].first, { x: 0, z: 0 }, '左侧装订边不得位移');
+            for (let index = 0; index < frames.length - 1; index += 1) {
+                assert.deepEqual(frames[index][frame].last, frames[index + 1][frame].first, '相邻纸面必须共享边界');
+            }
+        }
+        assert.ok(Math.abs(frames.at(-1)[0].last.x - width) < 1e-8);
+        assert.ok(Math.abs(frames.at(-1).at(-1).last.x + width) < 1e-8);
+        assert.ok(Math.abs(frames.at(-1).at(-1).last.z) < 1e-8);
+        assert.notEqual(frames[0][24].transform.split(',')[0], frames.at(-1)[24].transform.split(',')[0], '纸面各段倾角不同，避免整张刚性旋转');
+    }
+});
+
 test('外部路由变化取消搜索定时器并忽略离开页面后的搜索回调', () => {
     let cancelled = false;
     globalThis.window = { setTimeout: () => 1, clearTimeout: () => { cancelled = true; } };
@@ -519,7 +535,7 @@ test('详情、附件与返回都作为书页路由参与翻页', t => {
     assert.deepEqual(scenario.calls.slice(-2), ['turn', 'entry:a']);
 });
 
-test('手机翻页方向相反，过期完成回调不清理新动画，取消与完成恢复交互', async t => {
+test('手机翻页共用左侧曲面正反播放，过期回调不清理新动画，取消与完成恢复交互', async t => {
     const previous = { window: globalThis.window, document: globalThis.document, getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame };
     t.after(() => { app.clearPageTurn(); Object.assign(globalThis, previous); });
     const nodes = new Set();
@@ -551,13 +567,16 @@ test('手机翻页方向相反，过期完成回调不清理新动画，取消�
     let rendered;
     app.renderWithPageTurn(() => { rendered = '第一页'; });
     const first = animations[0];
-    assert.equal(first.keyframes.at(-1).transform, 'rotateY(-105deg)');
-    assert.equal(first.timing.duration, 620);
+    assert.equal(first.timing.direction, 'normal');
+    assert.equal(first.timing.duration, 760);
+    assert.equal([...nodes].findLast(node => node.className === 'mobile-page-leaf').style.transformOrigin, 'left center');
+    const secondStart = animations.length;
     assert.equal(spread.inert, true);
     app.renderWithPageTurn(() => { rendered = '第二页'; }, { direction: 'back' });
-    const second = animations[3];
-    assert.equal(second.keyframes.at(-1).transform, 'rotateY(105deg)');
-    assert.equal([...nodes].findLast(node => node.className === 'mobile-page-leaf').style.transformOrigin, 'right center');
+    const second = animations[secondStart];
+    assert.equal(second.timing.direction, 'reverse');
+    assert.deepEqual(second.keyframes, first.keyframes, '返回反放相同左侧曲面');
+    assert.equal([...nodes].findLast(node => node.className === 'mobile-page-leaf').style.transformOrigin, 'left center');
     assert.equal([...nodes].find(node => node.className === 'mobile-page-transition').style.top, '0px');
     first.finish();
     await Promise.resolve();
