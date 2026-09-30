@@ -18,6 +18,17 @@ export function renderTestEntry(record, navigation) {
     try { renderEntryRoute({ id: record.id }); return result; }
     finally { ({ setPages, getEntryNavigation, travelModel } = originals); }
 }
+export function stubViewerNavigation(state) {
+    const originals = { photoViewerState, renderPhotoViewer, resetPhotoTransform };
+    const calls = [];
+    photoViewerState = state;
+    renderPhotoViewer = () => calls.push('render');
+    resetPhotoTransform = () => calls.push('reset');
+    return {
+        calls, show: showPhotoAt, action: handlePhotoViewerAction,
+        restore() { ({ photoViewerState, renderPhotoViewer, resetPhotoTransform } = originals); }
+    };
+}
 export function stubReadingRoutes() {
     const originals = { renderLedger, renderCover, renderEntryRoute, renderEntryPhotosRoute,
         renderWithPageTurn, clearPageTurn, updateChapterTabs, restoreFocus,
@@ -224,6 +235,38 @@ test('异常照片索引回退且循环切换始终得到整数下标', () => {
     assert.equal(app.normalizePhotoIndex(-1, 3), 2);
     assert.equal(app.normalizePhotoIndex(3, 3), 0);
     assert.equal(app.normalizePhotoIndex(1, 0), 0);
+});
+
+test('单项图片和视频切换保留媒体及查看状态，不重新渲染或重置', t => {
+    for (const kind of ['image', 'video']) {
+        const state = { photos: [{ kind }], index: 0, scale: 2, rotation: 90,
+            translateX: 12, translateY: 20, videoVolume: .6, videoRate: 1.5 };
+        const original = structuredClone(state);
+        const viewer = app.stubViewerNavigation(state);
+        try {
+            viewer.action('prev');
+            viewer.action('next');
+            viewer.show(-1);
+            viewer.show(1);
+            assert.deepEqual(viewer.calls, []);
+            assert.deepEqual(state, original);
+        } finally { viewer.restore(); }
+    }
+});
+
+test('多项媒体继续循环切换，归一化后仍是当前项时不重新加载', () => {
+    const state = { photos: [{ kind: 'image' }, { kind: 'video' }], index: 0 };
+    const viewer = app.stubViewerNavigation(state);
+    try {
+        viewer.show(2);
+        assert.deepEqual(viewer.calls, []);
+        viewer.action('prev');
+        assert.equal(state.index, 1);
+        assert.deepEqual(viewer.calls, ['reset', 'render']);
+        viewer.action('next');
+        assert.equal(state.index, 0);
+        assert.deepEqual(viewer.calls, ['reset', 'render', 'reset', 'render']);
+    } finally { viewer.restore(); }
 });
 
 test('快速切换与取消翻页会清理旧副本并保持最后一次渲染', t => {
@@ -474,6 +517,9 @@ test('手机柔性纸页始终固定左侧装订边，分段曲面连续并能�
         assert.ok(Math.abs(frames.at(-1).at(-1).last.x + width) < 1e-8);
         assert.ok(Math.abs(frames.at(-1).at(-1).last.z) < 1e-8);
         assert.notEqual(frames[0][24].transform.split(',')[0], frames.at(-1)[24].transform.split(',')[0], '纸面各段倾角不同，避免整张刚性旋转');
+        const angle = segment => Math.atan2((segment.last.z - segment.first.z), (segment.last.x - segment.first.x));
+        const bend = angle(frames.at(-1)[24]) - angle(frames[0][24]);
+        assert.ok(bend > 1.05 && bend < 1.2, '纸面弯曲稍微加深，保持连续舒展');
     }
 });
 

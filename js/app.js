@@ -1752,6 +1752,7 @@ function renderPhotoViewer() {
     const photo = photoViewerState.photos[photoViewerState.index];
     const isVideo = photo.kind === 'video';
     const position = `${photoViewerState.index + 1} / ${photoViewerState.photos.length}`;
+    const navigationDisabled = photoViewerState.photos.length <= 1 ? ' disabled' : '';
 
     root.insertAdjacentHTML('beforeend', `
         <div class="photo-viewer" data-photo-viewer>
@@ -1759,9 +1760,9 @@ function renderPhotoViewer() {
             <section class="photo-viewer-panel${isVideo ? ' has-video' : ''}" role="dialog" aria-modal="true" aria-label="媒体查看器" tabindex="-1">
                 <div class="photo-viewer-toolbar">
                     <div class="photo-viewer-nav-group photo-viewer-control-group" aria-label="媒体切换">
-                        <button class="photo-viewer-control" type="button" data-action="photo-prev" data-photo-action="prev" aria-label="上一项媒体">${renderPhotoViewerControlIcon('previous')}</button>
+                        <button class="photo-viewer-control" type="button" data-action="photo-prev" data-photo-action="prev" aria-label="上一项媒体"${navigationDisabled}>${renderPhotoViewerControlIcon('previous')}</button>
                         <span class="photo-viewer-count">${escapeHtml(position)}</span>
-                        <button class="photo-viewer-control" type="button" data-action="photo-next" data-photo-action="next" aria-label="下一项媒体">${renderPhotoViewerControlIcon('next')}</button>
+                        <button class="photo-viewer-control" type="button" data-action="photo-next" data-photo-action="next" aria-label="下一项媒体"${navigationDisabled}>${renderPhotoViewerControlIcon('next')}</button>
                     </div>
                 </div>
                 <button class="photo-viewer-control photo-viewer-close" type="button" data-action="close-photo-viewer" aria-label="关闭媒体查看器">${renderPhotoViewerControlIcon('close')}</button>
@@ -2241,7 +2242,10 @@ function showPhotoAt(index) {
         return;
     }
 
-    photoViewerState.index = normalizePhotoIndex(index, photoViewerState.photos.length);
+    const nextIndex = normalizePhotoIndex(index, photoViewerState.photos.length);
+    // 索引未变化时保留媒体节点，避免重新解码图片或中断视频播放。
+    if (nextIndex === photoViewerState.index) return;
+    photoViewerState.index = nextIndex;
     resetPhotoTransform({ render: false });
     renderPhotoViewer();
 }
@@ -3034,7 +3038,7 @@ function createMobilePageCurlFrames(width, count = 18) {
         let x = 0;
         let z = 0;
         for (let index = 0; index < count; index += 1) {
-            const angle = Math.PI * progress + .9 * Math.sin(Math.PI * progress) * (index + .5) / count;
+            const angle = Math.PI * progress + 1.15 * Math.sin(Math.PI * progress) * (index + .5) / count;
             const c = Math.cos(angle);
             const s = Math.sin(angle);
             const first = { x, z };
