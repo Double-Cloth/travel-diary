@@ -286,7 +286,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(journalCss, /\.custom-select-menu > \[role="option"\],[\s\S]*?white-space: normal;[\s\S]*?overflow-wrap: anywhere;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260930-select-layout-v1/);
+    assert.match(indexHtml, /js\/app\.js\?v=20260930-mobile-video-seek-v1/);
     assert.match(indexHtml, /css\/journal\.css\?v=20260930-archive-overview-v3/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260930-path-follow-locality-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);
@@ -972,10 +972,7 @@ test('移动端视频查看器同排显示播放和进度并可折叠其余控�
 
 test('视频进度条使用原生 range 拖动并在拖动期间暂停自动同步', () => {
     assert.match(appJs, /<span class="video-viewer-seek-label"><input class="video-viewer-range video-viewer-seek"[\s\S]*aria-label="播放进度"><\/span>/);
-    assert.match(appJs, /if \(video && event\.target\.matches\('\[data-video-seek\]'\)\) \{[\s\S]*videoSeekActiveAt = Date\.now\(\);[\s\S]*video\.currentTime = clamp\(Number\(event\.target\.value\)/);
-    assert.match(appJs, /function syncVideoViewerControls\(\)[\s\S]*if \(Date\.now\(\) - photoGestureState\.videoSeekActiveAt > VIDEO_SEEK_INPUT_HOLD_MS\)[\s\S]*seek\.value = String/);
-    assert.match(appJs, /const VIDEO_SEEK_INPUT_HOLD_MS = \d+;/);
-    assert.doesNotMatch(appJs, /beginVideoSeek|updateVideoSeekFromPointer|videoSeekPointerId/);
+    assert.doesNotMatch(appJs, /beginVideoSeek|updateVideoSeekFromPointer|VIDEO_SEEK_INPUT_HOLD_MS/);
     assert.doesNotMatch(appJs, /document\.activeElement !== (?:seek|volume)/);
     assert.match(journalCss, /\.video-viewer-seek\s*{[\s\S]*height: 32px;[\s\S]*touch-action: none;/);
     assert.match(journalCss, /--video-range-progress, 0%/);

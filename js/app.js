@@ -64,7 +64,6 @@ const ROUTE_MAP_SLOTS = [
 ];
 const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
 const DEFAULT_VIDEO_VOLUME = 0.85;
-const VIDEO_SEEK_INPUT_HOLD_MS = 400;
 const VIDEO_PLAY_ICON_PATH = 'M8 5.5v13l10-6.5z';
 const VIDEO_PAUSE_ICON_PATH = 'M7 5h4v14H7zm6 0h4v14h-4z';
 
@@ -1895,6 +1894,7 @@ function renderPhotoViewer() {
                 video.addEventListener(eventName, syncVideoViewerControls);
             }
             video.addEventListener('click', handleViewerVideoClick);
+            video.addEventListener('seeked', handleViewerVideoSeeked);
             video.addEventListener('loadedmetadata', () => {
                 if (video !== getViewerVideo()) return;
                 fitPhotoToStage();
@@ -2161,9 +2161,10 @@ function syncVideoViewerControls() {
     const duration = Number.isFinite(video.duration) ? video.duration : 0;
     const seek = root.querySelector('[data-video-seek]');
     if (seek) {
-        seek.max = String(duration);
-        if (Date.now() - photoGestureState.videoSeekActiveAt > VIDEO_SEEK_INPUT_HOLD_MS) {
-            seek.value = String(Math.min(video.currentTime || 0, duration || 0));
+        // 原生滑块拖动和媒体定位期间不回写范围或数值，避免真机触摸位置被重置。
+        if (photoGestureState.videoSeekPointerId === null && photoGestureState.videoSeekTarget === null && !video.seeking) {
+            if (duration > 0 && seek.max !== String(duration)) seek.max = String(duration);
+            if (duration > 0) seek.value = String(clamp(video.currentTime || 0, 0, duration));
         }
     }
     syncVideoRangeProgress(seek);
@@ -2192,12 +2193,32 @@ function syncVideoViewerControls() {
         mute.setAttribute('aria-pressed', String(isMuted));
     }
     const time = root.querySelector('[data-video-time]');
-    if (time) time.textContent = `${formatVideoTime(video.currentTime)} / ${duration ? formatVideoTime(duration) : '--:--'}`;
+    const displayedTime = photoGestureState.videoSeekPointerId !== null || photoGestureState.videoSeekTarget !== null
+        ? Number(seek?.value) : video.currentTime;
+    if (time) time.textContent = `${formatVideoTime(displayedTime)} / ${duration ? formatVideoTime(duration) : '--:--'}`;
     if (photoViewerState) {
         photoViewerState.videoVolume = video.volume;
         photoViewerState.videoMuted = video.muted;
         photoViewerState.videoRate = video.playbackRate;
     }
+}
+
+function handleViewerVideoSeeked(event) {
+    if (event.target !== getViewerVideo() || event.target.seeking) return;
+    photoGestureState.videoSeekTarget = null;
+    syncVideoViewerControls();
+}
+
+function commitVideoSeek(seek) {
+    const video = getViewerVideo();
+    const target = Number(seek.value);
+    // 元数据尚不可用时不能以 0 作为时长执行跳转。
+    if (!video || video.readyState < 1 || !Number.isFinite(video.duration) || video.duration <= 0 || !Number.isFinite(target)) return;
+    const nextTime = clamp(target, 0, video.duration);
+    if (photoGestureState.videoSeekTarget === nextTime) return;
+    if (!video.seeking && Math.abs(video.currentTime - nextTime) < 0.05) return;
+    photoGestureState.videoSeekTarget = nextTime;
+    video.currentTime = nextTime;
 }
 
 function syncVideoRangeProgress(range) {
@@ -2555,6 +2576,11 @@ function clearPhotoRotationTimer() {
 }
 
 function handlePhotoPointerDown(event) {
+    if (event.target.matches?.('[data-video-seek]') && getViewerVideo()
+        && (event.pointerType !== 'mouse' || event.button === 0)) {
+        photoGestureState.videoSeekPointerId = event.pointerId;
+        return;
+    }
     const stage = event.target.closest?.('[data-photo-viewer-stage]');
     if (!stage || !photoViewerState || (event.pointerType === 'mouse' && event.button !== 0)) {
         return;
@@ -2620,6 +2646,13 @@ function handlePhotoPointerMove(event) {
 }
 
 function handlePhotoPointerEnd(event) {
+    if (photoGestureState.videoSeekPointerId === event.pointerId) {
+        const seek = getPhotoViewerRoot()?.querySelector('[data-video-seek]');
+        if (seek && event.type === 'pointerup') commitVideoSeek(seek);
+        photoGestureState.videoSeekPointerId = null;
+        syncVideoViewerControls();
+        return;
+    }
     if (!photoGestureState.pointers.has(event.pointerId)) {
         return;
     }
@@ -2702,7 +2735,8 @@ function createPhotoGestureState() {
         pinchStart: null,
         suppressClick: false,
         videoTapPointerId: null,
-        videoSeekActiveAt: 0
+        videoSeekPointerId: null,
+        videoSeekTarget: null
     };
 }
 
@@ -3611,8 +3645,8 @@ function restoreReadingScrollPosition() {
 function handleDocumentInput(event) {
     const video = getViewerVideo();
     if (video && event.target.matches('[data-video-seek]')) {
-        photoGestureState.videoSeekActiveAt = Date.now();
-        video.currentTime = clamp(Number(event.target.value), 0, Number.isFinite(video.duration) ? video.duration : 0);
+        // 拖动只预览进度，松手后统一定位；键盘和辅助技术输入仍立即生效。
+        if (photoGestureState.videoSeekPointerId === null) commitVideoSeek(event.target);
         syncVideoViewerControls();
         return;
     }
@@ -3639,6 +3673,11 @@ function handleDocumentChange(event) {
         return;
     }
     const video = getViewerVideo();
+    if (video && event.target.matches('[data-video-seek]')) {
+        commitVideoSeek(event.target);
+        syncVideoViewerControls();
+        return;
+    }
     if (video && event.target.matches('[data-video-rate]')) {
         video.playbackRate = clamp(Number(event.target.value), 0.5, 2);
         syncVideoViewerControls();
