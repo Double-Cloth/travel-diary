@@ -73,6 +73,7 @@ test('足迹摘要按右页内容宽度切换紧凑布局并避免横向溢出',
     assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.archive-journey-stats div\s*{[^}]*display: grid;[^}]*padding-inline: 7px;/);
     assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.archive-overview-span\s*{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
     assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.archive-overview-page \.overview-location-list\s*{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
+    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.paper-page-right\.context-panel \.archive-overview-page > \.context-panel-heading\s*\{[^}]*margin-bottom: 18px;/);
     assert.match(journalEntryCss, /10-refined-ui\.css\?v=[^']+/);
 });
 

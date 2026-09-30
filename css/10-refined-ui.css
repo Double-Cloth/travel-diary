@@ -866,6 +866,10 @@ body::after {
         box-shadow: 0 6px 14px rgba(52, 31, 14, 0.06);
     }
 
+    .paper-page-right.context-panel .archive-overview-page > .context-panel-heading {
+        margin-bottom: 18px;
+    }
+
     .paper-page-right.context-panel .context-panel-close {
         border-radius: 50%;
         background: transparent;
