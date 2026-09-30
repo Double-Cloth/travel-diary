@@ -1248,12 +1248,12 @@ function renderArchive(params = {}) {
             <section class="archive-overview-span" aria-labelledby="archiveTimelineTitle">
                 <h3 id="archiveTimelineTitle">记录时间轴</h3>
                 <strong>${escapeHtml(travelModel.dateRangeLabel)}</strong>
-                <small>${travelModel.stats.total} 篇日记，持续收录走过的地方与重逢的风景</small>
+                <small>共 ${travelModel.stats.total} 篇日记</small>
                 ${latest ? `
                     <a class="archive-latest-entry" href="#entry?id=${encodeURIComponent(latest.id)}">
                         <span>最新一页</span>
                         <strong>${escapeHtml(latest.locality || latest.adminArea || latest.country)}</strong>
-                        <small>${escapeHtml(latest.date || '')} · 打开日记</small>
+                        <small>${escapeHtml(latest.date || '')}</small>
                     </a>
                 ` : ''}
             </section>
