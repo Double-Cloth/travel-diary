@@ -10,8 +10,7 @@ const appJs = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 const recordEditorJs = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
 const entrySheetCss = await readFile(new URL('../css/06-entry-sheet.css', import.meta.url), 'utf8');
 
-test('旅行日记正文并行加载且允许浏览器缓存', () => {
-    assert.match(dataJs, /Promise\.all\(records\.map/);
+test('旅行日记正文允许浏览器缓存', () => {
     assert.doesNotMatch(dataJs, /cache:\s*['"]no-store['"]/);
 });
 

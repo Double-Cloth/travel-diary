@@ -997,12 +997,18 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             if (shouldRender) {
                 if (!countries.length) {
                     const [countryResponse, chinaLocationResponse] = await Promise.all([
-                        fetch(new URL('assets/catalogs/countries.json', window.location.href)),
-                        fetch(new URL('assets/catalogs/china-locations.json', window.location.href))
+                        fetch(new URL('assets/catalogs/countries.json', window.location.href), { signal: AbortSignal.timeout(20000) }),
+                        fetch(new URL('assets/catalogs/china-locations.json', window.location.href), { signal: AbortSignal.timeout(20000) })
                     ]);
                     if (!countryResponse.ok || !chinaLocationResponse.ok) throw new Error('地点目录加载失败，请刷新后重试。');
-                    countries = (await countryResponse.json()).countries;
-                    chinaLocations = await chinaLocationResponse.json();
+                    const countryCatalog = await countryResponse.json();
+                    const locationCatalog = await chinaLocationResponse.json();
+                    if (!Array.isArray(countryCatalog?.countries) || !countryCatalog.countries.length
+                        || !Array.isArray(locationCatalog?.provinces)) {
+                        throw new Error('地点目录格式无效，请检查目录文件后重试。');
+                    }
+                    countries = countryCatalog.countries;
+                    chinaLocations = locationCatalog;
                 }
                 render(record);
                 initialized = true;

@@ -89,3 +89,35 @@ test('旅行索引不存在时按首次使用的空档案加载', async (t) => {
         : new Response('', { status: 404 }));
     assert.deepEqual(await loadTravelData(), []);
 });
+
+test('批量正文加载限制并发且保留输入顺序，个别失败不影响其他记录', async t => {
+    let active = 0;
+    let maximum = 0;
+    mockRequests(t, async (url, options) => {
+        assert.ok(options.signal instanceof AbortSignal);
+        active += 1;
+        maximum = Math.max(maximum, active);
+        await new Promise(resolve => setTimeout(resolve, url.includes('note-0.md') ? 10 : 1));
+        active -= 1;
+        return url.includes('note-5.md') ? new Response('', { status: 404 }) : new Response('# 日记\n\n正文');
+    });
+    const records = Array.from({ length: 25 }, (_, index) => ({ ...record, desc_md: `data/note-${index}.md` }));
+    const loaded = await loadTravelRecords(records);
+    assert.ok(maximum <= 8);
+    assert.ok(maximum > 1);
+    assert.deepEqual(loaded.map(item => item.desc_md), records.map(item => item.desc_md));
+    assert.equal(loaded.filter(item => item.descLoadFailed).length, 1);
+    assert.match(loaded[5].descBodyHtml, /正文暂时无法加载/);
+    assert.deepEqual(await loadTravelRecords([]), []);
+});
+
+test('正文请求超时后降级为可读错误状态并保留地点搜索', async t => {
+    mockRequests(t, async (_, options) => {
+        assert.ok(options.signal instanceof AbortSignal);
+        throw new DOMException('请求超时', 'TimeoutError');
+    });
+    const [loaded] = await loadTravelRecords([record]);
+    assert.equal(loaded.descLoadFailed, true);
+    assert.match(loaded.searchText, /苏州市/);
+    assert.match(loaded.descBodyHtml, /重新加载页面/);
+});

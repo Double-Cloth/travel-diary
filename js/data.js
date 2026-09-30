@@ -6,14 +6,21 @@ import {
     normalizeTravelLocation
 } from './location.mjs';
 
+const LOAD_TIMEOUT_MS = 20000;
+const MARKDOWN_CONCURRENCY = 8;
+
+function fetchContent(url) {
+    return fetch(url, { signal: AbortSignal.timeout(LOAD_TIMEOUT_MS) });
+}
+
 export async function loadTravelData(cacheKey = '') {
     const dataUrl = new URL('data/travel_data.json', window.location.href);
     if (cacheKey) dataUrl.searchParams.set('refresh', cacheKey);
     const dataPath = dataUrl.href;
     const countryCatalogPath = new URL('assets/catalogs/countries.json', window.location.href).href;
     const [response, countryCatalogResponse] = await Promise.all([
-        fetch(dataPath),
-        fetch(countryCatalogPath)
+        fetchContent(dataPath),
+        fetchContent(countryCatalogPath)
     ]);
 
     if (!countryCatalogResponse.ok) {
@@ -59,7 +66,9 @@ export async function loadTravelData(cacheKey = '') {
 }
 
 export async function loadTravelRecords(records, cacheKey = '') {
-    return Promise.all(records.map(async (record) => {
+    const results = new Array(records.length);
+    let nextIndex = 0;
+    const hydrate = async (record) => {
         try {
             const markdown = await fetchMarkdown(record.desc_md, cacheKey);
             const parsedMarkdown = parseMarkdown(markdown, record);
@@ -81,11 +90,18 @@ export async function loadTravelRecords(records, cacheKey = '') {
                 descMarkdown: '',
                 descLoadFailed: true,
                 descTitle: fallbackTitle,
-                descBodyHtml: `<p class="markdown-load-error">Markdown load failed for ${escapeHtml(record.desc_md || '')}.</p>`,
+                descBodyHtml: `<p class="markdown-load-error" role="status">正文暂时无法加载，请检查网络或正文文件后重新加载页面。${escapeHtml(record.desc_md || '')}</p>`,
                 searchText: fallbackSearchText
             };
         }
+    };
+    await Promise.all(Array.from({ length: Math.min(MARKDOWN_CONCURRENCY, records.length) }, async () => {
+        while (nextIndex < records.length) {
+            const index = nextIndex++;
+            results[index] = await hydrate(records[index]);
+        }
     }));
+    return results;
 }
 
 async function fetchMarkdown(markdownPath, cacheKey = '') {
@@ -98,14 +114,14 @@ async function fetchMarkdown(markdownPath, cacheKey = '') {
     const resolvedPath = resolvedUrl.href;
 
     try {
-        const response = await fetch(resolvedPath);
+        const response = await fetchContent(resolvedPath);
         if (!response.ok) {
             throw new Error(`Failed to load ${markdownPath} (${response.status})`);
         }
 
         return await response.text();
     } catch (error) {
-        const retryResponse = await fetch(resolvedPath);
+        const retryResponse = await fetchContent(resolvedPath);
         if (!retryResponse.ok) {
             throw error;
         }

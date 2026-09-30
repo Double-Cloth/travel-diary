@@ -12,7 +12,7 @@ export async function loadOwnerName(cacheKey = '') {
     const ownerNameUrl = new URL(OWNER_NAME_PATH, window.location.href);
     if (cacheKey) ownerNameUrl.searchParams.set('v', cacheKey);
     try {
-        const response = await fetch(ownerNameUrl, { cache: 'no-store', credentials: 'same-origin' });
+        const response = await fetch(ownerNameUrl, { cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.timeout(5000) });
         if (!response.ok) return DEFAULT_OWNER_NAME;
         return normalizeOwnerName(await response.text()) || DEFAULT_OWNER_NAME;
     } catch {
@@ -36,7 +36,8 @@ export async function saveOwnerName(name, capability) {
                 'X-Travel-Token': capability.token
             },
             body: JSON.stringify({ name: normalized }),
-            credentials: 'same-origin'
+            credentials: 'same-origin',
+            signal: AbortSignal.timeout(30000)
         });
     } catch {
         throw new Error('署名保存服务暂时无法连接，请稍后重试。');

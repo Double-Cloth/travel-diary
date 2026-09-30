@@ -101,7 +101,8 @@ export async function uploadProfilePicture(picture, capability) {
                 'X-Travel-Token': capability.token
             },
             body: JSON.stringify(picture),
-            credentials: 'same-origin'
+            credentials: 'same-origin',
+            signal: AbortSignal.timeout(30000)
         });
     } catch {
         throw new Error('头像上传服务暂时无法连接，请稍后重试。');
