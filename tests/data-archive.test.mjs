@@ -20,6 +20,22 @@ async function fixture(t, prefix = 'travel-diary-archive-') {
     return root;
 }
 
+test('无行政区和无媒体的最小记录可从备份恢复，异常可选字段仍被拒绝', async t => {
+    const root = await fixture(t);
+    const record = { date: '2026-09-11', country: '新加坡', country_code: 'SG', locality: '新加坡', desc_md: 'data/travel-diary/2026/2026-09-11-singapore.md' };
+    const makeArchive = value => createZip([
+        { name: 'data/travel_data.json', data: JSON.stringify([value]) },
+        { name: record.desc_md, data: '# 新加坡\n\n旅途' }
+    ]);
+    const result = await importDataArchive(root, makeArchive(record));
+    assert.equal(result.authPreserved, true);
+    assert.equal(result.missingMediaReferences, 0);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
+    for (const fields of [{ admin_area: [] }, { photos: 'lake.png' }, { photo_folder: 1 }]) {
+        await assert.rejects(importDataArchive(root, makeArchive({ ...record, ...fields })), /字段无效|列表无效/);
+    }
+});
+
 test('导出时自动创建缺失的 .secrets 并提示设置访问密码', async t => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-diary-archive-no-secrets-'));
     t.after(async () => fs.rm(root, { recursive: true, force: true }));

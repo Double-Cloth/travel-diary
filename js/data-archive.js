@@ -54,7 +54,7 @@ function parseJsonFile(data, fileName) {
 }
 
 function validateTextField(record, recordNumber, field, { required = false } = {}) {
-    const value = record[field];
+    const value = !required && record[field] == null ? '' : record[field];
     if (typeof value !== 'string' || value.length > 200 || /[\u0000-\u001f\u007f]/.test(value)
         || (required && !value.trim())) {
         throw failure(400, `备份中的旅行记录第 ${recordNumber} 项 ${field} 字段无效。`);
@@ -165,13 +165,14 @@ async function validateImportedRecords(entries) {
             || !photoFolder.slice('data/photos/'.length).split('/').every(isSafeAsciiFileName))) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项照片目录无效。`);
         }
-        if (!Array.isArray(record.photos) || record.photos.length > 1000) {
+        const photos = record.photos == null ? [] : record.photos;
+        if (!Array.isArray(photos) || photos.length > 1000) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项照片列表无效。`);
         }
-        if (record.photos.length && !photoFolder) {
+        if (photos.length && !photoFolder) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项包含照片但未设置照片目录。`);
         }
-        for (const photo of record.photos) {
+        for (const photo of photos) {
             if (!isSafeAsciiFileName(photo)) {
                 throw failure(400, `备份中的旅行记录第 ${recordNumber} 项照片文件名无效。`);
             }

@@ -455,7 +455,7 @@ test('全部数据导入使用站内确认对话框而不是浏览器 confirm', 
     assert.doesNotMatch(dataTransferJs, /window\.confirm|\bconfirm\(/);
     assert.match(dataTransferJs, /dialog\.className = 'data-import-confirm entry-sheet'/);
     assert.match(dataTransferJs, /dialog\.showModal\(\)/);
-    assert.match(dataTransferJs, /当前服务器密码保持不变/);
+    assert.match(dataTransferJs, /访问密码也会恢复为备份中的密码/);
     assert.match(dataTransferJs, /data-import-cancel/);
     assert.match(dataTransferJs, /data-import-confirm/);
     assert.match(dataTransferJs, /await confirmImport\(file\)/);
@@ -475,8 +475,8 @@ test('全部数据导入成功后使用站内结果弹窗而不是状态文字',
     assert.match(journalCss, /\.data-import-success-actions\s*{/);
 });
 
-test('全部数据导入保留当前认证且不传输密码头', () => {
-    assert.match(dataTransferJs, /不会修改当前服务器密码/);
+test('全部数据导入说明恢复认证配置且不传输密码头', () => {
+    assert.match(dataTransferJs, /备份中的密码配置也会一并恢复/);
     assert.doesNotMatch(dataTransferJs, /X-Travel-(?:Current|Import)-Password/);
     assert.match(recordStoreJs, /readBody\(req, MAXIMUM_ARCHIVE_BYTES\)/);
     assert.match(authJs, /algorithm: 'scrypt'/);
@@ -531,7 +531,7 @@ test('个人主页提供经二次确认和密码验证保护的全部数据清�
 
 test('全部数据导入先建立服务端会话并提交双重写入凭据', () => {
     assert.match(dataTransferJs, /createPasswordGate\(chooseImportWithAuthorization/);
-    assert.match(dataTransferJs, /输入 6 位数字密码后选择备份/);
+    assert.match(dataTransferJs, /输入当前的 6 位数字密码后选择备份/);
     assert.match(dataTransferJs, /X-Travel-Token/);
     assert.match(dataTransferJs, /credentials: 'same-origin'/);
     assert.match(recordStoreJs, /travel_session/);

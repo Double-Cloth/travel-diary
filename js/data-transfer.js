@@ -28,7 +28,7 @@ export function createDataTransfer(onImported) {
             </div>
             <p class="journal-label">全部数据导入</p>
             <h2 id="dataImportConfirmTitle">替换当前旅行数据？</h2>
-            <p class="data-import-confirm-note" id="dataImportConfirmDescription">将替换全部日记、照片、视频和头像，当前服务器密码保持不变。请先备份当前数据。</p>
+            <p class="data-import-confirm-note" id="dataImportConfirmDescription">将替换全部日记、照片、视频、头像和署名。备份包含认证配置时，访问密码也会恢复为备份中的密码；旧备份不含认证配置时保留当前密码。请先备份当前数据。</p>
             <p class="data-import-confirm-file">已选择 <strong data-import-file-name></strong></p>
             <div class="data-import-confirm-actions">
                 <button class="paper-button" type="button" data-import-cancel>暂不导入</button>
@@ -127,7 +127,7 @@ export function createDataTransfer(onImported) {
 
     const requestImportAuthorization = createPasswordGate(chooseImportWithAuthorization, {
         title: '导入数据验证',
-        description: '输入 6 位数字密码后选择备份。导入不会修改当前服务器密码。',
+        description: '输入当前的 6 位数字密码后选择备份。备份中的密码配置也会一并恢复。',
         verifying: '正在验证并选择备份…',
         actionError: '无法开始导入，请重试。',
         staticMessage: '当前站点为静态只读页面，不提供全部数据导入。'
@@ -158,9 +158,11 @@ export function createDataTransfer(onImported) {
 
     function importSuccessMessage(result) {
         const missing = Number(result?.missingMediaReferences) || 0;
-        return missing > 0
+        const summary = missing > 0
             ? `全部旅行数据已更新；备份中有 ${missing} 个图片或视频引用缺少对应文件，相关日记已保留，并会在页面中标明不可用媒体。`
             : '全部旅行数据已更新。';
+        if (typeof result?.authPreserved !== 'boolean') return summary;
+        return `${summary}${result.authPreserved ? '访问密码保持不变' : '访问密码已恢复为备份中的密码'}，旧登录会话已注销，请重新验证。`;
     }
 
     function finishConfirmation(confirmed) {
@@ -237,17 +239,21 @@ export function createDataTransfer(onImported) {
         const capability = importCapability;
         importCapability = undefined;
         if (!file || busy) return;
-        if (!await confirmImport(file)) return;
+        if (file.size > 256 * 1024 * 1024) {
+            setStatus('全部数据 ZIP 备份不能超过 256 MiB，请使用文件系统备份恢复更大的档案。');
+            return;
+        }
         busy = true;
-        setStatus('正在校验备份并导入数据…');
         try {
+            if (!await confirmImport(file)) return;
+            setStatus('正在校验备份并导入数据…');
             const token = writerToken(capability);
             const { response, result } = await uploadArchive(file, token);
             if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
             try { await onImported(); }
             catch {
                 setStatus('数据已导入，页面刷新失败。请手动刷新后查看。');
-                showImportSuccess('数据已导入，页面刷新失败。请手动刷新后查看。');
+                showImportSuccess(`数据已导入，页面刷新失败。请手动刷新后查看。${importSuccessMessage(result)}`);
                 return;
             }
             setStatus('');
