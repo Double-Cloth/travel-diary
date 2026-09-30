@@ -943,7 +943,11 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             const response = await fetch(new URL('api/travel-records', window.location.href), {
                 method: editingRecord ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token },
                 credentials: 'same-origin',
-                body: JSON.stringify(editingRecord ? { originalDescMd: editingRecord.desc_md, draft } : draft),
+                body: JSON.stringify(editingRecord ? {
+                    originalDescMd: editingRecord.desc_md,
+                    expected: { record: editingRecord.sourceRecord || editingRecord, markdown: editingRecord.descMarkdown },
+                    draft
+                } : draft),
                 signal: AbortSignal.timeout(15 * 60 * 1000)
             });
             const result = await response.json();

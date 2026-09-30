@@ -7,6 +7,12 @@ export const RECORD_FIELDS = ['date', 'country_code', 'country', 'admin_area', '
 const LEGACY_FIELDS = ['date', 'country_code', 'admin_area', 'locality', 'trip_id', 'title', 'body'];
 const MEDIA_LIST_FIELDS = new Set(['photos', 'videos']);
 
+export function recordMetadataSnapshot(record) {
+    return JSON.stringify(Object.fromEntries(RECORD_FIELDS
+        .filter(key => !['title', 'body'].includes(key))
+        .map(key => [key, record[key] ?? (MEDIA_LIST_FIELDS.has(key) ? [] : '')])));
+}
+
 export function buildMarkdown(input) {
     return `# ${input.title.trim()}\n\n${input.body.trim().replace(/\r\n?/g, '\n')}\n`;
 }

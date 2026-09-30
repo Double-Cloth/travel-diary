@@ -88,9 +88,9 @@ const readIndex = async () => JSON.parse(await fs.readFile(path.join(root, 'data
 const post = (value, headers = {}) => fetch(`${base}/api/travel-records`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers }, body: JSON.stringify(value)
 });
-const put = (originalDescMd, value, headers = {}) => fetch(`${base}/api/travel-records`, {
+const put = (originalDescMd, value, headers = {}, expected) => fetch(`${base}/api/travel-records`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers },
-    body: JSON.stringify({ originalDescMd, draft: value })
+    body: JSON.stringify({ originalDescMd, draft: value, ...(expected ? { expected } : {}) })
 });
 const remove = (descMd, headers = {}) => fetch(`${base}/api/travel-records`, {
     method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers },
@@ -101,6 +101,43 @@ test('写入服务声明支持新增、修改与删除方法', async () => {
     const response = await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } });
     assert.equal(response.status, 200);
     assert.deepEqual((await response.json()).methods, ['POST', 'PUT', 'DELETE']);
+});
+
+test('旧窗口修改不会覆盖最新元数据和正文，同内容重试仍幂等', async () => {
+    const value = draft('e', { date: '2030-01-01', locality: '并发编辑检查' });
+    const created = (await (await post(value)).json()).record;
+    const markdownFile = path.join(root, created.desc_md);
+    const expected = { record: created, markdown: await fs.readFile(markdownFile, 'utf8') };
+    const firstEdit = { ...value, input: { ...value.input, body: '窗口甲已保存', admin_area_type: '省' } };
+    const first = await put(created.desc_md, firstEdit, {}, expected);
+    assert.equal(first.status, 200);
+    const updated = (await first.json()).record;
+    const repeated = await put(created.desc_md, firstEdit, {}, expected);
+    assert.equal(repeated.status, 200);
+    assert.equal((await repeated.json()).alreadySaved, true);
+    const staleEdit = { ...value, input: { ...value.input, body: '窗口乙旧内容' } };
+    const stale = await put(created.desc_md, staleEdit, {}, expected);
+    assert.equal(stale.status, 409);
+    assert.match((await stale.json()).error, /其他窗口或文件中修改/);
+    assert.match(await fs.readFile(markdownFile, 'utf8'), /窗口甲已保存/);
+    const latest = { record: updated, markdown: await fs.readFile(markdownFile, 'utf8') };
+    await fs.writeFile(markdownFile, '# 外部修改\n');
+    assert.equal((await put(created.desc_md, staleEdit, {}, latest)).status, 409);
+    assert.equal(await fs.readFile(markdownFile, 'utf8'), '# 外部修改\n');
+});
+
+test('修改记录引用多级媒体目录时按完整路径搬移文件', async () => {
+    const sourceFolder = 'data/photos/nested-source';
+    await fs.mkdir(path.join(root, sourceFolder), { recursive: true });
+    await fs.writeFile(path.join(root, sourceFolder, 'photo.png'), '原始媒体字节');
+    const value = draft('f', { date: '2031-01-01', locality: '多级目录检查', photo_folder: sourceFolder, photos: ['photo.png'] });
+    const created = (await (await post(value)).json()).record;
+    const destination = 'data/photos/trips/day-one';
+    const edited = { ...value, input: { ...value.input, photo_folder: destination } };
+    assert.equal((await put(created.desc_md, edited)).status, 200);
+    assert.equal(await fs.readFile(path.join(root, destination, 'photo.png'), 'utf8'), '原始媒体字节');
+    assert.equal((await readIndex()).find(record => record.desc_md === created.desc_md).photo_folder, destination);
+    await assert.rejects(fs.stat(path.join(root, 'data/photos/day-one')), { code: 'ENOENT' });
 });
 
 test('字段校验支持闰年、空行政区和草稿往返，拒绝无效日期、国家与超长正文', () => {

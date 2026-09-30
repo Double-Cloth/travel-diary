@@ -348,7 +348,7 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
     let mediaDir;
     const ensureMediaDir = async () => {
         if (mediaDir) return mediaDir;
-        const parent = await checkedDirectory(root, ['data', options.storageDirectory], true);
+        const parent = await checkedDirectory(root, folder.split('/').slice(0, -1), true);
         const target = path.join(parent, path.basename(folder));
         try {
             await fs.mkdir(target);
@@ -551,7 +551,11 @@ async function updateRecord(root, payload) {
         || typeof payload.originalDescMd !== 'string' || payload.originalDescMd.length > 200) {
         throw failure(400, '缺少要修改的旅行记录标识。');
     }
-    const { prepareRecord } = await import('./record-input.mjs');
+    if (payload.expected != null && (!payload.expected.record || typeof payload.expected.record !== 'object'
+        || Array.isArray(payload.expected.record) || typeof payload.expected.markdown !== 'string')) {
+        throw failure(400, '原旅行记录快照无效，请重新打开编辑器。');
+    }
+    const { prepareRecord, recordMetadataSnapshot } = await import('./record-input.mjs');
     const catalog = JSON.parse(await fs.readFile(path.join(root, 'assets/catalogs/countries.json'), 'utf8'));
     let prepared;
     try {
@@ -595,6 +599,10 @@ async function updateRecord(root, payload) {
         const oldMarkdown = await fs.readFile(oldDiaryFile, 'utf8');
         if (JSON.stringify(existing) === JSON.stringify(updatedRecord) && oldMarkdown === markdown && !uploads.length) {
             return { record: updatedRecord, alreadySaved: true };
+        }
+        if (payload.expected && (recordMetadataSnapshot(existing) !== recordMetadataSnapshot(payload.expected.record)
+            || oldMarkdown !== payload.expected.markdown)) {
+            throw failure(409, '这条旅行记录已在其他窗口或文件中修改，未覆盖最新内容。请先导出草稿，再刷新页面并重新打开记录。');
         }
 
         mediaStage = await stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos, {
