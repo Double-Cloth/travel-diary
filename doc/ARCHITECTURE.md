@@ -22,7 +22,7 @@
 | --- | --- |
 | `app.js` | 路由、页面渲染、筛选、动画、手机夹层和媒体查看器。 |
 | `data.js`、`utils.js` | 索引与正文加载、缓存、受限 Markdown 渲染、转义和格式化。 |
-| `location.mjs`、`analytics.mjs`、`visits.mjs`、`route-map.mjs` | 地点归一化、统计、行程去重和路线展示的纯逻辑。 |
+| `location.mjs`、`analytics.mjs`、`visits.mjs` | 地点归一化、统计和行程去重的纯逻辑。 |
 | `record-editor.js`、`markdown-editor.js`、`record-suggestions.mjs` | 表单、正文双视图、地点补全和提交状态。 |
 | `record-input.mjs`、`photo-uploads.mjs`、`slug.mjs` | 浏览器与 Node 共用的字段、媒体签名、路径和拼音命名校验。 |
 | `draft-archive.mjs`、`zip-archive.mjs` | 草稿封装、未压缩 ZIP 与 CRC32 校验。 |
@@ -55,11 +55,11 @@ Markdown 使用应用支持的有限语法，输出经过 HTML 转义与链接�
 | 分片 | 范围 |
 | --- | --- |
 | `01-foundation`、`02-shell` | 字体、变量、基础可访问性、书脊与纸页外壳。 |
-| `03-cover-route`、`04-ledger`、`05-archive-place` | 路线、路径列表、归档及地点。 |
+| `03-controls`、`04-ledger`、`05-archive-place` | 共用按钮、日记目录、归档及地点。 |
 | `06-entry-sheet`、`07-responsive`、`08-custom-select` | 正文、事务对话框、基础适配和选择菜单。 |
 | `09-book-experience`、`10-refined-ui`、`11-skeuomorphic-book` | 开合封面、视觉覆盖、拟物细节和最终屏幕适配。 |
 
-改样式先确认实际生效的覆盖层，延续皮革、纸张、黄铜和手账排版。修改已带版本参数的浏览器资源时，同步入口和引用方的版本参数，避免静态托管沿用旧缓存。不要增加另一套页面入口或平行组件体系。
+改样式先确认实际生效的覆盖层，延续皮革、纸张、黄铜和手账排版。修改已带版本参数的浏览器资源时，同步入口和引用方的版本参数，避免静态托管沿用旧缓存。不要增加另一套页面入口或平行组件体系。旧首页的近期记录卡片、随机路线票据、旧日记详情弹层及配套动画、样式已移除，`#cover` 只保留实体封面，记录浏览统一从日记目录进入；`entry-sheet` 仍为现有编辑、认证和数据操作对话框提供共用纸面样式。
 
 ## 认证与写入
 

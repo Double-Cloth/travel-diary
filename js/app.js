@@ -11,7 +11,6 @@ import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260930-revi
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { enhanceCustomSelects } from './custom-select.js?v=20260930-review-v1';
-import { getRouteMapRandomCount } from './route-map.mjs';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
     formatLocationText,
@@ -50,19 +49,7 @@ const MOBILE_BOOK_COVER_OPEN_MS = 1040;
 const MOBILE_BOOK_COVER_CLOSE_MS = 920;
 const MOBILE_BOOK_COVER_PAINT_WAIT_MS = 240;
 const SEARCH_UPDATE_DELAY_MS = 180;
-const COVER_RECENT_RECORD_LIMIT = 7;
-const COVER_RECENT_RECORD_MIN = 2;
-const COVER_RECENT_RECORD_RESERVED_HEIGHT = 132;
-const COVER_RECENT_RECORD_ROW_HEIGHT = 108;
 const ENTRY_PHOTO_PREVIEW_ROWS = 3;
-const ROUTE_MAP_SLOTS = [
-    { ticket: 'ticket-a', stamp: 'stamp-a', label: '01' },
-    { ticket: 'ticket-b', stamp: 'stamp-b', label: '02' },
-    { ticket: 'ticket-c', stamp: 'stamp-c', label: '03' },
-    { ticket: 'ticket-d', stamp: 'stamp-d', label: '04' },
-    { ticket: 'ticket-e', stamp: 'stamp-e', label: '05' },
-    { ticket: 'ticket-f', stamp: 'stamp-f', label: '06' }
-];
 const MOBILE_CONTEXT_PANEL_QUERY = '(max-width: 760px)';
 const DEFAULT_VIDEO_VOLUME = 0.85;
 const VIDEO_PLAY_ICON_PATH = 'M8 5.5v13l10-6.5z';
@@ -94,7 +81,6 @@ let isSearchComposing = false;
 let isMobileContextPanelOpen = false;
 let isMobileContextPageScrollLocked = false;
 let mobileContextScrollY = 0;
-let viewportResizeTimer = null;
 let photoPreviewResizeTimer = null;
 let photoPreviewLateResizeTimer = null;
 let photoSleeveResizeObserver = null;
@@ -641,16 +627,11 @@ function deriveTravelModel(records) {
     const recordsById = new Map(enhanced.map(record => [record.id, record]));
     const recordsDesc = [...enhanced].sort((a, b) => (b.date || '').localeCompare(a.date || ''));
     const years = Array.from(new Set(recordsDesc.map(record => record.year))).filter(Boolean);
-    const yearRange = years.length > 1 ? `${years[years.length - 1]} - ${years[0]}` : (years[0] || '未知');
-    const yearRangeShort = years.length > 1 ? `${years[years.length - 1]}-${years[0].slice(2)}` : (years[0] || '未知');
     const firstDate = sortedAsc.find(record => record.date)?.date || '';
-    const lastDate = recordsDesc.find(record => record.date)?.date || '';
     const todayDate = getTodayDate();
-    const dateRangeCompact = formatDateRange(firstDate, lastDate, 'month');
     const dateRangeLabel = formatDateRange(firstDate, todayDate, 'day');
     const countries = buildLocationIndex(enhanced);
     const latestRecord = recordsDesc[0] || null;
-    const firstRecord = sortedAsc[0] || null;
     const yearStats = buildYearStats(enhanced);
     const monthStats = buildMonthStats(enhanced);
     const topAdminAreas = buildTopAdminAreas(countries);
@@ -662,12 +643,8 @@ function deriveTravelModel(records) {
         recordsDesc,
         recordsById,
         years,
-        yearRange,
-        yearRangeShort,
-        dateRangeCompact,
         dateRangeLabel,
         countries,
-        firstRecord,
         yearStats,
         monthStats,
         topAdminAreas,
@@ -1020,98 +997,10 @@ function renderPreface() {
     `, 'dossier-page context-panel preface-tools-panel');
 }
 
-function getCoverRecentRecordCount() {
-    const viewportHeight = window.innerHeight || document.documentElement.clientHeight || 720;
-    const pageHeight = refs.leftPage?.clientHeight || refs.stage?.clientHeight || viewportHeight;
-    const usableHeight = Math.max(0, pageHeight - COVER_RECENT_RECORD_RESERVED_HEIGHT);
-    const availableSlots = Math.max(COVER_RECENT_RECORD_MIN, Math.floor(usableHeight / COVER_RECENT_RECORD_ROW_HEIGHT));
-
-    return Math.min(COVER_RECENT_RECORD_LIMIT, availableSlots);
-}
-
-function renderCoverRecord(record, index) {
-    const entryHref = `#entry?id=${encodeURIComponent(record.id)}`;
-
-    return `
-        <article class="cover-record" id="entry-card-cover-${escapeHtml(record.id)}" data-open-entry="${escapeHtml(record.id)}" tabindex="0" role="button" aria-label="打开 ${escapeHtml(record.title)} 档案">
-            ${renderRecordPaperclip()}
-            <span class="cover-record-thumb" aria-hidden="true"></span>
-            <div class="cover-record-body">
-                <h2>${escapeHtml(record.title)}</h2>
-                <p>${escapeHtml(record.date || '')} · ${escapeHtml(getLocationText(record))}</p>
-            </div>
-            <a class="record-open" href="${entryHref}">打开档案</a>
-            <span class="cover-record-index">${String(index + 1).padStart(2, '0')}</span>
-        </article>
-    `;
-}
-
 function renderRecordPaperclip() {
     return `
             <span class="record-paperclip record-paperclip-back" aria-hidden="true"></span>
             <span class="record-paperclip record-paperclip-front" aria-hidden="true"></span>`;
-}
-
-function getRouteMapRecords() {
-    const seenLocations = new Set();
-    const uniqueRecords = [];
-
-    travelModel.recordsDesc.forEach((record) => {
-        const key = record.locationKey || [record.countryKey, record.adminArea, record.locality].filter(Boolean).join('|');
-        if (!key || seenLocations.has(key)) {
-            return;
-        }
-
-        seenLocations.add(key);
-        uniqueRecords.push(record);
-    });
-
-    const randomCount = getRouteMapRandomCount(
-        getRouteMapAvailableWidth(),
-        uniqueRecords.length,
-        ROUTE_MAP_SLOTS.length
-    );
-
-    return shuffleRecords(uniqueRecords)
-        .slice(0, randomCount)
-        .sort((a, b) => (a.date || '').localeCompare(b.date || ''));
-}
-
-function getRouteMapAvailableWidth() {
-    const viewportWidth = window.innerWidth || document.documentElement.clientWidth || ROUTE_MAP_SLOTS.length * 160;
-    const panelWidth = refs.rightPage?.clientWidth || refs.stage?.clientWidth || viewportWidth;
-
-    return Math.min(viewportWidth, panelWidth || viewportWidth);
-}
-
-function shuffleRecords(records) {
-    const shuffled = [...records];
-
-    for (let index = shuffled.length - 1; index > 0; index -= 1) {
-        const swapIndex = Math.floor(Math.random() * (index + 1));
-        [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
-    }
-
-    return shuffled;
-}
-
-function renderRouteMap(records) {
-    return records.map((record, index) => {
-        const slot = ROUTE_MAP_SLOTS[index];
-        const entryHref = `#entry?id=${encodeURIComponent(record.id)}`;
-        const label = getLocationText(record);
-        const place = record.locality || record.adminArea || record.country;
-        const date = record.date ? record.date.replace(/-/g, '.') : '未注明日期';
-
-        return `
-            <a class="route-ticket ${slot.ticket}" href="${entryHref}" data-record-id="${escapeHtml(record.id)}" aria-label="打开 ${escapeHtml(label)} 的旅行记录">
-                <span class="route-ticket-label">${escapeHtml(slot.label)}</span>
-                <strong class="route-ticket-place">${escapeHtml(place)}</strong>
-                <small>${escapeHtml(date)}</small>
-                <span class="ticket-stamp ${slot.stamp}" aria-hidden="true">${escapeHtml((record.adminArea || record.country || '出发').slice(0, 3))}</span>
-            </a>
-        `;
-    }).join('');
 }
 
 function renderLedger(params = {}, options = {}) {
@@ -2811,7 +2700,7 @@ function clearPageTurn() {
     pageTurnCleanup?.();
     pageTurnCleanup = null;
     refs.closedBookCover?.removeAttribute('aria-hidden');
-    refs.spread?.classList.remove('turn-forward', 'turn-back', 'turn-mobile', 'turn-mobile-back', 'book-turn-preparing');
+    refs.spread?.classList.remove('turn-forward', 'turn-back', 'book-turn-preparing');
 }
 
 let lastCoverBounds = null;
@@ -3064,7 +2953,7 @@ function cloneTurningPage(page) {
     clone.style.background = getComputedStyle(page).background;
     // 副本只绘制可见内容；屏外记录保留等高占位，避免重复复制整本档案。
     const bounds = page.getBoundingClientRect();
-    const selector = '.ledger-entry, .cover-record, .photo-sleeve-button';
+    const selector = '.ledger-entry, .photo-sleeve-button';
     const originals = page.querySelectorAll(selector);
     clone.querySelectorAll(selector).forEach((node, index) => {
         const rect = originals[index].getBoundingClientRect();
@@ -3184,7 +3073,7 @@ function renderWithPageTurn(renderFn, options = {}) {
                 }
             });
             // 屏外记录只保留占位，减少分段绘制时复制的内容量。
-            const rows = '.ledger-entry, .cover-record, .photo-sleeve-button';
+            const rows = '.ledger-entry, .photo-sleeve-button';
             const originalRows = refs.spread.querySelectorAll(rows);
             snapshot.querySelectorAll(rows).forEach((node, index) => {
                 const rect = originalRows[index].getBoundingClientRect();
@@ -3590,16 +3479,6 @@ function handleDocumentClick(event) {
         return;
     }
 
-    const latestAction = event.target.closest('[data-action="open-latest"]');
-    if (latestAction) {
-        event.preventDefault();
-        if (travelModel?.latestRecord) {
-            rememberReadingContext();
-            navigateTo({ name: 'entry', params: { id: travelModel.latestRecord.id } });
-        }
-        return;
-    }
-
     const entryCard = event.target.closest('[data-open-entry]');
     if (entryCard && !event.target.closest('a, button, input')) {
         event.preventDefault();
@@ -3908,21 +3787,6 @@ function handleViewportResize() {
     syncVideoMoreControlsLayout();
     queuePhotoSleevePreviewSync();
     schedulePhotoViewerFit();
-
-    if (activeRoute?.name !== 'cover') {
-        return;
-    }
-
-    if (viewportResizeTimer) {
-        window.clearTimeout(viewportResizeTimer);
-    }
-
-    viewportResizeTimer = window.setTimeout(() => {
-        viewportResizeTimer = null;
-        if (activeRoute?.name === 'cover') {
-            renderCover();
-        }
-    }, 120);
 }
 
 function applySearchRouteUpdate({ id, value }) {

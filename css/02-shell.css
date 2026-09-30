@@ -352,7 +352,7 @@
 }
 
 .paper-page-left {
-    --left-page-bg-image: url("../assets/images/pages/left-page-cover-travel-diary.png");
+    --left-page-bg-image: url("../assets/images/pages/left-page-ledger-travel-diary.png");
 
     border-radius: 5px 1px 0 8px;
     box-shadow: inset -20px 0 28px -22px #61451f99;
@@ -365,10 +365,6 @@
     background-blend-mode: normal, screen, normal, multiply, normal;
     background-position: center, center, center, center, center;
     background-size: 100% 100%, 100% 100%, cover, auto, auto;
-}
-
-body[data-route="cover"] .paper-page-left {
-    --left-page-bg-image: url("../assets/images/pages/left-page-cover-travel-diary.png");
 }
 
 body[data-route="ledger"] .paper-page-left,
@@ -425,7 +421,6 @@ body[data-route="preface"] .paper-page-left {
 }
 
 .page-head h1,
-.cover-page h1,
 .place-page h1,
 .loading-page h1 {
     margin: 0;

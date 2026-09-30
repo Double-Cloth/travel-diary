@@ -23,7 +23,7 @@ const journalEntryCss = await readFile(new URL('../css/journal.css', import.meta
 const cssPartFiles = [
     '01-foundation.css',
     '02-shell.css',
-    '03-cover-route.css',
+    '03-controls.css',
     '04-ledger.css',
     '05-archive-place.css',
     '06-entry-sheet.css',
@@ -73,7 +73,7 @@ test('足迹摘要按右页内容宽度切换紧凑布局并避免横向溢出',
     assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.archive-journey-stats div\s*{[^}]*display: grid;[^}]*padding-inline: 7px;/);
     assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.archive-overview-span\s*{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
     assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.archive-overview-page \.overview-location-list\s*{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
-    assert.match(journalEntryCss, /10-refined-ui\.css\?v=20260930-mobile-brand-note-v1/);
+    assert.match(journalEntryCss, /10-refined-ui\.css\?v=[^']+/);
 });
 
 test('左侧三个章节入口更新为扉页、日记目录与日记归档', () => {
@@ -109,7 +109,7 @@ test('扉页桌面双页展示个人信息与工具，移动端工具页默认�
     assert.match(journalCss, /\.brand-lockup strong::after\s*\{\s*content: "旅行笔记";/);
     assert.match(journalCss, /\.brand-lockup strong::after\s*\{[\s\S]*position: absolute;[\s\S]*inset: 0;[\s\S]*display: grid;[\s\S]*place-items: center;/);
     assert.match(indexHtml, /class="brand-lockup"[^>]*aria-label="合上旅行笔记"[^>]*title="合上旅行笔记"/);
-    assert.match(journalEntryCss, /11-skeuomorphic-book\.css\?v=20260930-mobile-page-curl-v2/);
+    assert.match(journalEntryCss, /11-skeuomorphic-book\.css\?v=[^']+/);
 });
 
 test('索引夹层包含完整且唯一的高级筛选工作台', () => {
@@ -221,30 +221,19 @@ test('记录特征标签扣除按钮阴影后上边距略大于下边距', () =>
 test('记录卡片回形针具备前后遮挡关系', () => {
     assert.match(appJs, /class="record-paperclip record-paperclip-back" aria-hidden="true"/);
     assert.match(appJs, /class="record-paperclip record-paperclip-front" aria-hidden="true"/);
-    assert.match(journalCss, /\.cover-record,\s*\.ledger-entry\s*{[\s\S]*--clip-svg: url\("data:image\/svg\+xml,[\s\S]*%3Cpath/);
+    assert.match(journalCss, /\.ledger-entry\s*{[\s\S]*--clip-svg: url\("data:image\/svg\+xml,[\s\S]*%3Cpath/);
     assert.match(journalCss, /\.record-paperclip\s*{[\s\S]*background: var\(--clip-svg\) center \/ contain no-repeat;[\s\S]*filter: drop-shadow/);
     assert.match(journalCss, /\.record-paperclip-back\s*{[\s\S]*z-index: 1;[\s\S]*clip-path: inset\(50% 0 0 0\);/);
     assert.match(journalCss, /\.record-paperclip-front\s*{[\s\S]*z-index: 4;[\s\S]*clip-path: inset\(0 0 48% 0\);/);
-    assert.match(journalCss, /\.cover-record-thumb,\s*\.entry-date-chip\s*{[\s\S]*z-index: 2;/);
+    assert.match(journalCss, /\.entry-date-chip\s*{[\s\S]*z-index: 2;/);
     assert.doesNotMatch(journalCss, /linear-gradient\(var\(--clip-metal\), var\(--clip-metal\)\)/);
-    assert.match(journalCss, /\.cover-record:hover \.record-paperclip,[\s\S]*\.ledger-entry:focus-visible \.record-paperclip/);
+    assert.match(journalCss, /\.ledger-entry:hover \.record-paperclip,[\s\S]*\.ledger-entry:focus-visible \.record-paperclip/);
     assert.doesNotMatch(journalCss, /\.place-records \.ledger-entry::before\s*{[\s\S]*top:/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.record-paperclip\s*{[\s\S]*width: 21px;[\s\S]*height: 38px;/);
 });
 
-test('移动端首页回形针为标题区域预留安全留白', () => {
-    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.cover-record\s*{[\s\S]*padding: 14px 44px 14px 50px;/);
-    assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*\.cover-record \.record-paperclip\s*{[\s\S]*left: 13px;/);
-});
-
 test('移动端编辑器隐藏草稿暂存提示', () => {
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*?\.record-editor-footer > \.record-editor-note\s*{\s*display: none;/);
-});
-
-test('随机路线图按视口尺寸限制票据数量', () => {
-    assert.match(appJs, /import \{ getRouteMapRandomCount \} from '\.\/route-map\.mjs';/);
-    assert.match(appJs, /function getRouteMapAvailableWidth\(\)/);
-    assert.match(appJs, /getRouteMapRandomCount\(\s*getRouteMapAvailableWidth\(\),\s*uniqueRecords\.length,\s*ROUTE_MAP_SLOTS\.length\s*\)/);
 });
 
 test('旅行概览渲染新增的可靠统计', () => {
@@ -288,8 +277,10 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(journalCss, /\.custom-select-menu > \[role="option"\],[\s\S]*?white-space: normal;[\s\S]*?overflow-wrap: anywhere;/);
-    assert.match(indexHtml, /js\/app\.js\?v=20260930-mobile-page-curl-v2/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260930-mobile-page-curl-v2/);
+    const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
+    const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
+    assert.ok(appVersion);
+    assert.equal(appVersion, cssVersion);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260930-review-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260930-review-v1/);

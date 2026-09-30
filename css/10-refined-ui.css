@@ -35,9 +35,7 @@ body::after {
     background: radial-gradient(ellipse at center, transparent 58%, rgba(10, 5, 3, 0.28));
 }
 
-.paper-button,
-.primary-button,
-.secondary-button {
+.paper-button {
     border-radius: 2px;
 }
 
@@ -50,7 +48,6 @@ body::after {
 
 /* 统一书页内控件：不再用厚重渐变与悬浮卡片模拟网页按钮。 */
 .paper-page .paper-button,
-.paper-page .sheet-nav-button,
 .paper-page .ribbon-back {
     min-height: 38px;
     padding: 8px 12px;
@@ -65,8 +62,6 @@ body::after {
 
 .paper-page .paper-button:hover,
 .paper-page .paper-button:focus-visible,
-.paper-page .sheet-nav-button:hover,
-.paper-page .sheet-nav-button:focus-visible,
 .paper-page .ribbon-back:hover,
 .paper-page .ribbon-back:focus-visible {
     color: var(--stamp);
@@ -77,11 +72,9 @@ body::after {
 }
 
 .paper-page .paper-button:active,
-.paper-page .sheet-nav-button:active,
 .paper-page .ribbon-back:active { box-shadow: none; transform: translateY(0); }
 
-.paper-page .paper-button:disabled,
-.paper-page .sheet-nav-button:disabled { background: transparent; box-shadow: none; opacity: 0.38; }
+.paper-page .paper-button:disabled { background: transparent; box-shadow: none; opacity: 0.38; }
 
 .paper-page .sheet-delete-button { color: var(--stamp); }
 

@@ -1,0 +1,62 @@
+.archive-page .search-field {
+    margin-bottom: 24px;
+}
+
+.brass-button,
+.paper-button {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    min-height: 44px;
+    padding: 10px 18px;
+    border-radius: 3px;
+    border: 1px solid rgba(72, 45, 21, 0.32);
+    color: #2c1c0f;
+    background:
+        linear-gradient(180deg, rgba(255, 249, 224, 0.38), transparent),
+        linear-gradient(180deg, #d9bd7e, #a87d43);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.38),
+        inset 0 -3px 8px rgba(78, 48, 19, 0.18),
+        0 3px 0 rgba(110, 79, 36, 0.12), 0 5px 9px rgba(52, 31, 14, 0.1);
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+.brass-button:hover,
+.paper-button:hover {
+    border-color: rgba(122, 79, 34, 0.48);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.45),
+        inset 0 -3px 8px rgba(78, 48, 19, 0.16),
+        0 12px 20px rgba(52, 31, 14, 0.2);
+    transform: translateY(-1px);
+}
+
+.brass-button:active,
+.paper-button:active {
+    transform: translateY(0);
+    box-shadow:
+        inset 0 2px 5px rgba(78, 48, 19, 0.2),
+        0 4px 10px rgba(52, 31, 14, 0.14);
+}
+
+.brass-button:disabled,
+.paper-button:disabled {
+    cursor: not-allowed;
+    opacity: 0.48;
+    transform: none;
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, 0.28),
+        0 4px 9px rgba(52, 31, 14, 0.1);
+}
+
+.paper-button {
+    background:
+        linear-gradient(180deg, rgba(255, 255, 255, 0.36), transparent),
+        url("../assets/textures/paper-grain.png"),
+        linear-gradient(180deg, #f8edcf, #e2cfa4);
+}

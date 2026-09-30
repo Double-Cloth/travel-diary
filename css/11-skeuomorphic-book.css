@@ -423,13 +423,6 @@ body[data-route='preface'] .paper-page {
 
 .preface-tools-panel { gap: 18px; }
 
-.preface-tools-intro {
-    margin: -4px 0 0;
-    color: #715b43;
-    font-size: 13px;
-    line-height: 1.75;
-}
-
 .preface-tool-section {
     position: relative;
     display: grid;
@@ -489,12 +482,8 @@ body[data-route='preface'] .paper-page {
 
 .preface-tools-panel .archive-data-status { margin: 0; }
 
-
 .paper-page .paper-button,
-.paper-page .sheet-nav-button,
-.paper-page .ribbon-back,
-.primary-button,
-.secondary-button {
+.paper-page .ribbon-back {
     border: 1px solid var(--metal-edge);
     border-radius: 5px;
     color: #513824;
@@ -505,7 +494,6 @@ body[data-route='preface'] .paper-page {
 }
 
 .paper-page .paper-button:hover,
-.paper-page .sheet-nav-button:hover,
 .paper-page .ribbon-back:hover {
     color: #452c1b;
     border-color: #805b31;
@@ -516,16 +504,12 @@ body[data-route='preface'] .paper-page {
 }
 
 .paper-page .paper-button:active,
-.paper-page .sheet-nav-button:active,
-.paper-page .ribbon-back:active,
-.primary-button:active,
-.secondary-button:active {
+.paper-page .ribbon-back:active {
     transform: translateY(2px);
     box-shadow: inset 0 2px 4px #4c301a40, 0 1px #fff7df;
 }
 
-.paper-page .paper-button:disabled,
-.paper-page .sheet-nav-button:disabled { opacity: .45; filter: grayscale(.6); transform: none; }
+.paper-page .paper-button:disabled { opacity: .45; filter: grayscale(.6); transform: none; }
 
 .paper-page .sheet-delete-button { color: #8b3228; }
 
@@ -1161,10 +1145,6 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .entry-running-head { margin-bottom: 24px; font-size: 14px; }
     .entry-book-article .markdown-content { font-size: 17px; line-height: 1.95; padding-bottom: 24px; }
     .entry-book-index .sheet-record-actions { padding-top: 12px; }
-    .turn-mobile > .paper-page-left { animation: none; }
-    .page-spread.turn-mobile { animation: readerPageIn 420ms cubic-bezier(.22,.65,.25,1) both; }
-    .page-spread.turn-mobile-back { --reader-shift: -22px; }
-    @keyframes readerPageIn { from { opacity: .35; transform: translateX(var(--reader-shift, 22px)); } to { opacity: 1; transform: translateX(0); } }
     .journal-spine {
         color: #f4dfb6;
         background: var(--leather-grain), linear-gradient(#7c533b, #493023);
@@ -1371,7 +1351,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         background-blend-mode: normal, normal, multiply, normal;
     }
     .year-bookmark { padding-inline: 13px; }
-    .paper-page .paper-button, .paper-page .sheet-nav-button { min-height: 42px; }
+    .paper-page .paper-button { min-height: 42px; }
     .preface-profile-page { gap: 17px; }
     .preface-heading { padding-bottom: 13px; }
     .preface-heading h1 { font-size: 42px; }

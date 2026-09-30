@@ -25,7 +25,8 @@ assets/
 | --- | --- |
 | `body-background-travel-diary.png` | 全局桌面背景。 |
 | `leather-mountain-cover.png` | 山景皮革封面位图；标题、封扣和交互由 HTML / CSS 实现。 |
-| `home-hero-travel-diary.png`、`left-page-*.png` | 页面主视觉与纸页背景，保留被当前 CSS 引用的文件。 |
+| `left-page-ledger-travel-diary.png` | 目录、地点、日记及附件页的纸面背景，也是基础纸页的默认背景。 |
+| `left-page-profile-travel-diary.png` | 扉页与归档的纸面背景。 |
 | `paper-grain.png` | 共用纸纹。 |
 | `data/profile/profile-picture.png` | 个人头像，替换同路径即可更新。 |
 | `data/profile/owner-name.txt` | 扉页署名，缺失时回退默认值。 |
@@ -34,7 +35,7 @@ assets/
 
 通用资源使用小写英文、数字和连字符，名字表达用途，同类资源放在同一子目录。日记、媒体路径由编辑器生成，规则见 [内容指南](CONTENT_GUIDE.md#文件路径与媒体)。新增纹理前先检查可否复用现有纸纹。
 
-HTML 和数据路径相对项目根目录；`css/` 下所有分片使用 `../assets/...`。头像入口使用 `data-src` 惰性加载，不要随意改名。运行字体、图片、拼音与目录均保存在本地，不添加运行时 CDN 依赖。
+HTML 和数据路径相对项目根目录；`css/` 下所有分片使用 `../assets/...`。头像入口由初始化代码将 `data-src` 转为 `src`，不要随意改名；封面位图仅在显示封面时由 CSS 加载。运行字体、图片、拼音与目录均保存在本地，不添加运行时 CDN 依赖。
 
 `.secrets/` 不是浏览器资产，不在 HTML、CSS 或前端模块中引用。授权的动态完整备份包含认证哈希，静态发布排除整个目录。个人媒体默认被 Git 忽略，发布前须明确选择文件或由部署流程提供，见 [发布说明](MAINTENANCE.md#静态发布)。
 
@@ -56,3 +57,5 @@ HTML 和数据路径相对项目根目录；`css/` 下所有分片使用 `../ass
 ## 清理与替换
 
 替换图片后检查屏幕裁切、长宽比和移动端纸页叠层；修改字体后运行生成和测试；调整已带版本参数的资源时同步更新引用。删除前用 `rg` 检查 `index.html`、`css/`、`js/`、`data/` 和测试中的引用；不要仅凭某页肉眼不可见判断资源无用。删除确定未引用的文件后同步文档，不保留重复备用实现，也不增加构建依赖。
+
+旧首页已停用的 `home-hero-travel-diary.png` 和 `left-page-cover-travel-diary.png` 已删除。完整字体、字体源文件、地点目录和个人媒体仍有运行或维护用途，不按大小判定为无用资源。代码清理同时移除旧渲染入口、样式和仅验证旧功能的测试；现有日记数据与旧地点字段的读取兼容保留。

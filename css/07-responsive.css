@@ -46,12 +46,6 @@
         overflow: hidden;
     }
 
-    html.entry-sheet-page-locked,
-    body.entry-sheet-page-locked {
-        overflow: hidden;
-        overscroll-behavior: none;
-    }
-
     .journal-shell {
         display: grid;
         grid-template-rows: auto auto;
@@ -383,99 +377,19 @@
         grid-column: 1 / -1;
     }
 
-    .cover-page h1,
     .page-head h1,
     .place-page h1,
     .loading-page h1 {
         font-size: 29px;
     }
 
-    .cover-actions,
-    .ledger-controls,
-    .tag-stats,
-    .dossier-stats,
-    .sheet-nav {
+    .ledger-controls {
         grid-template-columns: 1fr;
-    }
-
-    .cover-actions {
-        display: grid;
-    }
-
-    .archive-search-card,
-    .cover-record {
-        grid-template-columns: 1fr;
-    }
-
-    .cover-record {
-        padding: 14px 44px 14px 50px;
-    }
-
-    .cover-record-thumb {
-        display: none;
-    }
-
-    .record-open {
-        width: fit-content;
     }
 
     .brass-button,
-    .paper-button,
-    .filter-chip,
-    .brass-toggle {
+    .paper-button {
         width: 100%;
-    }
-
-    .pocket-page {
-        grid-template-rows: auto auto;
-    }
-
-    .route-sketch {
-        min-height: 260px;
-    }
-
-    .route-map-label {
-        left: 18px;
-        top: 18px;
-        padding: 10px 12px;
-    }
-
-    .route-ticket {
-        width: 104px;
-        min-height: 72px;
-        padding: 8px 9px 8px 11px;
-    }
-
-    .route-ticket-place {
-        font-size: 17px;
-    }
-
-    .route-postmark {
-        right: 6%;
-        top: 21%;
-        width: 66px;
-        height: 66px;
-        font-size: 10px;
-    }
-
-    .route-washi {
-        width: 72px;
-        height: 19px;
-    }
-
-    .ticket-a { left: 5%; top: 34%; }
-    .ticket-b { left: 36%; top: 24%; }
-    .ticket-c { left: 61%; top: 37%; }
-    .ticket-d { left: 8%; top: 65%; }
-    .ticket-e { left: 38%; top: 62%; }
-    .ticket-f { left: 67%; top: 60%; }
-
-    .map-compass {
-        left: 47%;
-        bottom: 38%;
-        width: 46px;
-        height: 46px;
-        font-size: 14px;
     }
 
     .timeline-list,
@@ -496,10 +410,6 @@
         width: 21px;
         height: 38px;
         filter: drop-shadow(0 2px 2px var(--clip-shadow));
-    }
-
-    .cover-record .record-paperclip {
-        left: 13px;
     }
 
     .entry-note h3 {
@@ -569,13 +479,6 @@
         grid-template-columns: 1fr;
     }
 
-    .entry-sheet-root {
-        align-items: start;
-        padding: max(12px, env(safe-area-inset-top)) max(12px, env(safe-area-inset-right))
-            max(12px, env(safe-area-inset-bottom)) max(12px, env(safe-area-inset-left));
-    }
-
-    .entry-sheet-frame,
     .entry-sheet {
         max-height: calc(100dvh - max(24px, env(safe-area-inset-top) + env(safe-area-inset-bottom)));
     }
@@ -725,12 +628,6 @@
     .photo-viewer-control-divider {
         margin-inline: 0;
     }
-
-    .sheet-nav-button,
-    .sheet-nav-button:first-child,
-    .sheet-nav-button:last-child {
-        justify-self: stretch;
-    }
 }
 
 /* 320px 左右的设备没有足够空间容纳桌面端标签的最小宽度，保持三项完整可见。 */
@@ -768,7 +665,6 @@
         padding-inline: 14px;
     }
 
-    .cover-page h1,
     .page-head h1,
     .place-page h1,
     .loading-page h1 {
@@ -795,17 +691,6 @@
         margin-top: 12px;
         font-size: 16px;
         line-height: 1.65;
-    }
-
-    .cover-page::before {
-        margin-bottom: 16px;
-        padding-inline: 18px;
-        font-size: 15px;
-    }
-
-    .cover-actions {
-        gap: 10px;
-        margin-top: 20px;
     }
 
     .ledger-controls {

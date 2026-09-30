@@ -161,17 +161,6 @@
     margin-top: 2px;
 }
 
-.compact-note {
-    padding: 12px;
-    font-size: 13px;
-}
-
-.province-strip {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 9px;
-}
-
 .luggage-tag {
     position: relative;
     display: grid;
