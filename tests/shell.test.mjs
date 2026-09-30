@@ -68,6 +68,14 @@ test('路线页不存在重复筛选入口', () => {
     assert.match(appJs, /function renderArchive[\s\S]*class="archive-journey-stats"[\s\S]*段旅程[\s\S]*次出发[\s\S]*个年份/);
 });
 
+test('足迹摘要按右页内容宽度切换紧凑布局并避免横向溢出', () => {
+    assert.match(journalCss, /\.archive-overview-page\s*{[^}]*container-type: inline-size;/);
+    assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.archive-journey-stats div\s*{[^}]*display: grid;[^}]*padding-inline: 7px;/);
+    assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.archive-overview-span\s*{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
+    assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.archive-overview-page \.overview-location-list\s*{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
+    assert.match(journalEntryCss, /10-refined-ui\.css\?v=20260930-archive-overview-v2/);
+});
+
 test('左侧三个章节入口更新为扉页、日记目录与日记归档', () => {
     assert.match(indexHtml, /href="#preface"[^>]*data-route-link="preface"[\s\S]*>扉页</);
     assert.match(indexHtml, /href="#ledger"[^>]*data-route-link="ledger"[\s\S]*>日记目录</);
@@ -278,7 +286,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(journalCss, /\.custom-select-menu > \[role="option"\],[\s\S]*?white-space: normal;[\s\S]*?overflow-wrap: anywhere;/);
     assert.match(indexHtml, /js\/app\.js\?v=20260930-select-layout-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260930-mobile-bookmark-active-v2/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260930-archive-overview-v3/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260930-path-follow-locality-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);

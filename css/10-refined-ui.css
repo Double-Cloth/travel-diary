@@ -143,6 +143,7 @@ body::after {
 .archive-overview-page {
     display: grid;
     align-content: start;
+    container-type: inline-size;
 }
 
 .archive-overview-page > .context-panel-heading {
@@ -310,6 +311,41 @@ body::after {
     border: 0;
     border-radius: 0;
     background: transparent;
+}
+
+/* 双页布局变窄时，按右页内容宽度收拢摘要，而不是等待整个视口进入移动端。 */
+@container (max-width: 380px) {
+    .archive-overview-page > .context-panel-heading { margin-bottom: 18px; }
+    .archive-journey-stats { margin-bottom: 22px; padding-block: 15px; }
+    .archive-journey-stats div { display: grid; justify-items: center; gap: 4px; padding-inline: 7px; }
+    .archive-journey-stats dt { font-size: clamp(27px, 9vw, 34px); }
+    .archive-journey-stats dd { font-size: 11px; }
+    .archive-overview-span {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas:
+            "title"
+            "range"
+            "copy"
+            "latest";
+        gap: 7px;
+    }
+    .archive-latest-entry {
+        margin-top: 10px;
+        padding: 12px 0 0;
+        border-top: 1px solid var(--line);
+        border-left: 0;
+    }
+    .archive-overview-scope .overview-metric,
+    .archive-rhythm-metrics .overview-metric { padding-inline: 8px; }
+    .archive-overview-page .overview-insight-list,
+    .archive-overview-page .overview-location-list { grid-template-columns: minmax(0, 1fr); }
+    .archive-overview-page .overview-insight-wide,
+    .archive-overview-page .overview-location-feature { grid-column: auto; }
+    .archive-overview-page .overview-location-feature {
+        grid-template-columns: minmax(0, 1fr);
+        grid-template-areas: "label" "title" "meta";
+    }
+    .archive-overview-page .overview-location-feature small { white-space: normal; }
 }
 
 @media (min-width: 761px) {
@@ -881,28 +917,6 @@ body::after {
         transform: none;
     }
 
-    .archive-overview-page > .context-panel-heading { margin-bottom: 18px; }
-    .archive-journey-stats { margin-bottom: 22px; padding-block: 15px; }
-    .archive-journey-stats div { display: grid; justify-items: center; gap: 4px; padding-inline: 7px; }
-    .archive-journey-stats dt { font-size: clamp(27px, 9vw, 34px); }
-    .archive-journey-stats dd { font-size: 11px; }
-    .archive-overview-span {
-        grid-template-columns: 1fr;
-        grid-template-areas:
-            "title"
-            "range"
-            "copy"
-            "latest";
-        gap: 7px;
-    }
-    .archive-latest-entry {
-        margin-top: 10px;
-        padding: 12px 0 0;
-        border-top: 1px solid var(--line);
-        border-left: 0;
-    }
-    .archive-overview-scope .overview-metric,
-    .archive-rhythm-metrics .overview-metric { padding-inline: 8px; }
 }
 
 @media (max-width: 380px) {
