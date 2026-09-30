@@ -667,7 +667,7 @@ body::after {
         color: var(--ink);
     }
     .brand-lockup strong { font-size: 0; font-weight: 500; letter-spacing: 0.08em; text-shadow: none; }
-    .brand-lockup strong::after { content: "旅行日记"; color: var(--ink); font-size: 23px; }
+    .brand-lockup strong::after { content: "旅行笔记"; color: var(--ink); font-size: 23px; }
     .brand-lockup small { display: block; margin-top: 3px; color: var(--ink-muted); font: 8px/1.2 var(--font-code); letter-spacing: 0.16em; }
 
     .chapter-tabs {

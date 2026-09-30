@@ -1280,7 +1280,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
             inset 0 -7px 9px #3d210f66,
             0 7px 10px #25150e80;
         filter: saturate(1.08) contrast(1.04);
-        text-shadow: 0 1px #fff2bf, 0 -1px #6d421f59;
+        text-shadow: none;
         transform: translateY(-3px);
     }
     .chapter-tab-active::before {
@@ -1293,6 +1293,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         box-shadow: none;
         font-weight: 700;
         letter-spacing: .04em;
+        text-shadow: 0 1px 0 #fff2bf99;
     }
     .chapter-tab::after { display: none; }
     .spine-avatar {

@@ -73,7 +73,7 @@ test('足迹摘要按右页内容宽度切换紧凑布局并避免横向溢出',
     assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.archive-journey-stats div\s*{[^}]*display: grid;[^}]*padding-inline: 7px;/);
     assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.archive-overview-span\s*{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
     assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.archive-overview-page \.overview-location-list\s*{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
-    assert.match(journalEntryCss, /10-refined-ui\.css\?v=20260930-archive-overview-v2/);
+    assert.match(journalEntryCss, /10-refined-ui\.css\?v=20260930-mobile-brand-note-v1/);
 });
 
 test('左侧三个章节入口更新为扉页、日记目录与日记归档', () => {
@@ -106,7 +106,9 @@ test('扉页桌面双页展示个人信息与工具，移动端工具页默认�
     assert.match(journalCss, /\.preface-tool-section\s*{/);
     assert.match(journalCss, /\.preface-identity-sheet\s*{[\s\S]*container-type: inline-size;/);
     assert.match(journalCss, /@container \(max-width: 380px\)[\s\S]*\.preface-profile-composition\s*{[\s\S]*grid-template-columns: minmax\(0, 1fr\);/);
+    assert.match(journalCss, /\.brand-lockup strong::after\s*\{\s*content: "旅行笔记";/);
     assert.match(journalCss, /\.brand-lockup strong::after\s*\{[\s\S]*position: absolute;[\s\S]*inset: 0;[\s\S]*display: grid;[\s\S]*place-items: center;/);
+    assert.match(indexHtml, /class="brand-lockup"[^>]*aria-label="合上旅行笔记"[^>]*title="合上旅行笔记"/);
     assert.match(journalEntryCss, /11-skeuomorphic-book\.css\?v=20260930-mobile-brand-plaque-v4/);
 });
 
@@ -287,7 +289,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(journalCss, /\.custom-select-menu > \[role="option"\],[\s\S]*?white-space: normal;[\s\S]*?overflow-wrap: anywhere;/);
     assert.match(indexHtml, /js\/app\.js\?v=20260930-mobile-video-seek-v1/);
-    assert.match(indexHtml, /css\/journal\.css\?v=20260930-archive-overview-v3/);
+    assert.match(indexHtml, /css\/journal\.css\?v=20260930-mobile-brand-note-v1/);
     assert.match(appJs, /\.\/record-editor\.js\?v=20260930-path-follow-locality-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260930-select-layout-v1/);
