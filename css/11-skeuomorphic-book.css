@@ -1486,3 +1486,44 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .custom-select-menu, .record-editor-autocomplete-menu,
     .paper-page-right.context-panel { transition: none !important; translate: none !important; }
 }
+
+/* 长标题、连续英文和手工媒体路径都应在纸页内换行。 */
+.entry-book-heading h1,
+.entry-photos-summary h1,
+.place-summary h1,
+.ledger-entry h3,
+.entry-neighbor strong,
+.location-chip,
+.markdown-content {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.custom-select-menu { min-width: 0; }
+.custom-select-menu > [aria-disabled="true"] { opacity: .55; cursor: default; }
+.custom-select-trigger:disabled { opacity: .6; cursor: default; }
+
+body.media-viewer-open { overflow: hidden; }
+
+@media (max-width: 760px), (pointer: coarse) {
+    .custom-select-trigger,
+    .custom-select-menu > [role="option"],
+    .record-editor-autocomplete-menu > [role="option"],
+    .year-bookmark,
+    .entry-management summary,
+    .paper-page .paper-button,
+    .photo-viewer-control {
+        min-height: 44px;
+    }
+    .photo-viewer-control { min-width: 44px; }
+    .journal-shell input,
+    .record-editor input,
+    .record-editor textarea,
+    .profile-owner-dialog-input { font-size: 16px; }
+}
+
+@media (max-height: 540px) {
+    .photo-viewer { padding-block: 10px; }
+    .photo-viewer-panel { max-height: calc(100dvh - 20px); gap: 6px; }
+    .photo-viewer-caption { display: none; }
+}

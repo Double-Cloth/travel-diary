@@ -8,7 +8,7 @@ const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
     renderWithPageTurn, renderWithBookCover, clearPageTurn, cloneTurningPage, createPageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
-    deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError };
+    deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick };
 export function renderTestEntry(record, navigation) {
     const originals = { setPages, getEntryNavigation, travelModel };
     let result;
@@ -58,11 +58,45 @@ export function setTestState(values) {
     if (values.leftPage) refs.leftPage = values.leftPage;
     if (values.rightPage) refs.rightPage = values.rightPage;
     if (values.route) activeRoute = values.route;
+    if (values.stage) refs.stage = values.stage;
     if (values.observer) photoSleeveResizeObserver = values.observer;
     if (values.sleeve) observedPhotoSleeves.add(values.sleeve);
 }
 `);
 delete globalThis.document;
+
+test('跳到内容直接聚焦正文，不改变章节路由', t => {
+    const previous = globalThis.document;
+    const calls = [];
+    const stage = { focus: () => calls.push('focus'), scrollIntoView: () => calls.push('scroll') };
+    t.after(() => { globalThis.document = previous; });
+    app.setTestState({ stage });
+    app.handleDocumentClick({
+        preventDefault: () => calls.push('prevent'),
+        target: { closest: selector => selector === '.skip-link' ? {} : null }
+    });
+    assert.deepEqual(calls, ['prevent', 'focus', 'scroll']);
+});
+
+test('夹层与媒体面板的 Tab 焦点循环跳过禁用和隐藏控件', t => {
+    const previous = globalThis.document;
+    t.after(() => { globalThis.document = previous; });
+    const control = (settings = {}) => ({
+        disabled: false, tabIndex: 0, closest: () => null, getClientRects: () => [{}],
+        focus() { globalThis.document.activeElement = this; }, ...settings
+    });
+    const first = control();
+    const last = control();
+    const panel = { querySelectorAll: () => [first, control({ disabled: true }), control({ closest: () => ({}) }), last] };
+    globalThis.document = { activeElement: last };
+    let prevented = 0;
+    assert.equal(app.trapPanelFocus({ key: 'Tab', preventDefault: () => prevented++ }, panel), true);
+    assert.equal(globalThis.document.activeElement, first);
+    assert.equal(app.trapPanelFocus({ key: 'Tab', shiftKey: true, preventDefault: () => prevented++ }, panel), true);
+    assert.equal(globalThis.document.activeElement, last);
+    assert.equal(prevented, 2);
+    assert.equal(app.trapPanelFocus({ key: 'Escape' }, panel), false);
+});
 
 test('长短篇详情正文只渲染一次，左页相邻篇目与管理入口不重复', t => {
     const previous = globalThis.requestAnimationFrame;

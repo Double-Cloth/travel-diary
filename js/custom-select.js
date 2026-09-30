@@ -8,7 +8,8 @@ function pointerMoved(start, event) {
 }
 
 function getOptions(wrapper) {
-    return [...wrapper.querySelectorAll('[data-custom-select-option]')];
+    return [...wrapper.querySelectorAll('[data-custom-select-option]')]
+        .filter(option => !option.hidden && option.getAttribute('aria-disabled') !== 'true');
 }
 
 function closeCustomSelect(wrapper) {
@@ -54,10 +55,11 @@ function updateCustomSelectPlacement(wrapper) {
     const spaceBelow = Math.max(0, visibleBottom - triggerRect.bottom - gap);
     const spaceAbove = Math.max(0, triggerRect.top - visibleTop - gap);
 
-    if (isLedgerFilter) {
+    {
         const boundaryLeft = Math.max(8, boundaryRect.left + 8);
         const boundaryRight = Math.min(window.innerWidth - 8, boundaryRect.right - 8);
-        const menuWidth = Math.max(0, Math.min(320, Math.max(240, triggerRect.width), boundaryRight - boundaryLeft));
+        const preferredWidth = isLedgerFilter ? Math.min(320, Math.max(240, triggerRect.width)) : Math.max(240, triggerRect.width);
+        const menuWidth = Math.max(0, Math.min(preferredWidth, boundaryRight - boundaryLeft));
         const alignsRight = isLedgerFilter;
         const menuLeft = alignsRight
             ? Math.min(Math.max(triggerRect.right - menuWidth, boundaryLeft), boundaryRight - menuWidth)
@@ -69,9 +71,7 @@ function updateCustomSelectPlacement(wrapper) {
 
     const menuHeight = Math.min(menu.scrollHeight, 272);
     const opensUpward = menuHeight > spaceBelow && spaceAbove > spaceBelow;
-    if (isLedgerFilter) {
-        menu.style.maxHeight = `${Math.min(272, opensUpward ? spaceAbove : spaceBelow)}px`;
-    }
+    menu.style.maxHeight = `${Math.min(272, opensUpward ? spaceAbove : spaceBelow)}px`;
     wrapper.classList.toggle('is-open-upward', opensUpward);
     wrapper.classList.toggle('is-open-downward', !opensUpward);
     if (wasHidden) menu.hidden = true;
@@ -109,6 +109,8 @@ function renderCustomSelect(wrapper) {
     const triggerLabel = wrapper.querySelector('[data-custom-select-label]');
     const menu = wrapper.querySelector('[data-custom-select-menu]');
     if (!select || !triggerLabel || !menu) return;
+    const trigger = wrapper.querySelector('[data-custom-select-trigger]');
+    if (trigger) trigger.disabled = select.disabled;
     wrapper.classList.toggle('is-multiple', select.multiple);
     if (select.multiple) menu.setAttribute('aria-multiselectable', 'true');
     else menu.removeAttribute('aria-multiselectable');
@@ -122,6 +124,8 @@ function renderCustomSelect(wrapper) {
         option.dataset.customSelectValue = nativeOption.value;
         option.setAttribute('role', 'option');
         option.setAttribute('aria-selected', String(nativeOption.selected));
+        option.setAttribute('aria-disabled', String(nativeOption.disabled || nativeOption.parentElement?.disabled || false));
+        option.hidden = nativeOption.hidden;
         option.textContent = nativeOption.textContent;
         menu.append(option);
     });
@@ -136,7 +140,7 @@ function renderCustomSelect(wrapper) {
 function selectCustomOption(wrapper, option) {
     const select = wrapper.querySelector('select');
     const trigger = wrapper.querySelector('[data-custom-select-trigger]');
-    if (!select || select.disabled || !option) return;
+    if (!select || select.disabled || !option || option.getAttribute('aria-disabled') === 'true') return;
     if (select.multiple) {
         const nativeOption = [...select.options].find(item => item.value === option.dataset.customSelectValue);
         if (!nativeOption) return;
@@ -194,15 +198,19 @@ function enhanceCustomSelect(select) {
     select.setAttribute('aria-hidden', 'true');
     select.tabIndex = -1;
 
+    const accessibleLabel = select.getAttribute('aria-label')
+        || [...(select.labels || [])].map(label => label.textContent.trim()).join(' ')
+        || select.name || '选择';
     const trigger = document.createElement('button');
     trigger.type = 'button';
     trigger.className = 'custom-select-trigger';
     trigger.dataset.customSelectTrigger = '';
     trigger.id = `${select.id}Button`;
     trigger.setAttribute('aria-haspopup', 'listbox');
+    trigger.setAttribute('role', 'combobox');
     trigger.setAttribute('aria-expanded', 'false');
     trigger.setAttribute('aria-controls', `${select.id}Options`);
-    trigger.setAttribute('aria-label', select.getAttribute('aria-label') || select.name || '选择');
+    trigger.setAttribute('aria-label', accessibleLabel);
     trigger.innerHTML = '<span data-custom-select-label></span><span class="custom-select-chevron" aria-hidden="true"></span>';
     wrapper.insertBefore(trigger, select);
 
@@ -258,6 +266,11 @@ function enhanceCustomSelect(select) {
     renderCustomSelect(wrapper);
     updateCustomSelectPlacement(wrapper);
     select.addEventListener('change', () => renderCustomSelect(wrapper));
+    const disabledObserver = new MutationObserver(() => {
+        trigger.disabled = select.disabled;
+        if (select.disabled) closeCustomSelect(wrapper);
+    });
+    disabledObserver.observe(select, { attributes: true, attributeFilter: ['disabled'] });
     select.addEventListener('focus', () => trigger.focus({ preventScroll: true }));
     trigger.addEventListener('click', () => {
         if (wrapper.classList.contains('is-open')) closeCustomSelect(wrapper);
@@ -270,6 +283,11 @@ function enhanceCustomSelect(select) {
         } else if (event.key === 'ArrowUp') {
             event.preventDefault();
             moveCustomSelectSelection(wrapper, -1);
+        } else if (event.key === 'Home' || event.key === 'End') {
+            event.preventDefault();
+            closeCustomSelect(wrapper);
+            const options = getOptions(wrapper);
+            openCustomSelect(wrapper, event.key === 'Home' ? 0 : options.length - 1);
         } else if ((event.key === 'Enter' || event.key === ' ') && wrapper.classList.contains('is-open')) {
             event.preventDefault();
             const option = getOptions(wrapper).find(item => item.classList.contains('is-active'));
@@ -293,7 +311,7 @@ function bindDocumentEvents() {
     if (documentEventsBound) return;
     documentEventsBound = true;
     const updateCustomSelectPlacements = () => {
-        document.querySelectorAll('.custom-select').forEach(updateCustomSelectPlacement);
+        document.querySelectorAll('.custom-select.is-open').forEach(updateCustomSelectPlacement);
     };
     document.addEventListener('pointerdown', event => {
         if (event.target.closest('[data-custom-select]')) return;

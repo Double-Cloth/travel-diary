@@ -100,6 +100,8 @@ let photoSleeveResizeObserver = null;
 const observedPhotoSleeves = new Set();
 const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
+let photoViewerTrigger = null;
+let photoViewerShellWasInert = false;
 let photoGestureState = createPhotoGestureState();
 let photoRotationTimer = null;
 let photoViewerFitFrame = null;
@@ -525,6 +527,7 @@ function navigateTo(route, options = {}) {
 }
 
 function renderRoute(route, options = {}) {
+    if (photoViewerState) closePhotoViewerDialog();
     const previousRoute = activeRoute;
     const shouldRestoreReadingScroll = isReturningToReadingBackground(previousRoute, route);
     activeRoute = route;
@@ -1328,6 +1331,7 @@ function renderArchive(params = {}) {
     setPages(`
         <div class="archive-page">
             <header class="page-head">
+                <h1 class="sr-only">日记归档</h1>
                 <p class="journal-label">日记归档</p>
                 <p class="page-copy">"I was surprised, as always, by how easy the act of leaving was, and how good it felt. The world was suddenly rich with possibility."</p>
             </header>
@@ -1737,6 +1741,7 @@ function renderEntryPhotosRoute(params = {}) {
 }
 
 function renderLoading() {
+    refs.shell.dataset.route = document.body.dataset.route = 'loading';
     setPages(`
         <div class="loading-page">
             <p class="journal-label">正在打开档案盒</p>
@@ -1746,6 +1751,7 @@ function renderLoading() {
 }
 
 function renderFatalError(error) {
+    refs.shell.dataset.route = document.body.dataset.route = 'error';
     setPages(`
         <div class="loading-page">
             <p class="journal-label">加载失败</p>
@@ -1820,6 +1826,12 @@ function openPhotoViewer(photos, index = 0) {
         return;
     }
 
+    if (!photoViewerState) {
+        photoViewerTrigger = document.activeElement;
+        photoViewerShellWasInert = Boolean(refs.shell?.inert);
+    }
+    if (refs.shell) refs.shell.inert = true;
+    document.body.classList.add('media-viewer-open');
     photoViewerState = {
         photos,
         index: normalizePhotoIndex(index, photos.length),
@@ -1952,6 +1964,10 @@ function closePhotoViewerDialog() {
     photoViewerState = null;
     photoGestureState = createPhotoGestureState();
     clearPhotoRotationTimer();
+    if (refs.shell) refs.shell.inert = photoViewerShellWasInert;
+    document.body.classList.remove('media-viewer-open');
+    if (photoViewerTrigger?.isConnected) photoViewerTrigger.focus({ preventScroll: true });
+    photoViewerTrigger = null;
 }
 
 function getPhotoViewerRoot() {
@@ -3287,6 +3303,13 @@ function getPageCurlStripCount(width) {
 }
 
 function handleDocumentClick(event) {
+    const skipLink = event.target.closest('.skip-link');
+    if (skipLink) {
+        event.preventDefault();
+        refs.stage?.focus({ preventScroll: true });
+        refs.stage?.scrollIntoView({ block: 'start' });
+        return;
+    }
     if (event.target.closest('[data-action="open-book"]')) {
         event.preventDefault();
         navigateTo('#preface');
@@ -3498,6 +3521,7 @@ function handleDocumentClick(event) {
 
     const routeAnchor = event.target.closest('a[href^="#"]');
     if (routeAnchor) {
+        if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey || event.button > 0) return;
         event.preventDefault();
         const href = routeAnchor.getAttribute('href');
         if (href.startsWith('#entry')) {
@@ -3517,6 +3541,7 @@ function getEntryBackgroundHash() {
 
 function handleDocumentKeydown(event) {
     if (isPhotoViewerOpen()) {
+        if (trapPanelFocus(event, document.querySelector('.photo-viewer-panel'))) return;
         if (event.key === 'Escape' && document.fullscreenElement) {
             return;
         }
@@ -3597,6 +3622,9 @@ function handleDocumentKeydown(event) {
         }
     }
 
+    if (isMobileContextPanelOpen && !document.querySelector('dialog[open]')
+        && trapPanelFocus(event, refs.rightPage)) return;
+
     if (event.key === 'Escape' && isMobileContextPanelOpen) {
         event.preventDefault();
         closeMobileContextPanel();
@@ -3608,6 +3636,26 @@ function handleDocumentKeydown(event) {
         rememberReadingContext(event.target.id || '');
         navigateTo({ name: 'entry', params: { id: event.target.dataset.openEntry } });
     }
+}
+
+function trapPanelFocus(event, panel) {
+    if (event.key !== 'Tab' || !panel) return false;
+    const controls = [...panel.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')]
+        .filter(node => !node.disabled && node.tabIndex >= 0 && !node.closest('[hidden], [inert]') && node.getClientRects().length);
+    const first = controls[0];
+    const last = controls.at(-1);
+    if (!first) {
+        event.preventDefault();
+        panel.focus({ preventScroll: true });
+        return true;
+    }
+    const focused = document.activeElement;
+    if (!controls.includes(focused) || (event.shiftKey ? focused === first : focused === last)) {
+        event.preventDefault();
+        (event.shiftKey ? last : first).focus({ preventScroll: true });
+        return true;
+    }
+    return false;
 }
 
 function rememberReadingContext(focusId = '') {
@@ -3929,6 +3977,7 @@ function syncMobileContextPanelState() {
         if (supportsMobilePanel) {
             refs.rightPage.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
             refs.rightPage.setAttribute('role', 'dialog');
+            refs.rightPage.setAttribute('aria-label', activeRoute?.name === 'ledger' ? '高级筛选' : '档案概览');
             refs.rightPage.setAttribute('aria-modal', 'true');
             refs.rightPage.setAttribute('tabindex', '-1');
             refs.rightPage.toggleAttribute('inert', !isOpen);
@@ -3938,8 +3987,11 @@ function syncMobileContextPanelState() {
             refs.rightPage.removeAttribute('aria-modal');
             refs.rightPage.removeAttribute('tabindex');
             refs.rightPage.removeAttribute('inert');
+            refs.rightPage.setAttribute('aria-label', '右页');
         }
     }
+    if (refs.leftPage) refs.leftPage.inert = isOpen;
+    if (refs.spine) refs.spine.inert = isOpen;
 
     document.querySelectorAll('[data-action="open-context-panel"]').forEach((button) => {
         button.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
