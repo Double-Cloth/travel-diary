@@ -162,6 +162,7 @@ body[data-route='preface'] .paper-page {
 .preface-identity-sheet {
     position: relative;
     isolation: isolate;
+    container-type: inline-size;
     display: grid;
     gap: 15px;
     width: min(100%, 540px);
@@ -1349,8 +1350,8 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .preface-tools-panel .preface-tool-section .paper-button { min-height: 46px; }
 }
 
-/* 极窄屏改用单列身份卡，避免署名、题记和印章挤出纸页。 */
-@media (max-width: 360px) {
+/* 以藏书票自身宽度为准切换单列，兼容窄双页、浏览器缩放和极窄单页。 */
+@container (max-width: 380px) {
     .preface-profile-composition {
         grid-template-columns: minmax(0, 1fr);
         gap: 16px;
