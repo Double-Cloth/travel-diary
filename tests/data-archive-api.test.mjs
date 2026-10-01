@@ -1,13 +1,13 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { once } from 'node:events';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHandler } from '../js/server.js';
 import { createZip, readZip } from '../js/zip-archive.mjs';
 import { AUTH_CONFIG, installAuth, login } from './helpers/auth.mjs';
+import { listenOnFetchSafePort } from './helpers/http.mjs';
 
 let root;
 let server;
@@ -21,9 +21,7 @@ before(async () => {
     await fs.writeFile(path.join(root, record.desc_md), '# 苏州\n');
     await installAuth(root);
     server = http.createServer(createHandler(root));
-    server.listen(0, '127.0.0.1');
-    await once(server, 'listening');
-    base = `http://127.0.0.1:${server.address().port}`;
+    base = await listenOnFetchSafePort(server);
 });
 
 after(async () => {

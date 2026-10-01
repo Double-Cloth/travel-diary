@@ -139,9 +139,11 @@ test('端口参数不能越界且被占用时自动尝试后续端口', async ()
     for (const args of [['--port'], ['--dir'], ['--dir='], ['--dir', '--network'], ['--write-mode'], ['--write-mode='], ['--write-mode=public'], ['--unknown']]) {
         assert.throws(() => parseArgs(args));
     }
-    const result = await listenWithRetries(root, server.address().port, false);
-    assert.ok(result.port > server.address().port);
+    const occupied = await listenWithRetries(root, 30_000, false);
+    const result = await listenWithRetries(root, occupied.port, false);
+    assert.ok(result.port > occupied.port);
     await new Promise(resolve => result.server.close(resolve));
+    await new Promise(resolve => occupied.server.close(resolve));
 });
 
 test('监听范围与写入模式独立，默认及单独 network 均保持 local 写入', () => {

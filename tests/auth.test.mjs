@@ -1,13 +1,13 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { once } from 'node:events';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { createHandler } from '../js/server.js';
 import { AUTH_PASSWORD, installAuth, login } from './helpers/auth.mjs';
+import { listenOnFetchSafePort } from './helpers/http.mjs';
 
 const require = createRequire(import.meta.url);
 const { createAuthConfig } = require('../js/auth.js');
@@ -23,9 +23,7 @@ async function fixture(t, { configured = true, authSource } = {}) {
         await installAuth(root);
     }
     const server = http.createServer(createHandler(root));
-    server.listen(0, '127.0.0.1');
-    await once(server, 'listening');
-    const base = `http://127.0.0.1:${server.address().port}`;
+    const base = await listenOnFetchSafePort(server);
     t.after(async () => {
         server.closeAllConnections();
         await new Promise(resolve => server.close(resolve));

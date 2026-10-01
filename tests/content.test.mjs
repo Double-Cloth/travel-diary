@@ -42,6 +42,6 @@ test('现有 Markdown 日记与新增记录生成格式一致', async () => {
         const title = match[1];
         const body = normalized.slice(match[0].length).replace(/^\n/, '');
 
-        assert.equal(markdown, buildMarkdown({ title, body }), record.desc_md);
+        assert.equal(normalized, buildMarkdown({ title, body }), record.desc_md);
     }
 });

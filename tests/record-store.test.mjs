@@ -1,13 +1,13 @@
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
-import { once } from 'node:events';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHandler } from '../js/server.js';
 import { DRAFT_FORMAT, prepareRecord, readDraft } from '../js/record-input.mjs';
 import { installAuth, login } from './helpers/auth.mjs';
+import { listenOnFetchSafePort } from './helpers/http.mjs';
 
 let root;
 let server;
@@ -70,9 +70,7 @@ before(async () => {
     await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify([original]));
     await installAuth(root);
     server = http.createServer(createHandler(root));
-    server.listen(0, '127.0.0.1');
-    await once(server, 'listening');
-    base = `http://127.0.0.1:${server.address().port}`;
+    base = await listenOnFetchSafePort(server);
     ({ token, cookie } = await login(base));
 });
 
