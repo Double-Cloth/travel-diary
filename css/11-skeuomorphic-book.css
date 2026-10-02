@@ -752,6 +752,8 @@ body[data-route="ledger"] .paper-page-left::-webkit-scrollbar-track-piece {
 .entry-book-toolbar { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; container: entry-toolbar / inline-size; }
 .entry-toolbar-management { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; margin-left: auto; max-width: 100%; }
 .entry-book-toolbar .entry-toolbar-toggle { display: none; gap: 6px; }
+.paper-page .entry-book-toolbar .entry-toolbar-toggle,
+.paper-page .entry-book-toolbar .entry-toolbar-toggle:is(:hover, :focus-visible, :active) { background: transparent; box-shadow: none; }
 .entry-toolbar-toggle span { transition: transform 160ms; }
 .entry-toolbar-toggle[aria-expanded="true"] span { transform: rotate(90deg); }
 .entry-book-toolbar .sheet-record-actions { gap: 8px; }
@@ -763,9 +765,10 @@ body[data-route="ledger"] .paper-page-left::-webkit-scrollbar-track-piece {
     .entry-book-toolbar .entry-toolbar-toggle { display: inline-flex; margin-left: auto; }
     .entry-toolbar-toggle[aria-expanded="false"] + .sheet-record-actions { display: none; }
     .entry-toolbar-toggle[aria-expanded="true"] + .sheet-record-actions {
-        flex-basis: 100%;
+        width: max-content;
+        max-width: 100%;
         justify-content: flex-end;
-        margin: 0;
+        margin: 0 0 0 auto;
         padding: 12px;
         border: 1px solid #96794b45;
         border-radius: 4px;
