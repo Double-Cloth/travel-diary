@@ -6,7 +6,6 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 const packageJson = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'));
-const packageLock = JSON.parse(await readFile(new URL('../package-lock.json', import.meta.url), 'utf8'));
 const gitignore = await readFile(new URL('../.gitignore', import.meta.url), 'utf8');
 const indexHtml = await readFile(new URL('../index.html', import.meta.url), 'utf8');
 const dataJs = await readFile(new URL('../js/data.js', import.meta.url), 'utf8');
@@ -15,7 +14,8 @@ test('离线启动只依赖 Node 和仓库内文件', () => {
     assert.equal(packageJson.scripts.start, 'node js/server.js');
     assert.equal(packageJson.scripts.serve, 'node js/server.js');
     assert.doesNotMatch(packageJson.scripts.start, /npm run|npx|pip|fetch|curl|countries|fonts/);
-    assert.deepEqual(packageLock.packages?.['']?.dependencies || {}, {});
+    assert.deepEqual(packageJson.dependencies || {}, {});
+    assert.deepEqual(packageJson.devDependencies || {}, {});
 });
 
 test('浏览器入口没有远程资源', async () => {

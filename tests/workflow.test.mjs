@@ -11,6 +11,7 @@ test('GitHub Pages workflow runs tests before deployment', () => {
     assert.match(workflow, /pip install "fonttools\[woff\]"/);
     assert.match(workflow, /npm run fonts/);
     assert.match(workflow, /npm test/);
+    assert.doesNotMatch(workflow, /cache:\s*npm|npm ci|npm install/);
     assert.match(workflow, /needs: test/);
 });
 
