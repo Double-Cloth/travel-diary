@@ -1560,6 +1560,10 @@ function renderEntryRoute(params = {}) {
                     </div>
                 </div>
             </div>
+            ${media.length ? `<div class="entry-book-media">${renderPhotoSleeve(record, {
+                previewRows: ENTRY_PHOTO_PREVIEW_ROWS,
+                showViewAll: true
+            })}</div>` : ''}
             <nav class="entry-neighbors" aria-label="相邻篇目">
                 <h2>相邻篇目</h2>
                 ${renderEntryNeighbor(navigation.previous, 'prev', '上一篇')}
@@ -1577,10 +1581,6 @@ function renderEntryRoute(params = {}) {
         <article class="entry-book-article" aria-label="${escapeHtml(record.title)}正文">
             <header class="entry-running-head"><span>旅行日记</span><span>${String(position).padStart(2, '0')} / ${navigation.total || 1}</span></header>
             <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
-            ${media.length ? renderPhotoSleeve(record, {
-                previewRows: ENTRY_PHOTO_PREVIEW_ROWS,
-                showViewAll: true
-            }) : ''}
         </article>
     `, 'entry-book-page');
 

@@ -796,7 +796,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
 .entry-book-article .markdown-content { color: #3c3025; font-size: 18px; line-height: 2.05; padding-bottom: 28px; overflow-wrap: anywhere; }
 .entry-book-article .markdown-content p { margin: 0 0 1.4em; }
 .entry-book-article .markdown-content p:last-child { margin-bottom: 0; }
-.entry-book-article .photo-sleeve { margin-bottom: 26px; }
+.entry-book-media .photo-sleeve { margin-top: 0; }
 .entry-book-article .markdown-content img { border: 6px solid #fff8e7; box-shadow: 0 3px 9px #5f432c24; }
 
 @media (min-width: 761px) {
