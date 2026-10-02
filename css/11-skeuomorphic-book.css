@@ -787,7 +787,7 @@ body[data-route="ledger"] .paper-page-left::-webkit-scrollbar-track-piece {
 button.entry-neighbor:hover, button.entry-neighbor:focus-visible { background: #fff9e455; }
 button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { transform: translateX(3px); }
 .entry-neighbor-empty { cursor: default; opacity: .6; }
-.entry-book-index .sheet-record-actions { margin: 0; padding: 0; border: 0; flex-wrap: wrap; }
+.entry-book-index .sheet-record-actions { margin: 0 0 0 auto; padding: 0; border: 0; flex-wrap: wrap; }
 .entry-book-article { display: flex; flex-direction: column; gap: 0; }
 .entry-book-article::before { content: none; }
 .entry-running-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding-bottom: 15px; margin-bottom: 34px; border-bottom: 1px solid #80684766; color: var(--ink-soft); font-size: 16px; }
