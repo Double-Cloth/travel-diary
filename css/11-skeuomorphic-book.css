@@ -749,9 +749,29 @@ body[data-route="ledger"] .paper-page-left::-webkit-scrollbar-track-piece {
 .archive-overview-block h3 { margin-bottom: 8px; }
 .entry-book-index { display: flex; flex-direction: column; gap: 34px; }
 .entry-book-summary { display: contents; }
-.entry-book-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.entry-book-toolbar { display: flex; align-items: flex-start; gap: 8px; flex-wrap: wrap; container: entry-toolbar / inline-size; }
+.entry-toolbar-management { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; margin-left: auto; max-width: 100%; }
+.entry-book-toolbar .entry-toolbar-toggle { display: none; gap: 6px; }
+.entry-toolbar-toggle span { transition: transform 160ms; }
+.entry-toolbar-toggle[aria-expanded="true"] span { transform: rotate(90deg); }
 .entry-book-toolbar .sheet-record-actions { gap: 8px; }
 .entry-book-toolbar .paper-button { padding-inline: 10px; white-space: nowrap; }
+
+/* 按左页实际可用宽度折叠管理操作，避免窄双页或浏览器缩放后按钮换行。 */
+@container entry-toolbar (max-width: 274px) {
+    .entry-toolbar-management { display: contents; }
+    .entry-book-toolbar .entry-toolbar-toggle { display: inline-flex; margin-left: auto; }
+    .entry-toolbar-toggle[aria-expanded="false"] + .sheet-record-actions { display: none; }
+    .entry-toolbar-toggle[aria-expanded="true"] + .sheet-record-actions {
+        flex-basis: 100%;
+        justify-content: flex-end;
+        margin: 0;
+        padding: 12px;
+        border: 1px solid #96794b45;
+        border-radius: 4px;
+        background: #ddc8a014;
+    }
+}
 .paper-page .entry-book-index .entry-book-back {
     display: inline-flex;
     align-items: center;

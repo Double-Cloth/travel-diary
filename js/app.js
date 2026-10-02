@@ -1552,9 +1552,12 @@ function renderEntryRoute(params = {}) {
             <div class="entry-book-summary">
                 <header class="entry-book-toolbar">
                     <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回原处</a>
-                    <div class="sheet-record-actions" role="group" aria-label="记录管理">
-                        <button class="paper-button" type="button" data-action="edit-record" data-record-id="${escapeHtml(record.id)}">修改记录</button>
-                        <button class="paper-button sheet-delete-button" type="button" data-action="delete-record" data-record-id="${escapeHtml(record.id)}">删除记录</button>
+                    <div class="entry-toolbar-management">
+                        <button class="paper-button entry-toolbar-toggle" type="button" data-action="toggle-record-actions" aria-controls="entryRecordActions" aria-expanded="false">记录管理<span aria-hidden="true">▸</span></button>
+                        <div id="entryRecordActions" class="sheet-record-actions" role="group" aria-label="记录管理">
+                            <button class="paper-button" type="button" data-action="edit-record" data-record-id="${escapeHtml(record.id)}">修改记录</button>
+                            <button class="paper-button sheet-delete-button" type="button" data-action="delete-record" data-record-id="${escapeHtml(record.id)}">删除记录</button>
+                        </div>
                     </div>
                 </header>
                 <div class="entry-book-heading">
@@ -3371,6 +3374,12 @@ function handleDocumentClick(event) {
         event.preventDefault();
         closeMobileContextPanel();
         void openRecordEditor().catch(error => showFeedback(error.message));
+        return;
+    }
+    const toggleRecordActions = event.target.closest('[data-action="toggle-record-actions"]');
+    if (toggleRecordActions) {
+        event.preventDefault();
+        toggleRecordActions.setAttribute('aria-expanded', String(toggleRecordActions.getAttribute('aria-expanded') !== 'true'));
         return;
     }
     const editRecord = event.target.closest('[data-action="edit-record"]');
