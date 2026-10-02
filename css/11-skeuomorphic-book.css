@@ -375,7 +375,9 @@ body[data-route='preface'] .paper-page {
 .preface-seal-art { display: block; width: 100%; height: 100%; }
 .preface-seal-art text {
     fill: currentColor;
-    font: 700 10px var(--font-code);
+    font: 700 11px/1 "Archive Seal", var(--font-serif);
+    letter-spacing: .65px;
+    word-spacing: 1px;
 }
 
 .preface-route-rule {

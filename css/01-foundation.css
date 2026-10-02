@@ -30,6 +30,14 @@
     font-display: block;
 }
 
+@font-face {
+    font-family: "Archive Seal";
+    src: url("../assets/fonts/CormorantSC-Bold.woff2") format("woff2");
+    font-weight: 700;
+    font-style: normal;
+    font-display: block;
+}
+
 :root {
     --font-serif: "Diary Kai";
     /* 保留代码风格的拉丁字符，同时为中文提供明确的本地字体回退。 */

@@ -41,7 +41,9 @@ HTML 和数据路径相对项目根目录；`css/` 下所有分片使用 `../ass
 
 ## 字体
 
-当前使用 LXGW WenKai Mono 常规 / Medium 和 Source Code Pro 常规 / Bold。TTF 是生成源文件，页面加载同名 WOFF2；完整 WOFF2 必须纳入版本控制，使新检出可直接离线启动。Pages 发布仅删除 TTF，不删除 WOFF2。
+当前使用 LXGW WenKai Mono 常规 / Medium 和 Source Code Pro 常规 / Bold；扉页印章单独使用 Cormorant SC Bold。TTF 是生成源文件，页面加载同名 WOFF2；完整 WOFF2 必须纳入版本控制，使新检出可直接离线启动。Pages 发布仅删除 TTF，不删除 WOFF2。
+
+印章字体来自 [Google Fonts 的 Cormorant SC](https://github.com/google/fonts/tree/main/ofl/cormorantsc)，采用 SIL Open Font License 1.1，许可随字体保存为 `assets/fonts/CormorantSC-OFL.txt`。只在印章使用，浏览器按需加载本地 WOFF2。
 
 `fonts` 命令默认生成完整压缩字体，需要 Python 与 `fonttools[woff]`，普通启动不需要这些工具。`fonts:subset` 只针对当前项目文字生成子集并保留数字等基础字符；之后新增日记、动态署名或地点可能缺字，采用子集时应重新生成并检查回退。一般内容持续增长的档案使用完整字体。
 

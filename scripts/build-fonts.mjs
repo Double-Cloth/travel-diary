@@ -13,6 +13,11 @@ const commonUnicodeRanges = 'U+0000-00FF,U+2000-206F,U+3000-303F';
 
 const fontJobs = [
     {
+        source: 'assets/fonts/CormorantSC-Bold.ttf',
+        output: 'assets/fonts/CormorantSC-Bold.woff2',
+        unicodeRanges: 'U+0000-00FF,U+2000-206F'
+    },
+    {
         source: 'assets/fonts/LXGWWenKaiMono-Regular.ttf',
         output: 'assets/fonts/LXGWWenKaiMono-Regular.woff2',
         unicodeRanges: commonUnicodeRanges

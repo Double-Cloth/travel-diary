@@ -30,7 +30,8 @@ test('页面使用完整构建的本地 WOFF2 字体', async () => {
 test('页面根节点只继承本地字体且加载时不显示系统回退字体', () => {
     assert.match(foundationCss, /html,\s*body\s*{[\s\S]*font-family:\s*var\(--font-serif\);/);
     assert.match(foundationCss, /html,\s*body\s*{[\s\S]*font-synthesis:\s*none;/);
-    assert.equal((foundationCss.match(/font-display:\s*block/g) || []).length, 4);
+    const fontFaceCount = (foundationCss.match(/@font-face\s*\{/g) || []).length;
+    assert.equal((foundationCss.match(/font-display:\s*block/g) || []).length, fontFaceCount);
     assert.doesNotMatch(foundationCss, /font-display:\s*swap/);
 });
 
