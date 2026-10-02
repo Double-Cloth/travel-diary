@@ -1553,7 +1553,7 @@ function renderEntryRoute(params = {}) {
                 <header class="entry-book-toolbar">
                     <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回原处</a>
                     <div class="entry-toolbar-management">
-                        <button class="paper-button entry-toolbar-toggle" type="button" data-action="toggle-record-actions" aria-controls="entryRecordActions" aria-expanded="false">记录管理<span aria-hidden="true">▸</span></button>
+                        <button class="paper-button entry-toolbar-toggle" type="button" data-action="toggle-record-actions" aria-controls="entryRecordActions" aria-expanded="false">记录管理<span aria-hidden="true"><svg viewBox="0 0 12 12" focusable="false"><path d="M4 2 10 6 4 10Z"/></svg></span></button>
                         <div id="entryRecordActions" class="sheet-record-actions" role="group" aria-label="记录管理">
                             <button class="paper-button" type="button" data-action="edit-record" data-record-id="${escapeHtml(record.id)}">修改记录</button>
                             <button class="paper-button sheet-delete-button" type="button" data-action="delete-record" data-record-id="${escapeHtml(record.id)}">删除记录</button>
