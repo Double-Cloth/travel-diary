@@ -362,35 +362,22 @@ body[data-route='preface'] .paper-page {
 }
 
 .preface-seal {
-    position: relative;
     justify-self: end;
-    display: grid;
-    place-content: center;
-    justify-items: center;
-    gap: 5px;
+    display: block;
     width: 86px;
     aspect-ratio: 1;
-    border: 2px solid currentColor;
-    border-radius: 50%;
     color: var(--stamp);
-    text-align: center;
     transform: rotate(-12deg);
     mix-blend-mode: multiply;
     pointer-events: none;
 }
 
-.preface-seal::before {
-    content: '';
-    position: absolute;
-    inset: 4px;
-    border: 1px dashed currentColor;
-    border-radius: inherit;
-    opacity: .65;
+.preface-seal-art { display: block; width: 100%; height: 100%; }
+.preface-seal-art text {
+    fill: currentColor;
+    font: 700 10px var(--font-code);
+    letter-spacing: 2.4px;
 }
-
-.preface-seal strong { font: 700 10px/1 var(--font-code); letter-spacing: .12em; }
-.preface-seal small { font: 700 8px/1 var(--font-code); letter-spacing: .2em; }
-.preface-seal-compass { width: 24px; height: 24px; }
 
 .preface-route-rule {
     display: grid;
@@ -1399,9 +1386,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .preface-owner-plaque span { font-size: 7px; }
     .preface-owner-plaque strong { font-size: 16px; }
     .preface-signature { padding: 12px 8px 10px 14px; font-size: 14px; }
-    .preface-seal { width: 76px; gap: 4px; }
-    .preface-seal strong { font-size: 9px; }
-    .preface-seal-compass { width: 20px; height: 20px; }
+    .preface-seal { width: 76px; }
     .preface-facts dt { font-size: 13px; }
     .preface-facts dd { font-size: 10px; }
     .preface-colophon { font-size: 7px; letter-spacing: .08em; }
