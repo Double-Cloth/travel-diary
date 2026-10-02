@@ -1550,7 +1550,13 @@ function renderEntryRoute(params = {}) {
     setPages(`
         <article class="entry-book-index" aria-labelledby="entryBookTitle">
             <div class="entry-book-summary">
-                <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回原处</a>
+                <header class="entry-book-toolbar">
+                    <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回原处</a>
+                    <div class="sheet-record-actions" role="group" aria-label="记录管理">
+                        <button class="paper-button" type="button" data-action="edit-record" data-record-id="${escapeHtml(record.id)}">修改记录</button>
+                        <button class="paper-button sheet-delete-button" type="button" data-action="delete-record" data-record-id="${escapeHtml(record.id)}">删除记录</button>
+                    </div>
+                </header>
                 <div class="entry-book-heading">
                     <time class="entry-book-date" datetime="${escapeHtml(record.date || '')}">${escapeHtml(record.date || '日期未记')}</time>
                     <h1 id="entryBookTitle">${escapeHtml(record.title)}</h1>
@@ -1569,13 +1575,6 @@ function renderEntryRoute(params = {}) {
                 ${renderEntryNeighbor(navigation.previous, 'prev', '上一篇')}
                 ${renderEntryNeighbor(navigation.next, 'next', '下一篇')}
             </nav>
-            <details class="entry-management">
-                <summary>记录管理</summary>
-                <div class="sheet-record-actions" aria-label="记录管理">
-                    <button class="paper-button" type="button" data-action="edit-record" data-record-id="${escapeHtml(record.id)}">修改记录</button>
-                    <button class="paper-button sheet-delete-button" type="button" data-action="delete-record" data-record-id="${escapeHtml(record.id)}">删除记录</button>
-                </div>
-            </details>
         </article>
     `, `
         <article class="entry-book-article" aria-label="${escapeHtml(record.title)}正文">
@@ -3100,7 +3099,7 @@ function renderWithPageTurn(renderFn, options = {}) {
         const capture = () => {
             const snapshot = prepareTransitionClone(refs.spread, 'mobile-page-snapshot');
             // 固定当前路由的纸面和阅读顺序，尤其是详情页的 display: contents 布局。
-            const selector = '.paper-page, .entry-book-index, .entry-book-summary, .entry-neighbors, .entry-management, .place-page, .place-summary, .place-neighbors, .entry-photos-summary';
+            const selector = '.paper-page, .entry-book-index, .entry-book-summary, .entry-neighbors, .place-page, .place-summary, .place-neighbors, .entry-photos-summary';
             const originals = [refs.spread, ...refs.spread.querySelectorAll(selector)];
             [snapshot, ...snapshot.querySelectorAll(selector)].forEach((node, index) => {
                 const style = getComputedStyle(originals[index]);

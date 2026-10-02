@@ -749,6 +749,9 @@ body[data-route="ledger"] .paper-page-left::-webkit-scrollbar-track-piece {
 .archive-overview-block h3 { margin-bottom: 8px; }
 .entry-book-index { display: flex; flex-direction: column; gap: 34px; }
 .entry-book-summary { display: contents; }
+.entry-book-toolbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.entry-book-toolbar .sheet-record-actions { gap: 8px; }
+.entry-book-toolbar .paper-button { padding-inline: 10px; white-space: nowrap; }
 .paper-page .entry-book-index .entry-book-back {
     display: inline-flex;
     align-items: center;
@@ -784,11 +787,7 @@ body[data-route="ledger"] .paper-page-left::-webkit-scrollbar-track-piece {
 button.entry-neighbor:hover, button.entry-neighbor:focus-visible { background: #fff9e455; }
 button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { transform: translateX(3px); }
 .entry-neighbor-empty { cursor: default; opacity: .6; }
-.entry-management { margin-top: auto; border: 1px solid #96794b45; border-radius: 4px; background: #ddc8a014; }
-.entry-management summary { min-height: 48px; padding: 14px 18px; cursor: pointer; color: var(--ink-soft); font-size: 14px; }
-.entry-management summary::marker { color: #947347; font-size: 10px; }
-.entry-management[open] summary { border-bottom: 1px solid var(--line); }
-.entry-book-index .sheet-record-actions { margin: 0; padding: 16px; border: 0; flex-wrap: wrap; }
+.entry-book-index .sheet-record-actions { margin: 0; padding: 0; border: 0; flex-wrap: wrap; }
 .entry-book-article { display: flex; flex-direction: column; gap: 0; }
 .entry-book-article::before { content: none; }
 .entry-running-head { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; padding-bottom: 15px; margin-bottom: 34px; border-bottom: 1px solid #80684766; color: var(--ink-soft); font-size: 16px; }
@@ -1139,12 +1138,9 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .entry-neighbors h2 { margin-bottom: 8px; font-size: 18px; }
     .entry-neighbor { min-height: 58px; gap: 10px; }
     .entry-neighbor strong { font-size: 16px; }
-    .entry-management { margin-top: 0; }
-    .entry-management summary { min-height: 42px; padding: 12px; }
     .entry-book-article { min-height: 0; }
     .entry-running-head { margin-bottom: 24px; font-size: 14px; }
     .entry-book-article .markdown-content { font-size: 17px; line-height: 1.95; padding-bottom: 24px; }
-    .entry-book-index .sheet-record-actions { padding-top: 12px; }
     .journal-spine {
         color: #f4dfb6;
         background: var(--leather-grain), linear-gradient(#7c533b, #493023);
@@ -1528,7 +1524,7 @@ body.media-viewer-open { overflow: hidden; }
     .custom-select-menu > [role="option"],
     .record-editor-autocomplete-menu > [role="option"],
     .year-bookmark,
-    .entry-management summary,
+    .paper-page .entry-book-index .entry-book-back,
     .paper-page .paper-button,
     .photo-viewer-control {
         min-height: 44px;

@@ -125,7 +125,11 @@ test('长短篇详情正文只渲染一次，左页相邻篇目与管理入口�
         assert.match(result.left, /data-action="entry-next" data-entry-id="next"/);
         assert.match(result.left, /data-action="entry-prev" data-entry-id="prev"/);
         assert.doesNotMatch(result.right, /data-action="entry-next"|data-action="entry-prev"|class="sheet-nav"/);
-        assert.match(result.left, /<details class="entry-management">/);
+        const toolbar = result.left.match(/<header class="entry-book-toolbar">([\s\S]*?)<\/header>/)?.[1] || '';
+        assert.match(toolbar, /返回原处[\s\S]*data-action="edit-record"[\s\S]*data-action="delete-record"/);
+        assert.equal((result.left.match(/data-action="edit-record"/g) || []).length, 1);
+        assert.equal((result.left.match(/data-action="delete-record"/g) || []).length, 1);
+        assert.doesNotMatch(result.left, /entry-management/);
         assert.doesNotMatch(result.right, /没有图片或视频附件/);
         assert.match(result.right, /02 \/ 3/);
     }
