@@ -936,19 +936,13 @@ function renderPreface() {
                         <span class="preface-seal" aria-hidden="true">
                             <svg class="preface-seal-art" viewBox="0 0 100 100" focusable="false">
                                 <defs>
-                                    <path id="prefaceSealTopArc" d="M14 50a36 36 0 0 1 72 0"/>
-                                    <path id="prefaceSealBottomArc" d="M11 50a39 39 0 0 0 78 0"/>
+                                    <path id="prefaceSealTextRing" d="M50 14a36 36 0 1 1 0 72a36 36 0 1 1 0-72"/>
                                 </defs>
                                 <g fill="none" stroke="currentColor">
                                     <circle cx="50" cy="50" r="47" stroke-width="1.8"/>
                                     <circle cx="50" cy="50" r="30" stroke-width=".9"/>
                                 </g>
-                                <text><textPath href="#prefaceSealTopArc" startOffset="50%" text-anchor="middle">MEMORY</textPath></text>
-                                <text><textPath href="#prefaceSealBottomArc" startOffset="50%" text-anchor="middle">ARCHIVE</textPath></text>
-                                <g fill="currentColor">
-                                    <circle cx="12" cy="50" r="1.6"/>
-                                    <circle cx="88" cy="50" r="1.6"/>
-                                </g>
+                                <text textLength="212" lengthAdjust="spacing"><textPath href="#prefaceSealTextRing" startOffset="3%">MEMORY ARCHIVE</textPath></text>
                                 <g transform="translate(34 34)" fill="none" stroke="currentColor" stroke-width="1.2">
                                     <path d="M16 2 19 13 30 16 19 19 16 30 13 19 2 16 13 13Z"/>
                                     <path d="m16 2 0 11 3 3 11 0M16 30V19l-3-3H2"/>

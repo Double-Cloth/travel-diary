@@ -376,7 +376,6 @@ body[data-route='preface'] .paper-page {
 .preface-seal-art text {
     fill: currentColor;
     font: 700 10px var(--font-code);
-    letter-spacing: 2.4px;
 }
 
 .preface-route-rule {
