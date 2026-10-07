@@ -517,5 +517,31 @@
     "desc_md": "data/travel-diary/2026/2026-09-07-hengyang.md",
     "photo_folder": "data/photos/hengyang",
     "photos": []
+  },
+  {
+    "date": "2026-10-04",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "河南省",
+    "admin_area_type": "省",
+    "locality": "新乡市",
+    "locality_type": "山脉",
+    "trip_id": "2026-10-04-guoqing",
+    "desc_md": "data/travel-diary/2026/2026-10-04-xinxiang.md",
+    "photo_folder": "data/photos/xinxiang",
+    "photos": []
+  },
+  {
+    "date": "2026-10-06",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "浙江省",
+    "admin_area_type": "省",
+    "locality": "杭州市",
+    "locality_type": "城市",
+    "trip_id": "2026-10-04-guoqing",
+    "desc_md": "data/travel-diary/2026/2026-10-06-hangzhou.md",
+    "photo_folder": "data/photos/hangzhou",
+    "photos": []
   }
 ]
