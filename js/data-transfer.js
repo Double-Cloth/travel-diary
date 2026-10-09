@@ -131,7 +131,7 @@ export function createDataTransfer(onImported) {
 
     const requestImportAuthorization = createPasswordGate(chooseImportWithAuthorization, {
         title: '导入数据验证',
-        description: '第 1 步：验证当前的 6 位数字密码后选择备份。含认证配置的备份还需验证备份密码。',
+        description: '验证当前的 6 位数字密码后选择备份。',
         verifying: '正在验证并选择备份…',
         actionError: '无法开始导入，请重试。',
         staticMessage: '当前站点为静态只读页面，不提供全部数据导入。'
@@ -139,7 +139,7 @@ export function createDataTransfer(onImported) {
 
     const requestBackupAuthorization = createPasswordGate((result, context) => context.resolve(result), {
         title: '验证备份密码',
-        description: '第 2 步：输入导出这份备份时使用的 6 位数字访问密码。验证成功后将覆盖当前数据，并恢复备份密码。',
+        description: '输入备份的 6 位数字访问密码。验证成功后将覆盖当前数据，并恢复备份密码。',
         verifying: '正在验证备份密码并导入，请勿关闭页面…',
         verifyPassword: (password, context) => uploadArchive(context.file, context.token, context.currentPassword, password),
         onCancel: context => context?.resolve(null)
@@ -180,7 +180,7 @@ export function createDataTransfer(onImported) {
             ? `全部旅行数据已更新；备份中有 ${missing} 个图片或视频引用缺少对应文件，相关日记已保留，并会在页面中标明不可用媒体。`
             : '全部旅行数据已更新。';
         if (typeof result?.authPreserved !== 'boolean') return summary;
-        return `${summary}${result.authPreserved ? '访问密码保持不变' : '访问密码已恢复为备份中的密码'}，旧登录会话已注销，请重新验证。`;
+        return `${summary}${result.authPreserved ? '访问密码保持不变' : '访问密码已恢复为备份中的密码'}，旧登录会话已注销。`;
     }
 
     function finishConfirmation(confirmed) {
@@ -196,10 +196,10 @@ export function createDataTransfer(onImported) {
         if (dialog.open || confirmationResolver) return Promise.resolve(false);
         dialog.querySelector('[data-import-file-name]').textContent = file.name;
         dialog.querySelector('#dataImportConfirmDescription').textContent =
-            '导入会覆盖全部日记、照片、视频、头像和署名，当前备份中没有的数据也会被删除，无法撤销。请先导出当前数据留作备份。'
+            '导入会覆盖全部日记、照片、视频、头像和署名，无法撤销。 '
             + (hasBackupPassword
                 ? '继续后还需验证备份密码，成功后访问密码也会恢复为备份密码。'
-                : '这是一份不含认证配置的旧备份，无法验证备份密码；导入后保留当前密码。');
+                : '备份不含认证配置，无法验证备份密码，导入后保留当前密码。');
         return new Promise(resolve => {
             confirmationResolver = resolve;
             dialog.showModal();
