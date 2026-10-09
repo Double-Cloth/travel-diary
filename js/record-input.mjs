@@ -1,5 +1,5 @@
 import { isValidDateString } from './analytics.mjs';
-import { readUploads, storedMediaNames } from './photo-uploads.mjs';
+import { readUploads, storedMediaNames } from './photo-uploads.mjs?v=20261009-large-files-v1';
 import { isSafeAsciiFileName, pinyinSlug } from './slug.mjs';
 
 export const DRAFT_FORMAT = 'travel-diary-draft-v4';

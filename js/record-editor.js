@@ -5,14 +5,16 @@ import {
     MAXIMUM_MEDIA_BATCH_BYTES,
     MAXIMUM_MEDIA_FILE_BYTES,
     MAXIMUM_VIDEO_FILE_BYTES,
+    mediaBytes,
     readUploads
-} from './photo-uploads.mjs';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs';
+} from './photo-uploads.mjs?v=20261009-large-files-v1';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=20261009-large-files-v1';
 import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
-import { createDraftArchive, readDraftArchive } from './draft-archive.mjs';
+import { createDraftArchive, readDraftArchive } from './draft-archive.mjs?v=20261009-large-files-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20260930-review-v1';
 import { confirmFeedback } from './feedback-dialog.js';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -88,10 +90,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function previewBlob(media) {
-        const binary = atob(media.data);
-        const bytes = new Uint8Array(binary.length);
-        for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-        return new Blob([bytes], { type: media.mimeType });
+        return new Blob([mediaBytes(media.data)], { type: media.mimeType });
     }
 
     function ensurePhotoPreviewUrl(media) {
@@ -269,7 +268,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <div class="record-editor-upload-zone" data-editor-drop>
                             <button class="paper-button" type="button" data-editor-upload>＋ 选择图片或视频</button>
                             <p>也可将图片和视频一起拖到这里</p>
-                            <small>图片：JPEG / PNG / GIF / WebP，单张最大 ${MAXIMUM_IMAGE_FILE_BYTES / 1024 / 1024} MiB · 视频：MP4 / M4V / MOV / WebM / Ogg，单个最大 ${MAXIMUM_VIDEO_FILE_BYTES / 1024 / 1024} MiB</small>
+                            <small>图片：JPEG / PNG / GIF / WebP，单张最大 ${MAXIMUM_IMAGE_FILE_BYTES / 1024 / 1024} MiB · 视频：MP4 / M4V / MOV / WebM / Ogg，单个最大 ${MAXIMUM_VIDEO_FILE_BYTES / 1024 / 1024} MiB · 本次新媒体合计最大 ${MAXIMUM_MEDIA_BATCH_BYTES / 1024 / 1024} MiB</small>
                             <input type="file" data-editor-photos accept=".mp4,.m4v,.mov,.webm,.ogv,.ogg,image/jpeg,image/png,image/gif,image/webp,video/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
                         </div>
                         <div class="record-editor-photo-list" data-editor-photo-list aria-label="待保存图片和视频"></div>
@@ -650,13 +649,13 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 const id = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
                 const data = await new Promise((resolve, reject) => {
                     const reader = new FileReader();
-                    reader.onload = () => resolve(String(reader.result).split(',')[1]);
+                    reader.onload = () => resolve(new Uint8Array(reader.result));
                     reader.onerror = () => reject(new Error('媒体读取失败，请重新选择。'));
                     reader.onprogress = progress => {
                         if (!progress.lengthComputable) return;
                         status(`正在读取 ${fileIndex + 1}/${files.length}：${file.name} ${Math.round(progress.loaded / progress.total * 100)}%`);
                     };
-                    reader.readAsDataURL(file);
+                    reader.readAsArrayBuffer(file);
                 });
                 const photo = readUploads([{ id, name: file.name.slice(0, 200), data }])[0];
                 let previewUrl;
@@ -895,7 +894,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         busy = true;
         dialog.querySelector('form').inert = true;
         try {
-            const draft = file.name.toLocaleLowerCase('en-US').endsWith('.zip')
+            const isZip = file.name.toLocaleLowerCase('en-US').endsWith('.zip');
+            const maximumBytes = isZip ? MAXIMUM_RECORD_ARCHIVE_BYTES : MAXIMUM_JSON_DRAFT_BYTES;
+            if (file.size > maximumBytes) {
+                throw new Error(`草稿 ${isZip ? 'ZIP' : 'JSON'} 不能超过 ${maximumBytes / 1024 / 1024} MiB，大媒体请使用 ZIP 草稿。`);
+            }
+            const draft = isZip
                 ? readDraftArchive(await file.arrayBuffer())
                 : readDraft(JSON.parse(await file.text()));
             for (const key of RECORD_FIELDS) field(key).value = ['photos', 'videos'].includes(key) ? draft.input[key].join('\n') : draft.input[key];
@@ -940,14 +944,14 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         dialog.querySelectorAll('[name], button').forEach(control => { control.disabled = true; });
         status('正在保存旅行记录…');
         try {
+            const archive = createDraftArchive(draft, editingRecord ? {
+                originalDescMd: editingRecord.desc_md,
+                expected: { record: editingRecord.sourceRecord || editingRecord, markdown: editingRecord.descMarkdown }
+            } : {});
             const response = await fetch(new URL('api/travel-records', window.location.href), {
-                method: editingRecord ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token },
+                method: editingRecord ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token },
                 credentials: 'same-origin',
-                body: JSON.stringify(editingRecord ? {
-                    originalDescMd: editingRecord.desc_md,
-                    expected: { record: editingRecord.sourceRecord || editingRecord, markdown: editingRecord.descMarkdown },
-                    draft
-                } : draft),
+                body: new Blob([archive], { type: 'application/zip' }),
                 signal: AbortSignal.timeout(15 * 60 * 1000)
             });
             const result = await response.json();

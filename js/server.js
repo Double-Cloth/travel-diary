@@ -431,7 +431,7 @@ async function listenWithRetries(rootDir, port, bindAll, options = {}) {
   return new Promise((resolve, reject) => {
     const tryListen = () => {
       const server = http.createServer(createHandler(rootDir, options));
-      server.requestTimeout = 120_000;
+      server.requestTimeout = 15 * 60 * 1000;
       server.headersTimeout = 15_000;
       server.keepAliveTimeout = 5_000;
       server.maxHeadersCount = 100;

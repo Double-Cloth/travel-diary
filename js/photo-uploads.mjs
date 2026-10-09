@@ -1,9 +1,13 @@
 import { pinyinSlug } from './slug.mjs';
+import { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs';
 
-export const MAXIMUM_IMAGE_FILE_BYTES = 96 * 1024 * 1024;
-export const MAXIMUM_VIDEO_FILE_BYTES = 512 * 1024 * 1024;
-export const MAXIMUM_MEDIA_FILE_BYTES = MAXIMUM_VIDEO_FILE_BYTES;
-export const MAXIMUM_MEDIA_BATCH_BYTES = 512 * 1024 * 1024;
+export { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs';
+
+export function mediaBytes(data) {
+    if (data instanceof Uint8Array) return data;
+    const binary = atob(data);
+    return Uint8Array.from(binary, character => character.charCodeAt(0));
+}
 
 export function readUploads(value = []) {
     if (!Array.isArray(value)) throw new Error('所选媒体数据无效。');
@@ -11,15 +15,17 @@ export function readUploads(value = []) {
     let totalBytes = 0;
     return value.map(media => {
         if (!media || typeof media.id !== 'string' || !/^[a-f0-9]{32}$/.test(media.id) || ids.has(media.id)
-            || typeof media.name !== 'string' || media.name.length > 200 || typeof media.data !== 'string') {
+            || typeof media.name !== 'string' || media.name.length > 200
+            || !(typeof media.data === 'string' || media.data instanceof Uint8Array)) {
             throw new Error('媒体标识、文件名或内容无效。');
         }
         ids.add(media.id);
         const encoded = media.data;
-        if (!encoded.length || encoded.length % 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)) throw new Error('媒体内容无效。');
-        const size = encoded.length / 4 * 3 - (encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0);
+        const binary = encoded instanceof Uint8Array;
+        if (!encoded.length || (!binary && (encoded.length % 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(encoded)))) throw new Error('媒体内容无效。');
+        const size = binary ? encoded.byteLength : encoded.length / 4 * 3 - (encoded.endsWith('==') ? 2 : encoded.endsWith('=') ? 1 : 0);
         let head;
-        try { head = atob(encoded.slice(0, 21848)); }
+        try { head = binary ? String.fromCharCode(...encoded.subarray(0, 16386)) : atob(encoded.slice(0, 21848)); }
         catch { throw new Error('媒体编码无效。'); }
         const detected = detectMediaFormat(head);
         if (!detected) throw new Error('仅支持 JPEG、PNG、GIF、WebP 图片，以及 MP4、M4V、MOV、WebM、Ogg 视频。');

@@ -114,7 +114,7 @@ function findEnd(view) {
     throw new Error('文件不是有效的 ZIP 压缩包。');
 }
 
-export function readZip(value) {
+export function readZip(value, { copy = true } = {}) {
     const bytes = bytesOf(value);
     const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
     const endOffset = findEnd(view);
@@ -165,7 +165,7 @@ export function readZip(value) {
             || view.getUint32(localOffset + 18, true) !== compressedSize
             || view.getUint32(localOffset + 22, true) !== size) throw new Error('ZIP 文件内容不完整或条目信息不一致。');
         ranges.push({ start: localOffset, end: dataEnd });
-        const data = bytes.slice(dataStart, dataEnd);
+        const data = copy ? bytes.slice(dataStart, dataEnd) : bytes.subarray(dataStart, dataEnd);
         if (crc32(data) !== checksum) throw new Error(`ZIP 文件校验失败：${name}`);
         entries.push({ name, data });
         offset = nameEnd + extraLength + commentLength;

@@ -1,4 +1,4 @@
-const MAXIMUM_SOURCE_BYTES = 12 * 1024 * 1024;
+import { MAXIMUM_PROFILE_SOURCE_BYTES } from './file-limits.mjs';
 const MAXIMUM_EDGE = 1024;
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
@@ -62,8 +62,8 @@ export async function prepareProfilePicture(file) {
     if (!file || !SUPPORTED_IMAGE_TYPES.has(file.type)) {
         throw new Error('请选择 JPEG、PNG、GIF 或 WebP 图片。');
     }
-    if (!file.size || file.size > MAXIMUM_SOURCE_BYTES) {
-        throw new Error('头像图片不能超过 12 MB。');
+    if (!file.size || file.size > MAXIMUM_PROFILE_SOURCE_BYTES) {
+        throw new Error(`头像图片不能超过 ${MAXIMUM_PROFILE_SOURCE_BYTES / 1024 / 1024} MiB。`);
     }
 
     const source = await loadImageSource(file);

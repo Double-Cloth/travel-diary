@@ -1,48 +1,41 @@
-import { DRAFT_FORMAT, readDraft } from './record-input.mjs';
-import { readUploads } from './photo-uploads.mjs';
+import { DRAFT_FORMAT, readDraft } from './record-input.mjs?v=20261009-large-files-v1';
+import { mediaBytes, readUploads } from './photo-uploads.mjs?v=20261009-large-files-v1';
 import { pinyinSlug } from './slug.mjs';
-import { createZip, readZip } from './zip-archive.mjs';
+import { createZip, readZip } from './zip-archive.mjs?v=20261009-large-files-v1';
+import { MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs';
 
 export const DRAFT_ARCHIVE_FORMAT = 'travel-diary-draft-archive-v2';
-const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { fatal: true });
 
-function base64ToBytes(value) {
-    const binary = atob(value);
-    const bytes = new Uint8Array(binary.length);
-    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
-    return bytes;
-}
-
-function bytesToBase64(bytes) {
-    let binary = '';
-    for (let offset = 0; offset < bytes.length; offset += 0x8000) {
-        binary += String.fromCharCode(...bytes.subarray(offset, offset + 0x8000));
-    }
-    return btoa(binary);
-}
-
-export function createDraftArchive(value) {
+export function createDraftArchive(value, editContext = {}) {
     const draft = readDraft(value);
     const uploads = readUploads(draft.uploads);
     const entries = [];
     const packageUploads = uploads.map((media, index) => {
         const stem = pinyinSlug(media.name.replace(/\.[^.]*$/, ''), `${media.kind}-${String(index + 1).padStart(3, '0')}`, { keepPlaceSuffix: true });
         const file = `media/${String(index + 1).padStart(3, '0')}-${stem}.${media.extension}`;
-        entries.push({ name: file, data: base64ToBytes(media.data) });
+        entries.push({ name: file, data: mediaBytes(media.data) });
         return { id: media.id, name: media.name, kind: media.kind, file };
     });
     const metadata = {
         format: DRAFT_ARCHIVE_FORMAT,
         requestId: draft.requestId,
         input: draft.input,
-        uploads: packageUploads
+        uploads: packageUploads,
+        ...(editContext.originalDescMd ? { originalDescMd: editContext.originalDescMd, expected: editContext.expected } : {})
     };
     return createZip([{ name: 'draft.json', data: JSON.stringify(metadata, null, 2) + '\n' }, ...entries]);
 }
 
 export function readDraftArchive(value) {
-    const entries = readZip(value);
+    return readRecordArchive(value).draft;
+}
+
+export function readRecordArchive(value) {
+    if ((value.byteLength ?? value.length) > MAXIMUM_RECORD_ARCHIVE_BYTES) {
+        throw new Error(`草稿 ZIP 不能超过 ${MAXIMUM_RECORD_ARCHIVE_BYTES / 1024 / 1024} MiB。`);
+    }
+    const entries = readZip(value, { copy: false });
     const files = new Map(entries.map(entry => [entry.name, entry.data]));
     const metadataBytes = files.get('draft.json');
     if (!metadataBytes) throw new Error('草稿压缩包缺少 draft.json。');
@@ -61,8 +54,12 @@ export function readDraftArchive(value) {
         const data = files.get(media.file);
         if (!data) throw new Error(`草稿缺少媒体文件：${media.file}`);
         usedFiles.add(media.file);
-        return { id: media.id, name: media.name, data: bytesToBase64(data) };
+        return { id: media.id, name: media.name, data };
     });
     if (files.size !== usedFiles.size) throw new Error('草稿压缩包包含未在清单中声明的文件。');
-    return readDraft({ format: DRAFT_FORMAT, requestId: metadata.requestId, input: metadata.input, uploads });
+    return {
+        draft: readDraft({ format: DRAFT_FORMAT, requestId: metadata.requestId, input: metadata.input, uploads }),
+        originalDescMd: metadata.originalDescMd,
+        expected: metadata.expected
+    };
 }

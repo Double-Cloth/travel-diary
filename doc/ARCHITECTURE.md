@@ -24,7 +24,7 @@
 | `data.js`、`utils.js` | 索引与正文加载、缓存、受限 Markdown 渲染、转义和格式化。 |
 | `location.mjs`、`analytics.mjs`、`visits.mjs` | 地点归一化、统计和行程去重的纯逻辑。 |
 | `record-editor.js`、`markdown-editor.js`、`record-suggestions.mjs` | 表单、正文双视图、地点补全和提交状态。 |
-| `record-input.mjs`、`photo-uploads.mjs`、`slug.mjs` | 浏览器与 Node 共用的字段、媒体签名、路径和拼音命名校验。 |
+| `record-input.mjs`、`photo-uploads.mjs`、`file-limits.mjs`、`slug.mjs` | 浏览器与 Node 共用的字段、媒体签名、文件大小限制、路径和拼音命名校验。 |
 | `draft-archive.mjs`、`zip-archive.mjs` | 草稿封装、未压缩 ZIP 与 CRC32 校验。 |
 | `record-password.js`、`writer-capability.js` | 同源能力探测、首次设密、登录与换密交互。 |
 | `record-delete-dialog.js`、`feedback-dialog.js`、`custom-select.js` | 删除确认、提示与原生选择框增强。 |
@@ -73,6 +73,8 @@ Markdown 使用应用支持的有限语法，输出经过 HTML 转义与链接�
 前端通过同源相对 URL 探测能力。静态发布物的 `api/travel-records` 提供 `travel-diary-static-v1` 标记，只有明确标记才打开免密码只读编辑器；404、超时、403 和异常响应均中止操作。动态能力 GET 在未登录或会话失效时返回 `200`、`authenticated: false`、空 `methods` 和 `AUTH_REQUIRED`，不泄露 token；正常打开密码窗口不会产生 `401` 控制台报错，实际未授权写入仍返回 `401`。前端仍接受旧服务的 `401` 探测响应。
 
 写入请求同时校验 Host / Origin 策略、内存会话和 `X-Travel-Token`。local 模式只接受回环来源及本机 Host；remote 模式只接受配置的完整 HTTPS Origin 和对应 Host，不依赖 `X-Forwarded-*`。首次设密仅限 local 模式本机页面。认证配置保存随机盐与 scrypt 哈希，Cookie 为 `HttpOnly`、`SameSite=Strict`，remote 模式增加 `Secure`。详细部署限制见 [维护指南](MAINTENANCE.md#认证与部署边界)。
+
+记录新增与修改使用 `application/zip` 提交草稿、原始媒体及修改快照，媒体不再转成整段 Base64 JSON；服务端保留旧 `application/json` 接口。删除仍使用 JSON。ZIP 解析、媒体大小和格式校验通过后才进入原有写入事务，修改快照比较与重试行为保持一致。
 
 所有数据操作共用根目录 `.travel-data.lock`，锁内重读磁盘索引。新增独占创建正文，媒体写入完成后通过临时索引与 rename 提交；修改、删除先暂存原正文，失败时回滚。浏览器更新附带原始元数据与正文快照，在锁内比较，发生外部变更返回 409；同内容重试仍可识别为已保存。路径拒绝穿越、符号链接和 junction，媒体按实际签名识别。
 

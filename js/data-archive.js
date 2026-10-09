@@ -223,7 +223,7 @@ async function importDataArchive(root, archive, options = {}) {
     try {
         const { readZip } = await import('./zip-archive.mjs');
         let entries;
-        try { entries = readZip(archive); }
+        try { entries = readZip(archive, { copy: false }); }
         catch (error) { throw failure(400, error.message); }
         const authEntries = entries.filter(entry => entry.name.toLocaleLowerCase('en-US') === AUTH_RELATIVE_PATH);
         if (authEntries.length > 1 || (authEntries.length === 1 && authEntries[0].name !== AUTH_RELATIVE_PATH)) {

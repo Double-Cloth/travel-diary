@@ -9,9 +9,8 @@ const MAXIMUM_LOGIN_FAILURES = 5;
 const SESSION_LIFETIME = 8 * 60 * 60 * 1000;
 const MAXIMUM_SESSIONS = 64;
 const MAXIMUM_LOGIN_BYTES = 4096;
-// 512 MiB 媒体转为 Base64 后会增加约三分之一，预留 JSON 元数据空间。
+// 保留旧版 JSON 写入兼容；新版媒体通过二进制 ZIP 提交。
 const MAXIMUM_RECORD_BYTES = 768 * 1024 * 1024;
-const MAXIMUM_ARCHIVE_BYTES = 256 * 1024 * 1024;
 const MAXIMUM_PROFILE_BYTES = 8 * 1024 * 1024;
 const MAXIMUM_PROFILE_IMAGE_BYTES = 6 * 1024 * 1024;
 const MAXIMUM_OWNER_NAME_LENGTH = 24;
@@ -135,7 +134,7 @@ async function readBody(request, maximumBytes) {
 }
 
 async function readJsonBody(request, maximumBytes) {
-    const body = await readBody(request, maximumBytes);
+    const body = await readBody(request, Math.min(maximumBytes, require('node:buffer').constants.MAX_STRING_LENGTH));
     try {
         return JSON.parse(body.toString('utf8'));
     } catch {
@@ -391,8 +390,7 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
         for (let index = 0; index < uploads.length; index += 1) {
             const name = names[sourceNames.length + index];
             if (!name) continue;
-            const buffer = Buffer.from(uploads[index].data, 'base64');
-            if (buffer.toString('base64') !== uploads[index].data) throw failure(400, `${options.label}编码无效。`);
+            const buffer = uploadBuffer(uploads[index], options.label);
             await writeMedia(name, buffer);
         }
         return { rollback };
@@ -447,6 +445,15 @@ async function removeRelocatedMedia(root, records, previous, next) {
     }
 }
 
+function uploadBuffer(media, label) {
+    if (media.data instanceof Uint8Array) {
+        return Buffer.from(media.data.buffer, media.data.byteOffset, media.data.byteLength);
+    }
+    const buffer = Buffer.from(media.data, 'base64');
+    if (buffer.toString('base64') !== media.data) throw failure(400, `${label}编码无效。`);
+    return buffer;
+}
+
 async function readMediaContents(root, uploads, sourceMedia, label) {
     const contents = [];
     if (sourceMedia.names.length) {
@@ -457,9 +464,7 @@ async function readMediaContents(root, uploads, sourceMedia, label) {
         }
     }
     for (const media of uploads) {
-        const buffer = Buffer.from(media.data, 'base64');
-        if (buffer.toString('base64') !== media.data) throw failure(400, `${label}编码无效。`);
-        contents.push(buffer);
+        contents.push(uploadBuffer(media, label));
     }
     return contents;
 }
@@ -1026,6 +1031,7 @@ function createRecordApi(root, options = {}) {
                     return;
                 }
                 if (req.method === 'POST' && hasMediaType(req, 'application/zip')) {
+                    const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs');
                     const archive = await readBody(req, MAXIMUM_ARCHIVE_BYTES);
                     const result = await importDataArchive(root, archive, {
                         requireProductionAuth: writeMode === 'remote'
@@ -1092,12 +1098,26 @@ function createRecordApi(root, options = {}) {
             send(403, { error: '写入凭据无效，请保留草稿后重新打开窗口。' });
             return;
         }
-        if (!hasMediaType(req, 'application/json')) {
-            send(415, { error: '写入请求必须使用 application/json。' });
+        const isArchive = req.method !== 'DELETE' && hasMediaType(req, 'application/zip');
+        if (!isArchive && !hasMediaType(req, 'application/json')) {
+            send(415, { error: '写入请求必须使用 application/json 或 application/zip；删除请求使用 application/json。' });
             return;
         }
         try {
-            const payload = await readJsonBody(req, MAXIMUM_RECORD_BYTES);
+            let payload;
+            if (isArchive) {
+                const { MAXIMUM_RECORD_ARCHIVE_BYTES } = await import('./file-limits.mjs');
+                const archive = await readBody(req, MAXIMUM_RECORD_ARCHIVE_BYTES);
+                const { readRecordArchive } = await import('./draft-archive.mjs');
+                try {
+                    const request = readRecordArchive(archive);
+                    payload = req.method === 'PUT' ? request : request.draft;
+                } catch (error) {
+                    throw failure(400, error.message);
+                }
+            } else {
+                payload = await readJsonBody(req, MAXIMUM_RECORD_BYTES);
+            }
             if (req.method === 'PUT') {
                 const result = await updateRecord(root, payload);
                 send(200, { saved: true, updated: true, ...result });

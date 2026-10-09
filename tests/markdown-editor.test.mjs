@@ -16,6 +16,7 @@ import { readZip } from '../js/zip-archive.mjs';
 
 const { highlightMarkdown, splitMarkdown, previewToMarkdown, previewHtml } = await loadBrowserModule(new URL('../js/markdown-editor.js', import.meta.url));
 const recordEditorSource = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
+const { prepareProfilePicture } = await loadBrowserModule(new URL('../js/profile-picture.js', import.meta.url));
 const text = value => ({ nodeType: 3, nodeValue: value, textContent: value });
 const element = (tagName, children, attributes = {}) => ({
     nodeType: 1, tagName, childNodes: children,
@@ -71,8 +72,8 @@ test('媒体验证支持常见图片与视频，并拒绝格式伪装、重复�
     assert.deepEqual(readUploads([mov])[0], {
         ...mov, kind: 'video', extension: 'mov', mimeType: 'video/quicktime', size: Buffer.from(mov.data, 'base64').length
     });
-    assert.equal(MAXIMUM_IMAGE_FILE_BYTES, 96 * 1024 * 1024);
-    assert.equal(MAXIMUM_VIDEO_FILE_BYTES, 512 * 1024 * 1024);
+    assert.equal(MAXIMUM_IMAGE_FILE_BYTES, 256 * 1024 * 1024);
+    assert.equal(MAXIMUM_VIDEO_FILE_BYTES, 1024 * 1024 * 1024);
     assert.equal(MAXIMUM_MEDIA_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES);
     assert.equal(MAXIMUM_MEDIA_BATCH_BYTES, MAXIMUM_VIDEO_FILE_BYTES);
     assert.throws(() => readUploads([{ ...photo, data: 'invalid!' }]));
@@ -131,5 +132,53 @@ test('草稿 ZIP 将图片和视频保存为独立文件且可以无损导入', 
     assert.equal(metadata.uploads[1].kind, 'video');
     assert.equal('data' in metadata.uploads[0], false);
     assert.equal(JSON.stringify(metadata).includes(png), false);
-    assert.deepEqual(readDraftArchive(archive), value);
+    assert.deepEqual(readDraftArchive(archive), {
+        ...value,
+        uploads: value.uploads.map(media => ({ ...media, data: new Uint8Array(Buffer.from(media.data, 'base64')) }))
+    });
+});
+
+test('原始媒体字节支持新上限，超大单文件与媒体合计仍被拒绝', () => {
+    // 各个视图共用一块缓冲区，无需生成巨大的 Base64 字符串或 ZIP。
+    const bytes = new Uint8Array(MAXIMUM_VIDEO_FILE_BYTES + 1);
+    bytes.set(Buffer.from('\0\0\0\x18ftypisom', 'binary'));
+    const video = { id: 'a'.repeat(32), name: 'large.mp4', data: bytes.subarray(0, MAXIMUM_VIDEO_FILE_BYTES) };
+    assert.equal(readUploads([video])[0].size, MAXIMUM_VIDEO_FILE_BYTES);
+    assert.throws(() => readUploads([{ ...video, data: bytes }]), /单个视频不能超过 1024 MiB/);
+    assert.throws(() => readUploads([video, { ...video, id: 'b'.repeat(32), data: bytes.subarray(0, 24) }]), /合计不能超过 1024 MiB/);
+    bytes.set(Buffer.from('\x89PNG\r\n\x1a\n', 'binary'));
+    const image = { ...video, name: 'large.png', data: bytes.subarray(0, MAXIMUM_IMAGE_FILE_BYTES) };
+    assert.equal(readUploads([image])[0].size, MAXIMUM_IMAGE_FILE_BYTES);
+    assert.throws(() => readUploads([{ ...image, data: bytes.subarray(0, MAXIMUM_IMAGE_FILE_BYTES + 1) }]), /单张图片不能超过 256 MiB/);
+});
+
+test('较大头像源文件仍缩放为 PNG，超过新上限时在解码前拒绝', async t => {
+    const previous = { createImageBitmap: globalThis.createImageBitmap, document: globalThis.document, FileReader: globalThis.FileReader };
+    t.after(() => Object.assign(globalThis, previous));
+    let closed = false;
+    let decoded = 0;
+    globalThis.createImageBitmap = async () => {
+        decoded += 1;
+        return { width: 2048, height: 1024, close() { closed = true; } };
+    };
+    const canvas = {
+        getContext: () => ({ drawImage() {} }),
+        toBlob(callback) { callback(new Blob(['PNG 测试字节'])); }
+    };
+    globalThis.document = { createElement: () => canvas };
+    globalThis.FileReader = class {
+        readAsDataURL(blob) {
+            blob.arrayBuffer().then(bytes => {
+                this.result = `data:image/png;base64,${Buffer.from(bytes).toString('base64')}`;
+                this.onload();
+            });
+        }
+    };
+    const result = await prepareProfilePicture({ type: 'image/png', size: 96 * 1024 * 1024 });
+    assert.equal(Buffer.from(result.data, 'base64').toString(), 'PNG 测试字节');
+    assert.equal(canvas.width, 1024);
+    assert.equal(canvas.height, 512);
+    assert.equal(closed, true);
+    await assert.rejects(prepareProfilePicture({ type: 'image/png', size: 96 * 1024 * 1024 + 1 }), /不能超过 96 MiB/);
+    assert.equal(decoded, 1);
 });

@@ -6,6 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHandler } from '../js/server.js';
 import { DRAFT_FORMAT, prepareRecord, readDraft } from '../js/record-input.mjs';
+import { createDraftArchive } from '../js/draft-archive.mjs';
+import { MAXIMUM_ARCHIVE_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from '../js/file-limits.mjs';
 import { installAuth, login } from './helpers/auth.mjs';
 import { listenOnFetchSafePort } from './helpers/http.mjs';
 
@@ -93,6 +95,57 @@ const put = (originalDescMd, value, headers = {}, expected) => fetch(`${base}/ap
 const remove = (descMd, headers = {}) => fetch(`${base}/api/travel-records`, {
     method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers },
     body: JSON.stringify({ desc_md: descMd })
+});
+
+test('ZIP 二进制媒体可新增、无损重试与修改，原快照冲突时不覆盖数据', async () => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=', 'base64');
+    const mp4 = Buffer.from('\0\0\0\x18ftypisom\0\0\0\0isommp42', 'binary');
+    const value = draft('7', { locality: 'ZIP 原始媒体', desc_md: 'data/travel-diary/2026/2026-09-10-zip-media.md' });
+    value.uploads = [{ id: '1'.repeat(32), name: 'river.png', data: png }, { id: '2'.repeat(32), name: 'walk.mp4', data: mp4 }];
+    const sendZip = (method, body, overrides = {}) => fetch(`${base}/api/travel-records`, {
+        method,
+        headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...overrides },
+        body
+    });
+    const archive = createDraftArchive(value);
+    assert.equal((await sendZip('POST', archive, { 'X-Travel-Token': 'invalid' })).status, 403);
+    const response = await sendZip('POST', archive);
+    assert.equal(response.status, 201);
+    const { record } = await response.json();
+    assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, record.photos[0])), png);
+    assert.deepEqual(await fs.readFile(path.join(root, record.video_folder, record.videos[0])), mp4);
+    assert.equal((await sendZip('POST', archive)).status, 200);
+    const expected = { record, markdown: await fs.readFile(path.join(root, record.desc_md), 'utf8') };
+    const edited = { ...value, uploads: [], input: { ...value.input, ...record, body: '更新后的 ZIP 正文' } };
+    const updatedArchive = createDraftArchive(edited, { originalDescMd: record.desc_md, expected });
+    assert.equal((await sendZip('PUT', updatedArchive)).status, 200);
+    assert.match(await fs.readFile(path.join(root, record.desc_md), 'utf8'), /更新后的 ZIP 正文/);
+    assert.equal((await sendZip('PUT', createDraftArchive(value, { originalDescMd: record.desc_md, expected }))).status, 409);
+    const index = await readIndex();
+    const broken = archive.slice();
+    broken[0] ^= 1;
+    assert.equal((await sendZip('POST', broken)).status, 400);
+    assert.equal((await sendZip('DELETE', archive)).status, 415);
+    assert.deepEqual(await readIndex(), index);
+});
+
+test('ZIP 请求在读取媒体前按新上限拒绝超量声明', async () => {
+    async function declaredRequest(endpoint, length) {
+        return new Promise((resolve, reject) => {
+            const request = http.request(`${base}${endpoint}`, {
+                method: 'POST',
+                agent: false,
+                headers: { 'Content-Type': 'application/zip', 'Content-Length': length, 'X-Travel-Token': token, Cookie: cookie, Origin: base }
+            }, response => {
+                response.resume();
+                response.on('end', () => { resolve(response.statusCode); request.destroy(); });
+            });
+            request.on('error', reject);
+            request.end('x');
+        });
+    }
+    assert.equal(await declaredRequest('/api/travel-records', MAXIMUM_RECORD_ARCHIVE_BYTES + 1), 413);
+    assert.equal(await declaredRequest('/api/travel-data', MAXIMUM_ARCHIVE_BYTES + 1), 413);
 });
 
 test('写入服务声明支持新增、修改与删除方法', async () => {

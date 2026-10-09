@@ -1,5 +1,6 @@
 import { createPasswordGate } from './record-password.js?v=20260914-auth-setup-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -194,7 +195,7 @@ export function createDataTransfer(onImported) {
             headers,
             body: file,
             credentials: 'same-origin',
-            signal: AbortSignal.timeout(120000)
+            signal: AbortSignal.timeout(15 * 60 * 1000)
         });
         let result;
         try { result = await response.json(); }
@@ -239,8 +240,8 @@ export function createDataTransfer(onImported) {
         const capability = importCapability;
         importCapability = undefined;
         if (!file || busy) return;
-        if (file.size > 256 * 1024 * 1024) {
-            setStatus('全部数据 ZIP 备份不能超过 256 MiB，请使用文件系统备份恢复更大的档案。');
+        if (file.size > MAXIMUM_ARCHIVE_BYTES) {
+            setStatus(`全部数据 ZIP 备份不能超过 ${MAXIMUM_ARCHIVE_BYTES / 1024 / 1024} MiB，请使用文件系统备份恢复更大的档案。`);
             return;
         }
         busy = true;

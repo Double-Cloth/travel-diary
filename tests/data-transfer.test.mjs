@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadBrowserModule } from './helpers/browser-modules.mjs';
+import { MAXIMUM_ARCHIVE_BYTES } from '../js/file-limits.mjs';
 
 const { createDataTransfer } = await loadBrowserModule(new URL('../js/data-transfer.js', import.meta.url));
 
@@ -59,7 +60,7 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
     }
     async function importFile() {
         await authorizeImport();
-        input.files = [{ name: 'backup.zip' }];
+        input.files = [{ name: 'backup.zip', size: 513 * 1024 * 1024 }];
         const pending = input.events.change();
         assert.equal(confirmation.open, true);
         confirmation.events.click({ target: { closest: selector => selector === '[data-import-confirm]' } });
@@ -74,6 +75,12 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
     await importFile();
     assert.equal(success.querySelector('#dataImportSuccessDescription').textContent, '全部旅行数据已更新。');
     assert.equal(output.textContent, '');
+    success.close();
+    await authorizeImport();
+    input.files = [{ name: 'too-large.zip', size: MAXIMUM_ARCHIVE_BYTES + 1 }];
+    await input.events.change();
+    assert.equal(confirmation.open, false);
+    assert.match(output.textContent, /不能超过 2048 MiB/);
 });
 
 test('导出和导入都要求写入 API，静态页面不提供全部数据备份', async t => {
