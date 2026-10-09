@@ -1,3 +1,7 @@
+const { Readable } = require('node:stream');
+const { pipeline } = require('node:stream/promises');
+const { createHash } = require('node:crypto');
+const { fileSource, receiveArchive } = require('./file-stream.js');
 const fs = require('fs/promises');
 const path = require('path');
 const { randomBytes, timingSafeEqual } = require('crypto');
@@ -306,7 +310,7 @@ async function findMediaContent(root, name, folders) {
             const directory = await checkedDirectory(root, folder.split('/'));
             const file = path.join(directory, name);
             await checkedFile(file);
-            return await fs.readFile(file);
+            return await fileSource(file);
         } catch (error) {
             if (error.status === 403) throw error;
         }
@@ -364,7 +368,12 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
         const mediaPath = path.join(directory, name);
         const handle = await fs.open(mediaPath, 'wx');
         createdFiles.push(mediaPath);
-        try { await handle.writeFile(content); await handle.sync(); }
+        try {
+            if (content.chunks) {
+                for await (const chunk of content.chunks()) await handle.writeFile(chunk);
+            } else await handle.writeFile(content);
+            await handle.sync();
+        }
         finally { await handle.close(); }
     };
 
@@ -446,6 +455,7 @@ async function removeRelocatedMedia(root, records, previous, next) {
 }
 
 function uploadBuffer(media, label) {
+    if (media.data?.chunks) return media.data;
     if (media.data instanceof Uint8Array) {
         return Buffer.from(media.data.buffer, media.data.byteOffset, media.data.byteLength);
     }
@@ -460,7 +470,7 @@ async function readMediaContents(root, uploads, sourceMedia, label) {
         const sourceDir = await checkedDirectory(root, sourceMedia.folder.split('/'));
         for (const name of sourceMedia.names) {
             await checkedFile(path.join(sourceDir, name));
-            contents.push(await fs.readFile(path.join(sourceDir, name)));
+            contents.push(await fileSource(path.join(sourceDir, name)));
         }
     }
     for (const media of uploads) {
@@ -469,13 +479,22 @@ async function readMediaContents(root, uploads, sourceMedia, label) {
     return contents;
 }
 
+async function digestSource(source) {
+    const hash = createHash('sha256');
+    for await (const chunk of source.chunks()) hash.update(chunk);
+    return hash.digest('hex');
+}
+
 async function verifySavedMedia(root, record, contents, options) {
     if (!contents.length) return;
     const mediaDir = await checkedDirectory(root, record[options.folderField].split('/'));
     for (let index = 0; index < record[options.listField].length; index += 1) {
         const mediaPath = path.join(mediaDir, record[options.listField][index]);
         await checkedFile(mediaPath);
-        if (!(await fs.readFile(mediaPath)).equals(contents[index])) {
+        const { sourceOf } = await import('./zip-stream.mjs');
+        const expected = sourceOf(contents[index]);
+        const actual = await fileSource(mediaPath);
+        if (actual.size !== expected.size || await digestSource(actual) !== await digestSource(expected)) {
             throw failure(409, `已保存${options.label}与本次所选内容不同，未覆盖现有文件。`);
         }
     }
@@ -727,6 +746,14 @@ function createRecordApi(root, options = {}) {
         return session;
     }
 
+    async function verifyUploadSession(req, host) {
+        const config = await readAuthConfig(root, { requireProduction: writeMode === 'remote' });
+        const current = currentSession(req, host, config);
+        if (!current || !equalCredential(req.headers['x-travel-token'], current.token)) {
+            throw failure(401, '上传期间登录会话已失效，请重新验证后重试。');
+        }
+    }
+
     function clearExpiredState(now = Date.now()) {
         for (const [id, session] of sessions) if (session.expiresAt <= now) sessions.delete(id);
         for (const [key, state] of failures) if (state.startedAt + LOGIN_FAILURE_WINDOW <= now) failures.delete(key);
@@ -767,6 +794,7 @@ function createRecordApi(root, options = {}) {
                 'X-Content-Type-Options': 'nosniff',
                 'Referrer-Policy': 'no-referrer',
                 'X-Frame-Options': 'DENY',
+                ...(status === 413 ? { Connection: 'close' } : {}),
                 ...headers
             });
             res.end(JSON.stringify(value));
@@ -1019,23 +1047,31 @@ function createRecordApi(root, options = {}) {
             try {
                 if (req.method === 'GET' || req.method === 'HEAD') {
                     const archive = await exportDataArchive(root);
-                    const today = new Date().toISOString().slice(0, 10);
-                    res.writeHead(200, {
-                        'Content-Type': 'application/zip',
-                        'Content-Length': archive.length,
-                        'Content-Disposition': `attachment; filename="travel-diary-data-${today}.zip"`,
-                        'Cache-Control': 'no-store',
-                        'X-Content-Type-Options': 'nosniff'
-                    });
-                    res.end(req.method === 'HEAD' ? undefined : archive);
+                    try {
+                        const today = new Date().toISOString().slice(0, 10);
+                        res.writeHead(200, {
+                            'Content-Type': 'application/zip',
+                            'Content-Length': archive.size,
+                            'Content-Disposition': `attachment; filename="travel-diary-data-${today}.zip"`,
+                            'Cache-Control': 'no-store',
+                            'X-Content-Type-Options': 'nosniff'
+                        });
+                        if (req.method === 'HEAD') res.end();
+                        else await pipeline(Readable.from(archive.stream), res);
+                    } finally { await archive.release(); }
                     return;
                 }
                 if (req.method === 'POST' && hasMediaType(req, 'application/zip')) {
-                    const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs');
-                    const archive = await readBody(req, MAXIMUM_ARCHIVE_BYTES);
-                    const result = await importDataArchive(root, archive, {
-                        requireProductionAuth: writeMode === 'remote'
-                    });
+                    const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs?v=20261009-stream-files-v2');
+                    declaredBodyLength(req, MAXIMUM_ARCHIVE_BYTES);
+                    const archive = await receiveArchive(root, req, MAXIMUM_ARCHIVE_BYTES);
+                    let result;
+                    try {
+                        await verifyUploadSession(req, host);
+                        result = await importDataArchive(root, archive.source, {
+                            requireProductionAuth: writeMode === 'remote'
+                        });
+                    } finally { await archive.cleanup(); }
                     sessions.clear();
                     send(200, { imported: true, ...result });
                     return;
@@ -1051,6 +1087,7 @@ function createRecordApi(root, options = {}) {
                 }
                 send(405, { error: '全部数据接口仅支持导入、导出或清空。' }, { Allow: 'GET, HEAD, POST, DELETE' });
             } catch (error) {
+                if (res.headersSent) { res.destroy(error); return; }
                 send(error.status || 500, {
                     error: error.status ? error.message : '全部数据操作失败，请检查目录权限、磁盘空间和备份文件。',
                     ...(error.code ? { code: error.code } : {})
@@ -1103,18 +1140,21 @@ function createRecordApi(root, options = {}) {
             send(415, { error: '写入请求必须使用 application/json 或 application/zip；删除请求使用 application/json。' });
             return;
         }
+        let receivedArchive;
         try {
             let payload;
             if (isArchive) {
-                const { MAXIMUM_RECORD_ARCHIVE_BYTES } = await import('./file-limits.mjs');
-                const archive = await readBody(req, MAXIMUM_RECORD_ARCHIVE_BYTES);
-                const { readRecordArchive } = await import('./draft-archive.mjs');
+                const { MAXIMUM_RECORD_ARCHIVE_BYTES } = await import('./file-limits.mjs?v=20261009-stream-files-v2');
+                declaredBodyLength(req, MAXIMUM_RECORD_ARCHIVE_BYTES);
+                receivedArchive = await receiveArchive(root, req, MAXIMUM_RECORD_ARCHIVE_BYTES);
+                const { readRecordSource } = await import('./draft-archive.mjs');
                 try {
-                    const request = readRecordArchive(archive);
+                    const request = await readRecordSource(receivedArchive.source);
                     payload = req.method === 'PUT' ? request : request.draft;
                 } catch (error) {
                     throw failure(400, error.message);
                 }
+                await verifyUploadSession(req, host);
             } else {
                 payload = await readJsonBody(req, MAXIMUM_RECORD_BYTES);
             }
@@ -1132,6 +1172,8 @@ function createRecordApi(root, options = {}) {
             send(result.alreadySaved ? 200 : 201, { saved: true, ...result });
         } catch (error) {
             send(error.status || 500, { error: error.status ? error.message : '文件保存失败，请检查数据文件格式及目录写入权限。草稿仍保留，可下载后重试。' });
+        } finally {
+            if (receivedArchive) await receivedArchive.cleanup();
         }
     };
 }

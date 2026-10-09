@@ -274,16 +274,16 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     assert.match(customSelectJs, /menu\.addEventListener\('click',[\s\S]*?if \(suppressOptionClick\)[\s\S]*?return;[\s\S]*?selectCustomOption\(wrapper, option\)/);
     assert.match(recordEditorJs, /dialog\.addEventListener\('pointerdown',[\s\S]*?event\.pointerType === 'mouse'[\s\S]*?event\.preventDefault\(\);[\s\S]*?autocompletePointer = null;[\s\S]*?return;/);
     assert.match(recordEditorJs, /dialog\.addEventListener\('pointermove',[\s\S]*?pointerMoved\(autocompletePointer, event\)[\s\S]*?suppressAutocompleteClick = true/);
-    assert.match(recordEditorJs, /dialog\.addEventListener\('click', event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
+    assert.match(recordEditorJs, /dialog\.addEventListener\('click', (?:async )?event => \{[\s\S]*?if \(suppressAutocompleteClick\)[\s\S]*?return;[\s\S]*?selectAutocompleteOption/);
     assert.match(recordEditorJs, /input\.focus\(\{ preventScroll: true \}\);\s*closeAutocomplete\(input\);/);
     assert.match(journalCss, /\.custom-select-menu,\s*\.record-editor-autocomplete-menu\s*\{[\s\S]*?overscroll-behavior: contain;[\s\S]*?touch-action: pan-y;[\s\S]*?-webkit-overflow-scrolling: touch;/);
     assert.match(journalCss, /\.custom-select-menu > \[role="option"\],[\s\S]*?white-space: normal;[\s\S]*?overflow-wrap: anywhere;/);
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261009-large-files-v1');
+    assert.equal(appVersion, '20261009-stream-files-v2');
     assert.ok(cssVersion);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20261009-large-files-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20261009-stream-files-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
 });
@@ -471,7 +471,7 @@ test('全部数据导入成功后使用站内结果弹窗而不是状态文字',
 test('全部数据导入说明恢复认证配置且不传输密码头', () => {
     assert.match(dataTransferJs, /备份中的密码配置也会一并恢复/);
     assert.doesNotMatch(dataTransferJs, /X-Travel-(?:Current|Import)-Password/);
-    assert.match(recordStoreJs, /readBody\(req, MAXIMUM_ARCHIVE_BYTES\)/);
+    assert.match(recordStoreJs, /receiveArchive\(root, req, MAXIMUM_ARCHIVE_BYTES\)/);
     assert.match(authJs, /algorithm: 'scrypt'/);
     assert.match(authJs, /PASSWORD_LENGTH = 6/);
 });
@@ -852,7 +852,7 @@ test('不存在的媒体引用显示可定位到 travel_data.json 字段的错�
 test('视频共用媒体入口并提供完整播放控制与键盘操作', () => {
     assert.match(recordEditorJs, /选择图片或视频/);
     assert.match(recordEditorJs, /accept="\.mp4,\.m4v,\.mov,\.webm,\.ogv,\.ogg,[^"]*video\/quicktime/);
-    assert.match(recordEditorJs, /AbortSignal\.timeout\(15 \* 60 \* 1000\)/);
+    assert.match(recordEditorJs, /AbortSignal\.timeout\(8 \* 60 \* 60 \* 1000\)/);
     assert.match(recordStoreJs, /const MAXIMUM_RECORD_BYTES = 768 \* 1024 \* 1024/);
     assert.match(recordEditorJs, /photo\.kind === 'image' \? await createPhotoPreviewUrl\(file\) : URL\.createObjectURL\(file\)/);
     assert.match(appJs, /data-video-action="toggle-play"/);

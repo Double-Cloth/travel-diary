@@ -5,7 +5,8 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHandler } from '../js/server.js';
-import { createZip, readZip } from '../js/zip-archive.mjs';
+import { createZip } from '../js/zip-archive.mjs';
+import { readZipSource } from '../js/zip-stream.mjs';
 import { AUTH_CONFIG, installAuth, login } from './helpers/auth.mjs';
 import { listenOnFetchSafePort } from './helpers/http.mjs';
 
@@ -38,7 +39,7 @@ test('动态全量导出必须登录，且包含认证配置', async () => {
     const exported = await fetch(`${base}/api/travel-data`, { headers: { Cookie: cookie } });
     assert.equal(exported.status, 200);
     assert.match(exported.headers.get('content-type'), /application\/zip/);
-    const entries = readZip(new Uint8Array(await exported.arrayBuffer()));
+    const entries = await readZipSource(new Uint8Array(await exported.arrayBuffer()));
     assert.equal(entries.some(entry => entry.name === record.desc_md), true);
     assert.equal(entries.some(entry => entry.name === '.secrets/auth.json'), true);
     assert.equal(entries.some(entry => entry.name === 'data/password.json'), false);

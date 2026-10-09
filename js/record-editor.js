@@ -7,14 +7,15 @@ import {
     MAXIMUM_VIDEO_FILE_BYTES,
     mediaBytes,
     readUploads
-} from './photo-uploads.mjs?v=20261009-large-files-v1';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=20261009-large-files-v1';
+} from './photo-uploads.mjs?v=20261009-stream-files-v2';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=20261009-stream-files-v2';
 import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
-import { createDraftArchive, readDraftArchive } from './draft-archive.mjs?v=20261009-large-files-v1';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=20261009-stream-files-v2';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20260930-review-v1';
 import { confirmFeedback } from './feedback-dialog.js';
-import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs';
+import { ByteSource, sourceOf } from './zip-stream.mjs';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -90,7 +91,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function previewBlob(media) {
-        return new Blob([mediaBytes(media.data)], { type: media.mimeType });
+        return media.data instanceof ByteSource ? media.data.blob : new Blob([mediaBytes(media.data)], { type: media.mimeType });
     }
 
     function ensurePhotoPreviewUrl(media) {
@@ -647,16 +648,9 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             const pending = [];
             for (const [fileIndex, file] of files.entries()) {
                 const id = Array.from(crypto.getRandomValues(new Uint8Array(16)), byte => byte.toString(16).padStart(2, '0')).join('');
-                const data = await new Promise((resolve, reject) => {
-                    const reader = new FileReader();
-                    reader.onload = () => resolve(new Uint8Array(reader.result));
-                    reader.onerror = () => reject(new Error('媒体读取失败，请重新选择。'));
-                    reader.onprogress = progress => {
-                        if (!progress.lengthComputable) return;
-                        status(`正在读取 ${fileIndex + 1}/${files.length}：${file.name} ${Math.round(progress.loaded / progress.total * 100)}%`);
-                    };
-                    reader.readAsArrayBuffer(file);
-                });
+                status(`正在读取 ${fileIndex + 1}/${files.length}：${file.name}`);
+                const data = sourceOf(file);
+                data.head = await data.read(0, Math.min(16386, data.size));
                 const photo = readUploads([{ id, name: file.name.slice(0, 200), data }])[0];
                 let previewUrl;
                 try { previewUrl = photo.kind === 'image' ? await createPhotoPreviewUrl(file) : URL.createObjectURL(file); }
@@ -679,6 +673,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             status(error.message);
         }
         finally { readingPhotos = false; saveButton.disabled = saved || !token; }
+    }
+
+    function archiveProgress(processed, total) {
+        status(`正在校验并打包媒体… ${total ? Math.round(processed / total * 100) : 100}%`);
     }
 
     function download(content, name, type) {
@@ -810,7 +808,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         dialog.querySelector('[data-editor-drop]').classList.remove('is-dragging');
         void addPhotos([...event.dataTransfer.files]);
     });
-    dialog.addEventListener('click', event => {
+    dialog.addEventListener('click', async event => {
         if (event.target.closest('[data-editor-close]')) close();
         if (busy || readingPhotos) return;
         const autocompleteOption = event.target.closest('[data-autocomplete-value]');
@@ -855,9 +853,20 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const view = event.target.closest('[data-editor-view]');
         if (view) updateBodyView(view.dataset.editorView);
         if (event.target.closest('[data-editor-download]')) {
-            const input = getDraft().input;
-            download(createDraftArchive(getDraft()), `travel-diary-draft-${input.date || 'undated'}-${recordSlug(input.locality || 'destination')}.zip`, 'application/zip');
-            status('草稿已开始下载，所选图片和视频已一并打包。');
+            busy = true;
+            dialog.querySelector('form').inert = true;
+            try {
+                const draft = getDraft();
+                const input = draft.input;
+                download(await createDraftBlob(draft, {}, archiveProgress), `travel-diary-draft-${input.date || 'undated'}-${recordSlug(input.locality || 'destination')}.zip`, 'application/zip');
+                status('草稿已开始下载，所选图片和视频已一并打包。');
+            } catch (error) {
+                status(`草稿导出失败：${error.message}`);
+            } finally {
+                busy = false;
+                dialog.querySelector('form').inert = false;
+            }
+            return;
         }
         if (event.target.closest('[data-editor-clear]')) {
             void clearEditor();
@@ -900,9 +909,11 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 throw new Error(`草稿 ${isZip ? 'ZIP' : 'JSON'} 不能超过 ${maximumBytes / 1024 / 1024} MiB，大媒体请使用 ZIP 草稿。`);
             }
             const draft = isZip
-                ? readDraftArchive(await file.arrayBuffer())
+                ? (await readRecordSource(file, { verifyMedia: true, onProgress: archiveProgress })).draft
                 : readDraft(JSON.parse(await file.text()));
             for (const key of RECORD_FIELDS) field(key).value = ['photos', 'videos'].includes(key) ? draft.input[key].join('\n') : draft.input[key];
+            // 程序赋值后同步原生选择框的增强显示。
+            field('country_code').dispatchEvent(new Event('change'));
             requestId = draft.requestId;
             uploads = readUploads(draft.uploads);
             dirty = true;
@@ -944,15 +955,15 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         dialog.querySelectorAll('[name], button').forEach(control => { control.disabled = true; });
         status('正在保存旅行记录…');
         try {
-            const archive = createDraftArchive(draft, editingRecord ? {
+            const archive = await createDraftBlob(draft, editingRecord ? {
                 originalDescMd: editingRecord.desc_md,
                 expected: { record: editingRecord.sourceRecord || editingRecord, markdown: editingRecord.descMarkdown }
-            } : {});
+            } : {}, archiveProgress);
             const response = await fetch(new URL('api/travel-records', window.location.href), {
                 method: editingRecord ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token },
                 credentials: 'same-origin',
-                body: new Blob([archive], { type: 'application/zip' }),
-                signal: AbortSignal.timeout(15 * 60 * 1000)
+                body: archive,
+                signal: AbortSignal.timeout(8 * 60 * 60 * 1000)
             });
             const result = await response.json();
             if (!response.ok || !result.saved) throw new Error(result.error || '未收到服务器的成功响应。');

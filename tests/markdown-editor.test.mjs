@@ -1,3 +1,4 @@
+import { ByteSource } from '../js/zip-stream.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -72,10 +73,10 @@ test('媒体验证支持常见图片与视频，并拒绝格式伪装、重复�
     assert.deepEqual(readUploads([mov])[0], {
         ...mov, kind: 'video', extension: 'mov', mimeType: 'video/quicktime', size: Buffer.from(mov.data, 'base64').length
     });
-    assert.equal(MAXIMUM_IMAGE_FILE_BYTES, 256 * 1024 * 1024);
-    assert.equal(MAXIMUM_VIDEO_FILE_BYTES, 1024 * 1024 * 1024);
+    assert.equal(MAXIMUM_IMAGE_FILE_BYTES, 1024 * 1024 * 1024);
+    assert.equal(MAXIMUM_VIDEO_FILE_BYTES, 32 * 1024 * 1024 * 1024);
     assert.equal(MAXIMUM_MEDIA_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES);
-    assert.equal(MAXIMUM_MEDIA_BATCH_BYTES, MAXIMUM_VIDEO_FILE_BYTES);
+    assert.equal(MAXIMUM_MEDIA_BATCH_BYTES, 100 * 1024 * 1024 * 1024);
     assert.throws(() => readUploads([{ ...photo, data: 'invalid!' }]));
     assert.throws(() => readUploads([{ ...photo, data: Buffer.from('<html>not a photo</html>').toString('base64') }]));
 });
@@ -139,17 +140,15 @@ test('草稿 ZIP 将图片和视频保存为独立文件且可以无损导入', 
 });
 
 test('原始媒体字节支持新上限，超大单文件与媒体合计仍被拒绝', () => {
-    // 各个视图共用一块缓冲区，无需生成巨大的 Base64 字符串或 ZIP。
-    const bytes = new Uint8Array(MAXIMUM_VIDEO_FILE_BYTES + 1);
-    bytes.set(Buffer.from('\0\0\0\x18ftypisom', 'binary'));
-    const video = { id: 'a'.repeat(32), name: 'large.mp4', data: bytes.subarray(0, MAXIMUM_VIDEO_FILE_BYTES) };
+    // 用随机读取源验证边界，无需分配几十 GiB 的测试内存。
+    const media = (size, head) => Object.assign(new ByteSource(size, async () => { throw new Error('不应读取完整媒体'); }), { head: Buffer.from(head, 'binary') });
+    const video = { id: 'a'.repeat(32), name: 'large.mp4', data: media(MAXIMUM_VIDEO_FILE_BYTES, '\0\0\0\x18ftypisom') };
     assert.equal(readUploads([video])[0].size, MAXIMUM_VIDEO_FILE_BYTES);
-    assert.throws(() => readUploads([{ ...video, data: bytes }]), /单个视频不能超过 1024 MiB/);
-    assert.throws(() => readUploads([video, { ...video, id: 'b'.repeat(32), data: bytes.subarray(0, 24) }]), /合计不能超过 1024 MiB/);
-    bytes.set(Buffer.from('\x89PNG\r\n\x1a\n', 'binary'));
-    const image = { ...video, name: 'large.png', data: bytes.subarray(0, MAXIMUM_IMAGE_FILE_BYTES) };
+    assert.throws(() => readUploads([{ ...video, data: media(MAXIMUM_VIDEO_FILE_BYTES + 1, '\0\0\0\x18ftypisom') }]), /单个视频不能超过 32768 MiB/);
+    assert.throws(() => readUploads(['a', 'b', 'c', 'd'].map(id => ({ ...video, id: id.repeat(32) }))), /合计不能超过 102400 MiB/);
+    const image = { ...video, name: 'large.png', data: media(MAXIMUM_IMAGE_FILE_BYTES, '\x89PNG\r\n\x1a\n') };
     assert.equal(readUploads([image])[0].size, MAXIMUM_IMAGE_FILE_BYTES);
-    assert.throws(() => readUploads([{ ...image, data: bytes.subarray(0, MAXIMUM_IMAGE_FILE_BYTES + 1) }]), /单张图片不能超过 256 MiB/);
+    assert.throws(() => readUploads([{ ...image, data: media(MAXIMUM_IMAGE_FILE_BYTES + 1, '\x89PNG\r\n\x1a\n') }]), /单张图片不能超过 1024 MiB/);
 });
 
 test('较大头像源文件仍缩放为 PNG，超过新上限时在解码前拒绝', async t => {

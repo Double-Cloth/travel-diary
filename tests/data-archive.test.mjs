@@ -4,12 +4,28 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { createZip, readZip } from '../js/zip-archive.mjs';
+import { createZip } from '../js/zip-archive.mjs';
+import { readZipSource, readSourceText } from '../js/zip-stream.mjs';
+
+async function readZip(bytes) {
+    const entries = await readZipSource(bytes);
+    for (const entry of entries) entry.data = await readSourceText(entry.data);
+    return entries;
+}
 import { AUTH_CONFIG, installAuth } from './helpers/auth.mjs';
 
 const require = createRequire(import.meta.url);
-const { clearTravelData, exportDataArchive, importDataArchive } = require('../js/data-archive.js');
+const { clearTravelData, exportDataArchive: exportStream, importDataArchive } = require('../js/data-archive.js');
 const { writeDataBackup } = require('../scripts/build-data-backup.js');
+
+async function exportDataArchive(root) {
+    const archive = await exportStream(root);
+    try {
+        const parts = [];
+        for await (const chunk of archive.stream) parts.push(chunk);
+        return Buffer.concat(parts);
+    } finally { await archive.release(); }
+}
 
 async function fixture(t, prefix = 'travel-diary-archive-') {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), prefix));
@@ -57,7 +73,7 @@ test('完整 ZIP 包含 data 与认证配置，并可恢复访问密码', async 
     await fs.writeFile(path.join(root, record.video_folder, record.videos[0]), Buffer.from([4, 5, 6]));
 
     const archive = await exportDataArchive(root);
-    assert.deepEqual(readZip(archive).map(entry => entry.name).sort(), [
+    assert.deepEqual((await readZip(archive)).map(entry => entry.name).sort(), [
         '.secrets/auth.json',
         'data/photos/suzhou/lake.png',
         'data/travel-diary/2026/2026-09-11-suzhou.md',
@@ -80,7 +96,7 @@ test('扉页署名文件随全部数据导出并可导入恢复', async t => {
     await fs.writeFile(path.join(root, 'data/profile/owner-name.txt'), '山川过客');
 
     const archive = await exportDataArchive(root);
-    assert.equal(readZip(archive).some(entry => entry.name === 'data/profile/owner-name.txt'), true);
+    assert.equal((await readZip(archive)).some(entry => entry.name === 'data/profile/owner-name.txt'), true);
 
     await fs.rm(path.join(root, 'data/profile/owner-name.txt'));
     const result = await importDataArchive(root, archive);
@@ -245,5 +261,5 @@ test('数据备份包含认证配置，便于完整恢复部署', async t => {
     const result = await writeDataBackup(root, outputFile);
     const archive = await fs.readFile(outputFile);
     assert.equal(result.bytes, archive.length);
-    assert.deepEqual(readZip(archive).map(entry => entry.name), ['data/travel_data.json', '.secrets/auth.json']);
+    assert.deepEqual((await readZip(archive)).map(entry => entry.name), ['data/travel_data.json', '.secrets/auth.json']);
 });

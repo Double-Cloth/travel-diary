@@ -7,7 +7,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHandler } from '../js/server.js';
 import { DRAFT_FORMAT } from '../js/record-input.mjs';
-import { readZip } from '../js/zip-archive.mjs';
+import { readZipSource } from '../js/zip-stream.mjs';
 import { AUTH_PASSWORD, installAuth } from './helpers/auth.mjs';
 
 let root;
@@ -228,8 +228,8 @@ test('remote 模式可通过登录会话和令牌导出、导入完整备份', a
     const exported = await request({ pathname: '/api/travel-data', headers: { Cookie: cookie } });
     assert.equal(exported.status, 200);
     assert.match(exported.headers['content-type'], /application\/zip/);
-    assert.equal(readZip(exported.body).some(entry => entry.name === created.desc_md), true);
-    assert.equal(readZip(exported.body).some(entry => entry.name === '.secrets/auth.json'), true);
+    assert.equal((await readZipSource(exported.body)).some(entry => entry.name === created.desc_md), true);
+    assert.equal((await readZipSource(exported.body)).some(entry => entry.name === '.secrets/auth.json'), true);
 
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
     const missingToken = await request({

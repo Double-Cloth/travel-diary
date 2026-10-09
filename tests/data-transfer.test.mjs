@@ -80,7 +80,7 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
     input.files = [{ name: 'too-large.zip', size: MAXIMUM_ARCHIVE_BYTES + 1 }];
     await input.events.change();
     assert.equal(confirmation.open, false);
-    assert.match(output.textContent, /不能超过 2048 MiB/);
+    assert.match(output.textContent, /不能超过 102400 MiB/);
 });
 
 test('导出和导入都要求写入 API，静态页面不提供全部数据备份', async t => {

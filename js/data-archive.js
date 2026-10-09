@@ -1,6 +1,7 @@
 const fs = require('fs/promises');
 const path = require('path');
 const { randomBytes } = require('crypto');
+const { fileSource, writeSource } = require('./file-stream.js');
 const { AUTH_RELATIVE_PATH, validateAuthConfig } = require('./auth.js');
 
 const DEFAULT_PROFILE_PICTURE = Buffer.from(
@@ -70,7 +71,7 @@ async function collectFiles(directory, prefix = 'data') {
         const stat = await fs.lstat(filePath);
         if (stat.isSymbolicLink()) throw failure(403, `数据目录包含链接，无法导出：${archivePath}`);
         if (stat.isDirectory()) entries.push(...await collectFiles(filePath, archivePath));
-        else if (stat.isFile()) entries.push({ name: archivePath, data: await fs.readFile(filePath) });
+        else if (stat.isFile()) entries.push({ name: archivePath, data: await fileSource(filePath) });
         else throw failure(400, `数据目录包含不支持的文件类型：${archivePath}`);
     }
     return entries;
@@ -78,6 +79,7 @@ async function collectFiles(directory, prefix = 'data') {
 
 async function exportDataArchive(root) {
     const release = await acquireDataLock(root);
+    let handedOff = false;
     try {
         const dataDir = path.join(root, 'data');
         const stat = await fs.lstat(dataDir);
@@ -107,10 +109,14 @@ async function exportDataArchive(root) {
             throw failure(503, '认证配置无效，请先运行 npm run auth:set 创建新的访问密码。', error.code);
         }
         entries.push({ name: AUTH_RELATIVE_PATH, data: authData });
-        const { createZip } = await import('./zip-archive.mjs');
-        return Buffer.from(createZip(entries));
+        const { createZipStream, zipStreamSize } = await import('./zip-stream.mjs');
+        const size = zipStreamSize(entries);
+        const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs?v=20261009-stream-files-v2');
+        if (size > MAXIMUM_ARCHIVE_BYTES) throw failure(413, '完整备份不能超过 100 GiB。');
+        handedOff = true;
+        return { stream: createZipStream(entries), size, release };
     } finally {
-        await release();
+        if (!handedOff) await release();
     }
 }
 
@@ -126,7 +132,7 @@ async function validateImportedRecords(entries) {
     if (records.length > 10000) throw failure(400, '备份中的旅行记录不能超过 10000 条。');
     const markdownPaths = new Set();
     let missingMediaReferences = 0;
-    records.forEach((record, indexValue) => {
+    for (const [indexValue, record] of records.entries()) {
         const recordNumber = indexValue + 1;
         if (!record || typeof record !== 'object' || Array.isArray(record)) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项必须是对象。`);
@@ -158,7 +164,8 @@ async function validateImportedRecords(entries) {
         if (!files.has(markdownPath)) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项缺少正文文件。`);
         }
-        decodeUtf8(files.get(markdownPath), markdownPath);
+        const { readSourceText } = await import('./zip-stream.mjs');
+        decodeUtf8(await readSourceText(files.get(markdownPath)), markdownPath);
 
         const photoFolder = validateTextField(record, recordNumber, 'photo_folder');
         if (photoFolder && (!photoFolder.startsWith('data/photos/')
@@ -197,7 +204,7 @@ async function validateImportedRecords(entries) {
             }
             if (!files.has(`${videoFolder}/${video}`)) missingMediaReferences += 1;
         }
-    });
+    }
     return { missingMediaReferences };
 }
 
@@ -221,9 +228,14 @@ async function importDataArchive(root, archive, options = {}) {
     let movedData = false;
     let installedData = false;
     try {
-        const { readZip } = await import('./zip-archive.mjs');
+        const { readZipSource, readSourceText } = await import('./zip-stream.mjs');
         let entries;
-        try { entries = readZip(archive, { copy: false }); }
+        try {
+            entries = await readZipSource(archive);
+            for (const entry of entries) {
+                if (entry.name === 'data/travel_data.json' || entry.name === AUTH_RELATIVE_PATH) entry.data = await readSourceText(entry.data);
+            }
+        }
         catch (error) { throw failure(400, error.message); }
         const authEntries = entries.filter(entry => entry.name.toLocaleLowerCase('en-US') === AUTH_RELATIVE_PATH);
         if (authEntries.length > 1 || (authEntries.length === 1 && authEntries[0].name !== AUTH_RELATIVE_PATH)) {
@@ -249,7 +261,9 @@ async function importDataArchive(root, archive, options = {}) {
                 portablePaths.set(key, { name, isFile });
             }
         }
-        const validation = await validateImportedRecords(entries);
+        let validation;
+        try { validation = await validateImportedRecords(entries); }
+        catch (error) { throw failure(error.status || 400, error.message); }
         if (authEntry) {
             try {
                 validateAuthConfig(parseJsonFile(authEntry.data, AUTH_RELATIVE_PATH), {
@@ -270,7 +284,8 @@ async function importDataArchive(root, archive, options = {}) {
             if (entry.name === AUTH_RELATIVE_PATH) continue;
             const target = path.join(stageData, ...entry.name.slice('data/'.length).split('/'));
             await fs.mkdir(path.dirname(target), { recursive: true });
-            await fs.writeFile(target, entry.data, { flag: 'wx' });
+            try { await writeSource(target, entry.data); }
+            catch (error) { throw failure(error.status || (error.code ? 500 : 400), error.message); }
         }
         if (authEntry) {
             await fs.mkdir(stageSecrets, { recursive: true });

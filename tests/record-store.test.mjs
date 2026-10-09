@@ -6,7 +6,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHandler } from '../js/server.js';
 import { DRAFT_FORMAT, prepareRecord, readDraft } from '../js/record-input.mjs';
-import { createDraftArchive } from '../js/draft-archive.mjs';
+import { createDraftArchive, createDraftBlob } from '../js/draft-archive.mjs';
 import { MAXIMUM_ARCHIVE_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from '../js/file-limits.mjs';
 import { installAuth, login } from './helpers/auth.mjs';
 import { listenOnFetchSafePort } from './helpers/http.mjs';
@@ -146,6 +146,39 @@ test('ZIP 请求在读取媒体前按新上限拒绝超量声明', async () => {
     }
     assert.equal(await declaredRequest('/api/travel-records', MAXIMUM_RECORD_ARCHIVE_BYTES + 1), 413);
     assert.equal(await declaredRequest('/api/travel-data', MAXIMUM_ARCHIVE_BYTES + 1), 413);
+});
+
+test('ZIP64 媒体 CRC 损坏会回滚文件；上传期间注销会话则拒绝写入并清理临时文件', async () => {
+    const previous = await readIndex();
+    const value = draft('8', { locality: '流式回滚', desc_md: 'data/travel-diary/2026/2026-09-10-stream-rollback.md' });
+    value.uploads = [{ id: '3'.repeat(32), name: 'river.png', data: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=', 'base64') }];
+    const archive = Buffer.from(await (await createDraftBlob(value)).arrayBuffer());
+    const damaged = Buffer.from(archive);
+    const localOffset = damaged.indexOf(Buffer.from([0x50, 0x4b, 3, 4]), 4);
+    const view = new DataView(damaged.buffer, damaged.byteOffset, damaged.length);
+    const dataStart = localOffset + 30 + view.getUint16(localOffset + 26, true) + view.getUint16(localOffset + 28, true);
+    damaged[dataStart + value.uploads[0].data.length - 1] ^= 255;
+    const rejected = await fetch(`${base}/api/travel-records`, {
+        method: 'POST', headers: { 'Content-Type': 'application/zip', Cookie: cookie, 'X-Travel-Token': token, Origin: base }, body: damaged
+    });
+    assert.equal(rejected.status, 400);
+    assert.match((await rejected.json()).error, /校验失败/);
+    const authorization = await login(base);
+    const request = http.request(`${base}/api/travel-records`, {
+        method: 'POST', agent: false,
+        headers: { 'Content-Type': 'application/zip', 'Content-Length': archive.length, Cookie: authorization.cookie, 'X-Travel-Token': authorization.token, Origin: base }
+    });
+    const response = new Promise((resolve, reject) => {
+        request.on('response', result => { result.resume(); result.on('end', () => resolve(result.statusCode)); });
+        request.on('error', reject);
+    });
+    request.write(archive.subarray(0, 8));
+    assert.equal((await fetch(`${base}/api/travel-auth`, { method: 'DELETE', headers: { Cookie: authorization.cookie, Origin: base } })).status, 200);
+    request.end(archive.subarray(8));
+    assert.equal(await response, 401);
+    assert.deepEqual(await readIndex(), previous);
+    assert.equal((await fs.readdir(root)).some(name => name.startsWith('.travel-upload-')), false);
+    await assert.rejects(fs.stat(path.join(root, value.input.desc_md)), { code: 'ENOENT' });
 });
 
 test('写入服务声明支持新增、修改与删除方法', async () => {

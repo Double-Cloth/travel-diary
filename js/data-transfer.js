@@ -1,6 +1,6 @@
 import { createPasswordGate } from './record-password.js?v=20260914-auth-setup-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -195,7 +195,7 @@ export function createDataTransfer(onImported) {
             headers,
             body: file,
             credentials: 'same-origin',
-            signal: AbortSignal.timeout(15 * 60 * 1000)
+            signal: AbortSignal.timeout(8 * 60 * 60 * 1000)
         });
         let result;
         try { result = await response.json(); }
