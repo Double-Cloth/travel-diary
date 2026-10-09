@@ -2,6 +2,19 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadBrowserModule } from './helpers/browser-modules.mjs';
 import { MAXIMUM_ARCHIVE_BYTES } from '../js/file-limits.mjs';
+import { createZip } from '../js/zip-archive.mjs';
+import { AUTH_CONFIG, AUTH_PASSWORD } from './helpers/auth.mjs';
+
+function backupFile(entries = [{ name: 'data/travel_data.json', data: '[]' }]) {
+    return Object.assign(new Blob([createZip(entries)]), { name: 'backup.zip' });
+}
+
+async function waitForDialog(dialog) {
+    for (let attempt = 0; attempt < 100 && !dialog.open; attempt += 1) {
+        await new Promise(resolve => setImmediate(resolve));
+    }
+    assert.equal(dialog.open, true);
+}
 
 const { createDataTransfer } = await loadBrowserModule(new URL('../js/data-transfer.js', import.meta.url));
 
@@ -60,9 +73,9 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
     }
     async function importFile() {
         await authorizeImport();
-        input.files = [{ name: 'backup.zip', size: 513 * 1024 * 1024 }];
+        input.files = [backupFile()];
         const pending = input.events.change();
-        assert.equal(confirmation.open, true);
+        await waitForDialog(confirmation);
         confirmation.events.click({ target: { closest: selector => selector === '[data-import-confirm]' } });
         await pending;
         assert.equal(success.open, true);
@@ -179,8 +192,9 @@ test('导入缺少媒体文件的备份后提示缺失数量但保留旅行数�
         });
     }
     await new Promise(resolve => setImmediate(resolve));
-    input.files = [{ name: 'backup.zip' }];
+    input.files = [backupFile()];
     const pending = input.events.change();
+    await waitForDialog(confirmation);
     confirmation.events.click({ target: { closest: selector => selector === '[data-import-confirm]' } });
     await pending;
 
@@ -227,4 +241,93 @@ test('清空全部数据使用认证令牌并在服务端成功后刷新页面�
     assert.deepEqual(result, { refreshFailed: false });
     assert.equal(refreshed, 1);
     assert.equal(output.textContent, '');
+});
+
+test('新备份先确认覆盖风险，再验证备份密码；错误可重试，取消后可重新导入', async t => {
+    const nodes = [];
+    const output = { textContent: '', focus() {} };
+    function node() {
+        const children = new Map();
+        return {
+            events: {}, open: false,
+            classList: { add() {}, remove() {}, toggle() {} },
+            setAttribute() {}, focus() {}, click() {},
+            addEventListener(name, handler) { this.events[name] = handler; },
+            querySelectorAll() { return []; },
+            querySelector(selector) {
+                if (!children.has(selector)) children.set(selector, node());
+                return children.get(selector);
+            },
+            showModal() { this.open = true; }, close() { this.open = false; }
+        };
+    }
+    const previous = { document: globalThis.document, window: globalThis.window, fetch: globalThis.fetch, requestAnimationFrame: globalThis.requestAnimationFrame };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.document = {
+        createElement() { const element = node(); nodes.push(element); return element; },
+        body: { append() {} }, querySelector: () => output, activeElement: null
+    };
+    globalThis.window = { location: { href: 'https://diary.example/' } };
+    globalThis.requestAnimationFrame = callback => callback();
+    let uploads = 0;
+    let refreshed = 0;
+    globalThis.fetch = async (_, options) => {
+        if (options?.headers?.['Content-Type'] !== 'application/zip') {
+            return { ok: true, json: async () => ({ service: 'travel-diary-writer-v1', authenticated: true, token: 'test', methods: ['POST', 'PUT', 'DELETE'] }) };
+        }
+        uploads += 1;
+        assert.equal(options.headers['X-Travel-Current-Password'], AUTH_PASSWORD);
+        const valid = options.headers['X-Travel-Backup-Password'] === '590247';
+        return { ok: valid, json: async () => valid ? { imported: true, authPreserved: false } : { error: '备份密码不正确。' } };
+    };
+    const transfer = createDataTransfer(async () => { refreshed += 1; });
+    const [input, confirmation, success, currentGate, backupGate] = nodes;
+    const digits = (gate, password) => {
+        for (const digit of password) gate.events.click({
+            target: { closest: selector => selector === '[data-password-key]' ? { dataset: { passwordKey: digit } } : null }
+        });
+    };
+    const begin = async () => {
+        await transfer.chooseImport();
+        assert.equal(currentGate.open, true);
+        digits(currentGate, AUTH_PASSWORD);
+        await new Promise(resolve => setImmediate(resolve));
+        input.files = [backupFile([
+            { name: 'data/travel_data.json', data: '[]' },
+            { name: '.secrets/auth.json', data: JSON.stringify(AUTH_CONFIG) }
+        ])];
+        const pending = input.events.change();
+        await waitForDialog(confirmation);
+        assert.match(confirmation.querySelector('#dataImportConfirmDescription').textContent, /覆盖全部日记.*无法撤销/);
+        assert.equal(backupGate.open, false);
+        return { pending };
+    };
+    const first = await begin();
+    assert.equal(uploads, 0);
+    confirmation.events.click({ target: { closest: selector => selector === '[data-import-confirm]' } });
+    await waitForDialog(backupGate);
+    assert.equal(uploads, 0);
+    digits(backupGate, AUTH_PASSWORD);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(backupGate.open, true);
+    assert.match(backupGate.querySelector('[data-password-status]').textContent, /备份密码不正确/);
+    assert.equal(refreshed, 0);
+    digits(backupGate, '590247');
+    await first.pending;
+    assert.equal(refreshed, 1);
+    assert.equal(success.open, true);
+    assert.match(success.querySelector('#dataImportSuccessDescription').textContent, /访问密码已恢复为备份中的密码/);
+    success.close();
+
+    const second = await begin();
+    confirmation.events.click({ target: { closest: selector => selector === '[data-import-confirm]' } });
+    await waitForDialog(backupGate);
+    backupGate.events.cancel({ preventDefault() {} });
+    await second.pending;
+    assert.equal(uploads, 2);
+    assert.equal(output.textContent, '');
+    const third = await begin();
+    confirmation.events.cancel({ preventDefault() {} });
+    await third.pending;
+    assert.equal(uploads, 2);
 });

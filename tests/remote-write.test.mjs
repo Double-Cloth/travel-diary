@@ -246,6 +246,8 @@ test('remote 模式可通过登录会话和令牌导出、导入完整备份', a
         headers: {
             'Content-Type': 'application/zip',
             'X-Travel-Token': token,
+            'X-Travel-Current-Password': AUTH_PASSWORD,
+            'X-Travel-Backup-Password': AUTH_PASSWORD,
             Cookie: cookie
         },
         body: exported.body

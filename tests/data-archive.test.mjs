@@ -12,7 +12,7 @@ async function readZip(bytes) {
     for (const entry of entries) entry.data = await readSourceText(entry.data);
     return entries;
 }
-import { AUTH_CONFIG, installAuth } from './helpers/auth.mjs';
+import { AUTH_CONFIG, AUTH_PASSWORD, installAuth } from './helpers/auth.mjs';
 
 const require = createRequire(import.meta.url);
 const { clearTravelData, exportDataArchive: exportStream, importDataArchive } = require('../js/data-archive.js');
@@ -81,7 +81,7 @@ test('完整 ZIP 包含 data 与认证配置，并可恢复访问密码', async 
         'data/videos/suzhou/walk.mp4'
     ]);
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
-    const result = await importDataArchive(root, archive, { requireProductionAuth: true });
+    const result = await importDataArchive(root, archive, { requireProductionAuth: true, backupPassword: AUTH_PASSWORD });
     assert.deepEqual(result, { files: 5, authPreserved: false, missingMediaReferences: 0 });
     assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
     assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, record.photos[0])), Buffer.from([1, 2, 3]));
@@ -99,9 +99,31 @@ test('扉页署名文件随全部数据导出并可导入恢复', async t => {
     assert.equal((await readZip(archive)).some(entry => entry.name === 'data/profile/owner-name.txt'), true);
 
     await fs.rm(path.join(root, 'data/profile/owner-name.txt'));
-    const result = await importDataArchive(root, archive);
+    const result = await importDataArchive(root, archive, { backupPassword: AUTH_PASSWORD });
     assert.equal(result.files, 3);
     assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '山川过客');
+});
+
+test('解包后再次核对导入授权，失效时保留原数据并清理暂存文件', async t => {
+    const root = await fixture(t);
+    await fs.mkdir(path.join(root, 'data/profile'), { recursive: true });
+    await fs.writeFile(path.join(root, 'data/profile/owner-name.txt'), '当前署名');
+    const archive = createZip([
+        { name: 'data/travel_data.json', data: '[]' },
+        { name: 'data/profile/owner-name.txt', data: '备份署名' },
+        { name: '.secrets/auth.json', data: JSON.stringify(AUTH_CONFIG) }
+    ]);
+    let checks = 0;
+    await assert.rejects(importDataArchive(root, archive, {
+        backupPassword: AUTH_PASSWORD,
+        authorize() {
+            checks += 1;
+            if (checks === 2) throw Object.assign(new Error('登录会话已失效'), { status: 401 });
+        }
+    }), error => error.status === 401);
+    assert.equal(checks, 2);
+    assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '当前署名');
+    assert.equal((await fs.readdir(root)).some(name => name.startsWith('.travel-')), false);
 });
 
 test('清空全部数据会重建空目录与默认头像并保留认证配置', async t => {

@@ -2,7 +2,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const { randomBytes } = require('crypto');
 const { fileSource, writeSource } = require('./file-stream.js');
-const { AUTH_RELATIVE_PATH, validateAuthConfig } = require('./auth.js');
+const { AUTH_RELATIVE_PATH, validateAuthConfig, verifyPassword } = require('./auth.js');
 
 const DEFAULT_PROFILE_PICTURE = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=',
@@ -228,6 +228,7 @@ async function importDataArchive(root, archive, options = {}) {
     let movedData = false;
     let installedData = false;
     try {
+        await options.authorize?.();
         const { readZipSource, readSourceText } = await import('./zip-stream.mjs');
         let entries;
         try {
@@ -265,13 +266,17 @@ async function importDataArchive(root, archive, options = {}) {
         try { validation = await validateImportedRecords(entries); }
         catch (error) { throw failure(error.status || 400, error.message); }
         if (authEntry) {
+            let backupConfig;
             try {
-                validateAuthConfig(parseJsonFile(authEntry.data, AUTH_RELATIVE_PATH), {
+                backupConfig = validateAuthConfig(parseJsonFile(authEntry.data, AUTH_RELATIVE_PATH), {
                     requireProduction: options.requireProductionAuth === true
                 });
             } catch (error) {
                 if (error.status) throw error;
                 throw failure(400, `备份中的 ${AUTH_RELATIVE_PATH} 无效。`, error.code);
+            }
+            if (!await verifyPassword(backupConfig, options.backupPassword)) {
+                throw failure(403, '备份密码不正确，请输入导出这份备份时使用的访问密码。', 'BACKUP_PASSWORD_INVALID');
             }
         } else {
             await validateCurrentAuth(root, options);
@@ -291,6 +296,7 @@ async function importDataArchive(root, archive, options = {}) {
             await fs.mkdir(stageSecrets, { recursive: true });
             await fs.writeFile(path.join(stageSecrets, 'auth.json'), authEntry.data, { flag: 'wx', mode: 0o600 });
         }
+        await options.authorize?.();
         const currentStat = await fs.lstat(currentData);
         if (currentStat.isSymbolicLink() || !currentStat.isDirectory()) {
             throw failure(403, '当前 data 必须是项目内的普通目录。');

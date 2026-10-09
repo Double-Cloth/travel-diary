@@ -19,8 +19,8 @@ const MAXIMUM_PROFILE_BYTES = 8 * 1024 * 1024;
 const MAXIMUM_PROFILE_IMAGE_BYTES = 6 * 1024 * 1024;
 const MAXIMUM_OWNER_NAME_LENGTH = 24;
 
-function failure(status, message) {
-    return Object.assign(new Error(message), { status });
+function failure(status, message, code) {
+    return Object.assign(new Error(message), { status, ...(code ? { code } : {}) });
 }
 
 const LOOPBACK_ADDRESSES = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1']);
@@ -1044,6 +1044,7 @@ function createRecordApi(root, options = {}) {
                 send(403, { error: '数据操作凭据无效，请刷新页面后重试。' });
                 return;
             }
+            let importAttemptReserved = false;
             try {
                 if (req.method === 'GET' || req.method === 'HEAD') {
                     const archive = await exportDataArchive(root);
@@ -1064,15 +1065,30 @@ function createRecordApi(root, options = {}) {
                 if (req.method === 'POST' && hasMediaType(req, 'application/zip')) {
                     const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs?v=20261009-stream-files-v2');
                     declaredBodyLength(req, MAXIMUM_ARCHIVE_BYTES);
+                    // 导入失败独立限速，避免重新登录清除备份密码的失败计数。
+                    const state = failureState('data-import');
+                    if (state.count + state.active >= MAXIMUM_LOGIN_FAILURES) {
+                        const retryAfter = Math.max(1, Math.ceil((state.startedAt + LOGIN_FAILURE_WINDOW - Date.now()) / 1000));
+                        send(429, { error: '导入密码验证失败次数过多，请稍后重试。', code: 'AUTH_RATE_LIMITED', retryAfter }, { 'Retry-After': String(retryAfter) });
+                        return;
+                    }
+                    failures.set('data-import', { ...state, active: state.active + 1 });
+                    importAttemptReserved = true;
+                    if (!await verifyPassword(authConfig, req.headers['x-travel-current-password'])) {
+                        throw failure(403, '当前密码不正确，请重新开始导入并验证当前密码。', 'CURRENT_PASSWORD_INVALID');
+                    }
                     const archive = await receiveArchive(root, req, MAXIMUM_ARCHIVE_BYTES);
                     let result;
                     try {
-                        await verifyUploadSession(req, host);
                         result = await importDataArchive(root, archive.source, {
-                            requireProductionAuth: writeMode === 'remote'
+                            requireProductionAuth: writeMode === 'remote',
+                            backupPassword: req.headers['x-travel-backup-password'],
+                            authorize: () => verifyUploadSession(req, host)
                         });
                     } finally { await archive.cleanup(); }
                     sessions.clear();
+                    finishLoginAttempt('data-import', 'success');
+                    importAttemptReserved = false;
                     send(200, { imported: true, ...result });
                     return;
                 }
@@ -1087,6 +1103,9 @@ function createRecordApi(root, options = {}) {
                 }
                 send(405, { error: '全部数据接口仅支持导入、导出或清空。' }, { Allow: 'GET, HEAD, POST, DELETE' });
             } catch (error) {
+                if (importAttemptReserved) {
+                    finishLoginAttempt('data-import', ['CURRENT_PASSWORD_INVALID', 'BACKUP_PASSWORD_INVALID'].includes(error.code) ? 'failure' : 'error');
+                }
                 if (res.headersSent) { res.destroy(error); return; }
                 send(error.status || 500, {
                     error: error.status ? error.message : '全部数据操作失败，请检查目录权限、磁盘空间和备份文件。',

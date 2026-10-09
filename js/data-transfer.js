@@ -1,6 +1,7 @@
-import { createPasswordGate } from './record-password.js?v=20260914-auth-setup-v1';
+import { createPasswordGate } from './record-password.js?v=20261009-backup-password-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
+import { readZipSource } from './zip-stream.mjs';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -29,11 +30,11 @@ export function createDataTransfer(onImported) {
             </div>
             <p class="journal-label">全部数据导入</p>
             <h2 id="dataImportConfirmTitle">替换当前旅行数据？</h2>
-            <p class="data-import-confirm-note" id="dataImportConfirmDescription">将替换全部日记、照片、视频、头像和署名。备份包含认证配置时，访问密码也会恢复为备份中的密码；旧备份不含认证配置时保留当前密码。请先备份当前数据。</p>
+            <p class="data-import-confirm-note" id="dataImportConfirmDescription"></p>
             <p class="data-import-confirm-file">已选择 <strong data-import-file-name></strong></p>
             <div class="data-import-confirm-actions">
                 <button class="paper-button" type="button" data-import-cancel>暂不导入</button>
-                <button class="paper-button data-import-confirm-submit" type="button" data-import-confirm>确认导入</button>
+                <button class="paper-button data-import-confirm-submit" type="button" data-import-confirm>确认覆盖并继续</button>
             </div>
         </div>`;
     document.body.append(dialog);
@@ -60,6 +61,7 @@ export function createDataTransfer(onImported) {
     let busy = false;
     let importTrigger;
     let importCapability;
+    let importCurrentPassword = '';
     let confirmationResolver;
 
     async function getExportHref(authenticatedCapability = null) {
@@ -119,19 +121,34 @@ export function createDataTransfer(onImported) {
         }
     }
 
-    function chooseImportWithAuthorization(capability) {
+    function chooseImportWithAuthorization(capability, context, password) {
         if (busy) return;
         importCapability = capability;
+        importCurrentPassword = password;
         importTrigger = document.activeElement;
         input.click();
     }
 
     const requestImportAuthorization = createPasswordGate(chooseImportWithAuthorization, {
         title: '导入数据验证',
-        description: '输入当前的 6 位数字密码后选择备份。备份中的密码配置也会一并恢复。',
+        description: '第 1 步：验证当前的 6 位数字密码后选择备份。含认证配置的备份还需验证备份密码。',
         verifying: '正在验证并选择备份…',
         actionError: '无法开始导入，请重试。',
         staticMessage: '当前站点为静态只读页面，不提供全部数据导入。'
+    });
+
+    const requestBackupAuthorization = createPasswordGate((result, context) => context.resolve(result), {
+        title: '验证备份密码',
+        description: '第 2 步：输入导出这份备份时使用的 6 位数字访问密码。验证成功后将覆盖当前数据，并恢复备份密码。',
+        verifying: '正在验证备份密码并导入，请勿关闭页面…',
+        verifyPassword: (password, context) => uploadArchive(context.file, context.token, context.currentPassword, password),
+        onCancel: context => context?.resolve(null)
+    });
+
+    input.addEventListener('cancel', () => {
+        importCapability = undefined;
+        importCurrentPassword = '';
+        restoreImportFocus();
     });
 
     async function chooseImport() {
@@ -175,9 +192,14 @@ export function createDataTransfer(onImported) {
         resolve(confirmed);
     }
 
-    function confirmImport(file) {
+    function confirmImport(file, hasBackupPassword) {
         if (dialog.open || confirmationResolver) return Promise.resolve(false);
         dialog.querySelector('[data-import-file-name]').textContent = file.name;
+        dialog.querySelector('#dataImportConfirmDescription').textContent =
+            '导入会覆盖全部日记、照片、视频、头像和署名，当前备份中没有的数据也会被删除，无法撤销。请先导出当前数据留作备份。'
+            + (hasBackupPassword
+                ? '继续后还需验证备份密码，成功后访问密码也会恢复为备份密码。'
+                : '这是一份不含认证配置的旧备份，无法验证备份密码；导入后保留当前密码。');
         return new Promise(resolve => {
             confirmationResolver = resolve;
             dialog.showModal();
@@ -185,10 +207,12 @@ export function createDataTransfer(onImported) {
         });
     }
 
-    async function uploadArchive(file, token) {
+    async function uploadArchive(file, token, currentPassword, backupPassword = '') {
         const headers = {
             'Content-Type': 'application/zip',
-            'X-Travel-Token': token
+            'X-Travel-Token': token,
+            'X-Travel-Current-Password': currentPassword,
+            'X-Travel-Backup-Password': backupPassword
         };
         const response = await fetch(new URL('api/travel-data', window.location.href), {
             method: 'POST',
@@ -200,7 +224,8 @@ export function createDataTransfer(onImported) {
         let result;
         try { result = await response.json(); }
         catch { throw new Error('全部数据导入返回了无法识别的结果。'); }
-        return { response, result };
+        if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
+        return result;
     }
 
     dialog.addEventListener('cancel', event => {
@@ -238,7 +263,9 @@ export function createDataTransfer(onImported) {
         const file = input.files[0];
         input.value = '';
         const capability = importCapability;
+        const currentPassword = importCurrentPassword;
         importCapability = undefined;
+        importCurrentPassword = '';
         if (!file || busy) return;
         if (file.size > MAXIMUM_ARCHIVE_BYTES) {
             setStatus(`全部数据 ZIP 备份不能超过 ${MAXIMUM_ARCHIVE_BYTES / 1024 / 1024} MiB，请使用文件系统备份恢复更大的档案。`);
@@ -246,11 +273,17 @@ export function createDataTransfer(onImported) {
         }
         busy = true;
         try {
-            if (!await confirmImport(file)) return;
+            const entries = await readZipSource(file);
+            const hasBackupPassword = entries.some(entry => entry.name.toLowerCase() === '.secrets/auth.json');
+            if (!await confirmImport(file, hasBackupPassword)) return;
             setStatus('正在校验备份并导入数据…');
             const token = writerToken(capability);
-            const { response, result } = await uploadArchive(file, token);
-            if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
+            const result = hasBackupPassword
+                ? await new Promise((resolve, reject) => {
+                    void requestBackupAuthorization({ file, token, currentPassword, resolve }).catch(reject);
+                })
+                : await uploadArchive(file, token, currentPassword);
+            if (!result) { setStatus(''); return; }
             try { await onImported(); }
             catch {
                 setStatus('数据已导入，页面刷新失败。请手动刷新后查看。');

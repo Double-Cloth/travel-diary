@@ -112,6 +112,7 @@ export function createPasswordGate(onVerified, options = {}) {
 
     function close() {
         if (verifying) return;
+        const cancelledContext = pendingContext;
         dialog.close();
         reset();
         firstPassword = '';
@@ -119,6 +120,7 @@ export function createPasswordGate(onVerified, options = {}) {
         updatePrompt();
         pendingContext = undefined;
         restoreTriggerFocus();
+        options.onCancel?.(cancelledContext);
     }
 
     function showError(message) {
@@ -152,7 +154,7 @@ export function createPasswordGate(onVerified, options = {}) {
         try {
             capability = mode === 'setup-confirm'
                 ? await initializeWriterPassword(password)
-                : await authenticateWriter(password);
+                : await (options.verifyPassword || authenticateWriter)(password, pendingContext);
         } catch (error) {
             const feedback = authConfigurationFeedback(error);
             if (feedback) {
@@ -187,7 +189,7 @@ export function createPasswordGate(onVerified, options = {}) {
         pendingContext = undefined;
         restoreTriggerFocus();
         try {
-            await onVerified(capability, verifiedContext);
+            await onVerified(capability, verifiedContext, password);
         } catch (error) {
             void showFeedback(error?.message || copy.actionError, { label: '访问验证', title: '操作未完成' });
         }
@@ -243,7 +245,7 @@ export function createPasswordGate(onVerified, options = {}) {
         probing = true;
         let setupRequired = false;
         try {
-            await probeWriterService();
+            if (!options.verifyPassword) await probeWriterService();
         } catch (error) {
             if (error?.code === 'AUTH_SETUP_REQUIRED') {
                 setupRequired = true;

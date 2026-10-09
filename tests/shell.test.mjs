@@ -281,7 +281,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261009-stream-files-v2');
+    assert.equal(appVersion, '20261009-backup-password-v1');
     assert.ok(cssVersion);
     assert.match(appJs, /\.\/record-editor\.js\?v=20261009-stream-files-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
@@ -309,7 +309,7 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
 });
 
 test('静态页面免密码打开只读编辑器，动态环境必须先通过服务端口令验证', () => {
-    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20260920-password-change-v1';/);
+    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20261009-backup-password-v1';/);
     assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability\)/);
     assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}\)/);
     assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}\)/);
@@ -325,7 +325,7 @@ test('静态页面免密码打开只读编辑器，动态环境必须先通过�
     assert.match(writerCapabilityJs, /result\?\.service === 'travel-diary-static-v1' && result\.readonly === true/);
     assert.match(writerCapabilityJs, /'WRITER_UNREACHABLE'/);
     assert.match(writerCapabilityJs, /'WRITER_INVALID_RESPONSE'/);
-    assert.match(recordPasswordJs, /authenticateWriter\(password\)/);
+    assert.match(recordPasswordJs, /options\.verifyPassword \|\| authenticateWriter/);
     assert.match(recordPasswordJs, /const PASSWORD_LENGTH = 6/);
     assert.match(recordPasswordJs, /data-password-key/);
     assert.doesNotMatch(recordPasswordJs, /data\/password\.json/);
@@ -338,7 +338,7 @@ test('新增和修改记录使用独立编辑器实例并生成互不重复的�
     assert.match(appJs, /const openUpdateEditor = createRecordEditor\(handleRecordSaved, getRecords\);/);
     assert.match(appJs, /const requestEditAuthorization = createPasswordGate\(\(capability, record\) => openUpdateEditor\(record, capability\),/);
     assert.doesNotMatch(appJs, /pendingEditRecord/);
-    assert.match(recordPasswordJs, /await onVerified\(capability, verifiedContext\)/);
+    assert.match(recordPasswordJs, /await onVerified\(capability, verifiedContext, password\)/);
     assert.match(recordEditorJs, /let recordEditorCount = 0;/);
     assert.match(recordEditorJs, /const editorIndex = \+\+recordEditorCount;/);
     assert.match(recordEditorJs, /const editorId = suffix => `recordEditor\$\{editorIndex\}\$\{suffix\}`;/);
@@ -448,10 +448,10 @@ test('全部数据导入使用站内确认对话框而不是浏览器 confirm', 
     assert.doesNotMatch(dataTransferJs, /window\.confirm|\bconfirm\(/);
     assert.match(dataTransferJs, /dialog\.className = 'data-import-confirm entry-sheet'/);
     assert.match(dataTransferJs, /dialog\.showModal\(\)/);
-    assert.match(dataTransferJs, /访问密码也会恢复为备份中的密码/);
+    assert.match(dataTransferJs, /访问密码也会恢复为备份密码/);
     assert.match(dataTransferJs, /data-import-cancel/);
     assert.match(dataTransferJs, /data-import-confirm/);
-    assert.match(dataTransferJs, /await confirmImport\(file\)/);
+    assert.match(dataTransferJs, /await confirmImport\(file, hasBackupPassword\)/);
     assert.match(journalCss, /dialog\.data-import-confirm\.entry-sheet/);
     assert.match(journalCss, /\.data-import-confirm-actions\s*{/);
 });
@@ -468,9 +468,10 @@ test('全部数据导入成功后使用站内结果弹窗而不是状态文字',
     assert.match(journalCss, /\.data-import-success-actions\s*{/);
 });
 
-test('全部数据导入说明恢复认证配置且不传输密码头', () => {
-    assert.match(dataTransferJs, /备份中的密码配置也会一并恢复/);
-    assert.doesNotMatch(dataTransferJs, /X-Travel-(?:Current|Import)-Password/);
+test('全部数据导入分别提交当前密码和备份密码，由服务端校验后恢复认证配置', () => {
+    assert.match(dataTransferJs, /验证备份密码/);
+    assert.match(dataTransferJs, /X-Travel-Current-Password/);
+    assert.match(dataTransferJs, /X-Travel-Backup-Password/);
     assert.match(recordStoreJs, /receiveArchive\(root, req, MAXIMUM_ARCHIVE_BYTES\)/);
     assert.match(authJs, /algorithm: 'scrypt'/);
     assert.match(authJs, /PASSWORD_LENGTH = 6/);
@@ -524,7 +525,7 @@ test('个人主页提供经二次确认和密码验证保护的全部数据清�
 
 test('全部数据导入先建立服务端会话并提交双重写入凭据', () => {
     assert.match(dataTransferJs, /createPasswordGate\(chooseImportWithAuthorization/);
-    assert.match(dataTransferJs, /输入当前的 6 位数字密码后选择备份/);
+    assert.match(dataTransferJs, /验证当前的 6 位数字密码后选择备份/);
     assert.match(dataTransferJs, /X-Travel-Token/);
     assert.match(dataTransferJs, /credentials: 'same-origin'/);
     assert.match(recordStoreJs, /travel_session/);
