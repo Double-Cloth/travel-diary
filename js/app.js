@@ -4266,7 +4266,7 @@ function renderPhotoSleeve(record, options = {}) {
             ${media.map((item, index) => `
                 <button class="photo-sleeve-button${item.kind === 'video' ? ' photo-sleeve-video' : ''}" type="button" data-action="open-media-viewer" data-media-index="${index}" data-media-kind="${item.kind}" data-media-name="${escapeHtml(item.name)}" data-media-src="${escapeHtml(item.src)}" data-media-alt="${escapeHtml(item.alt)}" aria-label="打开${item.kind === 'video' ? '视频' : '图片'} ${escapeHtml(item.name)}">
                     ${item.kind === 'video'
-                        ? `<video src="${escapeHtml(item.src)}#t=0.1" muted playsinline preload="none" aria-hidden="true" tabindex="-1"></video><span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>`
+                        ? `<video src="${escapeHtml(item.src)}#t=0.1" muted playsinline preload="metadata" aria-hidden="true" tabindex="-1"></video><span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>`
                         : `<img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.alt)}" loading="lazy" decoding="async" fetchpriority="low">`}
                     <span class="photo-sleeve-media-error" role="status" hidden><strong>${item.kind === 'video' ? '视频不可用' : '图片不可用'}</strong><span>${escapeHtml(item.name)}</span><small>检查 travel_data.json</small></span>
                     <span class="photo-sleeve-index">${escapeHtml(String(index + 1).padStart(2, '0'))}</span>

@@ -281,7 +281,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261009-backup-password-v1');
+    assert.equal(appVersion, '20261010-video-cover-v1');
     assert.ok(cssVersion);
     assert.match(appJs, /\.\/record-editor\.js\?v=20261009-stream-files-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
