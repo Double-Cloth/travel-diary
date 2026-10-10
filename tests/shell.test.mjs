@@ -281,7 +281,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261010-video-cover-v1');
+    assert.equal(appVersion, '20261010-auth-context-v1');
     assert.ok(cssVersion);
     assert.match(appJs, /\.\/record-editor\.js\?v=20261009-stream-files-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
@@ -309,7 +309,7 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
 });
 
 test('静态页面免密码打开只读编辑器，动态环境必须先通过服务端口令验证', () => {
-    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20261009-backup-password-v1';/);
+    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20261010-auth-context-v1';/);
     assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability\)/);
     assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}\)/);
     assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}\)/);
@@ -325,7 +325,8 @@ test('静态页面免密码打开只读编辑器，动态环境必须先通过�
     assert.match(writerCapabilityJs, /result\?\.service === 'travel-diary-static-v1' && result\.readonly === true/);
     assert.match(writerCapabilityJs, /'WRITER_UNREACHABLE'/);
     assert.match(writerCapabilityJs, /'WRITER_INVALID_RESPONSE'/);
-    assert.match(recordPasswordJs, /options\.verifyPassword \|\| authenticateWriter/);
+    assert.match(recordPasswordJs, /await options\.verifyPassword\(password, pendingContext\)/);
+    assert.match(recordPasswordJs, /await authenticateWriter\(password\)/);
     assert.match(recordPasswordJs, /const PASSWORD_LENGTH = 6/);
     assert.match(recordPasswordJs, /data-password-key/);
     assert.doesNotMatch(recordPasswordJs, /data\/password\.json/);

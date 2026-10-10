@@ -1,4 +1,4 @@
-import { createPasswordGate } from './record-password.js?v=20261009-backup-password-v1';
+import { createPasswordGate } from './record-password.js?v=20261010-auth-context-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { readZipSource } from './zip-stream.mjs';

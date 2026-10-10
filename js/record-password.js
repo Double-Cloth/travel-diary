@@ -154,7 +154,9 @@ export function createPasswordGate(onVerified, options = {}) {
         try {
             capability = mode === 'setup-confirm'
                 ? await initializeWriterPassword(password)
-                : await (options.verifyPassword || authenticateWriter)(password, pendingContext);
+                : (options.verifyPassword
+                    ? await options.verifyPassword(password, pendingContext)
+                    : await authenticateWriter(password));
         } catch (error) {
             const feedback = authConfigurationFeedback(error);
             if (feedback) {
