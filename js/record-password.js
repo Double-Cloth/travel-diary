@@ -247,6 +247,7 @@ export function createPasswordGate(onVerified, options = {}) {
         probing = true;
         let setupRequired = false;
         try {
+            if (typeof options.beforePrompt === 'function' && !await options.beforePrompt(context)) return;
             if (!options.verifyPassword) await probeWriterService();
         } catch (error) {
             if (error?.code === 'AUTH_SETUP_REQUIRED') {
@@ -274,7 +275,6 @@ export function createPasswordGate(onVerified, options = {}) {
         } finally {
             probing = false;
         }
-        if (typeof options.beforePrompt === 'function' && !await options.beforePrompt(context)) return;
         pendingContext = context;
         firstPassword = '';
         mode = setupRequired ? 'setup-first' : 'login';

@@ -1,4 +1,4 @@
-import { createPasswordGate } from './record-password.js?v=20261010-auth-context-v1';
+import { createPasswordGate } from './record-password.js?v=20261013-danger-first-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { readZipSource } from './zip-stream.mjs';
@@ -31,7 +31,7 @@ export function createDataTransfer(onImported) {
             <p class="journal-label">全部数据导入</p>
             <h2 id="dataImportConfirmTitle">替换当前旅行数据？</h2>
             <p class="data-import-confirm-note" id="dataImportConfirmDescription"></p>
-            <p class="data-import-confirm-file">已选择 <strong data-import-file-name></strong></p>
+            <p class="data-import-confirm-file" data-import-file-summary>已选择 <strong data-import-file-name></strong></p>
             <div class="data-import-confirm-actions">
                 <button class="paper-button" type="button" data-import-cancel>暂不导入</button>
                 <button class="paper-button data-import-confirm-submit" type="button" data-import-confirm>确认覆盖并继续</button>
@@ -134,7 +134,8 @@ export function createDataTransfer(onImported) {
         description: '验证当前的 6 位数字密码后选择备份。',
         verifying: '正在验证并选择备份…',
         actionError: '无法开始导入，请重试。',
-        staticMessage: '当前站点为静态只读页面，不提供全部数据导入。'
+        staticMessage: '当前站点为静态只读页面，不提供全部数据导入。',
+        beforePrompt: () => confirmImport()
     });
 
     const requestBackupAuthorization = createPasswordGate((result, context) => context.resolve(result), {
@@ -192,14 +193,20 @@ export function createDataTransfer(onImported) {
         resolve(confirmed);
     }
 
-    function confirmImport(file, hasBackupPassword) {
+    function confirmImport(file = null, hasBackupPassword = false) {
         if (dialog.open || confirmationResolver) return Promise.resolve(false);
-        dialog.querySelector('[data-import-file-name]').textContent = file.name;
-        dialog.querySelector('#dataImportConfirmDescription').textContent =
-            '导入会覆盖全部日记、照片、视频、头像和署名，无法撤销。 '
-            + (hasBackupPassword
+        if (!file) importTrigger = document.activeElement;
+        dialog.querySelector('#dataImportConfirmTitle').textContent = file ? '核对所选备份' : '替换当前旅行数据？';
+        dialog.querySelector('[data-import-file-summary]').hidden = !file;
+        dialog.querySelector('[data-import-file-name]').textContent = file?.name || '';
+        dialog.querySelector('[data-import-confirm]').textContent = file
+            ? (hasBackupPassword ? '验证备份密码' : '确认导入')
+            : '继续验证';
+        dialog.querySelector('#dataImportConfirmDescription').textContent = file
+            ? (hasBackupPassword
                 ? '继续后还需验证备份密码，成功后访问密码也会恢复为备份密码。'
-                : '备份不含认证配置，无法验证备份密码，导入后保留当前密码。');
+                : '备份不含认证配置，无法验证备份密码，导入后保留当前密码。')
+            : '导入会覆盖全部日记、照片、视频、头像和署名，无法撤销。建议先导出完整备份。继续后需验证当前密码并选择备份；备份含认证配置时还需验证备份密码，导入后访问密码会恢复为备份密码。';
         return new Promise(resolve => {
             confirmationResolver = resolve;
             dialog.showModal();

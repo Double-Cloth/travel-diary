@@ -994,25 +994,29 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         event.returnValue = '';
     });
 
-    return async (record = null, writerAccess = null) => {
+    async function confirmDiscard(record = null) {
+        if (record?.descLoadFailed) throw new Error('这篇日记的正文加载失败，暂时不能安全修改。请修复正文文件后重试。');
+        const requestedRecordKey = record ? `record:${record.desc_md || record.id || ''}` : 'new';
+        const currentRecordKey = editingRecord ? `record:${editingRecord.desc_md || editingRecord.id || ''}` : 'new';
+        if (!initialized || saved || !dirty || requestedRecordKey === currentRecordKey) return true;
+        return confirmFeedback('打开另一条记录会清空当前未保存内容，且无法撤销。需要保留时，请取消并导出草稿。', {
+            label: '编辑器',
+            title: '编辑器中有未保存内容',
+            cancelLabel: '取消',
+            confirmLabel: '继续验证'
+        });
+    }
+
+    const openEditor = async (record = null, writerAccess = null, discardConfirmed = false) => {
         if (dialog.open || opening) return;
         opening = true;
         try {
+            if (!discardConfirmed && !await confirmDiscard(record)) return;
             if (record?.descLoadFailed) throw new Error('这篇日记的正文加载失败，暂时不能安全修改。请修复正文文件后重试。');
             trigger = document.activeElement;
             const requestedRecordKey = record ? `record:${record.desc_md || record.id || ''}` : 'new';
             const currentRecordKey = editingRecord ? `record:${editingRecord.desc_md || editingRecord.id || ''}` : 'new';
-            let shouldRender = !initialized || saved || requestedRecordKey !== currentRecordKey;
-            if (initialized && !saved && dirty && requestedRecordKey !== currentRecordKey) {
-                const confirmed = await confirmFeedback('打开另一条记录会清空当前未保存内容，且无法撤销。需要保留时，请取消并导出草稿。', {
-                    label: '编辑器',
-                    title: '编辑器中有未保存内容',
-                    cancelLabel: '取消',
-                    confirmLabel: '立即清空编辑器'
-                });
-                if (!confirmed) return;
-                shouldRender = true;
-            }
+            const shouldRender = !initialized || saved || requestedRecordKey !== currentRecordKey;
             if (shouldRender) {
                 if (!countries.length) {
                     const [countryResponse, chinaLocationResponse] = await Promise.all([
@@ -1038,4 +1042,9 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             opening = false;
         }
     };
+    openEditor.beforePrompt = record => {
+        if (dialog.open || opening) return Promise.resolve(false);
+        return confirmDiscard(record);
+    };
+    return openEditor;
 }

@@ -97,3 +97,89 @@ test('自定义备份密码验证仍接收密码和导入上下文', async t => 
     assert.deepEqual(verifiedArgs, [capability, context, '483920']);
     assert.equal(dialog.open, false);
 });
+
+test('点击先确认风险，取消及重复点击不探测服务，确认后才验证密码并执行原操作', async t => {
+    const nodes = installDialogEnvironment(t);
+    const requests = [];
+    const confirmations = [];
+    let finishConfirmation;
+    let verified;
+    globalThis.fetch = async (endpoint, options) => {
+        requests.push(endpoint.href);
+        return {
+            ok: true, status: 200,
+            json: async () => ({
+                service: 'travel-diary-writer-v1',
+                authenticated: options.method === 'POST',
+                token: options.method === 'POST' ? 'test-token' : undefined,
+                methods: ['POST', 'PUT', 'DELETE']
+            })
+        };
+    };
+    const open = createPasswordGate((...args) => { verified = args; }, {
+        beforePrompt: context => {
+            confirmations.push(context);
+            return new Promise(resolve => { finishConfirmation = resolve; });
+        }
+    });
+    const dialog = nodes.at(-1);
+    const original = { id: 'original' };
+    const ignored = { id: 'ignored' };
+    const cancelled = open(original);
+    assert.deepEqual(confirmations, [original]);
+    assert.equal(dialog.open, false);
+    assert.equal(requests.length, 0);
+    await open(ignored);
+    assert.deepEqual(confirmations, [original]);
+    finishConfirmation(false);
+    await cancelled;
+    assert.equal(requests.length, 0);
+    assert.equal(dialog.open, false);
+    assert.equal(verified, undefined);
+
+    const accepted = open(original);
+    finishConfirmation(true);
+    await accepted;
+    assert.equal(requests.length, 1);
+    assert.equal(dialog.open, true);
+    assert.equal(verified, undefined);
+    await enterPassword(dialog);
+    assert.equal(requests.length, 2);
+    assert.equal(verified[1], original);
+    assert.equal(dialog.open, false);
+
+    const reopened = open(ignored);
+    assert.deepEqual(confirmations, [original, original, ignored]);
+    assert.equal(dialog.open, false);
+    finishConfirmation(false);
+    await reopened;
+    assert.equal(requests.length, 2);
+});
+
+test('首次设密与静态只读处理都在危险确认之后', async t => {
+    const nodes = installDialogEnvironment(t);
+    for (const setupRequired of [true, false]) {
+        const events = [];
+        globalThis.fetch = async () => {
+            events.push('probe');
+            return {
+                ok: !setupRequired, status: setupRequired ? 409 : 200,
+                json: async () => setupRequired
+                    ? { service: 'travel-diary-writer-v1', code: 'AUTH_SETUP_REQUIRED' }
+                    : { service: 'travel-diary-static-v1', readonly: true }
+            };
+        };
+        const open = createPasswordGate(() => assert.fail('尚未输入密码，不应执行操作'), {
+            beforePrompt: () => { events.push('confirm'); return true; },
+            onStatic: () => { events.push('static'); }
+        });
+        const dialog = nodes.at(-1);
+        await open();
+        assert.deepEqual(events, setupRequired ? ['confirm', 'probe'] : ['confirm', 'probe', 'static']);
+        assert.equal(dialog.open, setupRequired);
+        if (setupRequired) {
+            assert.equal(dialog.querySelector('[data-password-note]').textContent, '请输入新的 6 位数字密码。');
+            dialog.events.cancel({ preventDefault() {} });
+        }
+    }
+});

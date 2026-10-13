@@ -16,6 +16,15 @@ async function waitForDialog(dialog) {
     assert.equal(dialog.open, true);
 }
 
+async function confirmImportRisk(transfer, confirmation) {
+    const pending = transfer.chooseImport();
+    assert.equal(confirmation.open, true);
+    assert.match(confirmation.querySelector('#dataImportConfirmDescription').textContent, /覆盖全部日记.*无法撤销/);
+    assert.equal(confirmation.querySelector('[data-import-file-summary]').hidden, true);
+    confirmation.events.click({ target: { closest: selector => selector === '[data-import-confirm]' } });
+    await pending;
+}
+
 const { createDataTransfer } = await loadBrowserModule(new URL('../js/data-transfer.js', import.meta.url));
 
 test('导入已提交但页面刷新失败时明确提示成功，正常重试刷新后清除旧提示', async t => {
@@ -59,7 +68,7 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
     const transfer = createDataTransfer(async () => { if (refreshFails) throw new Error('模拟刷新失败'); });
     const [input, confirmation, success, passwordDialog] = nodes;
     async function authorizeImport() {
-        await transfer.chooseImport();
+        await confirmImportRisk(transfer, confirmation);
         for (let index = 0; index < 6; index += 1) {
             passwordDialog.events.click({
                 target: {
@@ -98,7 +107,7 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
 
 test('导出和导入都要求写入 API，静态页面不提供全部数据备份', async t => {
     const nodes = [];
-    const output = { textContent: '' };
+    const output = { textContent: '', focus() {} };
     function node() {
         const children = new Map();
         return {
@@ -136,7 +145,8 @@ test('导出和导入都要求写入 API，静态页面不提供全部数据备�
     });
     const readonly = createDataTransfer(async () => {});
     await assert.rejects(readonly.getExportHref(), error => error.code === 'STATIC_READONLY');
-    await readonly.chooseImport();
+    const readonlyConfirmation = nodes.filter(item => item.className === 'data-import-confirm entry-sheet').at(-1);
+    await confirmImportRisk(readonly, readonlyConfirmation);
     const feedbackDialog = nodes.find(item => item.className === 'feedback-dialog entry-sheet');
     const readonlyPasswordDialog = nodes.filter(item => item.className === 'record-password entry-sheet').at(-1);
     assert.ok(feedbackDialog, '静态导入失败应创建站内反馈弹窗');
@@ -185,7 +195,7 @@ test('导入缺少媒体文件的备份后提示缺失数量但保留旅行数�
     const transfer = createDataTransfer(async () => {});
     const [input, confirmation, success, passwordDialog] = nodes;
 
-    await transfer.chooseImport();
+    await confirmImportRisk(transfer, confirmation);
     for (let index = 0; index < 6; index += 1) {
         passwordDialog.events.click({
             target: { closest: selector => selector === '[data-password-key]' ? { dataset: { passwordKey: '8' } } : null }
@@ -243,7 +253,7 @@ test('清空全部数据使用认证令牌并在服务端成功后刷新页面�
     assert.equal(output.textContent, '');
 });
 
-test('新备份先确认覆盖风险，再验证备份密码；错误可重试，取消后可重新导入', async t => {
+test('新备份先确认覆盖风险，再验证当前密码、核对文件和验证备份密码；错误可重试，取消后可重新导入', async t => {
     const nodes = [];
     const output = { textContent: '', focus() {} };
     function node() {
@@ -270,9 +280,12 @@ test('新备份先确认覆盖风险，再验证备份密码；错误可重试�
     globalThis.window = { location: { href: 'https://diary.example/' } };
     globalThis.requestAnimationFrame = callback => callback();
     let uploads = 0;
+    let probes = 0;
+    let selections = 0;
     let refreshed = 0;
     globalThis.fetch = async (_, options) => {
         if (options?.headers?.['Content-Type'] !== 'application/zip') {
+            probes += 1;
             return { ok: true, json: async () => ({ service: 'travel-diary-writer-v1', authenticated: true, token: 'test', methods: ['POST', 'PUT', 'DELETE'] }) };
         }
         uploads += 1;
@@ -282,13 +295,14 @@ test('新备份先确认覆盖风险，再验证备份密码；错误可重试�
     };
     const transfer = createDataTransfer(async () => { refreshed += 1; });
     const [input, confirmation, success, currentGate, backupGate] = nodes;
+    input.click = () => { selections += 1; };
     const digits = (gate, password) => {
         for (const digit of password) gate.events.click({
             target: { closest: selector => selector === '[data-password-key]' ? { dataset: { passwordKey: digit } } : null }
         });
     };
     const begin = async () => {
-        await transfer.chooseImport();
+        await confirmImportRisk(transfer, confirmation);
         assert.equal(currentGate.open, true);
         digits(currentGate, AUTH_PASSWORD);
         await new Promise(resolve => setImmediate(resolve));
@@ -298,11 +312,25 @@ test('新备份先确认覆盖风险，再验证备份密码；错误可重试�
         ])];
         const pending = input.events.change();
         await waitForDialog(confirmation);
-        assert.match(confirmation.querySelector('#dataImportConfirmDescription').textContent, /覆盖全部日记.*无法撤销/);
+        assert.equal(confirmation.querySelector('#dataImportConfirmTitle').textContent, '核对所选备份');
+        assert.equal(confirmation.querySelector('[data-import-file-summary]').hidden, false);
+        assert.match(confirmation.querySelector('#dataImportConfirmDescription').textContent, /访问密码.*恢复为备份密码/);
         assert.equal(backupGate.open, false);
         return { pending };
     };
+    const cancelled = transfer.chooseImport();
+    assert.equal(confirmation.open, true);
+    assert.equal(currentGate.open, false);
+    assert.equal(probes, 0);
+    assert.equal(selections, 0);
+    await transfer.chooseImport();
+    assert.equal(currentGate.open, false);
+    confirmation.events.cancel({ preventDefault() {} });
+    await cancelled;
+    assert.equal(probes, 0);
+    assert.equal(selections, 0);
     const first = await begin();
+    assert.equal(selections, 1);
     assert.equal(uploads, 0);
     confirmation.events.click({ target: { closest: selector => selector === '[data-import-confirm]' } });
     await waitForDialog(backupGate);

@@ -1,7 +1,7 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
-import { createRecordEditor } from './record-editor.js?v=20261013-cleanup-v1';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261010-auth-context-v1';
-import { createDataTransfer } from './data-transfer.js?v=20261010-auth-context-v1';
+import { createRecordEditor } from './record-editor.js?v=20261013-danger-first-v1';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261013-danger-first-v1';
+import { createDataTransfer } from './data-transfer.js?v=20261013-danger-first-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { confirmFeedback, showFeedback } from './feedback-dialog.js';
@@ -127,22 +127,24 @@ async function initApp() {
     const openCreateEditor = createRecordEditor(handleRecordSaved, getRecords);
     const openUpdateEditor = createRecordEditor(handleRecordSaved, getRecords);
     const requestCreateAuthorization = createPasswordGate(
-        capability => openCreateEditor(null, capability),
+        capability => openCreateEditor(null, capability, true),
         {
             title: '新增记录验证',
             description: '输入 6 位数字密码后继续。',
             verifying: '正在验证并打开编辑器…',
             actionError: '无法打开编辑器，请重试。',
-            onStatic: () => openCreateEditor(null, { readonly: true })
+            beforePrompt: () => openCreateEditor.beforePrompt(),
+            onStatic: () => openCreateEditor(null, { readonly: true }, true)
         }
     );
     openRecordEditor = requestCreateAuthorization;
-    const requestEditAuthorization = createPasswordGate((capability, record) => openUpdateEditor(record, capability), {
+    const requestEditAuthorization = createPasswordGate((capability, record) => openUpdateEditor(record, capability, true), {
         title: '修改记录验证',
         description: '输入 6 位数字密码后修改这条旅行记录。',
         verifying: '正在验证并打开编辑器…',
         actionError: '无法打开修改窗口，请重试。',
-        onStatic: record => openUpdateEditor(record, { readonly: true })
+        beforePrompt: record => openUpdateEditor.beforePrompt(record),
+        onStatic: record => openUpdateEditor(record, { readonly: true }, true)
     });
     openEditRecord = requestEditAuthorization;
     const requestDeleteAuthorization = createPasswordGate(async (capability, record) => {

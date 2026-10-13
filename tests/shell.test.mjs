@@ -281,9 +281,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261013-cleanup-v1');
+    assert.equal(appVersion, '20261013-danger-first-v1');
     assert.ok(cssVersion);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20261013-cleanup-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20261013-danger-first-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
 });
@@ -309,10 +309,10 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
 });
 
 test('静态页面免密码打开只读编辑器，动态环境必须先通过服务端口令验证', () => {
-    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20261010-auth-context-v1';/);
-    assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability\)/);
-    assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}\)/);
-    assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}\)/);
+    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20261013-danger-first-v1';/);
+    assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability, true\)/);
+    assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}, true\)/);
+    assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}, true\)/);
     assert.match(appJs, /openRecordEditor = requestCreateAuthorization;/);
     assert.match(recordPasswordJs, /await probeWriterService\(\)/);
     assert.match(recordPasswordJs, /error\?\.code === 'STATIC_READONLY'/);
@@ -337,7 +337,7 @@ test('静态页面免密码打开只读编辑器，动态环境必须先通过�
 test('新增和修改记录使用独立编辑器实例并生成互不重复的控件 ID', () => {
     assert.match(appJs, /const openCreateEditor = createRecordEditor\(handleRecordSaved, getRecords\);/);
     assert.match(appJs, /const openUpdateEditor = createRecordEditor\(handleRecordSaved, getRecords\);/);
-    assert.match(appJs, /const requestEditAuthorization = createPasswordGate\(\(capability, record\) => openUpdateEditor\(record, capability\),/);
+    assert.match(appJs, /const requestEditAuthorization = createPasswordGate\(\(capability, record\) => openUpdateEditor\(record, capability, true\),/);
     assert.doesNotMatch(appJs, /pendingEditRecord/);
     assert.match(recordPasswordJs, /await onVerified\(capability, verifiedContext, password\)/);
     assert.match(recordEditorJs, /let recordEditorCount = 0;/);
@@ -356,11 +356,11 @@ test('新增记录默认使用中国并允许中国地点双向补全', () => {
     assert.match(recordSuggestionsJs, /const resolvedLocality = locality \|\| \(isChina \?/);
 });
 
-test('切换记录前的未保存提示支持取消或立即清空编辑器', () => {
+test('切换记录先确认丢弃未保存内容，再验证密码，确认时不立即清空编辑器', () => {
     assert.match(recordEditorJs, /打开另一条记录会清空当前未保存内容，且无法撤销。/);
     assert.match(recordEditorJs, /cancelLabel: '取消'/);
-    assert.match(recordEditorJs, /confirmLabel: '立即清空编辑器'/);
-    assert.match(recordEditorJs, /if \(!confirmed\) return;/);
+    assert.match(recordEditorJs, /confirmLabel: '继续验证'/);
+    assert.match(appJs, /beforePrompt: record => openUpdateEditor\.beforePrompt\(record\)/);
     assert.match(journalCss, /\.feedback-dialog-confirmation \.feedback-dialog-actions \.feedback-dialog-confirm\s*\{[\s\S]*#a84a39/);
 });
 
