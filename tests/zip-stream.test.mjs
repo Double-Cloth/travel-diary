@@ -6,7 +6,7 @@ import path from 'node:path';
 import http from 'node:http';
 import { Readable } from 'node:stream';
 import { createRequire } from 'node:module';
-import { createZip } from '../js/zip-archive.mjs';
+import { createZip } from './helpers/zip-archive.mjs';
 import { ByteSource, ZIP_CHUNK_BYTES, createZipStream, createZipBlob, readZipSource, readSourceText, sourceOf, zipStreamSize } from '../js/zip-stream.mjs';
 import { createDraftBlob, readRecordSource } from '../js/draft-archive.mjs';
 import { installAuth } from './helpers/auth.mjs';

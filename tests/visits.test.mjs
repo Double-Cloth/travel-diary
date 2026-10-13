@@ -2,7 +2,6 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
-    buildTripRecordCounts,
     buildItineraryGroups,
     countDistinctVisits,
     getScopedVisitKey,
@@ -21,7 +20,6 @@ test('同一次旅行的多座城市共享同一个到访标识', () => {
 
     assert.equal(getVisitKey(nanjing), getVisitKey(suzhou));
     assert.equal(countDistinctVisits([nanjing, suzhou]), 1);
-    assert.equal(buildTripRecordCounts([nanjing, suzhou]).get(getVisitKey(nanjing)), 2);
     assert.deepEqual(buildItineraryGroups([suzhou, nanjing]).get(getVisitKey(nanjing)), {
         count: 2,
         label: '1'
@@ -36,7 +34,6 @@ test('未填写 trip_id 的旧记录仍分别计算到访', () => {
 
     assert.equal(countDistinctVisits(records), 2);
     assert.notEqual(getVisitKey(records[0]), getVisitKey(records[1]));
-    assert.equal(buildTripRecordCounts(records).size, 0);
     assert.deepEqual([...buildItineraryGroups(records).values()], [
         { count: 1, label: '1' },
         { count: 1, label: '2' }

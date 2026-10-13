@@ -27,22 +27,6 @@ export function countDistinctVisits(records = []) {
     return new Set(records.map(getVisitKey)).size;
 }
 
-export function buildTripRecordCounts(records = []) {
-    const counts = new Map();
-
-    records.forEach((record) => {
-        const tripId = cleanVisitPart(record.tripId || record.trip_id);
-        if (!tripId) {
-            return;
-        }
-
-        const visitKey = `trip:${tripId}`;
-        counts.set(visitKey, (counts.get(visitKey) || 0) + 1);
-    });
-
-    return counts;
-}
-
 export function buildItineraryGroups(records = []) {
     const chronologicalRecords = [...records].sort((a, b) => (a.date || '').localeCompare(b.date || ''));
     const counts = new Map();

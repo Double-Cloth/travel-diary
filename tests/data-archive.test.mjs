@@ -4,7 +4,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
-import { createZip } from '../js/zip-archive.mjs';
+import { createZip } from './helpers/zip-archive.mjs';
 import { readZipSource, readSourceText } from '../js/zip-stream.mjs';
 
 async function readZip(bytes) {

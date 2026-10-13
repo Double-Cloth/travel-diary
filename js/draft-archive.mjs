@@ -1,7 +1,6 @@
-import { DRAFT_FORMAT, readDraft } from './record-input.mjs?v=20261009-stream-files-v2';
-import { mediaBytes, readUploads } from './photo-uploads.mjs?v=20261009-stream-files-v2';
+import { DRAFT_FORMAT, readDraft } from './record-input.mjs?v=20261013-cleanup-v1';
+import { mediaBytes, readUploads } from './photo-uploads.mjs?v=20261013-cleanup-v1';
 import { pinyinSlug } from './slug.mjs';
-import { createZip, readZip } from './zip-archive.mjs?v=20261009-stream-files-v2';
 import { MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 
 import { ByteSource, createZipBlob, readZipSource, readSourceText } from './zip-stream.mjs';
@@ -29,10 +28,6 @@ function draftEntries(value, editContext = {}) {
     return [{ name: 'draft.json', data: JSON.stringify(metadata, null, 2) + '\n' }, ...entries];
 }
 
-export function createDraftArchive(value, editContext = {}) {
-    return createZip(draftEntries(value, editContext));
-}
-
 export function createDraftBlob(value, editContext = {}, onProgress) {
     return createZipBlob(draftEntries(value, editContext), onProgress);
 }
@@ -57,18 +52,6 @@ export async function readRecordSource(value, { verifyMedia = false, onProgress 
         }
     }
     return result;
-}
-
-export function readDraftArchive(value) {
-    return readRecordArchive(value).draft;
-}
-
-export function readRecordArchive(value) {
-    if ((value.byteLength ?? value.length) > MAXIMUM_RECORD_ARCHIVE_BYTES) {
-        throw new Error(`草稿 ZIP 不能超过 ${MAXIMUM_RECORD_ARCHIVE_BYTES / 1024 / 1024} MiB。`);
-    }
-    const entries = readZip(value, { copy: false });
-    return recordFromEntries(entries);
 }
 
 function recordFromEntries(entries) {

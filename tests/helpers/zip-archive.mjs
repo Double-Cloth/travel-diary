@@ -1,5 +1,5 @@
+// 仅为兼容性测试生成旧版 ZIP，运行时统一使用 zip-stream.mjs。
 const encoder = new TextEncoder();
-const decoder = new TextDecoder('utf-8', { fatal: true });
 
 const CRC_TABLE = Array.from({ length: 256 }, (_, value) => {
     let current = value;
@@ -103,77 +103,4 @@ export function createZip(entries, date = new Date()) {
     end.view.setUint32(12, central.length, true);
     end.view.setUint32(16, localOffset, true);
     return concat([...localParts, central, end.bytes]);
-}
-
-function findEnd(view) {
-    const minimum = Math.max(0, view.byteLength - 65557);
-    for (let offset = view.byteLength - 22; offset >= minimum; offset -= 1) {
-        if (view.getUint32(offset, true) === 0x06054b50
-            && offset + 22 + view.getUint16(offset + 20, true) === view.byteLength) return offset;
-    }
-    throw new Error('文件不是有效的 ZIP 压缩包。');
-}
-
-export function readZip(value, { copy = true } = {}) {
-    const bytes = bytesOf(value);
-    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-    const endOffset = findEnd(view);
-    const count = view.getUint16(endOffset + 10, true);
-    const centralSize = view.getUint32(endOffset + 12, true);
-    const centralStart = view.getUint32(endOffset + 16, true);
-    const centralEnd = centralStart + centralSize;
-    let offset = centralStart;
-    if (!count || count > 50000 || centralEnd !== endOffset
-        || view.getUint16(endOffset + 4, true) !== 0 || view.getUint16(endOffset + 6, true) !== 0
-        || view.getUint16(endOffset + 8, true) !== count) throw new Error('ZIP 目录大小或分卷信息无效。');
-    const entries = [];
-    const seen = new Set();
-    const ranges = [];
-
-    for (let index = 0; index < count; index += 1) {
-        if (offset + 46 > centralEnd || view.getUint32(offset, true) !== 0x02014b50) throw new Error('ZIP 目录已损坏。');
-        const flags = view.getUint16(offset + 8, true);
-        const method = view.getUint16(offset + 10, true);
-        const checksum = view.getUint32(offset + 16, true);
-        const compressedSize = view.getUint32(offset + 20, true);
-        const size = view.getUint32(offset + 24, true);
-        const nameLength = view.getUint16(offset + 28, true);
-        const extraLength = view.getUint16(offset + 30, true);
-        const commentLength = view.getUint16(offset + 32, true);
-        const localOffset = view.getUint32(offset + 42, true);
-        const nameStart = offset + 46;
-        const nameEnd = nameStart + nameLength;
-        if ((flags & ~0x0800) || method !== 0 || compressedSize !== size
-            || nameEnd + extraLength + commentLength > centralEnd || view.getUint16(offset + 34, true) !== 0) {
-            throw new Error('仅支持本应用导出的未加密 ZIP 压缩包。');
-        }
-        const name = decoder.decode(bytes.subarray(nameStart, nameEnd)).replace(/\\/g, '/');
-        if (!name || name.startsWith('/') || name.includes('\0') || name.split('/').some(part => !part || part === '.' || part === '..') || seen.has(name)) {
-            throw new Error(`ZIP 条目路径无效或重复：${name || '(empty)'}`);
-        }
-        seen.add(name);
-        if (localOffset + 30 > centralStart || view.getUint32(localOffset, true) !== 0x04034b50) throw new Error('ZIP 文件条目已损坏。');
-        const localNameLength = view.getUint16(localOffset + 26, true);
-        const localExtraLength = view.getUint16(localOffset + 28, true);
-        const localFlags = view.getUint16(localOffset + 6, true);
-        const localMethod = view.getUint16(localOffset + 8, true);
-        const dataStart = localOffset + 30 + localNameLength + localExtraLength;
-        const dataEnd = dataStart + size;
-        const localName = decoder.decode(bytes.subarray(localOffset + 30, localOffset + 30 + localNameLength)).replace(/\\/g, '/');
-        if (dataEnd > centralStart || localFlags !== flags || localMethod !== method || localName !== name
-            || view.getUint32(localOffset + 14, true) !== checksum
-            || view.getUint32(localOffset + 18, true) !== compressedSize
-            || view.getUint32(localOffset + 22, true) !== size) throw new Error('ZIP 文件内容不完整或条目信息不一致。');
-        ranges.push({ start: localOffset, end: dataEnd });
-        const data = copy ? bytes.slice(dataStart, dataEnd) : bytes.subarray(dataStart, dataEnd);
-        if (crc32(data) !== checksum) throw new Error(`ZIP 文件校验失败：${name}`);
-        entries.push({ name, data });
-        offset = nameEnd + extraLength + commentLength;
-    }
-    if (offset !== centralEnd) throw new Error('ZIP 目录大小无效。');
-    ranges.sort((a, b) => a.start - b.start);
-    if (ranges.some((range, index) => index > 0 && range.start < ranges[index - 1].end)) {
-        throw new Error('ZIP 文件条目重叠。');
-    }
-    return entries;
 }

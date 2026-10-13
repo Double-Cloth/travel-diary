@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createZip, readZip } from '../js/zip-archive.mjs';
+import { createZip } from './helpers/zip-archive.mjs';
+import { readZipSource, readSourceText } from '../js/zip-stream.mjs';
 
 function archive() {
     const bytes = createZip([{ name: 'draft.json', data: '草稿内容' }]);
@@ -10,19 +11,22 @@ function archive() {
     return { bytes, view, end, central };
 }
 
-test('ZIP 正常往返，并允许合法注释中的结束签名', () => {
+test('旧 ZIP 正常往返，并允许合法注释中的结束签名', async () => {
     const { bytes, end } = archive();
-    assert.equal(new TextDecoder().decode(readZip(bytes)[0].data), '草稿内容');
+    assert.equal(new TextDecoder().decode(await readSourceText((await readZipSource(bytes))[0].data)), '草稿内容');
     const comment = new Uint8Array(30);
     new DataView(comment.buffer).setUint32(0, 0x06054b50, true);
     const commented = new Uint8Array(bytes.length + comment.length);
     commented.set(bytes);
     commented.set(comment, bytes.length);
     new DataView(commented.buffer).setUint16(end + 20, comment.length, true);
-    assert.equal(readZip(commented).length, 1);
+    assert.equal((await readZipSource(commented)).length, 1);
+    const damaged = bytes.slice();
+    damaged[30 + 'draft.json'.length] ^= 255;
+    await assert.rejects(readSourceText((await readZipSource(damaged))[0].data), /ZIP 文件校验失败/);
 });
 
-test('ZIP 拒绝目录边界、分卷、条目数量和本地头不一致', () => {
+test('旧 ZIP 拒绝目录边界、分卷、条目数量和本地头不一致', async () => {
     const mutations = [
         ({ view, end }) => view.setUint16(end + 4, 1, true),
         ({ view, end }) => view.setUint16(end + 8, 2, true),
@@ -36,11 +40,11 @@ test('ZIP 拒绝目录边界、分卷、条目数量和本地头不一致', () =
     for (const mutate of mutations) {
         const value = archive();
         mutate(value);
-        assert.throws(() => readZip(value.bytes), /ZIP/);
+        await assert.rejects(readZipSource(value.bytes), /ZIP/);
     }
     const { bytes } = archive();
-    assert.throws(() => readZip(bytes.subarray(0, bytes.length - 1)), /ZIP/);
+    await assert.rejects(readZipSource(bytes.subarray(0, bytes.length - 1)), /ZIP/);
     const appended = new Uint8Array(bytes.length + 1);
     appended.set(bytes);
-    assert.throws(() => readZip(appended), /ZIP/);
+    await assert.rejects(readZipSource(appended), /ZIP/);
 });

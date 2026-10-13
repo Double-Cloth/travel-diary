@@ -6,7 +6,9 @@ import os from 'node:os';
 import path from 'node:path';
 import { createHandler } from '../js/server.js';
 import { DRAFT_FORMAT, prepareRecord, readDraft } from '../js/record-input.mjs';
-import { createDraftArchive, createDraftBlob } from '../js/draft-archive.mjs';
+import { createDraftBlob } from '../js/draft-archive.mjs';
+import { readZipSource, readSourceText } from '../js/zip-stream.mjs';
+import { createZip } from './helpers/zip-archive.mjs';
 import { MAXIMUM_ARCHIVE_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from '../js/file-limits.mjs';
 import { installAuth, login } from './helpers/auth.mjs';
 import { listenOnFetchSafePort } from './helpers/http.mjs';
@@ -107,7 +109,7 @@ test('ZIP 二进制媒体可新增、无损重试与修改，原快照冲突时�
         headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...overrides },
         body
     });
-    const archive = createDraftArchive(value);
+    const archive = new Uint8Array(await (await createDraftBlob(value)).arrayBuffer());
     assert.equal((await sendZip('POST', archive, { 'X-Travel-Token': 'invalid' })).status, 403);
     const response = await sendZip('POST', archive);
     assert.equal(response.status, 201);
@@ -115,12 +117,17 @@ test('ZIP 二进制媒体可新增、无损重试与修改，原快照冲突时�
     assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, record.photos[0])), png);
     assert.deepEqual(await fs.readFile(path.join(root, record.video_folder, record.videos[0])), mp4);
     assert.equal((await sendZip('POST', archive)).status, 200);
+    const legacyArchive = createZip(await Promise.all((await readZipSource(archive)).map(async entry => ({
+        name: entry.name,
+        data: await readSourceText(entry.data)
+    }))));
+    assert.equal((await sendZip('POST', legacyArchive)).status, 200);
     const expected = { record, markdown: await fs.readFile(path.join(root, record.desc_md), 'utf8') };
     const edited = { ...value, uploads: [], input: { ...value.input, ...record, body: '更新后的 ZIP 正文' } };
-    const updatedArchive = createDraftArchive(edited, { originalDescMd: record.desc_md, expected });
+    const updatedArchive = await createDraftBlob(edited, { originalDescMd: record.desc_md, expected });
     assert.equal((await sendZip('PUT', updatedArchive)).status, 200);
     assert.match(await fs.readFile(path.join(root, record.desc_md), 'utf8'), /更新后的 ZIP 正文/);
-    assert.equal((await sendZip('PUT', createDraftArchive(value, { originalDescMd: record.desc_md, expected }))).status, 409);
+    assert.equal((await sendZip('PUT', await createDraftBlob(value, { originalDescMd: record.desc_md, expected }))).status, 409);
     const index = await readIndex();
     const broken = archive.slice();
     broken[0] ^= 1;

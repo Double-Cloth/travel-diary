@@ -281,9 +281,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261013-polish-v1');
+    assert.equal(appVersion, '20261013-cleanup-v1');
     assert.ok(cssVersion);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20261009-stream-files-v2/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20261013-cleanup-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
 });
@@ -534,7 +534,7 @@ test('全部数据导入先建立服务端会话并提交双重写入凭据', ()
 });
 
 test('日记详情作为书内页渲染且返回时恢复路线档案滚动位置', () => {
-    assert.match(appJs, /function rememberReadingContext\(focusId = ''\)[\s\S]*left: refs\.leftPage\?\.scrollTop \|\| 0,[\s\S]*right: refs\.rightPage\?\.scrollTop \|\| 0,[\s\S]*windowY: window\.scrollY/);
+    assert.match(appJs, /function rememberReadingContext\(\)[\s\S]*left: refs\.leftPage\?\.scrollTop \|\| 0,[\s\S]*right: refs\.rightPage\?\.scrollTop \|\| 0,[\s\S]*windowY: window\.scrollY/);
     assert.match(appJs, /function renderEntryRoute[\s\S]*setPages\([\s\S]*entry-book-index[\s\S]*entry-book-article/);
     assert.doesNotMatch(appJs, /function renderEntryRoute[\s\S]{0,1200}openEntrySheet\(record\)/);
     assert.match(appJs, /const shouldRestoreReadingScroll = isReturningToReadingBackground\(previousRoute, route\);[\s\S]*if \(shouldRestoreReadingScroll\) \{[\s\S]*restoreReadingScrollPosition\(\);/);

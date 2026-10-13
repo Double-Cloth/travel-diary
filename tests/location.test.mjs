@@ -6,16 +6,15 @@ import {
     configureCountryCatalog,
     formatLocationText,
     getAdminAreaFilterLabel,
-    getConfiguredCountryCount,
     getCountryLocationLabels,
     normalizeTravelLocation
 } from '../js/location.mjs';
 
 const countryCatalog = JSON.parse(await readFile(new URL('../assets/catalogs/countries.json', import.meta.url), 'utf8'));
-configureCountryCatalog(countryCatalog);
+const configuredCountryCount = configureCountryCatalog(countryCatalog);
 
 test('从独立目录加载完整国家配置', () => {
-    assert.equal(getConfiguredCountryCount(), 249);
+    assert.equal(configuredCountryCount, 249);
 });
 
 test('将新字段规范化为国家、一级行政区和地点', () => {

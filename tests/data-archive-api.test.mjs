@@ -5,7 +5,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHandler } from '../js/server.js';
-import { createZip } from '../js/zip-archive.mjs';
+import { createZip } from './helpers/zip-archive.mjs';
 import { readZipSource } from '../js/zip-stream.mjs';
 import { AUTH_CONFIG, AUTH_PASSWORD, installAuth, login } from './helpers/auth.mjs';
 import { listenOnFetchSafePort } from './helpers/http.mjs';

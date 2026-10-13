@@ -51,10 +51,6 @@ export function configureCountryCatalog(catalog = {}) {
     return COUNTRY_PROFILES.size;
 }
 
-export function getConfiguredCountryCount() {
-    return COUNTRY_PROFILES.size;
-}
-
 export function normalizeTravelLocation(record = {}) {
     const country = cleanText(record.country) || '未知国家/地区';
     const countryCode = normalizeCountryCode(record.country_code || record.countryCode, country);

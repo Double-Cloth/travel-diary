@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
-import { createRecordEditor } from './record-editor.js?v=20261009-stream-files-v2';
+import { createRecordEditor } from './record-editor.js?v=20261013-cleanup-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261010-auth-context-v1';
 import { createDataTransfer } from './data-transfer.js?v=20261010-auth-context-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
@@ -74,7 +74,6 @@ let pageTurnTimer = null;
 let pageTurnCleanup = null;
 let lastReadingHash = '#ledger';
 let renderedPageHash = '';
-let lastEntryFocusId = '';
 let lastReadingScrollPosition = null;
 let searchRouteTimer = null;
 let isSearchComposing = false;
@@ -3573,7 +3572,7 @@ function handleDocumentClick(event) {
     const entryCard = event.target.closest('[data-open-entry]');
     if (entryCard && !event.target.closest('a, button, input')) {
         event.preventDefault();
-        rememberReadingContext(entryCard.id || '');
+        rememberReadingContext();
         navigateTo({ name: 'entry', params: { id: entryCard.dataset.openEntry } });
         return;
     }
@@ -3694,7 +3693,7 @@ function handleDocumentKeydown(event) {
 
     if ((event.key === 'Enter' || event.key === ' ') && event.target.matches('[data-open-entry]')) {
         event.preventDefault();
-        rememberReadingContext(event.target.id || '');
+        rememberReadingContext();
         navigateTo({ name: 'entry', params: { id: event.target.dataset.openEntry } });
     }
 }
@@ -3719,13 +3718,12 @@ function trapPanelFocus(event, panel) {
     return false;
 }
 
-function rememberReadingContext(focusId = '') {
+function rememberReadingContext() {
     if (activeRoute?.name === 'entry' || activeRoute?.name === 'photos') {
         return;
     }
 
     lastReadingHash = getEntryBackgroundHash();
-    lastEntryFocusId = focusId;
     lastReadingScrollPosition = {
         left: refs.leftPage?.scrollTop || 0,
         right: refs.rightPage?.scrollTop || 0,

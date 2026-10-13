@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadBrowserModule } from './helpers/browser-modules.mjs';
 import { MAXIMUM_ARCHIVE_BYTES } from '../js/file-limits.mjs';
-import { createZip } from '../js/zip-archive.mjs';
+import { createZip } from './helpers/zip-archive.mjs';
 import { AUTH_CONFIG, AUTH_PASSWORD } from './helpers/auth.mjs';
 
 function backupFile(entries = [{ name: 'data/travel_data.json', data: '[]' }]) {

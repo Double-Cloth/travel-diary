@@ -1,4 +1,4 @@
-import { ByteSource } from '../js/zip-stream.mjs';
+import { ByteSource, readZipSource, readSourceText } from '../js/zip-stream.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -9,11 +9,11 @@ import {
     MAXIMUM_MEDIA_FILE_BYTES,
     MAXIMUM_VIDEO_FILE_BYTES,
     readUploads,
-    storedPhotoNames
+    storedMediaNames
 } from '../js/photo-uploads.mjs';
 import { DRAFT_FORMAT, defaultMarkdownPath, recordSlug } from '../js/record-input.mjs';
-import { createDraftArchive, readDraftArchive } from '../js/draft-archive.mjs';
-import { readZip } from '../js/zip-archive.mjs';
+import { createDraftBlob, readRecordSource } from '../js/draft-archive.mjs';
+import { createZip } from './helpers/zip-archive.mjs';
 
 const { highlightMarkdown, splitMarkdown, previewToMarkdown, previewHtml } = await loadBrowserModule(new URL('../js/markdown-editor.js', import.meta.url));
 const recordEditorSource = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
@@ -81,11 +81,6 @@ test('媒体验证支持常见图片与视频，并拒绝格式伪装、重复�
     assert.throws(() => readUploads([{ ...photo, data: Buffer.from('<html>not a photo</html>').toString('base64') }]));
 });
 
-test('新增旅行记录不再提供正文导出或照片张数上限', () => {
-    // This test is for the new behavior where the system no longer provides
-    // options to export the body or limit the number of photos.
-});
-
 test('修改目的地时会在编辑器中按新地点重新生成正文与媒体目录', () => {
     assert.match(recordEditorSource, /function regenerateDerivedPaths\(\) \{/);
     assert.match(recordEditorSource, /const markdownPath = suggestedMarkdownPath\(input\);/);
@@ -99,11 +94,11 @@ test('自动文件路径使用日期与目的地，照片保留可读名称并�
     assert.equal(recordSlug(' 苏州市 '), 'suzhou');
     assert.equal(recordSlug('重庆市'), 'chongqing');
     assert.equal(defaultMarkdownPath('2026-09-11', '苏州市'), 'data/travel-diary/2026/2026-09-11-suzhou.md');
-    assert.deepEqual(storedPhotoNames(['河畔.jpg'], [
+    assert.deepEqual(storedMediaNames(['河畔.jpg'], [
         { name: '湖边.png', extension: 'png' },
         { name: '湖边.JPG', extension: 'jpg' },
         { name: '河畔.jpeg', extension: 'jpg' }
-    ]), ['河畔.jpg', 'hubian.png', 'hubian.jpg', 'hepan.jpg']);
+    ], 'photo'), ['河畔.jpg', 'hubian.png', 'hubian.jpg', 'hepan.jpg']);
 });
 
 test('Markdown 源码高亮转义 HTML 并标记标题、列表、链接和代码', () => {
@@ -116,7 +111,7 @@ test('Markdown 源码高亮转义 HTML 并标记标题、列表、链接和代�
     assert.doesNotMatch(html, /<script>/);
 });
 
-test('草稿 ZIP 将图片和视频保存为独立文件且可以无损导入', () => {
+test('草稿 ZIP 将图片和视频保存为独立文件且兼容旧 ZIP 无损导入', async () => {
     const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=';
     const mp4 = Buffer.from('\0\0\0\x18ftypisom\0\0\0\0isommp42', 'binary').toString('base64');
     const value = {
@@ -124,8 +119,11 @@ test('草稿 ZIP 将图片和视频保存为独立文件且可以无损导入', 
         input: { date: '2026-09-11', country_code: 'CN', country: '中国', admin_area: '江苏省', admin_area_type: '省', locality: '苏州市', locality_type: '城市', trip_id: '2026-09-江苏', title: '标题', body: '正文', desc_md: '', photo_folder: '', photos: [], video_folder: '', videos: [] },
         uploads: [{ id: 'b'.repeat(32), name: '湖边.png', data: png }, { id: 'c'.repeat(32), name: '街景.mp4', data: mp4 }]
     };
-    const archive = createDraftArchive(value);
-    const entries = readZip(archive);
+    const archive = await createDraftBlob(value);
+    const entries = await Promise.all((await readZipSource(archive)).map(async entry => ({
+        name: entry.name,
+        data: await readSourceText(entry.data)
+    })));
     const metadata = JSON.parse(new TextDecoder().decode(entries.find(entry => entry.name === 'draft.json').data));
     assert.equal(entries.some(entry => entry.name === 'media/001-hubian.png'), true);
     assert.equal(entries.some(entry => entry.name === 'media/002-jiejing.mp4'), true);
@@ -133,10 +131,17 @@ test('草稿 ZIP 将图片和视频保存为独立文件且可以无损导入', 
     assert.equal(metadata.uploads[1].kind, 'video');
     assert.equal('data' in metadata.uploads[0], false);
     assert.equal(JSON.stringify(metadata).includes(png), false);
-    assert.deepEqual(readDraftArchive(archive), {
-        ...value,
-        uploads: value.uploads.map(media => ({ ...media, data: new Uint8Array(Buffer.from(media.data, 'base64')) }))
-    });
+    for (const input of [archive, createZip(entries)]) {
+        const { draft } = await readRecordSource(input, { verifyMedia: true });
+        draft.uploads = await Promise.all(draft.uploads.map(async media => ({
+            ...media,
+            data: await readSourceText(media.data)
+        })));
+        assert.deepEqual(draft, {
+            ...value,
+            uploads: value.uploads.map(media => ({ ...media, data: new Uint8Array(Buffer.from(media.data, 'base64')) }))
+        });
+    }
 });
 
 test('原始媒体字节支持新上限，超大单文件与媒体合计仍被拒绝', () => {

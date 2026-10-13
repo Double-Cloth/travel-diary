@@ -96,7 +96,3 @@ export function storedMediaNames(existingNames, uploads, fallbackPrefix = 'media
     const uploaded = uploads.map((media, index) => allocate(media.name, media.extension, `${fallbackPrefix}-${String(existing.length + index + 1).padStart(3, '0')}`));
     return [...existing, ...uploaded];
 }
-
-export function storedPhotoNames(existingNames, uploads) {
-    return storedMediaNames(existingNames, uploads, 'photo');
-}

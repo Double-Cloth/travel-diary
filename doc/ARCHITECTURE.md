@@ -25,7 +25,7 @@
 | `location.mjs`、`analytics.mjs`、`visits.mjs` | 地点归一化、统计和行程去重的纯逻辑。 |
 | `record-editor.js`、`markdown-editor.js`、`record-suggestions.mjs` | 表单、正文双视图、地点补全和提交状态。 |
 | `record-input.mjs`、`photo-uploads.mjs`、`file-limits.mjs`、`slug.mjs` | 浏览器与 Node 共用的字段、媒体签名、文件大小限制、路径和拼音命名校验。 |
-| `draft-archive.mjs`、`zip-archive.mjs`、`zip-stream.mjs` | 草稿封装、旧 ZIP 兼容、ZIP64 随机读取与分块 CRC32 校验。
+| `draft-archive.mjs`、`zip-stream.mjs` | 草稿封装、旧 ZIP 兼容、ZIP64 随机读取与分块 CRC32 校验。 |
 | `file-stream.js` | Node 文件字节源、请求暂存及文件分块写入。 |
 | `record-password.js`、`writer-capability.js` | 同源能力探测、首次设密、登录与换密交互。 |
 | `record-delete-dialog.js`、`feedback-dialog.js`、`custom-select.js` | 删除确认、提示与原生选择框增强。 |
