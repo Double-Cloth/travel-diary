@@ -112,7 +112,9 @@ test('批量正文加载限制并发且保留输入顺序，个别失败不影�
 });
 
 test('正文请求超时后降级为可读错误状态并保留地点搜索', async t => {
+    let calls = 0;
     mockRequests(t, async (_, options) => {
+        calls += 1;
         assert.ok(options.signal instanceof AbortSignal);
         throw new DOMException('请求超时', 'TimeoutError');
     });
@@ -120,4 +122,33 @@ test('正文请求超时后降级为可读错误状态并保留地点搜索', as
     assert.equal(loaded.descLoadFailed, true);
     assert.match(loaded.searchText, /苏州市/);
     assert.match(loaded.descBodyHtml, /重新加载页面/);
+    assert.equal(calls, 1, '超时不重复等待');
+});
+
+test('批量加载共享正文请求，但每条记录仍独立解析地点和标题', async t => {
+    let calls = 0;
+    mockRequests(t, async () => { calls += 1; return new Response('共同的正文'); });
+    const records = [record, { ...record, locality: '杭州市' }];
+    const loaded = await loadTravelRecords(records);
+    assert.equal(calls, 1);
+    assert.equal(loaded[0].descTitle, '苏州市');
+    assert.equal(loaded[1].descTitle, '杭州市');
+    assert.match(loaded[0].searchText, /苏州市/);
+    assert.match(loaded[1].searchText, /杭州市/);
+    await loadTravelRecords(records, 'refresh');
+    assert.equal(calls, 2, '每轮刷新重新获取正文，不使用旧请求缓存');
+});
+
+test('永久性正文错误不重试，服务端临时错误可恢复', async t => {
+    let calls = 0;
+    mockRequests(t, async () => { calls += 1; return new Response('', { status: 404 }); });
+    assert.equal((await loadTravelRecords([record]))[0].descLoadFailed, true);
+    assert.equal(calls, 1);
+    calls = 0;
+    t.mock.method(globalThis, 'fetch', async () => {
+        calls += 1;
+        return calls === 1 ? new Response('', { status: 503 }) : new Response('# 已恢复');
+    });
+    assert.equal((await loadTravelRecords([record]))[0].descTitle, '已恢复');
+    assert.equal(calls, 2);
 });

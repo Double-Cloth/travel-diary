@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, extname, join, relative } from 'node:path';
@@ -6,7 +7,8 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 const subsetMode = process.argv.slice(2).includes('--subset');
-const unknownArguments = process.argv.slice(2).filter(argument => argument !== '--subset');
+const coreOnlyMode = process.argv.slice(2).includes('--core');
+const unknownArguments = process.argv.slice(2).filter(argument => !['--subset', '--core'].includes(argument));
 const textExtensions = new Set(['.html', '.css', '.js', '.mjs', '.json', '.md']);
 const excludedDirs = new Set(['.git', '.github', '.secrets', '.codex', '.playwright-cli', 'node_modules', '_site', 'dist', 'build', 'coverage', 'tmp', 'temp']);
 const commonUnicodeRanges = 'U+0000-00FF,U+2000-206F,U+3000-303F';
@@ -40,13 +42,64 @@ const fontJobs = [
 ];
 
 if (unknownArguments.length) {
-    throw new Error(`未知参数：${unknownArguments.join(', ')}。可用参数为 --subset。`);
+    throw new Error(`未知参数：${unknownArguments.join(', ')}。可用参数为 --subset 或 --core。`);
 }
 
-if (subsetMode) {
-    buildSubsets();
-} else {
-    for (const job of fontJobs) buildFullFont(job);
+if (subsetMode && coreOnlyMode) throw new Error('--subset 与 --core 不能同时使用。');
+
+if (!coreOnlyMode) {
+    if (subsetMode) {
+        buildSubsets();
+    } else {
+        for (const job of fontJobs) buildFullFont(job);
+    }
+}
+buildCoreFonts();
+
+function buildCoreFonts() {
+    const tempDir = mkdtempSync(join(tmpdir(), 'travel-diary-font-core-'));
+    const textFile = join(tempDir, 'core-text.txt');
+    const styles = [];
+    try {
+        // 首屏字集只收集界面与个人内容；拼音字典和全国目录按需使用完整字库。
+        writeFileSync(textFile, collectProjectText(projectRoot, new Set([...excludedDirs, 'assets', 'vendor', 'tests', 'doc', 'scripts'])), 'utf8');
+        for (const job of fontJobs.filter(job => basename(job.source).startsWith('LXGWWenKaiMono-'))) {
+            const output = job.output.replace('.woff2', '-core.woff2');
+            buildSubset({ ...job, output }, textFile);
+            const cmapFile = join(tempDir, 'cmap.ttx');
+            runFontTool('fonttools', ['ttx', '-q', '-t', 'cmap', '-o', cmapFile, join(projectRoot, output)], '字集映射');
+            // 使用实际生成的 cmap，避免为字体不含的字符声明 unicode-range。
+            const codepoints = [...new Set([...readFileSync(cmapFile, 'utf8').matchAll(/code="0x([0-9a-f]+)"/gi)]
+                .map(match => Number.parseInt(match[1], 16)))].sort((a, b) => a - b);
+            const ranges = [];
+            for (let index = 0; index < codepoints.length; index += 1) {
+                const start = codepoints[index];
+                let end = start;
+                while (codepoints[index + 1] === end + 1) end = codepoints[++index];
+                ranges.push(`U+${start.toString(16).toUpperCase()}${end === start ? '' : `-${end.toString(16).toUpperCase()}`}`);
+            }
+            const weight = job.source.includes('Medium') ? 700 : 400;
+            styles.push(`@font-face {
+    font-family: "Diary Kai";
+    src: url("./${basename(job.output)}") format("woff2");
+    font-weight: ${weight};
+    font-style: normal;
+    font-display: block;
+}
+
+@font-face {
+    font-family: "Diary Kai";
+    src: url("./${basename(output)}?v=${createHash('sha256').update(readFileSync(join(projectRoot, output))).digest('hex').slice(0, 12)}") format("woff2");
+    font-weight: ${weight};
+    font-style: normal;
+    font-display: block;
+    unicode-range: ${ranges.join(',')};
+}`);
+        }
+        writeFileSync(join(projectRoot, 'assets/fonts/diary-kai-core.css'), `/* 由 npm run fonts 生成。未覆盖字符继续使用完整本地字库。 */\n${styles.join('\n\n')}\n`, 'utf8');
+    } finally {
+        rmSync(tempDir, { recursive: true, force: true });
+    }
 }
 
 function buildSubsets() {
@@ -61,19 +114,19 @@ function buildSubsets() {
     }
 }
 
-function collectProjectText(directory) {
+function collectProjectText(directory, ignoredDirectories = excludedDirs) {
     const chunks = [];
-    collectTextFiles(directory, chunks);
+    collectTextFiles(directory, chunks, ignoredDirectories);
     return chunks.join('\n');
 }
 
-function collectTextFiles(directory, chunks) {
+function collectTextFiles(directory, chunks, ignoredDirectories) {
     for (const entry of readdirSync(directory, { withFileTypes: true })) {
         const fullPath = join(directory, entry.name);
         const relativePath = relative(projectRoot, fullPath).replaceAll('\\', '/');
 
         if (entry.isDirectory()) {
-            if (!excludedDirs.has(entry.name) && !entry.name.startsWith('.travel-')) collectTextFiles(fullPath, chunks);
+            if (!ignoredDirectories.has(entry.name) && !entry.name.startsWith('.travel-')) collectTextFiles(fullPath, chunks, ignoredDirectories);
             continue;
         }
 

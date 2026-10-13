@@ -1,18 +1,4 @@
-@font-face {
-    font-family: "Diary Kai";
-    src: url("../assets/fonts/LXGWWenKaiMono-Regular.woff2") format("woff2");
-    font-weight: 400;
-    font-style: normal;
-    font-display: block;
-}
-
-@font-face {
-    font-family: "Diary Kai";
-    src: url("../assets/fonts/LXGWWenKaiMono-Medium.woff2") format("woff2");
-    font-weight: 700;
-    font-style: normal;
-    font-display: block;
-}
+@import url('../assets/fonts/diary-kai-core.css?v=20261013-polish-v1');
 
 @font-face {
     font-family: "Archive Code";
@@ -115,7 +101,7 @@ body {
         radial-gradient(ellipse at 86% 105%, rgba(0, 0, 0, 0.28), transparent 44%),
         linear-gradient(180deg, rgba(18, 10, 5, 0.34), rgba(20, 12, 7, 0.52)),
         linear-gradient(90deg, rgba(0, 0, 0, 0.24), transparent 20%, transparent 80%, rgba(0, 0, 0, 0.28)),
-        url("../assets/images/backgrounds/body-background-travel-diary.png"),
+        url("../assets/images/backgrounds/body-background-travel-diary.webp"),
         repeating-linear-gradient(90deg, rgba(255, 232, 180, 0.035) 0 1px, transparent 1px 38px),
         repeating-linear-gradient(0deg, #2b160c 0 3px, #331d11 3px 36px, #241107 36px 39px, #3d2315 39px 74px);
     background-attachment: fixed, fixed, fixed, fixed, fixed, fixed, fixed;

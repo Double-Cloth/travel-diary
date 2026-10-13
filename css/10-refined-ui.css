@@ -21,7 +21,7 @@ body {
     background-color: #24140d;
     background-image:
         linear-gradient(rgba(25, 13, 8, 0.18), rgba(25, 13, 8, 0.3)),
-        url("../assets/images/backgrounds/body-background-travel-diary.png");
+        url("../assets/images/backgrounds/body-background-travel-diary.webp");
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
@@ -751,7 +751,7 @@ body::after {
         place-items: center;
         background:
             radial-gradient(ellipse at center, rgba(255, 225, 180, 0.07), transparent 58%),
-            url("../assets/images/backgrounds/body-background-travel-diary.png") center / cover;
+            url("../assets/images/backgrounds/body-background-travel-diary.webp") center / cover;
     }
     body[data-route="cover"] .page-spread { display: none; }
     .closed-book-cover {

@@ -10,6 +10,7 @@
     "countries": "node scripts/update-countries.mjs",
     "data:archive": "node scripts/build-data-backup.js",
     "fonts": "node scripts/build-fonts.mjs",
+    "fonts:core": "node scripts/build-fonts.mjs --core",
     "fonts:subset": "node scripts/build-fonts.mjs --subset",
     "start": "node js/server.js",
     "serve": "node js/server.js",

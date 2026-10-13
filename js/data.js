@@ -68,10 +68,14 @@ export async function loadTravelData(cacheKey = '') {
 
 export async function loadTravelRecords(records, cacheKey = '') {
     const results = new Array(records.length);
+    const markdownRequests = new Map();
     let nextIndex = 0;
     const hydrate = async (record) => {
         try {
-            const markdown = await fetchMarkdown(record.desc_md, cacheKey);
+            if (!markdownRequests.has(record.desc_md)) {
+                markdownRequests.set(record.desc_md, fetchMarkdown(record.desc_md, cacheKey));
+            }
+            const markdown = await markdownRequests.get(record.desc_md);
             const parsedMarkdown = parseMarkdown(markdown, record);
 
             return {
@@ -117,11 +121,15 @@ async function fetchMarkdown(markdownPath, cacheKey = '') {
     try {
         const response = await fetchContent(resolvedPath);
         if (!response.ok) {
-            throw new Error(`Failed to load ${markdownPath} (${response.status})`);
+            const error = new Error(`Failed to load ${markdownPath} (${response.status})`);
+            error.status = response.status;
+            throw error;
         }
 
         return await response.text();
     } catch (error) {
+        // 永久性响应与超时不会因立即重试而恢复，避免每篇缺失正文重复请求或等待 40 秒。
+        if ((error.status && error.status < 500) || ['AbortError', 'TimeoutError'].includes(error.name)) throw error;
         const retryResponse = await fetchContent(resolvedPath);
         if (!retryResponse.ok) {
             throw error;

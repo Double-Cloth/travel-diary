@@ -58,6 +58,9 @@ npm run fonts
 # 按项目现有文字生成字体子集
 npm run fonts:subset
 
+# 仅更新首屏轻量字集，完整字库继续用于未覆盖字符
+npm run fonts:core
+
 # 从固定版本的上游数据重新生成目录，需要联网
 npm run countries
 npm run china-locations

@@ -9,7 +9,7 @@
 }
 
 body {
-    background-image: linear-gradient(#28160a0d, #1a0d072e), url('../assets/images/backgrounds/body-background-travel-diary.png');
+    background-image: linear-gradient(#28160a0d, #1a0d072e), url('../assets/images/backgrounds/body-background-travel-diary.webp');
 }
 
 .book-transition-overlay {
@@ -25,7 +25,7 @@ body {
 .book-transition-backdrop {
     position: absolute;
     inset: 0;
-    background: linear-gradient(#28160a0d, #1a0d072e), url('../assets/images/backgrounds/body-background-travel-diary.png');
+    background: linear-gradient(#28160a0d, #1a0d072e), url('../assets/images/backgrounds/body-background-travel-diary.webp');
     transform: translateZ(0);
     will-change: opacity;
 }
@@ -113,7 +113,7 @@ body {
 
 body[data-route='archive'] .paper-page,
 body[data-route='preface'] .paper-page {
-    --page-art: url('../assets/images/pages/left-page-profile-travel-diary.png');
+    --page-art: url('../assets/images/pages/left-page-profile-travel-diary.webp');
 }
 
 /* 扉页像千禧年旅行相册的身份页：冲印照片、黄铜铭牌、手写题记与归档印章。 */
@@ -644,7 +644,7 @@ body[data-route='preface'] .paper-page {
 .luggage-tag:hover { background: #f5e7c9; box-shadow: 1px 4px 7px #76553725; }
 
 .closed-book-cover {
-    background: #52301e url('../assets/images/pages/leather-mountain-cover.png') center / 100% 100%;
+    background: #52301e url('../assets/images/pages/leather-mountain-cover.webp') center / 100% 100%;
     transition: transform 320ms ease, box-shadow 320ms ease;
 }
 .closed-book-cover::before { inset: 15px 15px 15px 48px; border-color: #e9c98633; box-shadow: inset 0 0 0 2px #21110866; }
@@ -729,11 +729,27 @@ body[data-route="ledger"] .paper-page-left::-webkit-scrollbar-track-piece {
 }
 .ledger-feature-filters:focus { outline: none; }
 .ledger-feature-filters:focus-visible { outline: 2px solid #9b6e42; outline-offset: 8px; }
+.ink-field input::placeholder { color: var(--ink-soft); opacity: 1; }
+.index-filter-field > span,
+.index-filter-section > .field-label { color: var(--ink-soft); }
+.empty-note,
+.photo-note { color: var(--ink-soft); }
+.search-empty-state {
+    display: grid;
+    justify-items: center;
+    gap: 12px;
+    padding: 28px 20px;
+    margin-block: 20px;
+    overflow-wrap: anywhere;
+}
+.search-empty-state strong { color: var(--ink); font-size: 18px; line-height: 1.5; }
+.search-empty-state p { max-width: 30em; margin: 0; font-size: 14px; line-height: 1.8; }
+.search-empty-state .paper-button { min-height: 44px; }
 .index-dashboard-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
 .index-dashboard-grid span:last-child { grid-column: 1 / -1; }
 .entry-note { min-width: 0; }
 .entry-note h3 { font-size: 20px; line-height: 1.5; overflow-wrap: anywhere; }
-.entry-location { font-size: 11px; line-height: 1.6; color: #716046; }
+.entry-location { font-size: 11px; line-height: 1.6; color: var(--ink-soft); }
 .entry-tags { gap: 8px; align-items: center; }
 .trip-stamp { font-size: 10px; }
 .paper-page { scrollbar-width: thin; scrollbar-color: #aa906557 transparent; scrollbar-gutter: stable; }
@@ -1025,14 +1041,14 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .paper-page-right.map-pocket,
     .paper-page-right.dossier-page {
         padding: 66px clamp(26px, 3vw, 46px) 36px;
-        background: linear-gradient(90deg, #fff8e4c9, #f5e9d2cc 72%, #e9d5b9d6), var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.png')) center / cover, url('../assets/textures/paper-grain.png'), #f3e8cf;
+        background: linear-gradient(90deg, #fff8e4c9, #f5e9d2cc 72%, #e9d5b9d6), var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.webp')) center / cover, url('../assets/textures/paper-grain.png'), #f3e8cf;
         background-blend-mode: normal, normal, multiply, normal;
     }
     .paper-page-right,
     .paper-page-right.map-pocket,
     .paper-page-right.dossier-page {
         padding-top: 66px;
-        background: linear-gradient(90deg, #e9d5b9db, #fff8e4d9 17%, #f5e9d2d9 82%, #e9d5b9dc), var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.png')) center / cover, url('../assets/textures/paper-grain.png'), #f3e8cf;
+        background: linear-gradient(90deg, #e9d5b9db, #fff8e4d9 17%, #f5e9d2d9 82%, #e9d5b9dc), var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.webp')) center / cover, url('../assets/textures/paper-grain.png'), #f3e8cf;
         background-blend-mode: normal, normal, multiply, normal;
     }
     .page-spread::before, .page-spread::after { opacity: .85; }
@@ -1076,7 +1092,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     .book-transition-backdrop {
         background:
             radial-gradient(ellipse at center, rgba(255, 225, 180, 0.07), transparent 58%),
-            url('../assets/images/backgrounds/body-background-travel-diary.png') center / cover;
+            url('../assets/images/backgrounds/body-background-travel-diary.webp') center / cover;
     }
     .closed-book-title { top: 22%; left: 53%; font-size: clamp(30px, 10vw, 44px); }
     .closed-book-subtitle { top: 35%; left: 53%; font-size: 10px; }
@@ -1364,7 +1380,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
         box-shadow: inset 3px 0 7px #85643e22;
         background:
             linear-gradient(rgba(249, 239, 223, 0.58), rgba(244, 232, 215, 0.6)),
-            var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.png')) center / cover,
+            var(--page-art, url('../assets/images/pages/left-page-ledger-travel-diary.webp')) center / cover,
             url('../assets/textures/paper-grain.png'),
             #f3e8cf;
         /* 单列页随正文无限增高，cover 会把图放大到只有中间素纸区域；固定到视口才能像桌面端一样保留页边装饰。 */

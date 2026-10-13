@@ -179,7 +179,7 @@
         border-inline: 5px solid #bfa780;
         background:
             linear-gradient(rgba(249, 239, 223, 0.58), rgba(244, 232, 215, 0.6)),
-            url("../assets/images/pages/left-page-ledger-travel-diary.png") center / cover,
+            url("../assets/images/pages/left-page-ledger-travel-diary.webp") center / cover,
             url("../assets/textures/paper-grain.png"),
             #f3e8cf;
         background-attachment: fixed, fixed, fixed, scroll;

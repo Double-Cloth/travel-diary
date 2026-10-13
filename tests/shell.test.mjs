@@ -197,12 +197,12 @@ test('移动端多选筛选勾选重绘后保持菜单滚动位置', () => {
     assert.match(customSelectJs, /if \(previousScrollTop\) menu\.scrollTop = previousScrollTop;/);
     assert.match(appJs, /const selectScrollTop = filter\.multiple[\s\S]*?filter\.closest\('\.custom-select'\)\?\.dataset\.customSelectScrollTop/);
     assert.match(appJs, /reopenSelectId: filter\.multiple \? filter\.id : '',\s*selectScrollTop,/);
-    assert.match(appJs, /function restoreFocus\(focusId, reopenSelectId = '', selectScrollTop = 0\)[\s\S]*const menu = wrapper\.querySelector\('\[data-custom-select-menu\]'\);\s*if \(menu\) menu\.scrollTop = selectScrollTop;/);
+    assert.match(appJs, /function restoreFocus\(focusId, reopenSelectId = '', selectScrollTop = 0, searchInputState = null\)[\s\S]*const menu = wrapper\.querySelector\('\[data-custom-select-menu\]'\);\s*if \(menu\) menu\.scrollTop = selectScrollTop;/);
 });
 
 test('索引夹层下拉菜单统一靠右弹出且移动端重置不聚焦搜索框', () => {
     assert.match(customSelectJs, /const alignsRight = isLedgerFilter;[\s\S]*\? Math\.min\(Math\.max\(triggerRect\.right - menuWidth/);
-    assert.match(appJs, /focusId:\s*isMobileLayout\(\) \? 'ledgerFilters' : 'ledgerSearch'/);
+    assert.match(appJs, /focusId:\s*isMobileContextPanelOpen \? 'ledgerFilters' : 'ledgerSearch'/);
 });
 
 test('索引夹层分段按钮具备拟物化层次', () => {
@@ -281,7 +281,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261010-auth-context-v1');
+    assert.equal(appVersion, '20261013-polish-v1');
     assert.ok(cssVersion);
     assert.match(appJs, /\.\/record-editor\.js\?v=20261009-stream-files-v2/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
@@ -718,7 +718,8 @@ test('扉页署名像头像一样验证后修改并随完整备份导出', () =>
     assert.match(appJs, /import \{ DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName \} from '\.\/profile-owner\.js\?v=20260930-review-v1';/);
     assert.match(appJs, /import \{ createOwnerNameDialog \} from '\.\/profile-owner-dialog\.js\?v=20260930-review-v1';/);
     assert.match(appJs, /let profileOwnerName = DEFAULT_OWNER_NAME;/);
-    assert.match(appJs, /profileOwnerName = await loadOwnerName\(\);/);
+    assert.match(appJs, /const \[ownerName, hydratedRecords\] = await Promise\.all\([\s\S]*loadOwnerName\(\)/);
+    assert.match(appJs, /profileOwnerName = ownerName;/);
     assert.match(appJs, /class="preface-owner-plaque" type="button" data-action="edit-owner-name"/);
     assert.match(appJs, /<strong>\$\{escapeHtml\(profileOwnerName\)\}<\/strong>/);
     assert.match(appJs, /data-action="edit-owner-name">修改扉页署名<\/button>/);
@@ -784,7 +785,7 @@ test('移动端日记与地点详情依次显示顶部摘要、主要内容和�
     assert.match(appJs, /class="place-summary"[\s\S]*class="place-neighbors entry-neighbors"/);
     assert.match(appJs, /class="entry-book-summary"[\s\S]*class="entry-neighbors"/);
     assert.match(journalCss, /@media \(max-width: 760px\)[\s\S]*body\[data-route="entry"\] \.page-spread,\s*body\[data-route="place"\] \.page-spread,[\s\S]*\{[\s\S]*display: flex;[\s\S]*flex-direction: column;[\s\S]*align-items: stretch;/);
-    assert.match(journalCss, /body\[data-route="entry"\] \.page-spread,\s*body\[data-route="place"\] \.page-spread,[\s\S]*\{[\s\S]*gap: 0;[\s\S]*overflow: hidden;[\s\S]*border-inline: 5px solid #bfa780;[\s\S]*left-page-ledger-travel-diary\.png/);
+    assert.match(journalCss, /body\[data-route="entry"\] \.page-spread,\s*body\[data-route="place"\] \.page-spread,[\s\S]*\{[\s\S]*gap: 0;[\s\S]*overflow: hidden;[\s\S]*border-inline: 5px solid #bfa780;[\s\S]*left-page-ledger-travel-diary\.webp/);
     assert.match(journalCss, /body\[data-route="entry"\] \.paper-page,\s*body\[data-route="place"\] \.paper-page,[\s\S]*\{[\s\S]*border-inline: 0;[\s\S]*background: transparent;[\s\S]*box-shadow: none;/);
     assert.match(journalCss, /body\[data-route="entry"\] \.paper-page-left,[\s\S]*body\[data-route="place"\] \.place-page,[\s\S]*\{[\s\S]*display: contents;/);
     assert.match(journalCss, /body\[data-route="entry"\] \.entry-book-summary,\s*body\[data-route="place"\] \.place-summary\s*{[\s\S]*order: 0;/);

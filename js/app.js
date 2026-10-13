@@ -1,4 +1,4 @@
-import { loadTravelData, loadTravelRecords } from './data.js';
+import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
 import { createRecordEditor } from './record-editor.js?v=20261009-stream-files-v2';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261010-auth-context-v1';
 import { createDataTransfer } from './data-transfer.js?v=20261010-auth-context-v1';
@@ -254,9 +254,11 @@ async function initApp() {
     renderLoading();
 
     try {
-        profileOwnerName = await loadOwnerName();
-        const rawRecords = await loadTravelData();
-        const hydratedRecords = await loadTravelRecords(rawRecords);
+        const [ownerName, hydratedRecords] = await Promise.all([
+            loadOwnerName(),
+            loadTravelData().then(records => loadTravelRecords(records))
+        ]);
+        profileOwnerName = ownerName;
         travelModel = deriveTravelModel(hydratedRecords);
         syncRouteFromHash({ initial: true });
     } catch (error) {
@@ -360,11 +362,13 @@ function bindGlobalEvents() {
     document.addEventListener('pointermove', handlePhotoPointerMove);
     document.addEventListener('pointerup', handlePhotoPointerEnd);
     document.addEventListener('pointercancel', handlePhotoPointerEnd);
+    document.addEventListener('lostpointercapture', handlePhotoPointerEnd);
     document.addEventListener('dblclick', handlePhotoDoubleClick);
     document.addEventListener('wheel', handlePhotoWheel, { passive: false });
     document.addEventListener('fullscreenchange', handlePhotoViewerFullscreenChange);
     window.addEventListener('hashchange', () => syncRouteFromHash());
     window.addEventListener('resize', handleViewportResize);
+    window.addEventListener('blur', resetPhotoGestures);
 }
 
 function parseRoute(hash = window.location.hash) {
@@ -522,7 +526,7 @@ function renderRoute(route, options = {}) {
     if (shouldRestoreReadingScroll && renderedPageHash === serializeRoute(route)) {
         clearPageTurn();
         restoreReadingScrollPosition();
-        restoreFocus(options.focusId, options.reopenSelectId, options.selectScrollTop);
+        restoreFocus(options.focusId, options.reopenSelectId, options.selectScrollTop, options.searchInputState);
         return;
     }
     const isSameChapter = previousRoute?.name === route.name
@@ -562,7 +566,7 @@ function renderRoute(route, options = {}) {
         } else if (!isSameChapter && !options.initial && isMobileLayout()) {
             window.scrollTo({ top: 0, behavior: 'instant' });
         }
-        restoreFocus(options.focusId, options.reopenSelectId, options.selectScrollTop);
+        restoreFocus(options.focusId, options.reopenSelectId, options.selectScrollTop, options.searchInputState);
     };
     const shouldAnimate = options.animate !== false && !options.initial && !isSameChapter;
     const crossesCover = previousRoute && (previousRoute.name === 'cover' || route.name === 'cover')
@@ -1040,7 +1044,7 @@ function renderLedger(params = {}, options = {}) {
             <div class="timeline-list" id="ledgerList">
                 ${filtered.length
                     ? renderLedgerGroups(filtered, ledgerParams)
-                    : (travelModel.records.length ? '<div class="empty-note">没有找到匹配的旅行记录。</div>' : renderEmptyArchiveState())}
+                    : (travelModel.records.length ? renderNoResultsState('ledger') : renderEmptyArchiveState())}
             </div>
         </div>
     `, `
@@ -1236,14 +1240,14 @@ function renderArchive(params = {}) {
             </header>
             <label class="field-label" for="archiveSearch">搜索国家、一级行政区或目的地</label>
             <div class="ink-field search-field">
-                <input id="archiveSearch" type="search" value="${escapeHtml(params.q || '')}" autocomplete="off" placeholder="例如：云南、苏州、北京">
+                <input id="archiveSearch" type="search" value="${escapeHtml(params.q || '')}" autocomplete="off" aria-label="搜索国家、一级行政区或目的地" placeholder="例如：云南、苏州、北京">
                 <button class="search-clear" type="button" data-action="clear-search" data-target="archive" aria-label="清空地点搜索" ${params.q ? '' : 'disabled'}>×</button>
             </div>
             ${renderMobileContextToggle('打开旅行概览', '查看足迹摘要与统计')}
             <div class="archive-country-list">
                 ${countries.length
                     ? countries.map(renderCountryFolder).join('')
-                    : (travelModel.records.length ? '<div class="empty-note">没有找到匹配的地点。</div>' : renderEmptyArchiveState())}
+                    : (travelModel.records.length ? renderNoResultsState('archive') : renderEmptyArchiveState())}
             </div>
         </div>
     `, `
@@ -1297,6 +1301,17 @@ function renderArchive(params = {}) {
             </section>
         </div>
     `, 'dossier-page context-panel');
+}
+
+function renderNoResultsState(target) {
+    const isLedger = target === 'ledger';
+    return `
+        <div class="empty-note search-empty-state" role="status">
+            <strong>${isLedger ? '没有找到匹配的旅行记录' : '没有找到匹配的地点'}</strong>
+            <p>${isLedger ? '试试其他关键词，或清除筛选后浏览全部日记。' : '试试国家、行政区或目的地名称，或清空搜索查看全部地点。'}</p>
+            <button class="paper-button" type="button" data-action="${isLedger ? 'reset-ledger-filters' : 'clear-search'}"${isLedger ? '' : ' data-target="archive"'}>${isLedger ? '查看全部日记' : '查看全部地点'}</button>
+        </div>
+    `;
 }
 
 function renderEmptyArchiveState() {
@@ -2533,6 +2548,7 @@ function clearPhotoRotationTimer() {
 function handlePhotoPointerDown(event) {
     if (event.target.matches?.('[data-video-seek]') && getViewerVideo()
         && (event.pointerType !== 'mouse' || event.button === 0)) {
+        if (photoGestureState.videoSeekPointerId !== null) return;
         photoGestureState.videoSeekPointerId = event.pointerId;
         return;
     }
@@ -2681,6 +2697,25 @@ function syncPhotoGestureStart() {
         translateX: photoViewerState.translateX,
         translateY: photoViewerState.translateY
     };
+}
+
+function resetPhotoGestures() {
+    if (!photoGestureState.pointers.size && photoGestureState.videoSeekPointerId === null) return;
+    const pointerIds = [...photoGestureState.pointers.keys()];
+    const seekPointerId = photoGestureState.videoSeekPointerId;
+    photoGestureState.pointers.clear();
+    photoGestureState.dragStart = null;
+    photoGestureState.pinchStart = null;
+    photoGestureState.videoTapPointerId = null;
+    photoGestureState.videoSeekPointerId = null;
+    photoGestureState.suppressClick = true;
+    const stage = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-stage]');
+    pointerIds.forEach(pointerId => {
+        if (stage?.hasPointerCapture?.(pointerId)) stage.releasePointerCapture(pointerId);
+    });
+    const seek = getPhotoViewerRoot()?.querySelector('[data-video-seek]');
+    if (seekPointerId !== null && seek?.hasPointerCapture?.(seekPointerId)) seek.releasePointerCapture(seekPointerId);
+    syncVideoViewerControls();
 }
 
 function createPhotoGestureState() {
@@ -3506,7 +3541,7 @@ function handleDocumentClick(event) {
             { ...LEDGER_FILTER_DEFAULTS },
             {
                 replace: true,
-                focusId: isMobileLayout() ? 'ledgerFilters' : 'ledgerSearch',
+                focusId: isMobileContextPanelOpen ? 'ledgerFilters' : 'ledgerSearch',
                 animate: false,
                 keepContextPanelOpen: isMobileContextPanelOpen
             }
@@ -3526,6 +3561,7 @@ function handleDocumentClick(event) {
                 : selectLedgerFilterValue(currentValues, value);
             updateLedgerRoute({ [key]: nextValues }, {
                 replace: true,
+                focusId: ledgerToggle.id,
                 animate: false,
                 preserveRightScroll: true,
                 keepContextPanelOpen: isMobileContextPanelOpen
@@ -3563,6 +3599,8 @@ function getEntryBackgroundHash() {
 }
 
 function handleDocumentKeydown(event) {
+    // 原生对话框独占键盘操作，避免 Escape 关闭其背后的夹层或触发媒体快捷键。
+    if (document.querySelector('dialog[open]')) return;
     if (isPhotoViewerOpen()) {
         if (trapPanelFocus(event, document.querySelector('.photo-viewer-panel'))) return;
         if (event.key === 'Escape' && document.fullscreenElement) {
@@ -3848,23 +3886,33 @@ function handleViewportResize() {
 function applySearchRouteUpdate({ id, value }) {
     if ((id === 'ledgerSearch' && activeRoute?.name !== 'ledger')
         || (id === 'archiveSearch' && activeRoute?.name !== 'archive')) return;
+    const input = document.getElementById?.(id);
+    const searchInputState = input && document.activeElement === input ? {
+        value: input.value,
+        start: input.selectionStart,
+        end: input.selectionEnd,
+        direction: input.selectionDirection
+    } : null;
+    const options = { replace: true, focusId: document.activeElement?.id || '', searchInputState, animate: false };
     if (id === 'ledgerSearch') {
-        if (activeRoute?.name === 'ledger' && normalizeLedgerParams(activeRoute.params).q === value) return;
-        updateLedgerRoute({ q: value }, { replace: true, focusId: 'ledgerSearch', animate: false });
+        if (normalizeLedgerParams(activeRoute.params).q === value.trim()) return;
+        updateLedgerRoute({ q: value }, options);
         return;
     }
 
     if (id === 'archiveSearch') {
-        if (activeRoute?.name === 'archive' && (activeRoute.params.q || '') === value) return;
-        navigateTo({ name: 'archive', params: { q: value } }, { replace: true, focusId: 'archiveSearch', animate: false });
+        if ((activeRoute.params.q || '') === value.trim()) return;
+        navigateTo({ name: 'archive', params: { q: value.trim() } }, options);
     }
 }
 
 function updateLedgerRoute(nextParams, options = {}) {
     const current = activeRoute?.name === 'ledger' ? activeRoute.params : {};
+    // 点击筛选时也纳入尚未到防抖期限的搜索，避免输入被下一次导航丢弃。
+    const query = document.getElementById?.('ledgerSearch')?.value ?? current.q;
     navigateTo({
         name: 'ledger',
-        params: normalizeLedgerParams({ ...current, ...nextParams })
+        params: normalizeLedgerParams({ ...current, q: query, ...nextParams })
     }, options);
 }
 
@@ -4112,7 +4160,7 @@ function renderLedgerControls(params, inputId) {
                 <input id="${inputId}" type="search" value="${escapeHtml(params.q)}" autocomplete="off" aria-label="搜索国家、行政区、目的地或日记内容" placeholder="搜索地点或日记内容">
                 ${params.q ? '<button class="search-clear" type="button" data-action="clear-search" data-target="ledger" aria-label="清空路线搜索">×</button>' : ''}
             </div>
-            <button class="paper-button ledger-filter-trigger" type="button" data-action="show-ledger-filters" aria-controls="ledgerFilters" aria-label="${filterLabel}">
+            <button class="paper-button ledger-filter-trigger" id="ledgerFilterButton" type="button" data-action="show-ledger-filters" aria-controls="ledgerFilters" aria-label="${filterLabel}">
                 <svg class="ledger-filter-icon" viewBox="0 0 24 24" aria-hidden="true">
                     <path d="M4 6h16M7 12h10M10 18h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
                 </svg>
@@ -4362,7 +4410,7 @@ function filterToggleButton(label, key, value, activeValue) {
     const active = isLedgerFilterValueSelected(activeValue, value);
 
     return `
-        <button class="index-segment${active ? ' index-segment-active' : ''}" type="button" data-ledger-toggle="${escapeHtml(key)}" data-value="${escapeHtml(value)}" aria-pressed="${active ? 'true' : 'false'}">
+        <button class="index-segment${active ? ' index-segment-active' : ''}" id="ledger-${escapeHtml(key)}-${escapeHtml(value)}" type="button" data-ledger-toggle="${escapeHtml(key)}" data-value="${escapeHtml(value)}" aria-pressed="${active ? 'true' : 'false'}">
             ${escapeHtml(label)}
         </button>
     `;
@@ -4427,7 +4475,7 @@ function hasActiveLedgerFilter(params) {
 
 function yearToggleButton(label, value, activeYears) {
     const active = isLedgerFilterValueSelected(activeYears, value);
-    return `<button class="year-bookmark${active ? ' year-bookmark-active' : ''}" type="button" data-ledger-toggle="year" data-value="${escapeHtml(value)}" aria-pressed="${active ? 'true' : 'false'}">${escapeHtml(label)}</button>`;
+    return `<button class="year-bookmark${active ? ' year-bookmark-active' : ''}" id="ledger-year-${escapeHtml(value)}" type="button" data-ledger-toggle="year" data-value="${escapeHtml(value)}" aria-pressed="${active ? 'true' : 'false'}">${escapeHtml(label)}</button>`;
 }
 
 function normalizeLedgerParams(params = {}) {
@@ -4655,7 +4703,7 @@ function formatDateForRange(dateStr, precision) {
     return `${year}.${month}`;
 }
 
-function restoreFocus(focusId, reopenSelectId = '', selectScrollTop = 0) {
+function restoreFocus(focusId, reopenSelectId = '', selectScrollTop = 0, searchInputState = null) {
     if (!focusId) return;
 
     if (reopenSelectId === focusId) {
@@ -4672,12 +4720,13 @@ function restoreFocus(focusId, reopenSelectId = '', selectScrollTop = 0) {
     }
 
     requestAnimationFrame(() => {
-        const target = document.getElementById(focusId);
+        const target = document.getElementById(`${focusId}Button`) || document.getElementById(focusId);
         if (!target) return;
         target.focus({ preventScroll: true });
         if (typeof target.setSelectionRange === 'function') {
-            const end = target.value.length;
-            target.setSelectionRange(end, end);
+            if (searchInputState) target.value = searchInputState.value;
+            const end = searchInputState?.end ?? target.value.length;
+            target.setSelectionRange(searchInputState?.start ?? end, end, searchInputState?.direction || 'none');
         }
     });
 }

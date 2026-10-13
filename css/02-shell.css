@@ -352,7 +352,7 @@
 }
 
 .paper-page-left {
-    --left-page-bg-image: url("../assets/images/pages/left-page-ledger-travel-diary.png");
+    --left-page-bg-image: url("../assets/images/pages/left-page-ledger-travel-diary.webp");
 
     border-radius: 5px 1px 0 8px;
     box-shadow: inset -20px 0 28px -22px #61451f99;
@@ -370,15 +370,15 @@
 body[data-route="ledger"] .paper-page-left,
 body[data-route="place"] .paper-page-left,
 body[data-route="entry"] .paper-page-left {
-    --left-page-bg-image: url("../assets/images/pages/left-page-ledger-travel-diary.png");
+    --left-page-bg-image: url("../assets/images/pages/left-page-ledger-travel-diary.webp");
 }
 
 body[data-route="archive"] .paper-page-left {
-    --left-page-bg-image: url("../assets/images/pages/left-page-profile-travel-diary.png");
+    --left-page-bg-image: url("../assets/images/pages/left-page-profile-travel-diary.webp");
 }
 
 body[data-route="preface"] .paper-page-left {
-    --left-page-bg-image: url("../assets/images/pages/left-page-profile-travel-diary.png");
+    --left-page-bg-image: url("../assets/images/pages/left-page-profile-travel-diary.webp");
 }
 
 .paper-page-right {

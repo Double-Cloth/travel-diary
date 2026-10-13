@@ -34,11 +34,12 @@ test('浏览器入口没有远程资源', async () => {
 
 test('样式引用的字体、图片和纹理全部存在于本地', async () => {
     const cssDirectory = resolve(projectRoot, 'css');
-    const cssFiles = (await readdir(cssDirectory)).filter(fileName => fileName.endsWith('.css'));
+    const cssFiles = (await readdir(cssDirectory)).filter(fileName => fileName.endsWith('.css')).map(fileName => resolve(cssDirectory, fileName));
+    cssFiles.push(resolve(projectRoot, 'assets/fonts/diary-kai-core.css'));
     let localAssetCount = 0;
 
     for (const cssFile of cssFiles) {
-        const cssPath = resolve(cssDirectory, cssFile);
+        const cssPath = cssFile;
         const css = await readFile(cssPath, 'utf8');
         const resourcePaths = Array.from(
             css.matchAll(/url\(\s*(['"]?)(.*?)\1\s*\)/g),

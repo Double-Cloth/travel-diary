@@ -23,10 +23,10 @@ assets/
 
 | 资源 | 用途 |
 | --- | --- |
-| `body-background-travel-diary.png` | 全局桌面背景。 |
-| `leather-mountain-cover.png` | 山景皮革封面位图；标题、封扣和交互由 HTML / CSS 实现。 |
-| `left-page-ledger-travel-diary.png` | 目录、地点、日记及附件页的纸面背景，也是基础纸页的默认背景。 |
-| `left-page-profile-travel-diary.png` | 扉页与归档的纸面背景。 |
+| `body-background-travel-diary.webp` | 全局桌面背景。 |
+| `leather-mountain-cover.webp` | 山景皮革封面位图；标题、封扣和交互由 HTML / CSS 实现。 |
+| `left-page-ledger-travel-diary.webp` | 目录、地点、日记及附件页的纸面背景，也是基础纸页的默认背景。 |
+| `left-page-profile-travel-diary.webp` | 扉页与归档的纸面背景。 |
 | `paper-grain.png` | 共用纸纹。 |
 | `data/profile/profile-picture.png` | 个人头像，替换同路径即可更新。 |
 | `data/profile/owner-name.txt` | 扉页署名，缺失时回退默认值。 |
@@ -37,6 +37,8 @@ assets/
 
 HTML 和数据路径相对项目根目录；`css/` 下所有分片使用 `../assets/...`。头像入口由初始化代码将 `data-src` 转为 `src`，不要随意改名；封面位图仅在显示封面时由 CSS 加载。运行字体、图片、拼音与目录均保存在本地，不添加运行时 CDN 依赖。
 
+桌面、封面与纸页图像使用 WebP，保留原始像素尺寸与构图，以质量 85 编码并保留透明通道；四张图像合计约 1.56 MB。共用纸纹及个人头像继续使用 PNG。替换资产时同步所有 CSS 引用，不保留重复的 PNG 备用图。
+
 `.secrets/` 不是浏览器资产，不在 HTML、CSS 或前端模块中引用。授权的动态完整备份包含认证哈希，静态发布排除整个目录。个人媒体默认被 Git 忽略，发布前须明确选择文件或由部署流程提供，见 [发布说明](MAINTENANCE.md#静态发布)。
 
 ## 字体
@@ -45,7 +47,9 @@ HTML 和数据路径相对项目根目录；`css/` 下所有分片使用 `../ass
 
 印章字体来自 [Google Fonts 的 Cormorant SC](https://github.com/google/fonts/tree/main/ofl/cormorantsc)，采用 SIL Open Font License 1.1，许可随字体保存为 `assets/fonts/CormorantSC-OFL.txt`。只在印章使用，浏览器按需加载本地 WOFF2。
 
-`fonts` 命令默认生成完整压缩字体，需要 Python 与 `fonttools[woff]`，普通启动不需要这些工具。`fonts:subset` 只针对当前项目文字生成子集并保留数字等基础字符；之后新增日记、动态署名或地点可能缺字，采用子集时应重新生成并检查回退。一般内容持续增长的档案使用完整字体。
+`fonts` 命令默认生成完整压缩字体，并从界面与个人内容生成两种字重的 `*-core.woff2` 和 `diary-kai-core.css`，需要 Python 与 `fonttools[woff]`，普通启动不需要这些工具。生成的 CSS 先声明完整字体，再用实际 cmap 对轻量字集声明 `unicode-range`；当前界面优先加载轻量字集，新增的未覆盖字符按需加载相同字重的完整本地字体，保持字体样式与任意内容可读性。轻量字体 URL 附带内容哈希，避免重新生成后仍使用旧缓存。拼音字典和全国地点目录不纳入首屏字集。
+
+只更新日记或界面文字后，可运行 `fonts:core` 刷新轻量字集，无需重新压缩完整字体；同时更新 CSS 引用版本并提交生成文件。`fonts:subset` 会替换完整字体文件为当前项目文字的子集，仍保留数字等基础字符；之后新增日记、动态署名或地点可能缺字，采用此显式模式时应重新生成并检查回退。一般内容持续增长的档案使用默认完整字体模式。
 
 ## 地点目录
 

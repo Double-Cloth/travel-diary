@@ -8,7 +8,15 @@ const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
     renderWithPageTurn, renderWithBookCover, clearPageTurn, cloneTurningPage, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
-    deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick };
+    deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
+    restoreFocus, handleDocumentKeydown, updateLedgerRoute };
+export function stubSearchNavigation(route) {
+    const originals = { navigateTo, activeRoute };
+    const calls = [];
+    activeRoute = route;
+    navigateTo = (next, options) => calls.push({ next, options });
+    return { calls, restore() { ({ navigateTo, activeRoute } = originals); } };
+}
 export function renderTestEntry(record, navigation) {
     const originals = { setPages, getEntryNavigation, travelModel };
     let result;
@@ -75,6 +83,54 @@ export function setTestState(values) {
 }
 `);
 delete globalThis.document;
+
+test('搜索保留原输入和中间选区，Tab 离开后保持下一控件焦点', t => {
+    const previous = globalThis.document;
+    const input = { id: 'ledgerSearch', value: ' axbc ', selectionStart: 2, selectionEnd: 3, selectionDirection: 'backward' };
+    const navigation = app.stubSearchNavigation({ name: 'ledger', params: { q: 'abc' } });
+    globalThis.document = { activeElement: input, getElementById: () => input };
+    t.after(() => { globalThis.document = previous; navigation.restore(); });
+    app.applySearchRouteUpdate({ id: input.id, value: input.value });
+    assert.deepEqual(navigation.calls[0].options.searchInputState, { value: ' axbc ', start: 2, end: 3, direction: 'backward' });
+    globalThis.document.activeElement = { id: 'ledgerFilterButton' };
+    app.applySearchRouteUpdate({ id: input.id, value: 'abcz' });
+    assert.equal(navigation.calls[1].options.focusId, 'ledgerFilterButton');
+    assert.equal(navigation.calls[1].options.searchInputState, null);
+});
+
+test('恢复搜索焦点保留选区，单选排序聚焦可见按钮', t => {
+    const previous = { document: globalThis.document, frame: globalThis.requestAnimationFrame };
+    const calls = [];
+    const input = { value: 'axbc', focus: () => calls.push('input'), setSelectionRange: (...args) => calls.push(args) };
+    const sortButton = { focus: () => calls.push('sort') };
+    globalThis.document = { getElementById: id => ({ ledgerSearch: input, ledgerSortButton: sortButton })[id] };
+    globalThis.requestAnimationFrame = callback => callback();
+    t.after(() => { globalThis.document = previous.document; globalThis.requestAnimationFrame = previous.frame; });
+    app.restoreFocus('ledgerSearch', '', 0, { value: ' axbc ', start: 2, end: 3, direction: 'backward' });
+    assert.equal(input.value, ' axbc ');
+    assert.deepEqual(calls, ['input', [2, 3, 'backward']]);
+    app.restoreFocus('ledgerSort');
+    assert.equal(calls.at(-1), 'sort');
+});
+
+test('点击年份筛选纳入尚未完成防抖的搜索，重置仍清空全部条件', t => {
+    const previous = globalThis.document;
+    const navigation = app.stubSearchNavigation({ name: 'ledger', params: { q: '' } });
+    globalThis.document = { getElementById: () => ({ value: '杭州' }) };
+    t.after(() => { globalThis.document = previous; navigation.restore(); });
+    app.updateLedgerRoute({ year: ['2025'] });
+    assert.equal(navigation.calls[0].next.params.q, '杭州');
+    assert.deepEqual(navigation.calls[0].next.params.year, ['2025']);
+    app.updateLedgerRoute({ q: '', year: [] });
+    assert.equal(navigation.calls[1].next.params.q, '');
+});
+
+test('原生对话框打开时媒体和夹层的 Escape 快捷键不响应', t => {
+    const previous = globalThis.document;
+    globalThis.document = { querySelector: selector => selector === 'dialog[open]' ? {} : null };
+    t.after(() => { globalThis.document = previous; });
+    assert.doesNotThrow(() => app.handleDocumentKeydown({ key: 'Escape' }));
+});
 
 test('跳到内容直接聚焦正文，不改变章节路由', t => {
     const previous = globalThis.document;

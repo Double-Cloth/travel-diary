@@ -5,7 +5,7 @@ import { loadBrowserModule } from './helpers/browser-modules.mjs';
 globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { handlePhotoPointerDown, handlePhotoPointerEnd, handleDocumentInput,
-    handleDocumentChange, syncVideoViewerControls, handleViewerVideoSeeked };
+    handleDocumentChange, syncVideoViewerControls, handleViewerVideoSeeked, resetPhotoGestures };
 export function resetTestVideoGesture() { photoGestureState = createPhotoGestureState(); }
 `);
 delete globalThis.document;
@@ -112,6 +112,36 @@ test('取消触摸拖动恢复原进度，不执行跳转', t => {
     player.end('pointercancel');
     assert.deepEqual(player.writes, []);
     assert.equal(player.seek.value, '12');
+});
+
+test('丢失指针捕获和切换窗口中止拖动，下一次拖动仍正常提交', t => {
+    const player = createPlayer(t);
+    player.begin();
+    player.input(75);
+    player.end('lostpointercapture');
+    assert.equal(player.seek.value, '12');
+    assert.deepEqual(player.writes, []);
+    player.begin();
+    player.input(80);
+    app.resetPhotoGestures();
+    assert.equal(player.seek.value, '12');
+    assert.deepEqual(player.writes, []);
+    player.begin();
+    player.input(90);
+    player.end();
+    assert.deepEqual(player.writes, [90]);
+});
+
+test('第二个手指不会抢走正在拖动的进度条', t => {
+    const player = createPlayer(t);
+    player.begin();
+    player.input(70);
+    app.handlePhotoPointerDown({ target: player.seek, pointerId: 2, pointerType: 'touch' });
+    app.handlePhotoPointerEnd({ pointerId: 2, type: 'pointerup' });
+    assert.deepEqual(player.writes, []);
+    assert.equal(player.seek.value, '70');
+    player.end();
+    assert.deepEqual(player.writes, [70]);
 });
 
 test('键盘和辅助技术直接输入及 change 跳转仍生效', t => {
