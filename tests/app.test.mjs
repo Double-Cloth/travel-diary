@@ -9,7 +9,7 @@ export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteConten
     renderWithPageTurn, renderWithBookCover, clearPageTurn, cloneTurningPage, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
-    restoreFocus, handleDocumentKeydown, updateLedgerRoute };
+    restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute };
 export function stubSearchNavigation(route) {
     const originals = { navigateTo, activeRoute };
     const calls = [];
@@ -25,6 +25,18 @@ export function renderTestEntry(record, navigation) {
     travelModel = { ...deriveTravelModel([record]), recordsById: new Map([[record.id, record]]) };
     try { renderEntryRoute({ id: record.id }); return result; }
     finally { ({ setPages, getEntryNavigation, travelModel } = originals); }
+}
+export function renderTestPlace(records, params, photos = false) {
+    const originals = { setPages, travelModel };
+    let result;
+    setPages = (left, right) => { result = { left, right }; };
+    travelModel = deriveTravelModel(records);
+    try {
+        if (photos) renderEntryPhotosRoute(params);
+        else renderPlace(params);
+        return result;
+    }
+    finally { ({ setPages, travelModel } = originals); }
 }
 export function stubViewerNavigation(state) {
     const originals = { photoViewerState, renderPhotoViewer, resetPhotoTransform };
@@ -83,6 +95,59 @@ export function setTestState(values) {
 }
 `);
 delete globalThis.document;
+
+test('省份媒体汇总覆盖各篇日记，排除其他省份和同名国外行政区', t => {
+    const previous = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = () => 1;
+    t.after(() => { globalThis.requestAnimationFrame = previous; });
+    const records = [
+        { date: '2026-10-01', country_code: 'CN', admin_area: '江苏省', locality: '苏州市', photo_folder: 'data/photos/suzhou', photos: ['river.jpg', 'garden.jpg'], videos: [] },
+        { date: '2026-10-02', country_code: 'CN', admin_area: '江苏省', locality: '南京市', photo_folder: 'data/photos/nanjing', photos: ['gate.jpg', 'lake.jpg'], video_folder: 'data/videos/nanjing', videos: ['walk.mp4'] },
+        { date: '2026-10-03', country_code: 'CN', admin_area: '浙江省', locality: '杭州市', photo_folder: 'data/photos/hangzhou', photos: ['other.jpg'] },
+        { date: '2026-10-04', country_code: 'US', admin_area: '江苏省', locality: '海外', photo_folder: 'data/photos/foreign', photos: ['foreign.jpg'] }
+    ].map(normalizeTravelLocation);
+    const params = { country: 'CN', area: '江苏省', locality: '' };
+    const preview = app.renderTestPlace(records, params);
+    assert.equal((preview.left.match(/data-action="open-media-viewer"/g) || []).length, 5);
+    assert.match(preview.left, /photo-sleeve-preview/);
+    assert.match(preview.left, /data-preview-rows="3"/);
+    assert.match(preview.left, /href="#photos\?country=CN&amp;area=%E6%B1%9F%E8%8B%8F%E7%9C%81"/);
+    assert.doesNotMatch(preview.left, /other\.jpg|foreign\.jpg/);
+    assert.match(preview.right, /苏州市/);
+    assert.match(preview.right, /南京市/);
+
+    const route = app.parseRoute(app.serializeRoute({ name: 'photos', params }));
+    assert.deepEqual(route.params, params);
+    const full = app.renderTestPlace(records, route.params, true);
+    assert.equal((full.right.match(/data-action="open-media-viewer"/g) || []).length, 5);
+    assert.doesNotMatch(full.right, /photo-sleeve-preview|other\.jpg|foreign\.jpg/);
+    assert.match(full.left, /4 张图片 · 1 个视频/);
+    assert.match(full.left, /href="#place\?country=CN&amp;area=%E6%B1%9F%E8%8B%8F%E7%9C%81"/);
+
+    const locality = app.renderTestPlace(records, { ...params, locality: '苏州市' }, true);
+    assert.equal((locality.right.match(/data-action="open-media-viewer"/g) || []).length, 2);
+    assert.doesNotMatch(locality.right, /gate\.jpg|walk\.mp4/);
+    assert.match(locality.left, /locality=%E8%8B%8F%E5%B7%9E%E5%B8%82/);
+    assert.deepEqual(app.parseRoute('#photos?id=note').params, { id: 'note' });
+    assert.equal(app.serializeRoute({ name: 'photos', params: { id: 'note' } }), '#photos?id=note');
+});
+
+test('没有媒体的省份保留记录列表，空附件页提供返回入口', t => {
+    const previous = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = () => 1;
+    t.after(() => { globalThis.requestAnimationFrame = previous; });
+    const records = [{ date: '2026-10-01', country_code: 'CN', admin_area: '江苏省', locality: '苏州市', photos: [], videos: [] }].map(normalizeTravelLocation);
+    const params = { country: 'CN', area: '江苏省', locality: '' };
+    const preview = app.renderTestPlace(records, params);
+    assert.doesNotMatch(preview.left, /photo-sleeve/);
+    assert.match(preview.right, /ledger-entry/);
+    for (const data of [records, []]) {
+        const full = app.renderTestPlace(data, params, true);
+        assert.match(full.left, /返回地点档案/);
+        assert.match(full.left, /0 张图片 · 0 个视频/);
+        assert.match(full.right, /这个地点还没有图片或视频附件/);
+    }
+});
 
 test('搜索保留原输入和中间选区，Tab 离开后保持下一控件焦点', t => {
     const previous = globalThis.document;

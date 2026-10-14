@@ -430,8 +430,12 @@ function parseRoute(hash = window.location.hash) {
         case 'photos':
             return {
                 name: 'photos',
-                params: {
+                params: params.has('id') ? {
                     id: params.get('id') || ''
+                } : {
+                    country: params.get('country') || '',
+                    area: params.get('area') || params.get('province') || '',
+                    locality: params.get('locality') || params.get('city') || ''
                 },
                 valid: true
             };
@@ -480,6 +484,11 @@ function serializeRoute(route) {
             return `#entry${params.toString() ? `?${params}` : ''}`;
         case 'photos':
             if (route.params.id) params.set('id', route.params.id);
+            else {
+                if (route.params.country) params.set('country', route.params.country);
+                if (route.params.area) params.set('area', route.params.area);
+                if (route.params.locality) params.set('locality', route.params.locality);
+            }
             return `#photos${params.toString() ? `?${params}` : ''}`;
         default:
             return '#cover';
@@ -1471,6 +1480,7 @@ function getBroadestAdminArea(adminAreas = []) {
 
 function renderPlace(params = {}) {
     const matching = getPlaceRecords(params);
+    const media = matching.flatMap(getRecordMedia);
     const label = getPlaceLabel(params, matching);
     const visitCount = countDistinctVisits(matching);
     const localities = Array.from(new Set(matching.map(record => record.locality).filter(Boolean))).sort((a, b) => a.localeCompare(b, 'zh-CN'));
@@ -1488,6 +1498,12 @@ function renderPlace(params = {}) {
                         <a class="location-chip" href="${placeHash(params.country, params.area, locality)}">${escapeHtml(locality)}</a>
                     `).join('')}
                 </div>
+                ${media.length ? renderPhotoSleeve(matching[0], {
+                    media,
+                    previewRows: ENTRY_PHOTO_PREVIEW_ROWS,
+                    showViewAll: true,
+                    viewAllHref: serializeRoute({ name: 'photos', params })
+                }) : ''}
             </div>
             ${adminAreaNavigation ? `
                 <nav class="place-neighbors entry-neighbors" aria-label="相邻${escapeHtml(adminAreaNavigation.typeLabel)}">
@@ -1503,6 +1519,8 @@ function renderPlace(params = {}) {
             ${matching.length ? matching.map(renderLedgerEntry).join('') : '<div class="empty-note">这个地点还没有旅行记录。</div>'}
         </div>
     `, 'dossier-page place-detail-page');
+
+    requestAnimationFrame(() => queuePhotoSleevePreviewSync());
 }
 
 function getPlaceAdminAreaNavigation(params = {}) {
@@ -1623,6 +1641,11 @@ function renderEntryNeighbor(record, direction, label) {
 }
 
 function renderEntryPhotosRoute(params = {}) {
+    if (!params.id && (params.country || params.area || params.locality)) {
+        renderPlacePhotosRoute(params);
+        return;
+    }
+
     const record = travelModel.recordsById.get(params.id);
 
     if (!record) {
@@ -1653,6 +1676,29 @@ function renderEntryPhotosRoute(params = {}) {
         <div class="place-records entry-photos-page">
             <p class="journal-label">全部图片与视频</p>
             ${renderPhotoSleeve(record)}
+        </div>
+    `, 'dossier-page place-detail-page');
+}
+
+function renderPlacePhotosRoute(params = {}) {
+    const matching = getPlaceRecords(params);
+    const media = matching.flatMap(getRecordMedia);
+    const label = getPlaceLabel(params, matching);
+    const photoCount = media.filter(item => item.kind === 'image').length;
+
+    setPages(`
+        <div class="place-page">
+            <div class="entry-photos-summary">
+                <a class="ribbon-back" href="${escapeHtml(serializeRoute({ name: 'place', params }))}">返回地点档案</a>
+                <p class="journal-label">媒体附件</p>
+                <h1>${escapeHtml(label)}</h1>
+                <p class="place-count">${photoCount} 张图片 · ${media.length - photoCount} 个视频</p>
+            </div>
+        </div>
+    `, `
+        <div class="place-records entry-photos-page">
+            <p class="journal-label">全部图片与视频</p>
+            ${media.length ? renderPhotoSleeve(matching[0], { media }) : '<p class="photo-note">这个地点还没有图片或视频附件。</p>'}
         </div>
     `, 'dossier-page place-detail-page');
 }
@@ -4302,12 +4348,13 @@ function renderLuggageTag(area) {
 }
 
 function renderPhotoSleeve(record, options = {}) {
-    const media = getRecordMedia(record);
+    const media = options.media || getRecordMedia(record);
     if (!media.length) return '<p class="photo-note">这篇记录没有图片或视频附件。</p>';
 
     const { previewRows = 0, showViewAll = false } = options;
     const isPreview = Number.isFinite(previewRows) && previewRows > 0;
     const shouldRenderViewAll = showViewAll && isPreview && media.length > previewRows;
+    const viewAllHref = options.viewAllHref || serializeRoute({ name: 'photos', params: { id: record.id } });
 
     return `
         <div class="photo-sleeve${isPreview ? ' photo-sleeve-preview' : ''}"${isPreview ? ` data-preview-rows="${previewRows}"` : ''} aria-label="图片与视频附件">
@@ -4321,7 +4368,7 @@ function renderPhotoSleeve(record, options = {}) {
                 </button>
             `).join('')}
             ${shouldRenderViewAll ? `
-                <a class="paper-button photo-sleeve-action" href="${serializeRoute({ name: 'photos', params: { id: record.id } })}" data-action="view-all-photos">
+                <a class="paper-button photo-sleeve-action" href="${escapeHtml(viewAllHref)}" data-action="view-all-photos">
                     查看全部媒体（${media.length} 项）
                 </a>
             ` : ''}
