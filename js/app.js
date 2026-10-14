@@ -1682,7 +1682,9 @@ function renderEntryPhotosRoute(params = {}) {
 
 function renderPlacePhotosRoute(params = {}) {
     const matching = getPlaceRecords(params);
-    const media = matching.flatMap(getRecordMedia);
+    const media = matching.flatMap(record => getRecordMedia(record).map(item => ({
+        ...item, recordId: record.id, recordDate: record.date, recordTitle: record.title
+    })));
     const label = getPlaceLabel(params, matching);
     const photoCount = media.filter(item => item.kind === 'image').length;
 
@@ -1698,7 +1700,7 @@ function renderPlacePhotosRoute(params = {}) {
     `, `
         <div class="place-records entry-photos-page">
             <p class="journal-label">全部图片与视频</p>
-            ${media.length ? renderPhotoSleeve(matching[0], { media }) : '<p class="photo-note">这个地点还没有图片或视频附件。</p>'}
+            ${media.length ? renderPhotoSleeve(matching[0], { media, groupByRecord: true }) : '<p class="photo-note">这个地点还没有图片或视频附件。</p>'}
         </div>
     `, 'dossier-page place-detail-page');
 }
@@ -4351,7 +4353,7 @@ function renderPhotoSleeve(record, options = {}) {
     const media = options.media || getRecordMedia(record);
     if (!media.length) return '<p class="photo-note">这篇记录没有图片或视频附件。</p>';
 
-    const { previewRows = 0, showViewAll = false } = options;
+    const { previewRows = 0, showViewAll = false, groupByRecord = false } = options;
     const isPreview = Number.isFinite(previewRows) && previewRows > 0;
     const shouldRenderViewAll = showViewAll && isPreview && media.length > previewRows;
     const viewAllHref = options.viewAllHref || serializeRoute({ name: 'photos', params: { id: record.id } });
@@ -4359,6 +4361,12 @@ function renderPhotoSleeve(record, options = {}) {
     return `
         <div class="photo-sleeve${isPreview ? ' photo-sleeve-preview' : ''}"${isPreview ? ` data-preview-rows="${previewRows}"` : ''} aria-label="图片与视频附件">
             ${media.map((item, index) => `
+                ${groupByRecord && (index === 0 || item.recordId !== media[index - 1].recordId) ? `
+                    <div class="photo-sleeve-group-heading">
+                        <time datetime="${escapeHtml(item.recordDate)}">${escapeHtml(item.recordDate)}</time>
+                        <h2>${escapeHtml(item.recordTitle)}</h2>
+                    </div>
+                ` : ''}
                 <button class="photo-sleeve-button${item.kind === 'video' ? ' photo-sleeve-video' : ''}" type="button" data-action="open-media-viewer" data-media-index="${index}" data-media-kind="${item.kind}" data-media-name="${escapeHtml(item.name)}" data-media-src="${escapeHtml(item.src)}" data-media-alt="${escapeHtml(item.alt)}" aria-label="打开${item.kind === 'video' ? '视频' : '图片'} ${escapeHtml(item.name)}">
                     ${item.kind === 'video'
                         ? `<video src="${escapeHtml(item.src)}#t=0.1" muted playsinline preload="metadata" aria-hidden="true" tabindex="-1"></video><span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>`

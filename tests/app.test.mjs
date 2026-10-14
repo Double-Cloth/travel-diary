@@ -122,6 +122,12 @@ test('省份媒体汇总覆盖各篇日记，排除其他省份和同名国外�
     assert.equal((full.right.match(/data-action="open-media-viewer"/g) || []).length, 5);
     assert.doesNotMatch(full.right, /photo-sleeve-preview|other\.jpg|foreign\.jpg/);
     assert.match(full.left, /4 张图片 · 1 个视频/);
+    assert.equal((full.right.match(/class="photo-sleeve-group-heading"/g) || []).length, 2);
+    assert.ok(full.right.indexOf('2026-10-02') < full.right.indexOf('data-media-name="gate.jpg"'));
+    assert.ok(full.right.indexOf('data-media-name="walk.mp4"') < full.right.indexOf('2026-10-01'));
+    assert.ok(full.right.indexOf('2026-10-01') < full.right.indexOf('data-media-name="river.jpg"'));
+    assert.deepEqual([...full.right.matchAll(/data-media-index="(\d+)"/g)].map(match => Number(match[1])), [0, 1, 2, 3, 4]);
+    assert.doesNotMatch(preview.left, /photo-sleeve-group-heading/);
     assert.match(full.left, /href="#place\?country=CN&amp;area=%E6%B1%9F%E8%8B%8F%E7%9C%81"/);
 
     const locality = app.renderTestPlace(records, { ...params, locality: '苏州市' }, true);

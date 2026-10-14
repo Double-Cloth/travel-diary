@@ -82,6 +82,35 @@
         rgba(126, 86, 42, 0.06);
 }
 
+.photo-sleeve-group-heading {
+    grid-column: 1 / -1;
+    display: grid;
+    gap: 6px;
+    margin-top: 8px;
+    padding-top: 20px;
+    border-top: 1px dashed var(--hairline);
+    overflow-wrap: anywhere;
+}
+
+.photo-sleeve-group-heading:first-child {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.photo-sleeve-group-heading time {
+    color: var(--ink-muted);
+    font-family: var(--font-code);
+    font-size: 12px;
+}
+
+.photo-sleeve-group-heading h2 {
+    margin: 0;
+    color: var(--ink);
+    font-size: 19px;
+    line-height: 1.4;
+}
+
 .photo-sleeve-button {
     position: relative;
     min-width: 0;
