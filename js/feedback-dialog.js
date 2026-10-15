@@ -21,6 +21,7 @@ function getFeedbackDialog() {
             <p class="journal-label" data-feedback-label>旅行档案</p>
             <h2 id="feedbackDialogTitle" data-feedback-title>操作提示</h2>
             <p class="feedback-dialog-message" id="feedbackDialogMessage" data-feedback-message></p>
+            <div class="feedback-dialog-guide" data-feedback-guide hidden></div>
             <div class="feedback-dialog-actions">
                 <button class="paper-button feedback-dialog-cancel" type="button" data-feedback-cancel>取消</button>
                 <button class="paper-button feedback-dialog-confirm" type="button" data-feedback-confirm>知道了</button>
@@ -63,6 +64,36 @@ function openFeedback(message, options = {}) {
     dialog.querySelector('[data-feedback-label]').textContent = options.label || '旅行档案';
     dialog.querySelector('[data-feedback-title]').textContent = options.title || (isConfirmation ? '请确认操作' : '操作提示');
     dialog.querySelector('[data-feedback-message]').textContent = message || '';
+    const guide = dialog.querySelector('[data-feedback-guide]');
+    const hasSteps = Array.isArray(options.steps) && options.steps.length > 0;
+    guide.hidden = !hasSteps;
+    dialog.classList.toggle('feedback-dialog-with-guide', hasSteps);
+    if (hasSteps) {
+        const list = document.createElement('ol');
+        for (const step of options.steps) {
+            const item = document.createElement('li');
+            const title = document.createElement('h3');
+            title.textContent = step.title;
+            const description = document.createElement('p');
+            description.textContent = step.description;
+            item.append(title, description);
+            if (step.command) {
+                const block = document.createElement('pre');
+                const command = document.createElement('code');
+                command.textContent = step.command;
+                block.append(command);
+                item.append(block);
+            }
+            list.append(item);
+        }
+        guide.replaceChildren(list);
+        if (options.note) {
+            const note = document.createElement('p');
+            note.className = 'feedback-dialog-guide-note';
+            note.textContent = options.note;
+            guide.append(note);
+        }
+    }
     dialog.querySelector('[data-feedback-cancel]').textContent = options.cancelLabel || '取消';
     dialog.querySelector('[data-feedback-cancel]').hidden = !isConfirmation;
     dialog.querySelector('[data-feedback-confirm]').textContent = options.confirmLabel || (isConfirmation ? '确认' : '知道了');
@@ -71,7 +102,14 @@ function openFeedback(message, options = {}) {
     return new Promise(resolve => {
         feedbackResolver = resolve;
         dialog.showModal();
-        dialog.querySelector(isConfirmation ? '[data-feedback-cancel]' : '[data-feedback-confirm]').focus();
+        if (hasSteps) {
+            const title = dialog.querySelector('[data-feedback-title]');
+            title.tabIndex = -1;
+            title.focus({ preventScroll: true });
+            dialog.scrollTop = 0;
+        } else {
+            dialog.querySelector(isConfirmation ? '[data-feedback-cancel]' : '[data-feedback-confirm]').focus();
+        }
     });
 }
 

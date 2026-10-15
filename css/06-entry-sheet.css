@@ -1383,6 +1383,20 @@ dialog.feedback-dialog.entry-sheet {
 .feedback-dialog .journal-label { margin: 0 auto 8px; }
 .feedback-dialog h2 { margin: 0; color: var(--ink); font-size: 27px; line-height: 1.25; }
 .feedback-dialog-message { margin: 10px 0 22px; color: var(--ink-soft); font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32px)); }
+.feedback-dialog-with-guide .feedback-dialog-seal { width: 44px; height: 44px; margin-bottom: 12px; }
+.feedback-dialog-with-guide .feedback-dialog-message { margin: 16px 0; text-align: left; }
+.feedback-dialog-guide { margin-bottom: 24px; color: var(--ink-soft); text-align: left; font-size: 14px; line-height: 1.7; overflow-wrap: anywhere; }
+.feedback-dialog-guide[hidden] { display: none; }
+.feedback-dialog-guide ol { margin: 0; padding-left: 24px; }
+.feedback-dialog-guide li { padding-left: 4px; }
+.feedback-dialog-guide li + li { margin-top: 18px; }
+.feedback-dialog-guide li::marker { color: var(--stamp); }
+.feedback-dialog-guide h3 { margin: 0 0 5px; color: var(--ink); font-size: 15px; font-weight: 600; }
+.feedback-dialog-guide p { margin: 0; }
+.feedback-dialog-guide pre { margin: 10px 0 0; padding: 10px 12px; border: 1px solid var(--hairline); border-radius: 4px; background: rgba(143, 109, 57, 0.06); white-space: pre-wrap; }
+.feedback-dialog-guide code { color: var(--ink); font: 13px var(--font-code); user-select: all; }
+.feedback-dialog-guide .feedback-dialog-guide-note { margin-top: 20px; padding-top: 14px; border-top: 1px solid var(--hairline); font-size: 12px; }
 .feedback-dialog-actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
 .feedback-dialog-confirmation .feedback-dialog-actions { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .feedback-dialog-actions button { min-width: 0; padding-inline: 12px; }
