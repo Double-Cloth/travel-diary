@@ -3462,30 +3462,26 @@ function handleDocumentClick(event) {
     if (event.target.closest('[data-action="password-reset-help"]')) {
         event.preventDefault();
         void showFeedback(
-            '忘记密码后，需要在运行日记服务的电脑或服务器上重置。',
+            '请在运行日记服务的电脑或服务器上操作。',
             {
                 label: '访问安全',
                 title: '如何重置密码',
                 steps: [
                     {
-                        title: '打开项目目录',
-                        description: '打开终端，进入运行日记服务的项目目录，即包含 package.json 的文件夹。远程部署时，请先登录对应服务器。'
-                    },
-                    {
                         title: '运行重置命令',
-                        description: '在终端中执行以下命令，然后按 Enter：',
+                        description: '在项目目录打开终端，运行：',
                         command: 'npm run auth:set'
                     },
                     {
-                        title: '输入并确认新密码',
-                        description: '输入新的 6 位数字密码并按 Enter，再输入一次并按 Enter 确认。输入时只显示星号；请避开连续、重复或常见数字组合。'
+                        title: '设置新密码',
+                        description: '按提示输入并确认新的 6 位数字密码。'
                     },
                     {
                         title: '返回网页验证',
-                        description: '看到“已安全更新”后，回到网页使用新密码验证即可，无需重启服务。原有登录会话会自动失效。'
+                        description: '重置成功后，回到网页使用新密码验证。'
                     }
                 ],
-                note: '如无服务器操作权限，请联系站点维护者代为重置。'
+                note: '没有服务器操作权限时，请联系站点维护者。'
             }
         );
         return;
