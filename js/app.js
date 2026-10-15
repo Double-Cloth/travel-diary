@@ -1010,7 +1010,13 @@ function renderPreface() {
             <h3 id="prefaceSecurityTitle">访问安全</h3>
             <p>验证当前密码后设置新的 6 位数字密码。</p>
             <button class="paper-button" type="button" data-action="change-password">修改访问密码</button>
-            <button class="password-reset-help" type="button" data-action="password-reset-help" aria-haspopup="dialog">忘记密码<span class="password-reset-help-mark" aria-hidden="true">？</span></button>
+            <button class="password-reset-help" type="button" data-action="password-reset-help" aria-haspopup="dialog" aria-label="忘记密码？查看重置方法">
+                <span>忘记密码</span>
+                <svg class="password-reset-help-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                    <circle cx="8" cy="8" r="6.25"/>
+                    <path d="M6.5 6a1.5 1.5 0 0 1 3 .15c0 1.1-1.5 1.25-1.5 2.35M8 10.75h.01"/>
+                </svg>
+            </button>
         </section>
 
         <section class="preface-tool-section archive-danger-zone" aria-labelledby="prefaceDangerTitle">

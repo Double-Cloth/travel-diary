@@ -485,28 +485,40 @@ body[data-route='preface'] .paper-page {
 .password-reset-help {
     display: inline-flex;
     align-items: center;
-    justify-self: start;
+    justify-self: end;
     gap: 5px;
     min-height: 32px;
-    padding: 4px 0;
+    margin-top: -4px;
+    padding: 6px 2px;
     color: var(--ink-soft);
     background: transparent;
     font-size: 12px;
-    line-height: 1.7;
+    line-height: 20px;
+    border-radius: 2px;
     cursor: pointer;
 }
 
 .password-reset-help:hover { color: var(--stamp); }
 
+.password-reset-help:hover > span {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.password-reset-help:focus-visible {
+    outline: 1px solid var(--stamp);
+    outline-offset: 3px;
+}
+
 .password-reset-help-mark {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    border: 1px solid currentColor;
-    border-radius: 50%;
-    line-height: 1;
+    flex: none;
+    width: 14px;
+    height: 14px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
 }
 
 .paper-page .paper-button,
