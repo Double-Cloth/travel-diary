@@ -1010,6 +1010,7 @@ function renderPreface() {
             <h3 id="prefaceSecurityTitle">访问安全</h3>
             <p>验证当前密码后设置新的 6 位数字密码。</p>
             <button class="paper-button" type="button" data-action="change-password">修改访问密码</button>
+            <button class="password-reset-help" type="button" data-action="password-reset-help" aria-haspopup="dialog">忘记密码<span class="password-reset-help-mark" aria-hidden="true">？</span></button>
         </section>
 
         <section class="preface-tool-section archive-danger-zone" aria-labelledby="prefaceDangerTitle">
@@ -3450,6 +3451,14 @@ function handleDocumentClick(event) {
     if (event.target.closest('[data-action="change-password"]')) {
         event.preventDefault();
         void openPasswordChange().catch(error => showFeedback(error.message));
+        return;
+    }
+    if (event.target.closest('[data-action="password-reset-help"]')) {
+        event.preventDefault();
+        void showFeedback(
+            '请在运行本项目的电脑或服务器上打开终端，进入项目根目录，执行 npm run auth:set。按提示输入并确认新的 6 位数字密码，避免连续、重复或常见组合。设置成功后，返回页面使用新密码验证，旧登录会话会自动失效。若没有服务器操作权限，请联系站点维护者重置。',
+            { label: '访问安全', title: '如何重置密码' }
+        );
         return;
     }
     if (event.target.closest('[data-action="upload-profile-picture"]')) {

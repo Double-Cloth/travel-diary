@@ -482,6 +482,33 @@ body[data-route='preface'] .paper-page {
 
 .preface-tools-panel .archive-data-status { margin: 0; }
 
+.password-reset-help {
+    display: inline-flex;
+    align-items: center;
+    justify-self: start;
+    gap: 5px;
+    min-height: 32px;
+    padding: 4px 0;
+    color: var(--ink-soft);
+    background: transparent;
+    font-size: 12px;
+    line-height: 1.7;
+    cursor: pointer;
+}
+
+.password-reset-help:hover { color: var(--stamp); }
+
+.password-reset-help-mark {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border: 1px solid currentColor;
+    border-radius: 50%;
+    line-height: 1;
+}
+
 .paper-page .paper-button,
 .paper-page .ribbon-back {
     border: 1px solid var(--metal-edge);
