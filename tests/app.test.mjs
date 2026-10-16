@@ -524,9 +524,12 @@ test('多项媒体继续循环切换，归一化后仍是当前项时不重新�
 
 test('桌面连续翻页加速落稳后衔接最新目标，取消会清理副本', t => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
+    let paintTime = 0;
+    t.mock.method(performance, 'now', () => paintTime);
     const previous = { window: globalThis.window, document: globalThis.document, getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame };
     t.after(() => { app.clearPageTurn(); Object.assign(globalThis, previous); });
-    globalThis.requestAnimationFrame = callback => { callback(); return 1; };
+    const synchronousFrame = callback => { paintTime += 16; callback(); return 1; };
+    globalThis.requestAnimationFrame = synchronousFrame;
     globalThis.cancelAnimationFrame = () => {};
     const copies = new Set();
     const animations = [];
@@ -599,15 +602,27 @@ test('桌面连续翻页加速落稳后衔接最新目标，取消会清理副�
     globalThis.window.matchMedia = () => ({ matches: false });
     const pendingFrames = [];
     globalThis.requestAnimationFrame = callback => { pendingFrames.push(callback); return 2; };
+    const paintFrame = (duration = 16) => { paintTime += duration; pendingFrames.shift()(); };
     app.renderWithPageTurn(() => { rendered = '等待首帧'; });
     const startingPage = [...copies].find(node => node.classList.values.has('book-turn-starting'));
     assert.ok(startingPage, '首次建层时使用平面旧页覆盖真实新页');
     assert.equal(startingPage.style.padding, '42px 40px 36px', '旧页内边距不受新路由样式影响');
     assert.equal(startingPage.scrollTop, 45, '准备帧保留旧页阅读位置');
-    pendingFrames.shift()();
+    assert.ok(animations.filter(animation => !animation.cancelled).every(animation => animation.playbackRate === 0), '准备期间动画以零速参与合成');
+    paintFrame();
     assert.equal(copies.has(startingPage), true, '首次绘制完成前保留平面旧页');
-    pendingFrames.shift()();
-    assert.equal(copies.has(startingPage), false, '播放动画时交接给曲面纸带');
+    paintFrame(160);
+    assert.equal(copies.has(startingPage), true, '两个回调不足以确认刷新后的首次绘制稳定');
+    for (let index = 0; index < 10; index += 1) paintFrame(1);
+    assert.equal(copies.has(startingPage), true, '耗时绘制后的密集回调不能提前揭开旧页');
+    for (let index = 0; index < 4; index += 1) paintFrame();
+    assert.equal(copies.has(startingPage), false, '绘制帧稳定后才交接给曲面纸带');
+    assert.ok(animations.filter(animation => !animation.cancelled).every(animation => animation.playbackRate === 1), '揭开旧页时恢复正常动画速度');
+    app.clearPageTurn();
+    app.renderWithPageTurn(() => { rendered = '持续慢帧'; });
+    const slowStartingPage = [...copies].find(node => node.classList.values.has('book-turn-starting'));
+    paintFrame(901);
+    assert.equal(copies.has(slowStartingPage), false, '低帧率设备达到准备上限后仍能继续翻页');
     app.clearPageTurn();
     app.renderWithPageTurn(() => { rendered = '取消前的准备帧'; });
     const cancelledStartingPage = [...copies].find(node => node.classList.values.has('book-turn-starting'));
@@ -618,7 +633,7 @@ test('桌面连续翻页加速落稳后衔接最新目标，取消会清理副�
     assert.equal(rendered, '取消待开始的翻页');
     assert.equal(spread.classList.values.size, 0);
     assert.equal(animations.every(animation => animation.cancelled), true);
-    globalThis.requestAnimationFrame = callback => { callback(); return 1; };
+    globalThis.requestAnimationFrame = synchronousFrame;
     app.renderWithPageTurn(() => { rendered = '调整窗口前'; });
     app.renderWithPageTurn(() => { rendered = '窗口调整后的目标'; });
     app.clearPageTurn();
