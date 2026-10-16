@@ -1,5 +1,6 @@
 let customSelectId = 0;
 let documentEventsBound = false;
+let placementUpdateFrame = 0;
 const POINTER_MOVE_TOLERANCE = 8;
 
 function pointerMoved(start, event) {
@@ -307,12 +308,20 @@ function enhanceCustomSelect(select) {
     });
 }
 
+function updateCustomSelectPlacements() {
+    if (placementUpdateFrame) return;
+    placementUpdateFrame = requestAnimationFrame(() => {
+        placementUpdateFrame = 0;
+        document.querySelectorAll('.custom-select').forEach(wrapper => {
+            const trigger = wrapper.querySelector('[data-custom-select-trigger]');
+            if (trigger?.getClientRects().length) updateCustomSelectPlacement(wrapper);
+        });
+    });
+}
+
 function bindDocumentEvents() {
     if (documentEventsBound) return;
     documentEventsBound = true;
-    const updateCustomSelectPlacements = () => {
-        document.querySelectorAll('.custom-select.is-open').forEach(updateCustomSelectPlacement);
-    };
     document.addEventListener('pointerdown', event => {
         if (event.target.closest('[data-custom-select]')) return;
         document.querySelectorAll('[data-custom-select].is-open').forEach(closeCustomSelect);
@@ -324,4 +333,5 @@ function bindDocumentEvents() {
 export function enhanceCustomSelects(root = document) {
     root.querySelectorAll('select[data-custom-select]').forEach(enhanceCustomSelect);
     bindDocumentEvents();
+    updateCustomSelectPlacements();
 }

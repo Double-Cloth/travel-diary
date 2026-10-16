@@ -12,7 +12,7 @@ import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepar
 import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=20261013-cleanup-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
-import { enhanceCustomSelects } from './custom-select.js?v=20260930-review-v1';
+import { enhanceCustomSelects } from './custom-select.js?v=20261016-select-direction-v1';
 import { confirmFeedback } from './feedback-dialog.js';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
 import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
