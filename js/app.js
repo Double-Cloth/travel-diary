@@ -2415,11 +2415,10 @@ function handlePhotoViewerFullscreenChange() {
 }
 
 function getInitialPhotoScale(stage, media) {
-    const stageRect = stage.getBoundingClientRect();
     const { width, height } = getViewerMediaSourceSize(media);
     return calculateInitialPhotoScale({
-        stageWidth: stageRect.width,
-        stageHeight: stageRect.height,
+        stageWidth: stage.clientWidth,
+        stageHeight: stage.clientHeight,
         naturalWidth: width,
         naturalHeight: height,
         allowUpscale: media.matches('[data-video-viewer-video]')
@@ -2575,17 +2574,16 @@ function getPhotoViewerBounds() {
         return null;
     }
 
-    const stageRect = stage.getBoundingClientRect();
     const sourceSize = getViewerMediaSourceSize(image);
     const sourceWidth = sourceSize.width || image.width;
     const sourceHeight = sourceSize.height || image.height;
-    if (!stageRect.width || !stageRect.height || !sourceWidth || !sourceHeight) {
+    if (!stage.clientWidth || !stage.clientHeight || !sourceWidth || !sourceHeight) {
         return null;
     }
 
     return calculatePhotoViewerBounds({
-        stageWidth: stageRect.width,
-        stageHeight: stageRect.height,
+        stageWidth: stage.clientWidth,
+        stageHeight: stage.clientHeight,
         sourceWidth,
         sourceHeight,
         scale: photoViewerState.scale,

@@ -468,7 +468,9 @@
     user-select: none;
     will-change: transform;
     transition: none;
-    outline: 1px solid rgba(255, 249, 229, 0.72);
+    /* 边框画在媒体内沿，拖到查看区边界时仍能显示。 */
+    outline: 2px solid #171410;
+    outline-offset: -2px;
     box-shadow:
         0 0 0 3px rgba(17, 10, 6, 0.72),
         0 20px 50px rgba(0, 0, 0, 0.48);

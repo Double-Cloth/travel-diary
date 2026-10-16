@@ -9,7 +9,8 @@ export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteConten
     renderWithPageTurn, renderWithBookCover, clearPageTurn, cloneTurningPage, cloneTransitionContent, createTransitionMediaImage, observePhotoSleeveVideos, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
-    restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute };
+    restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute,
+    getInitialPhotoScale, getPhotoViewerBounds, constrainPhotoViewerTransform };
 export function stubSearchNavigation(route) {
     const originals = { navigateTo, activeRoute };
     const calls = [];
@@ -366,6 +367,37 @@ test('异常照片索引回退且循环切换始终得到整数下标', () => {
     assert.equal(app.normalizePhotoIndex(-1, 3), 2);
     assert.equal(app.normalizePhotoIndex(3, 3), 0);
     assert.equal(app.normalizePhotoIndex(1, 0), 0);
+});
+
+test('媒体适配与拖动使用边框内的可见尺寸，旋转后仍能拖到真实边缘', t => {
+    const previousDocument = globalThis.document;
+    t.after(() => { globalThis.document = previousDocument; });
+    for (const border of [5, 3, 0]) {
+        for (const rotation of [0, 90]) {
+            const stage = {
+                clientWidth: 350, clientHeight: 600,
+                getBoundingClientRect: () => ({ width: 350 + border * 2, height: 600 + border * 2 })
+            };
+            const media = { naturalWidth: 1200, naturalHeight: 800, matches: () => false };
+            globalThis.document = { body: { querySelector: selector => ({
+                '[data-photo-viewer-stage]': stage,
+                '[data-photo-viewer-media]': media
+            })[selector] || null } };
+            const state = { scale: 1, rotation, translateX: 10000, translateY: -10000 };
+            const viewer = app.stubViewerNavigation(state);
+            try {
+                assert.equal(app.getInitialPhotoScale(stage, media), 350 / 1200);
+                const bounds = app.getPhotoViewerBounds();
+                assert.equal(bounds.stageWidth, 350);
+                assert.equal(bounds.stageHeight, 600);
+                app.constrainPhotoViewerTransform();
+                const imageWidth = rotation ? 800 : 1200;
+                const imageHeight = rotation ? 1200 : 800;
+                assert.ok(Math.abs(state.translateX - (imageWidth - 350) / 2) < 1e-9);
+                assert.ok(Math.abs(state.translateY + (imageHeight - 600) / 2) < 1e-9);
+            } finally { viewer.restore(); }
+        }
+    }
 });
 
 test('单项图片和视频切换保留媒体及查看状态，不重新渲染或重置', t => {
