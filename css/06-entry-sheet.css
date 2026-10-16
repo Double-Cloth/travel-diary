@@ -241,7 +241,8 @@
 .entry-photos-summary { display: contents; }
 
 .photo-viewer {
-    --viewer-screen: #1e1813;
+    /* 中等明度的暖灰衬底，让深色与浅色媒体都能显出边界。 */
+    --viewer-screen: #b8b5ad;
     --viewer-paper-face: linear-gradient(145deg, #fff8e8e8, #ead7b8e8), url('../assets/textures/paper-grain.png');
     position: fixed;
     inset: 0;
@@ -467,7 +468,7 @@
     user-select: none;
     will-change: transform;
     transition: none;
-    outline: 1px solid rgba(239, 216, 170, 0.2);
+    outline: 1px solid rgba(255, 249, 229, 0.72);
     box-shadow:
         0 0 0 3px rgba(17, 10, 6, 0.72),
         0 20px 50px rgba(0, 0, 0, 0.48);
@@ -480,7 +481,7 @@
 }
 
 .video-viewer-video {
-    background: #090705;
+    background: var(--viewer-screen);
 }
 
 .video-viewer-big-play {
