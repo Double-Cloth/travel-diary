@@ -364,9 +364,8 @@ body[data-route="cover"] .page-spread { visibility: hidden; }
     }
 }
 
-/* 卷页纸背保留纸纤维和透光差异；边缘高光与接触阴影共同强化纸张厚度。 */
-.book-curl-back .book-curl-surface::after,
-.book-curl-front .book-curl-surface::after {
+/* 纸背保留透光差异；正面的光照由书芯统一提供，避免交接曲面时突然增亮。 */
+.book-curl-back .book-curl-surface::after {
     content: "";
     position: absolute;
     z-index: 24;

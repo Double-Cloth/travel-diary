@@ -3335,7 +3335,8 @@ function createPageCurlFrames(width, height, backwards, count = 18) {
             const mirror = backwards ? -1 : 1;
             const x = c * first.u + s * width;
             const y = s * first.u - c * width;
-            const transform = `matrix3d(${mirror * c * du},${s * du},${dz},0,${-mirror * s},${c},0,0,${-mirror * c * dz / length},${-s * dz / length},${du / length},0,${backwards ? width - x : x},${y},${first.z + 1},1)`;
+            // 平整时与真实页共面，避免额外 Z 偏移造成透视缩放和文字跳动。
+            const transform = `matrix3d(${mirror * c * du},${s * du},${dz},0,${-mirror * s},${c},0,0,${-mirror * c * dz / length},${-s * dz / length},${du / length},0,${backwards ? width - x : x},${y},${first.z},1)`;
             const sample = flipped => {
                 const sign = flipped ? -1 : 1;
                 return `matrix(${c * sign},${-s * sign},${s},${c},${(flipped ? c * width : 0) - u},${width - (flipped ? s * width : 0)})`;

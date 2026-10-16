@@ -281,7 +281,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261016-page-turn-stable-v1');
+    assert.equal(appVersion, '20261016-turn-lighting-v3');
     assert.ok(cssVersion);
     assert.match(appJs, /\.\/record-editor\.js\?v=20261016-select-direction-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20261016-select-direction-v1/);
@@ -671,7 +671,7 @@ test('桌面章节书签按已翻开和未翻开状态分处书页前后', () =>
     assert.match(appJs, /classList\.toggle\('chapter-tab-turned', isTurned\);/);
     assert.match(appJs, /classList\.toggle\('chapter-tab-unturned', !isTurned\);/);
     assert.match(journalCss, /\.journal-spine\s*{[^}]*z-index:\s*80;/);
-    assert.match(journalCss, /\.page-spread:is\(\.turn-back, \.turn-forward\)\s*{\s*z-index:\s*10;/);
+    assert.doesNotMatch(journalCss, /\.page-spread:is\(\.turn-back, \.turn-forward\)\s*{[^}]*z-index:/, '翻页时不应盖住书脊阴影');
     assert.match(journalCss, /\.mobile-page-transition\s*{[^}]*z-index:\s*70;/);
     assert.doesNotMatch(journalCss, /:has\(\.book-turn-leaf\)[^{]*\.journal-stage\s*{[^}]*z-index/);
     assert.match(appJs, /refs\.shell\.append\(viewport\);/);

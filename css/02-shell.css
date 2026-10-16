@@ -244,14 +244,14 @@
 }
 
 /* 翻页只在书芯内部叠加；桌面端章节书签会按页序分别落在纸页前后。 */
-.page-spread:is(.turn-back, .turn-forward) { z-index: 10; }
 .page-spread:is(.turn-back, .turn-forward) > .paper-page:not(.book-page-copy) { z-index: 0; pointer-events: none; }
 
 .page-spread::before,
 .page-spread::after {
     content: "";
     position: absolute;
-    z-index: 1;
+    /* 固定纸面光照覆盖真实页和动画副本，交接时不改变整页亮度。 */
+    z-index: 102;
     top: 0;
     bottom: 0;
     width: 50%;
@@ -278,7 +278,10 @@
     .page-spread {
         --book-left-radius: 5px 36px 28px 7px / 4px 12px 10px 6px;
         --book-right-radius: 36px 5px 7px 28px / 12px 4px 6px 10px;
+        /* 从初始内页起保持合成方式一致，避免首次翻页时整本书改变文字栅格化方式。 */
+        transform: translateZ(0);
     }
+    .page-spread > .paper-page { transform: translateZ(0); }
     .page-spread > .paper-page-left { border-radius: var(--book-left-radius); }
     .page-spread > .paper-page-right { border-radius: var(--book-right-radius); }
 }

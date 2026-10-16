@@ -851,6 +851,7 @@ test('卷曲从下角向内扩散，纸面共享边界且正反向准确落页',
         for (const band of frames) {
             assert.equal(band[0].first.z, 0);
             assert.equal(band[0].last.z, 0);
+            assert.equal(Number(band[0].transform.slice(9, -1).split(',')[14]), 0, '初始纸面不得因额外 Z 偏移发生透视缩放');
             assert.ok(Math.abs(band.at(-1).first.u + band[0].first.u) < 1e-8);
             assert.equal(band.at(-1).first.z, 0);
         }
