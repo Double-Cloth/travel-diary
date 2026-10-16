@@ -10,8 +10,7 @@ export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteConten
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
     restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute,
-    getInitialPhotoScale, getPhotoViewerBounds, constrainPhotoViewerTransform,
-    getPhotoViewerBorderColor, updatePhotoViewerBorder };
+    getInitialPhotoScale, getPhotoViewerBounds, constrainPhotoViewerTransform };
 export function stubSearchNavigation(route) {
     const originals = { navigateTo, activeRoute };
     const calls = [];
@@ -381,42 +380,7 @@ test('异常照片索引回退且循环切换始终得到整数下标', () => {
     assert.equal(app.normalizePhotoIndex(1, 0), 0);
 });
 
-test('媒体边框按边缘亮度选择黑白，不受图片中心颜色干扰', () => {
-    const width = 32;
-    const height = 32;
-    for (const [edge, center, expected] of [
-        [[0, 0, 0], [255, 255, 255], '#fff'],
-        [[255, 255, 255], [0, 0, 0], '#000'],
-        [[0, 0, 255], [255, 255, 255], '#fff'],
-        [[255, 255, 0], [0, 0, 0], '#000']
-    ]) {
-        const pixels = new Uint8ClampedArray(width * height * 4);
-        for (let y = 0; y < height; y += 1) {
-            for (let x = 0; x < width; x += 1) {
-                const color = x < 2 || x >= width - 2 || y < 2 || y >= height - 2 ? edge : center;
-                pixels.set([...color, 255], (y * width + x) * 4);
-            }
-        }
-        assert.equal(app.getPhotoViewerBorderColor(pixels, width, height), expected);
-    }
-});
-
-test('媒体像素读取失败或旧媒体迟到时不会中断查看器或覆盖当前边框', t => {
-    const previousDocument = globalThis.document;
-    t.after(() => { globalThis.document = previousDocument; });
-    let writes = 0;
-    const frame = { style: { setProperty() { writes += 1; } } };
-    const media = { closest: () => frame };
-    globalThis.document = {
-        body: { querySelector: () => media },
-        createElement() { throw new Error('无法读取跨域媒体'); }
-    };
-    assert.doesNotThrow(() => app.updatePhotoViewerBorder(media));
-    assert.doesNotThrow(() => app.updatePhotoViewerBorder({ closest() { throw new Error('不应读取旧媒体'); } }));
-    assert.equal(writes, 0);
-});
-
-test('媒体适配与拖动使用边框内的可见尺寸，旋转后仍能拖到真实边缘', t => {
+test('媒体适配与拖动使用边框内的可见尺寸，旋转后仍能在边缘留白', t => {
     const previousDocument = globalThis.document;
     t.after(() => { globalThis.document = previousDocument; });
     for (const border of [5, 3, 0]) {
@@ -440,8 +404,8 @@ test('媒体适配与拖动使用边框内的可见尺寸，旋转后仍能拖�
                 app.constrainPhotoViewerTransform();
                 const imageWidth = rotation ? 800 : 1200;
                 const imageHeight = rotation ? 1200 : 800;
-                assert.ok(Math.abs(state.translateX - (imageWidth - 350) / 2) < 1e-9);
-                assert.ok(Math.abs(state.translateY + (imageHeight - 600) / 2) < 1e-9);
+                assert.ok(Math.abs(state.translateX - ((imageWidth - 350) / 2 + 21)) < 1e-9);
+                assert.ok(Math.abs(state.translateY + ((imageHeight - 600) / 2 + 32)) < 1e-9);
             } finally { viewer.restore(); }
         }
     }

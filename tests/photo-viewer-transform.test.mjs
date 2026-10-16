@@ -30,7 +30,7 @@ test('图片初始适配仍不会超过原始尺寸', () => {
     assert.equal(result, 1);
 });
 
-test('缩小到小于舞台时照片平移会回到中心', () => {
+test('小于舞台的照片仍允许少量拖动，且不会被拖离视野', () => {
     const result = constrainPhotoViewerTranslate({
         translateX: 420,
         translateY: -360,
@@ -43,12 +43,12 @@ test('缩小到小于舞台时照片平移会回到中心', () => {
     });
 
     assert.deepEqual(result, {
-        translateX: 0,
-        translateY: 0
+        translateX: 360 * 0.06,
+        translateY: -32
     });
 });
 
-test('大于舞台的照片只允许拖动到边缘贴合舞台', () => {
+test('大于舞台的照片拖到边缘后仍留出背景和阴影空间', () => {
     const result = constrainPhotoViewerTranslate({
         translateX: 500,
         translateY: -500,
@@ -61,9 +61,30 @@ test('大于舞台的照片只允许拖动到边缘贴合舞台', () => {
     });
 
     assert.deepEqual(result, {
-        translateX: 320,
-        translateY: -95
+        translateX: 341.6,
+        translateY: -127
     });
+});
+
+test('恰好适配的媒体可以向两侧拖动，留白在窄屏缩减且不随缩放增大', () => {
+    for (const stageSize of [240, 360, 1000]) {
+        const edgeSpace = Math.min(32, stageSize * 0.06);
+        for (const scale of [1, 4]) {
+            for (const direction of [-1, 1]) {
+                const result = constrainPhotoViewerTranslate({
+                    translateX: direction * 10000,
+                    translateY: direction * 10000,
+                    bounds: {
+                        stageWidth: stageSize, stageHeight: stageSize,
+                        imageWidth: stageSize * scale, imageHeight: stageSize * scale
+                    }
+                });
+                const expected = direction * ((stageSize * scale - stageSize) / 2 + edgeSpace);
+                assert.equal(result.translateX, expected);
+                assert.equal(result.translateY, expected);
+            }
+        }
+    }
 });
 
 test('缩小显示时使用当前显示尺寸作为合成层，避免移动端大图缩小缺块', () => {

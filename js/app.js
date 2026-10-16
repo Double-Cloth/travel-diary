@@ -26,7 +26,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs';
+} from './photo-viewer-transform.mjs?v=20261016-media-shadow-v1';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_SORT_OPTIONS = new Set(['desc', 'asc', 'location', 'area', 'title']);
@@ -1884,8 +1884,6 @@ function renderPhotoViewer() {
             }
             video.addEventListener('click', handleViewerVideoClick);
             video.addEventListener('seeked', handleViewerVideoSeeked);
-            // 仅按封面帧选色，播放期间保持边框稳定，避免随画面闪烁。
-            video.addEventListener('loadeddata', () => updatePhotoViewerBorder(video), { once: true });
             video.addEventListener('loadedmetadata', () => {
                 if (video !== getViewerVideo()) return;
                 fitPhotoToStage();
@@ -1894,7 +1892,6 @@ function renderPhotoViewer() {
             video.addEventListener('error', showVideoPlaybackError, { once: true });
             if (video.readyState >= 1) fitPhotoToStage();
             else updatePhotoViewerTransform();
-            if (video.readyState >= 2) updatePhotoViewerBorder(video);
             syncVideoViewerControls();
         }
         requestAnimationFrame(() => getPhotoViewerRoot()?.querySelector('.photo-viewer-panel')?.focus({ preventScroll: true }));
@@ -1926,13 +1923,11 @@ function renderPhotoViewer() {
     }
     if (image?.complete) {
         fitPhotoToStage();
-        updatePhotoViewerBorder(image);
     } else {
         if (image) {
             image.addEventListener('load', () => {
                 if (image === getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]')) {
                     fitPhotoToStage();
-                    updatePhotoViewerBorder(image);
                 }
             }, { once: true });
         }
@@ -1941,47 +1936,6 @@ function renderPhotoViewer() {
     requestAnimationFrame(() => {
         getPhotoViewerRoot()?.querySelector('.photo-viewer-panel')?.focus({ preventScroll: true });
     });
-}
-
-function updatePhotoViewerBorder(media) {
-    if (media !== getViewerMedia()) return;
-    const frame = media.closest('[data-photo-viewer-frame]');
-    if (!frame) return;
-    try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 32;
-        canvas.height = 32;
-        const context = canvas.getContext('2d', { willReadFrequently: true });
-        if (!context) return;
-        // 透明图片先叠在实际查看区底色上，只采样小缩略图的边缘。
-        context.fillStyle = getComputedStyle(frame.parentElement).backgroundColor;
-        context.fillRect(0, 0, canvas.width, canvas.height);
-        context.drawImage(media, 0, 0, canvas.width, canvas.height);
-        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
-        frame.style.setProperty('--viewer-media-border', getPhotoViewerBorderColor(pixels, canvas.width, canvas.height));
-    } catch {
-        // 跨域媒体不可读取像素时保留默认边框，不影响查看和播放。
-    }
-}
-
-function getPhotoViewerBorderColor(pixels, width, height) {
-    let luminance = 0;
-    let count = 0;
-    for (let y = 0; y < height; y += 1) {
-        for (let x = 0; x < width; x += 1) {
-            if (x >= 2 && x < width - 2 && y >= 2 && y < height - 2) continue;
-            const offset = (y * width + x) * 4;
-            const channels = [0, 1, 2].map(channel => {
-                const value = pixels[offset + channel] / 255;
-                return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
-            });
-            luminance += channels[0] * 0.2126 + channels[1] * 0.7152 + channels[2] * 0.0722;
-            count += 1;
-        }
-    }
-    // 选择与边缘平均亮度对比度更高的黑色或白色。
-    const brightness = count ? luminance / count : 1;
-    return (brightness + 0.05) / 0.05 >= 1.05 / (brightness + 0.05) ? '#000' : '#fff';
 }
 
 function closePhotoViewerDialog() {

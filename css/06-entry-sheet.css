@@ -459,7 +459,7 @@
 }
 
 .photo-viewer-media-frame::after {
-    /* 独立绘制内沿边框，不随媒体缩放，也不会在拖动到边缘时被裁细。 */
+    /* 阴影按显示尺寸单独绘制，缩放时保持柔和，旋转和拖动时贴合媒体。 */
     content: '';
     position: absolute;
     left: 50%;
@@ -467,7 +467,7 @@
     width: var(--viewer-media-width, 100%);
     height: var(--viewer-media-height, 100%);
     box-sizing: border-box;
-    border: 2px solid var(--viewer-media-border, #000);
+    box-shadow: 0 6px 18px rgba(59, 49, 37, 0.18), 0 2px 6px rgba(59, 49, 37, 0.1);
     pointer-events: none;
     transform: translate(-50%, -50%) rotate(var(--viewer-media-rotation, 0deg));
 }
@@ -482,7 +482,6 @@
     user-select: none;
     will-change: transform;
     transition: none;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.48);
 }
 
 .photo-viewer-image { image-rendering: auto; }

@@ -96,11 +96,13 @@ export function getPhotoViewerZoomTranslate({
 }
 
 function getPhotoViewerAxisTranslateLimit(stageSize, imageSize) {
-    if (!stageSize || !imageSize || imageSize <= stageSize) {
+    if (!stageSize || !imageSize) {
         return 0;
     }
 
-    return (imageSize - stageSize) / 2;
+    // 边缘允许露出少量背景，便于查看阴影；留白不随媒体缩放放大。
+    const edgeSpace = Math.min(32, stageSize * 0.06);
+    return Math.max(0, (imageSize - stageSize) / 2) + edgeSpace;
 }
 
 function clampTranslateAxis(value, maxTranslate) {
