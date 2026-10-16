@@ -206,8 +206,7 @@
 .notebook::after {
     content: "";
     position: absolute;
-    /* 翻页书芯会升到第 10 层，装订阴影始终覆盖书芯，避免起落页时突然消失。 */
-    z-index: 11;
+    z-index: 5;
     top: 17px;
     bottom: 24px;
     left: calc(50% - 46px);
