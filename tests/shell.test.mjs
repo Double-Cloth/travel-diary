@@ -281,7 +281,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261016-media-shadow-v1');
+    assert.equal(appVersion, '20261016-media-background-v1');
     assert.ok(cssVersion);
     assert.match(appJs, /\.\/record-editor\.js\?v=20261013-danger-first-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20260930-review-v1/);
@@ -1012,7 +1012,7 @@ test('图片与视频初始居中适配舞台且平移不会完全移出屏幕',
     assert.match(appJs, /function getPhotoViewerBounds\(\)/);
     assert.match(photoViewerTransformJs, /function getPhotoViewerAxisTranslateLimit/);
     assert.match(photoViewerTransformJs, /function getPhotoViewerRenderMetrics/);
-    assert.match(appJs, /image\.addEventListener\('load', \(\) => \{\s*if \(image === getPhotoViewerRoot\(\)\?\.querySelector\('\[data-photo-viewer-image\]'\)\) \{\s*fitPhotoToStage\(\);\s*\}\s*\}, \{ once: true \}\)/);
+    assert.match(appJs, /image\.addEventListener\('load', \(\) => \{\s*if \(image === getPhotoViewerRoot\(\)\?\.querySelector\('\[data-photo-viewer-image\]'\)\) \{\s*fitPhotoToStage\(\);\s*updatePhotoViewerBackground\(image\);\s*\}\s*\}, \{ once: true \}\)/);
     assert.match(photoViewerTransformJs, /const fitScale = Math\.min\(stageWidth \/ naturalWidth, stageHeight \/ naturalHeight\);/);
     assert.match(photoViewerTransformJs, /const containedScale = allowUpscale \? fitScale : Math\.min\(1, fitScale\);/);
     assert.match(appJs, /allowUpscale: media\.matches\('\[data-video-viewer-video\]'\)/);

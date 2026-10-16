@@ -10,7 +10,7 @@ export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteConten
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
     restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute,
-    getInitialPhotoScale, getPhotoViewerBounds, constrainPhotoViewerTransform };
+    getInitialPhotoScale, getPhotoViewerBounds, constrainPhotoViewerTransform, getPhotoViewerBackgroundColor, updatePhotoViewerBackground };
 export function stubSearchNavigation(route) {
     const originals = { navigateTo, activeRoute };
     const calls = [];
@@ -378,6 +378,85 @@ test('异常照片索引回退且循环切换始终得到整数下标', () => {
     assert.equal(app.normalizePhotoIndex(-1, 3), 2);
     assert.equal(app.normalizePhotoIndex(3, 3), 0);
     assert.equal(app.normalizePhotoIndex(1, 0), 0);
+});
+
+test('查看器背景避开媒体边缘颜色，黑白混合边缘采用中间色阶', () => {
+    const size = 32;
+    for (const [edge, expected] of [
+        [() => [0, 0, 0], '#e3dfd5'],
+        [() => [255, 255, 255], '#3a3e3b'],
+        [() => [184, 181, 173], '#3a3e3b'],
+        [x => x < 16 ? [0, 0, 0] : [255, 255, 255], '#636966']
+    ]) {
+        for (const center of [[0, 0, 0], [255, 255, 255]]) {
+            const pixels = new Uint8ClampedArray(size * size * 4);
+            for (let y = 0; y < size; y += 1) {
+                for (let x = 0; x < size; x += 1) {
+                    const color = x < 2 || x >= 30 || y < 2 || y >= 30 ? edge(x) : center;
+                    pixels.set([...color, 255], (y * size + x) * 4);
+                }
+            }
+            assert.equal(app.getPhotoViewerBackgroundColor(pixels, size, size), expected);
+        }
+    }
+});
+
+test('透明边缘不参与背景选色，完全透明时沿用默认暖灰', () => {
+    const pixels = new Uint8ClampedArray(32 * 32 * 4);
+    assert.equal(app.getPhotoViewerBackgroundColor(pixels, 32, 32), '#b8b5ad');
+    pixels.set([255, 255, 255, 255], 0);
+    assert.equal(app.getPhotoViewerBackgroundColor(pixels, 32, 32), '#3a3e3b');
+});
+
+test('背景取色更新当前媒体，忽略旧媒体回调并容忍像素读取失败', t => {
+    const previousDocument = globalThis.document;
+    t.after(() => { globalThis.document = previousDocument; });
+    const writes = [];
+    const stage = { style: { setProperty: (...args) => writes.push(args) } };
+    const media = { closest: () => stage };
+    const pixels = new Uint8ClampedArray(32 * 32 * 4).fill(255);
+    let reads = 0;
+    let fail = false;
+    globalThis.document = {
+        body: { querySelector: () => media },
+        createElement: () => ({ getContext: () => ({
+            drawImage(source) { assert.equal(source, media); },
+            getImageData() {
+                reads += 1;
+                if (fail) throw new Error('无法读取跨域媒体');
+                return { data: pixels };
+            }
+        }) })
+    };
+    app.updatePhotoViewerBackground(media);
+    assert.deepEqual(writes, [['--viewer-screen', '#3a3e3b']]);
+    app.updatePhotoViewerBackground({ closest() { throw new Error('不应读取旧媒体'); } });
+    assert.equal(reads, 1);
+    fail = true;
+    assert.doesNotThrow(() => app.updatePhotoViewerBackground(media));
+    assert.equal(writes.length, 1);
+});
+
+test('视频首帧暂不可读时不使用透明像素选背景，读到画面后再更新', t => {
+    const previousDocument = globalThis.document;
+    t.after(() => { globalThis.document = previousDocument; });
+    const writes = [];
+    const pixels = new Uint8ClampedArray(32 * 32 * 4);
+    const media = {
+        matches: () => true,
+        closest: () => ({ style: { setProperty: (...args) => writes.push(args) } })
+    };
+    globalThis.document = {
+        body: { querySelector: () => media },
+        createElement: () => ({ getContext: () => ({
+            drawImage() {}, getImageData: () => ({ data: pixels })
+        }) })
+    };
+    assert.equal(app.updatePhotoViewerBackground(media), false);
+    assert.deepEqual(writes, []);
+    pixels.fill(255);
+    assert.equal(app.updatePhotoViewerBackground(media), true);
+    assert.deepEqual(writes, [['--viewer-screen', '#3a3e3b']]);
 });
 
 test('媒体适配与拖动使用边框内的可见尺寸，旋转后仍能在边缘留白', t => {

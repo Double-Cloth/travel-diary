@@ -1884,6 +1884,19 @@ function renderPhotoViewer() {
             }
             video.addEventListener('click', handleViewerVideoClick);
             video.addEventListener('seeked', handleViewerVideoSeeked);
+            // 等首帧实际呈现后再取色，避免 loadeddata 时读到透明像素；播放期间不再改变背景。
+            let backgroundAttempts = 0;
+            const updateBackground = () => {
+                if (updatePhotoViewerBackground(video) === false && ++backgroundAttempts < 6) {
+                    window.setTimeout(updateBackground, 80);
+                }
+            };
+            if (typeof video.requestVideoFrameCallback === 'function') {
+                video.requestVideoFrameCallback(updateBackground);
+            } else {
+                video.addEventListener('loadeddata', updateBackground, { once: true });
+                if (video.readyState >= 2) updateBackground();
+            }
             video.addEventListener('loadedmetadata', () => {
                 if (video !== getViewerVideo()) return;
                 fitPhotoToStage();
@@ -1923,11 +1936,13 @@ function renderPhotoViewer() {
     }
     if (image?.complete) {
         fitPhotoToStage();
+        updatePhotoViewerBackground(image);
     } else {
         if (image) {
             image.addEventListener('load', () => {
                 if (image === getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]')) {
                     fitPhotoToStage();
+                    updatePhotoViewerBackground(image);
                 }
             }, { once: true });
         }
@@ -1936,6 +1951,57 @@ function renderPhotoViewer() {
     requestAnimationFrame(() => {
         getPhotoViewerRoot()?.querySelector('.photo-viewer-panel')?.focus({ preventScroll: true });
     });
+}
+
+function updatePhotoViewerBackground(media) {
+    if (media !== getViewerMedia()) return;
+    const stage = media.closest('[data-photo-viewer-stage]');
+    if (!stage) return;
+    try {
+        const canvas = document.createElement('canvas');
+        canvas.width = 32;
+        canvas.height = 32;
+        const context = canvas.getContext('2d', { willReadFrequently: true });
+        if (!context) return;
+        context.drawImage(media, 0, 0, canvas.width, canvas.height);
+        const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+        // 部分浏览器的首帧暂不可读，仅对此情况短暂重试，不采样后续播放画面。
+        if (media.matches?.('[data-video-viewer-video]') && !pixels.some((value, index) => index % 4 === 3 && value)) return false;
+        stage.style.setProperty('--viewer-screen', getPhotoViewerBackgroundColor(pixels, canvas.width, canvas.height));
+        return true;
+    } catch {
+        // 媒体不可读取像素时沿用暖灰底色，不影响查看和播放。
+    }
+}
+
+function getPhotoViewerBackgroundColor(pixels, width, height) {
+    // 从低饱和的纸灰色阶中选色，避免鲜艳背景干扰照片本身。
+    const palette = [
+        ['#e3dfd5', 227, 223, 213],
+        ['#a9aaa4', 169, 170, 164],
+        ['#636966', 99, 105, 102],
+        ['#3a3e3b', 58, 62, 59]
+    ];
+    const scores = palette.map(() => 0);
+    let weight = 0;
+    for (let y = 0; y < height; y += 1) {
+        for (let x = 0; x < width; x += 1) {
+            if (x >= 2 && x < width - 2 && y >= 2 && y < height - 2) continue;
+            const offset = (y * width + x) * 4;
+            const alpha = pixels[offset + 3] / 255;
+            if (!alpha) continue;
+            weight += alpha;
+            palette.forEach(([, red, green, blue], index) => {
+                const distance = 0.2126 * (pixels[offset] - red) ** 2
+                    + 0.7152 * (pixels[offset + 1] - green) ** 2
+                    + 0.0722 * (pixels[offset + 2] - blue) ** 2;
+                // 对接近背景的边缘像素加大惩罚，避免黑白混合边缘被平均成灰色。
+                scores[index] += alpha / (400 + distance);
+            });
+        }
+    }
+    if (!weight) return '#b8b5ad';
+    return palette[scores.indexOf(Math.min(...scores))][0];
 }
 
 function closePhotoViewerDialog() {
