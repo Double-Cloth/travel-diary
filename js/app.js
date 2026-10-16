@@ -2515,10 +2515,13 @@ function updatePhotoViewerTransform(options = {}) {
     if (options.animateRotation) {
         clearPhotoRotationTimer();
         image.classList.remove('photo-viewer-image-rotating');
+        frame.classList.remove('photo-viewer-image-rotating');
         void image.offsetWidth;
         image.classList.add('photo-viewer-image-rotating');
+        frame.classList.add('photo-viewer-image-rotating');
         photoRotationTimer = window.setTimeout(() => {
             image.classList.remove('photo-viewer-image-rotating');
+            frame.classList.remove('photo-viewer-image-rotating');
             photoRotationTimer = null;
         }, PHOTO_ROTATION_ANIMATION_MS);
     }
@@ -2534,7 +2537,10 @@ function updatePhotoViewerTransform(options = {}) {
     if (renderMetrics) {
         image.style.width = `${renderMetrics.width}px`;
         image.style.height = `${renderMetrics.height}px`;
+        frame.style.setProperty('--viewer-media-width', `${renderMetrics.width * visualScale}px`);
+        frame.style.setProperty('--viewer-media-height', `${renderMetrics.height * visualScale}px`);
     }
+    frame.style.setProperty('--viewer-media-rotation', `${photoViewerState.rotation}deg`);
     frame.style.transform = `translate3d(calc(-50% + ${photoViewerState.translateX}px), calc(-50% + ${photoViewerState.translateY}px), 0)`;
     image.style.transform = `rotate(${photoViewerState.rotation}deg) scale(${visualScale})`;
     const zoom = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-zoom]');

@@ -458,6 +458,20 @@
     will-change: transform;
 }
 
+.photo-viewer-media-frame::after {
+    /* 独立绘制内沿边框，不随媒体缩放，也不会在拖动到边缘时被裁细。 */
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: var(--viewer-media-width, 100%);
+    height: var(--viewer-media-height, 100%);
+    box-sizing: border-box;
+    border: 1px solid #171410;
+    pointer-events: none;
+    transform: translate(-50%, -50%) rotate(var(--viewer-media-rotation, 0deg));
+}
+
 .photo-viewer-media {
     display: block;
     width: auto;
@@ -468,17 +482,13 @@
     user-select: none;
     will-change: transform;
     transition: none;
-    /* 边框画在媒体内沿，拖到查看区边界时仍能显示。 */
-    outline: 2px solid #171410;
-    outline-offset: -2px;
-    box-shadow:
-        0 0 0 3px rgba(17, 10, 6, 0.72),
-        0 20px 50px rgba(0, 0, 0, 0.48);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.48);
 }
 
 .photo-viewer-image { image-rendering: auto; }
 
-.photo-viewer-image-rotating {
+.photo-viewer-media-frame.photo-viewer-image-rotating::after,
+.photo-viewer-media.photo-viewer-image-rotating {
     transition: transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
