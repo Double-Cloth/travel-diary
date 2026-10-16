@@ -241,14 +241,8 @@
 .entry-photos-summary { display: contents; }
 
 .photo-viewer {
-    --viewer-leather-dark: #1b0f0a;
-    --viewer-leather: #3f2518;
-    --viewer-leather-light: #70462e;
-    --viewer-brass-dark: #6a431e;
-    --viewer-brass: #b9853f;
-    --viewer-brass-light: #f0d08b;
-    --viewer-screen: #080705;
-    --viewer-paper: #ead9b4;
+    --viewer-screen: #1e1813;
+    --viewer-paper-face: linear-gradient(145deg, #fff8e8e8, #ead7b8e8), url('../assets/textures/paper-grain.png');
     position: fixed;
     inset: 0;
     z-index: 5;
@@ -260,13 +254,8 @@
 .photo-viewer-backdrop {
     position: absolute;
     inset: 0;
-    background:
-        radial-gradient(circle at 50% 38%, rgba(121, 82, 47, 0.22), transparent 44%),
-        linear-gradient(115deg, rgba(255, 225, 163, 0.05), transparent 32% 68%, rgba(0, 0, 0, 0.18)),
-        url("../assets/textures/paper-grain.png"),
-        rgba(10, 6, 4, 0.91);
-    background-blend-mode: screen, normal, multiply, normal;
-    backdrop-filter: blur(7px) saturate(0.78);
+    background: rgba(21, 11, 6, 0.78);
+    backdrop-filter: blur(4px);
 }
 
 .photo-viewer-panel {
@@ -280,7 +269,6 @@
     max-height: calc(100vh - 40px);
     outline: none;
     isolation: isolate;
-    filter: drop-shadow(0 26px 34px rgba(0, 0, 0, 0.46));
 }
 
 .photo-viewer-panel::before {
@@ -288,20 +276,15 @@
     position: absolute;
     z-index: -1;
     inset: -8px;
-    border: 1px solid #9a7043;
-    border-radius: 12px;
+    border: 1px solid var(--metal-edge);
+    border-radius: 6px;
     pointer-events: none;
-    background:
-        linear-gradient(135deg, rgba(255, 228, 170, 0.08), transparent 24% 72%, rgba(0, 0, 0, 0.2)),
-        url("../assets/textures/paper-grain.png"),
-        var(--viewer-leather-dark);
-    background-blend-mode: screen, multiply, normal;
+    background: var(--viewer-paper-face);
     box-shadow:
-        inset 0 0 0 2px #21120c,
-        inset 0 0 0 4px rgba(216, 174, 101, 0.22),
-        inset 0 2px 2px rgba(255, 236, 196, 0.08),
-        0 4px 0 #090503,
-        0 18px 34px rgba(0, 0, 0, 0.48);
+        inset 0 0 0 3px #fff7df9c,
+        inset 0 -2px #9a7448,
+        0 3px 0 #745233,
+        var(--deep-shadow);
 }
 
 .photo-viewer-toolbar {
@@ -311,19 +294,9 @@
     justify-content: center;
     min-height: 54px;
     padding: 8px 48px;
-    border: 1px solid #805832;
-    border-radius: 6px;
-    background:
-        linear-gradient(180deg, rgba(255, 225, 164, 0.08), transparent 38%, rgba(0, 0, 0, 0.17)),
-        url("../assets/textures/paper-grain.png"),
-        var(--viewer-leather);
-    background-blend-mode: screen, multiply, normal;
-    box-shadow:
-        inset 0 0 0 2px #24140d,
-        inset 0 0 0 3px rgba(220, 177, 99, 0.24),
-        inset 0 2px 3px rgba(255, 238, 199, 0.08),
-        0 3px 0 #100906,
-        0 8px 18px rgba(0, 0, 0, 0.28);
+    border-bottom: 1px solid var(--hairline);
+    color: var(--ink);
+    box-shadow: 0 1px #fff8e6;
 }
 
 .photo-viewer-control-group {
@@ -339,42 +312,33 @@
     min-width: 38px;
     height: 36px;
     padding: 0 10px;
-    border: 1px solid #93652f;
+    border: 1px solid var(--metal-edge);
     border-radius: 5px;
     cursor: pointer;
-    color: #fff7df;
-    background:
-        linear-gradient(180deg, rgba(255, 227, 169, 0.18), transparent 48%),
-        linear-gradient(180deg, #805527, #4c2e17);
+    color: #513824;
+    background: var(--control-face);
     font-family: var(--font-serif);
     font-size: 15px;
-    text-shadow: 0 1px #201006;
-    box-shadow:
-        inset 0 1px 0 rgba(255, 244, 211, 0.24),
-        inset 0 0 0 1px rgba(47, 25, 11, 0.36),
-        0 2px 0 #27150b,
-        0 4px 7px rgba(0, 0, 0, 0.28);
+    text-shadow: 0 1px #fff8e6;
+    box-shadow: var(--control-shadow);
     transition: filter 150ms ease, transform 150ms ease, box-shadow 150ms ease;
 }
 
 .photo-viewer-control:hover,
 .photo-viewer-control:focus-visible {
-    background:
-        linear-gradient(180deg, rgba(255, 238, 197, 0.25), transparent 48%),
-        linear-gradient(180deg, #a06e34, #5d391c);
-    outline: 2px solid rgba(240, 208, 139, 0.46);
-    outline-offset: 2px;
+    border-color: #805b31;
     filter: brightness(1.06);
     transform: translateY(-1px);
 }
 
+.photo-viewer-control:focus-visible {
+    outline: 2px solid #815535;
+    outline-offset: 3px;
+}
+
 .photo-viewer-control:active {
-    outline: none;
-    transform: translateY(1px);
-    box-shadow:
-        inset 0 2px 4px rgba(20, 9, 3, 0.52),
-        inset 0 0 0 1px rgba(255, 233, 189, 0.1),
-        0 1px 0 #211108;
+    transform: translateY(2px);
+    box-shadow: inset 0 2px 4px #4c301a40, 0 1px #fff7df;
 }
 
 .photo-viewer-control:disabled {
@@ -404,48 +368,35 @@
     min-width: 38px;
     height: 36px;
     padding: 0;
-    border-color: #8b4835;
-    color: #ffe9ca;
-    background:
-        linear-gradient(180deg, rgba(255, 225, 188, 0.2), transparent 48%),
-        linear-gradient(180deg, #864735, #4c241d);
-}
-
-.photo-viewer-close:hover,
-.photo-viewer-close:focus-visible {
-    background:
-        linear-gradient(180deg, rgba(255, 237, 208, 0.25), transparent 48%),
-        linear-gradient(180deg, #a65840, #5a2920);
+    color: var(--stamp);
 }
 
 .photo-viewer-count {
     min-width: 58px;
     padding: 6px 12px 5px;
-    border: 1px solid #1b0e08;
+    border: 1px solid var(--hairline);
     border-radius: 3px;
-    color: #f0d08b;
-    background: linear-gradient(180deg, #160d08, #2c1c12);
-    box-shadow:
-        inset 0 2px 4px rgba(0, 0, 0, 0.72),
-        inset 0 -1px rgba(255, 226, 167, 0.09),
-        0 1px rgba(255, 235, 196, 0.12);
+    color: var(--ink);
+    background: var(--paper-50);
+    box-shadow: inset 0 1px 3px #644b2926, 0 1px #fff8e6;
     font-family: var(--font-code);
     font-size: 13px;
     letter-spacing: 0.08em;
     text-align: center;
-    text-shadow: 0 0 7px rgba(226, 172, 75, 0.24);
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
 
 .photo-viewer-zoom {
     min-width: 58px;
     padding: 4px 7px;
-    border: 1px solid rgba(29, 15, 7, 0.78);
+    border: 1px solid var(--hairline);
     border-radius: 3px;
-    color: #ead6aa;
-    background: rgba(18, 10, 6, 0.58);
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.46), 0 1px rgba(255, 239, 205, 0.08);
+    color: var(--ink-soft);
+    background: var(--paper-50);
+    box-shadow: inset 0 1px 3px #644b2926;
     font: 12px var(--font-code);
+    font-variant-numeric: tabular-nums;
     text-align: center;
     white-space: nowrap;
 }
@@ -455,23 +406,12 @@
     display: block;
     min-height: 0;
     overflow: hidden;
-    border: 5px solid #3d281a;
-    border-radius: 6px;
+    border: 5px solid #fff8e6;
+    border-radius: 2px;
     cursor: grab;
     touch-action: none;
-    background:
-        linear-gradient(45deg, rgba(255, 255, 255, 0.04) 25%, transparent 25% 75%, rgba(255, 255, 255, 0.04) 75%),
-        linear-gradient(45deg, transparent 25%, rgba(255, 255, 255, 0.04) 25% 75%, transparent 75%),
-        var(--viewer-screen);
-    background-position: 0 0, 12px 12px;
-    background-size: 24px 24px;
-    box-shadow:
-        inset 0 0 0 1px #0d0805,
-        inset 0 0 0 3px rgba(229, 196, 128, 0.08),
-        inset 0 14px 28px rgba(0, 0, 0, 0.7),
-        inset 0 -2px 2px rgba(255, 224, 164, 0.08),
-        0 1px rgba(240, 207, 142, 0.2),
-        0 4px 10px rgba(0, 0, 0, 0.34);
+    background: var(--viewer-screen);
+    box-shadow: 0 0 0 1px var(--hairline), 0 3px 8px #4a301b30;
 }
 
 .photo-viewer-stage:active {
@@ -552,28 +492,20 @@
     width: 72px;
     height: 72px;
     padding: 0;
-    border: 1px solid #c99a54;
+    border: 1px solid var(--metal-edge);
     border-radius: 50%;
     cursor: pointer;
-    color: #fff7df;
-    background:
-        radial-gradient(circle at 42% 32%, rgba(255, 245, 211, 0.18), transparent 28%),
-        linear-gradient(145deg, #6f4825, #2b190f 68%);
-    box-shadow:
-        inset 0 0 0 3px #23140c,
-        inset 0 0 0 5px rgba(230, 191, 115, 0.32),
-        inset 0 2px 3px rgba(255, 238, 200, 0.22),
-        0 3px 0 #150b07,
-        0 14px 34px rgba(0, 0, 0, 0.48);
+    color: #513824;
+    background: var(--control-face);
+    box-shadow: var(--control-shadow), 0 10px 24px #150b0666;
     transform: translate(-50%, -50%);
+    transition: filter 150ms ease;
 }
 
 .video-viewer-big-play:hover,
 .video-viewer-big-play:focus-visible {
-    background:
-        radial-gradient(circle at 42% 32%, rgba(255, 248, 219, 0.22), transparent 28%),
-        linear-gradient(145deg, #946532, #3a2114 68%);
-    outline: 3px solid rgba(245, 219, 167, 0.34);
+    filter: brightness(1.06);
+    outline: 2px solid var(--paper-50);
     outline-offset: 3px;
 }
 
@@ -588,20 +520,9 @@
     align-items: center;
     justify-content: center;
     padding: 9px 10px;
-    border: 1px solid #805832;
-    border-radius: 6px;
-    color: rgba(255, 247, 223, 0.9);
-    background:
-        linear-gradient(180deg, rgba(255, 229, 178, 0.08), transparent 34%, rgba(0, 0, 0, 0.16)),
-        url("../assets/textures/paper-grain.png"),
-        var(--viewer-leather);
-    background-blend-mode: screen, multiply, normal;
-    box-shadow:
-        inset 0 0 0 2px #24140d,
-        inset 0 0 0 3px rgba(220, 177, 99, 0.18),
-        inset 0 2px 3px rgba(255, 238, 199, 0.07),
-        0 3px 0 #100906,
-        0 8px 18px rgba(0, 0, 0, 0.28);
+    border-top: 1px solid var(--hairline);
+    color: var(--ink-soft);
+    box-shadow: inset 0 1px #fff8e6;
 }
 
 .photo-viewer-transform-controls {
@@ -616,8 +537,8 @@
     width: 2px;
     height: 24px;
     margin-inline: 2px;
-    background: linear-gradient(90deg, rgba(15, 8, 4, 0.74), rgba(241, 210, 149, 0.18));
-    box-shadow: 1px 0 rgba(0, 0, 0, 0.2);
+    background: var(--hairline);
+    box-shadow: 1px 0 #fff8e6;
 }
 
 .photo-viewer-reset {
@@ -652,8 +573,8 @@
     top: 50%;
     width: 2px;
     height: 24px;
-    background: linear-gradient(90deg, rgba(15, 8, 4, 0.74), rgba(241, 210, 149, 0.18));
-    box-shadow: 1px 0 rgba(0, 0, 0, 0.2);
+    background: var(--hairline);
+    box-shadow: 1px 0 #fff8e6;
     content: '';
     transform: translateY(-50%);
 }
@@ -741,7 +662,7 @@
 .video-viewer-range {
     width: 100%;
     margin: 0;
-    accent-color: var(--viewer-brass);
+    accent-color: var(--brass-300);
     appearance: none;
     height: 20px;
     padding: 0;
@@ -751,16 +672,16 @@
 
 .video-viewer-range::-webkit-slider-runnable-track {
     height: 7px;
-    border: 1px solid #160c07;
+    border: 1px solid #a58a62;
     border-radius: 2px;
     background: linear-gradient(
         90deg,
-        #80501f 0,
-        #d5a451 var(--video-range-progress, 0%),
-        #3a2819 var(--video-range-progress, 0%),
-        #0f0906 100%
+        var(--brass-300) 0,
+        var(--brass-200) var(--video-range-progress, 0%),
+        var(--paper-200) var(--video-range-progress, 0%),
+        var(--paper-200) 100%
     );
-    box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.78), 0 1px rgba(255, 232, 187, 0.13);
+    box-shadow: inset 0 1px 2px #644b2933, 0 1px #fff8e6;
 }
 
 .video-viewer-range::-webkit-slider-thumb {
@@ -768,37 +689,37 @@
     width: 18px;
     height: 18px;
     margin-top: -6px;
-    border: 1px solid #6f461e;
+    border: 1px solid var(--metal-edge);
     border-radius: 50%;
-    background: radial-gradient(circle at 38% 30%, #ffe2a1 0 12%, #c48c40 34%, #795020 78%);
-    box-shadow: inset 0 1px rgba(255, 244, 213, 0.58), 0 2px 3px rgba(0, 0, 0, 0.62);
+    background: var(--control-face);
+    box-shadow: inset 0 1px #fffbed, 0 2px 3px #51351c40;
 }
 
 .video-viewer-range::-moz-range-track {
     height: 7px;
-    border: 1px solid #160c07;
+    border: 1px solid #a58a62;
     border-radius: 2px;
-    background: linear-gradient(180deg, #0f0906, #3a2819);
-    box-shadow: inset 0 2px 3px rgba(0, 0, 0, 0.78), 0 1px rgba(255, 232, 187, 0.13);
+    background: var(--paper-200);
+    box-shadow: inset 0 1px 2px #644b2933, 0 1px #fff8e6;
 }
 
 .video-viewer-range::-moz-range-progress {
     height: 5px;
     border-radius: 2px;
-    background: linear-gradient(90deg, #80501f, #d5a451);
+    background: linear-gradient(90deg, var(--brass-300), var(--brass-200));
 }
 
 .video-viewer-range::-moz-range-thumb {
     width: 18px;
     height: 18px;
-    border: 1px solid #6f461e;
+    border: 1px solid var(--metal-edge);
     border-radius: 50%;
-    background: radial-gradient(circle at 38% 30%, #ffe2a1 0 12%, #c48c40 34%, #795020 78%);
-    box-shadow: inset 0 1px rgba(255, 244, 213, 0.58), 0 2px 3px rgba(0, 0, 0, 0.62);
+    background: var(--control-face);
+    box-shadow: inset 0 1px #fffbed, 0 2px 3px #51351c40;
 }
 
 .video-viewer-range:focus-visible {
-    outline: 2px solid rgba(240, 208, 139, 0.54);
+    outline: 2px solid #815535;
     outline-offset: 3px;
     box-shadow: none;
 }
@@ -819,7 +740,7 @@
 
 .video-viewer-volume-text {
     display: none;
-    color: rgba(255, 247, 223, 0.72);
+    color: var(--ink-soft);
     font-size: 12px;
     white-space: nowrap;
 }
@@ -827,20 +748,20 @@
 .video-viewer-time {
     min-width: 106px;
     padding: 5px 8px;
-    border: 1px solid #170c07;
+    border: 1px solid var(--hairline);
     border-radius: 3px;
-    color: #f0d08b;
-    background: linear-gradient(180deg, #150c08, #2c1c12);
-    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.7), 0 1px rgba(255, 235, 196, 0.1);
+    color: var(--ink-soft);
+    background: var(--paper-50);
+    box-shadow: inset 0 1px 3px #644b2926, 0 1px #fff8e6;
     font: 12px var(--font-code);
     letter-spacing: 0.03em;
     text-align: center;
-    text-shadow: 0 0 7px rgba(226, 172, 75, 0.22);
+    font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
 
 .video-viewer-rate-label span {
-    color: rgba(255, 247, 223, 0.72);
+    color: var(--ink-soft);
     font-size: 12px;
 }
 
@@ -853,15 +774,13 @@
     grid-template-columns: minmax(max-content, 1fr) auto;
     min-height: 36px;
     padding: 7px 30px 7px 10px;
-    border-color: #93652f;
+    border-color: var(--metal-edge);
     border-radius: 5px;
-    color: #fff7df;
-    background:
-        linear-gradient(180deg, rgba(255, 227, 169, 0.16), transparent 48%),
-        linear-gradient(180deg, #805527, #4c2e17);
+    color: #513824;
+    background: var(--control-face);
     font: 13px var(--font-serif);
-    text-shadow: 0 1px #201006;
-    box-shadow: inset 0 1px rgba(255, 244, 211, 0.2), 0 2px 0 #27150b, 0 4px 7px rgba(0, 0, 0, 0.24);
+    text-shadow: 0 1px #fff8e6;
+    box-shadow: var(--control-shadow);
 }
 
 .video-viewer-rate-label .custom-select-trigger > [data-custom-select-label] {
@@ -872,11 +791,11 @@
 .video-viewer-rate-label .custom-select-trigger:hover,
 .video-viewer-rate-label .custom-select-trigger:focus-visible,
 .video-viewer-rate-label .custom-select.is-open .custom-select-trigger {
-    border-color: rgba(245, 219, 167, 0.54);
-    background:
-        linear-gradient(180deg, rgba(255, 238, 197, 0.22), transparent 48%),
-        linear-gradient(180deg, #9b6932, #5b371b);
-    box-shadow: 0 0 0 3px rgba(195, 152, 82, 0.18);
+    border-color: #805b31;
+    background: var(--control-face);
+    box-shadow: var(--control-shadow);
+    outline: 2px solid #815535;
+    outline-offset: 3px;
 }
 
 .video-viewer-rate-label .custom-select-chevron,
@@ -884,7 +803,7 @@
 .video-viewer-rate-label .custom-select.is-open-downward .custom-select-chevron,
 .video-viewer-rate-label .custom-select.is-open-upward .custom-select-chevron {
     right: 11px;
-    border-color: #f5dba7;
+    border-color: #79552e;
 }
 
 .video-viewer-rate-label .custom-select-menu {
@@ -897,23 +816,13 @@
     position: relative;
     justify-self: center;
     min-height: 26px;
-    width: fit-content;
+    width: 100%;
     max-width: 88%;
     margin: 0;
     padding: 5px 18px 4px;
-    border: 1px solid #9c7a4b;
-    border-radius: 2px;
-    color: #3a291c;
-    background:
-        linear-gradient(180deg, rgba(255, 255, 255, 0.26), transparent 38%),
-        url("../assets/textures/paper-grain.png"),
-        var(--viewer-paper);
-    background-blend-mode: screen, multiply, normal;
-    box-shadow: inset 0 1px rgba(255, 251, 231, 0.72), 0 2px 0 #624324, 0 5px 10px rgba(0, 0, 0, 0.26);
+    color: var(--ink-soft);
     font-size: 13px;
     text-align: center;
-    text-shadow: 0 1px rgba(255, 252, 233, 0.66);
-    transform: rotate(-0.2deg);
     word-break: break-word;
 }
 
