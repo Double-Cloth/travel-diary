@@ -6,7 +6,7 @@ import { normalizeTravelLocation } from '../js/location.mjs';
 globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
-    renderWithPageTurn, renderWithBookCover, clearPageTurn, cloneTurningPage, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
+    renderWithPageTurn, renderWithBookCover, clearPageTurn, cloneTurningPage, cloneTransitionContent, createTransitionMediaImage, observePhotoSleeveVideos, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
     restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute };
@@ -478,25 +478,108 @@ test('快速切换与取消翻页会清理旧副本并保持最后一次渲染',
     assert.equal(animations.every(animation => animation.cancelled), true);
 });
 
-test('翻页副本清除屏外记录内容但保持占位，不修改真实记录', t => {
+test('翻页复制前裁掉屏外记录，保持占位且不深拷贝屏外媒体', () => {
+    const depths = [];
+    const makeRow = (top, height) => ({
+        style: {}, getBoundingClientRect: () => ({ top, bottom: top + height, height }),
+        cloneNode(deep) { depths.push({ top, deep }); return { style: {}, deep }; }
+    });
+    const visible = makeRow(850, 120);
+    const outside = makeRow(1100, 150);
+    const source = {
+        childNodes: [visible, outside],
+        querySelectorAll: selector => selector === '.ledger-entry, .photo-sleeve-button' ? [visible, outside] : [],
+        cloneNode: () => ({ children: [], appendChild(child) { this.children.push(child); } })
+    };
+    visible.parentNode = source;
+    outside.parentNode = source;
+    const copy = app.cloneTransitionContent(source, { top: 100, bottom: 900 });
+    assert.equal(copy.children[0].deep, true, '跨越可视边界的记录仍需保留');
+    assert.equal(copy.children[1].deep, false, '屏外媒体不得进入深拷贝');
+    assert.equal(copy.children[1].style.height, '150px');
+    assert.equal(copy.children[1].style.visibility, 'hidden');
+    assert.deepEqual(outside.style, {}, '真实记录保持原样');
+});
+
+test('翻页附件网格只复制可见项，保留尺寸、位置和原始旋转', t => {
     const previous = globalThis.getComputedStyle;
     t.after(() => { globalThis.getComputedStyle = previous; });
-    globalThis.getComputedStyle = () => ({ background: '#fff' });
-    const visible = { style: {}, replaceChildren() { this.cleared = true; } };
-    const outside = { style: {}, replaceChildren() { this.cleared = true; } };
-    const copy = { style: {}, removeAttribute() {}, setAttribute() {}, classList: { add() {} },
-        querySelectorAll: selector => selector === '[id]' ? [] : [visible, outside] };
-    const source = { cloneNode: () => copy, getBoundingClientRect: () => ({ top: 100, bottom: 900 }),
-        querySelectorAll: () => [
-            { getBoundingClientRect: () => ({ top: 850, bottom: 970, height: 120 }) },
-            { getBoundingClientRect: () => ({ top: 1100, bottom: 1250, height: 150 }) }
-        ] };
-    assert.equal(app.cloneTurningPage(source), copy);
-    assert.equal(visible.cleared, undefined, '跨越可视边界的记录仍需保留');
-    assert.equal(outside.cleared, true);
-    assert.equal(outside.style.height, '150px');
-    assert.equal(outside.style.visibility, 'hidden');
-    assert.equal(copy.inert, true);
+    globalThis.getComputedStyle = () => ({ transform: 'rotate(0.9deg)' });
+    const copyNode = () => ({ style: {}, children: [], appendChild(child) { this.children.push(child); } });
+    const visible = { offsetWidth: 100, offsetHeight: 80, cloneNode: copyNode,
+        getBoundingClientRect: () => ({ left: 25, top: 1100, bottom: 1180, width: 100, height: 80 }) };
+    const outside = { offsetWidth: 100, offsetHeight: 80,
+        cloneNode() { assert.fail('屏外附件不得复制'); },
+        getBoundingClientRect: () => ({ left: 25, top: 1900, bottom: 1980, width: 100, height: 80 }) };
+    const sleeve = { children: [visible, outside], clientLeft: 1, clientTop: 1, cloneNode: copyNode,
+        getBoundingClientRect: () => ({ left: 10, top: 1000, width: 400, height: 5000 }) };
+    const source = { childNodes: [sleeve], cloneNode: copyNode,
+        querySelectorAll: selector => selector === '.photo-sleeve' ? [sleeve] : [] };
+    sleeve.parentNode = source;
+    const copy = app.cloneTransitionContent(source, { top: 1000, bottom: 1600 }).children[0];
+    assert.equal(copy.style.height, '5000px');
+    assert.equal(copy.style.width, '400px');
+    assert.equal(copy.children.length, 1);
+    assert.equal(copy.children[0].style.left, '14px');
+    assert.equal(copy.children[0].style.top, '99px');
+    assert.equal(copy.children[0].style.transform, 'rotate(0.9deg)');
+});
+
+test('翻页视频画面缩为静态图片，未解码和跨源失败保留占位', t => {
+    const previous = { document: globalThis.document, window: globalThis.window };
+    t.after(() => Object.assign(globalThis, previous));
+    let fails = false;
+    let canvas;
+    globalThis.window = { devicePixelRatio: 3 };
+    globalThis.document = { createElement: tag => {
+        if (tag === 'img') return { style: {} };
+        canvas = { getContext: () => ({ drawImage() { if (fails) throw new Error('跨源'); } }),
+            toDataURL: type => { assert.equal(type, 'image/webp'); return 'data:image/webp;base64,snapshot'; } };
+        return canvas;
+    } };
+    const video = { videoWidth: 3840, videoHeight: 2160,
+        getBoundingClientRect: () => ({ width: 800, height: 600 }) };
+    const image = app.createTransitionMediaImage(video);
+    assert.equal(image.src, 'data:image/webp;base64,snapshot');
+    assert.equal(image.style.visibility, '');
+    assert.equal(canvas.width, 512);
+    assert.equal(canvas.height, 384);
+    fails = true;
+    assert.equal(app.createTransitionMediaImage(video).style.visibility, 'hidden');
+    assert.equal(app.createTransitionMediaImage({ ...video, videoWidth: 0 }).src, undefined);
+});
+
+test('视频缩略图只在进入视口后加载，换页解除旧观察', t => {
+    const previous = { document: globalThis.document, window: globalThis.window,
+        IntersectionObserver: globalThis.IntersectionObserver };
+    t.after(() => Object.assign(globalThis, previous));
+    const observers = [];
+    globalThis.window = { IntersectionObserver: true };
+    globalThis.IntersectionObserver = class {
+        constructor(callback) { this.callback = callback; this.targets = new Set(); observers.push(this); }
+        observe(target) { this.targets.add(target); }
+        unobserve(target) { this.targets.delete(target); }
+        disconnect() { this.targets.clear(); }
+    };
+    const video = { dataset: { src: 'movie.mp4#t=0.1' } };
+    globalThis.document = { querySelectorAll: () => [video] };
+    app.observePhotoSleeveVideos();
+    const first = observers[0];
+    first.callback([{ target: video, isIntersecting: false }]);
+    assert.equal(video.src, undefined);
+    first.callback([{ target: video, isIntersecting: true }]);
+    assert.equal(video.src, 'movie.mp4#t=0.1');
+    assert.equal(video.preload, 'metadata');
+    assert.equal(first.targets.size, 0);
+    assert.equal(video.dataset.src, undefined);
+    first.observe(video);
+    app.observePhotoSleeveVideos();
+    assert.equal(first.targets.size, 0);
+    delete globalThis.window.IntersectionObserver;
+    const fallback = { dataset: { src: 'fallback.mp4' } };
+    globalThis.document.querySelectorAll = () => [fallback];
+    app.observePhotoSleeveVideos();
+    assert.equal(fallback.src, 'fallback.mp4');
 });
 
 test('翻页方向与书签顺序及返回按钮一致', () => {

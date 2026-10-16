@@ -83,6 +83,7 @@ let mobileContextScrollY = 0;
 let photoPreviewResizeTimer = null;
 let photoPreviewLateResizeTimer = null;
 let photoSleeveResizeObserver = null;
+let photoSleeveVideoObserver = null;
 const observedPhotoSleeves = new Set();
 const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
@@ -2847,8 +2848,97 @@ let lastCoverBounds = null;
 let lastCoverViewport = null;
 let lastMobileCoverBackground = null;
 
+// 先裁掉屏外内容并冻结可见媒体，再复制条带，避免为每条纸带创建视频解码器。
+function cloneTransitionContent(node, viewport) {
+    const replacements = new Map();
+    const branches = new Set();
+    const replace = (source, copy) => {
+        replacements.set(source, copy);
+        for (let parent = source.parentNode; parent && parent !== node; parent = parent.parentNode) {
+            if (branches.has(parent)) break;
+            branches.add(parent);
+        }
+        branches.add(node);
+    };
+    const rows = node.querySelectorAll('.ledger-entry, .photo-sleeve-button');
+    const rowBounds = Array.from(rows, row => row.getBoundingClientRect());
+    rows.forEach((row, index) => {
+        const rect = rowBounds[index];
+        if (rect.bottom >= viewport.top - 24 && rect.top <= viewport.bottom + 24 && rect.height > 0) return;
+        if (row.closest?.('.photo-sleeve')) {
+            replace(row, null);
+            return;
+        }
+        const copy = row.cloneNode(false);
+        Object.assign(copy.style, { height: `${rect.height}px`, minHeight: `${rect.height}px`,
+            boxSizing: 'border-box', visibility: 'hidden' });
+        replace(row, copy);
+    });
+    node.querySelectorAll('.photo-sleeve-button img, .photo-sleeve-button video').forEach(media => {
+        if (replacements.has(media.closest('.photo-sleeve-button'))) return;
+        replace(media, createTransitionMediaImage(media));
+    });
+    const clone = source => {
+        if (replacements.has(source)) return replacements.get(source);
+        if (!branches.has(source)) return source.cloneNode(true);
+        const copy = source.cloneNode(false);
+        source.childNodes.forEach(child => copy.appendChild(clone(child)));
+        return copy;
+    };
+    // 附件网格固定为原尺寸，只复制可见子项；屏外几百项不再进入每条纸带。
+    node.querySelectorAll('.photo-sleeve').forEach(sleeve => {
+        const bounds = sleeve.getBoundingClientRect();
+        const children = Array.from(sleeve.children).map(child => ({ child, rect: child.getBoundingClientRect() }));
+        const copy = sleeve.cloneNode(false);
+        Object.assign(copy.style, { display: 'block', position: 'relative',
+            width: `${bounds.width}px`, height: `${bounds.height}px`, boxSizing: 'border-box' });
+        children.forEach(({ child, rect }) => {
+            if (!rect.height || rect.bottom < viewport.top - 24 || rect.top > viewport.bottom + 24) return;
+            const width = child.offsetWidth;
+            const height = child.offsetHeight;
+            const style = getComputedStyle(child);
+            const item = clone(child);
+            Object.assign(item.style, { position: 'absolute', margin: '0', width: `${width}px`, height: `${height}px`,
+                left: `${rect.left + rect.width / 2 - width / 2 - bounds.left - sleeve.clientLeft}px`,
+                top: `${rect.top + rect.height / 2 - height / 2 - bounds.top - sleeve.clientTop}px`,
+                transform: style.transform, padding: style.padding, borderTop: style.borderTop });
+            copy.appendChild(item);
+        });
+        replace(sleeve, copy);
+    });
+    return clone(node);
+}
+
+function createTransitionMediaImage(media) {
+    const image = document.createElement('img');
+    image.alt = '';
+    image.decoding = 'async';
+    image.style.visibility = 'hidden';
+    const sourceWidth = media.videoWidth || media.naturalWidth;
+    const sourceHeight = media.videoHeight || media.naturalHeight;
+    const rect = media.getBoundingClientRect();
+    if (!sourceWidth || !sourceHeight || !rect.width || !rect.height) return image;
+    const canvas = document.createElement('canvas');
+    // 缩略图只需覆盖当前显示尺寸，限制纹理大小，避免各条带重复绘制原始大图。
+    const scale = Math.min(window.devicePixelRatio || 1, 2, 512 / Math.max(rect.width, rect.height));
+    canvas.width = Math.max(1, Math.round(rect.width * scale));
+    canvas.height = Math.max(1, Math.round(rect.height * scale));
+    try {
+        const context = canvas.getContext('2d');
+        const ratio = Math.max(canvas.width / sourceWidth, canvas.height / sourceHeight);
+        const width = sourceWidth * ratio;
+        const height = sourceHeight * ratio;
+        context.drawImage(media, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height);
+        image.src = canvas.toDataURL('image/webp', 0.8);
+        image.style.visibility = '';
+    } catch {
+        // 媒体未解码或画布被跨源资源污染时保留纸面占位，不阻断导航。
+    }
+    return image;
+}
+
 function prepareTransitionClone(node, className) {
-    const clone = node.cloneNode(true);
+    const clone = cloneTransitionContent(node, { top: 0, bottom: window.innerHeight });
     clone.removeAttribute('id');
     clone.querySelectorAll('[id]').forEach(element => element.removeAttribute('id'));
     clone.querySelectorAll('[data-action]').forEach(element => element.removeAttribute('data-action'));
@@ -3084,26 +3174,13 @@ function renderWithBookCover(renderFn, mode) {
 }
 
 function cloneTurningPage(page) {
-    const clone = page.cloneNode(true);
+    const clone = cloneTransitionContent(page, page.getBoundingClientRect());
     clone.removeAttribute('id');
     clone.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
     clone.setAttribute('aria-hidden', 'true');
     clone.inert = true;
     // 固定旧页的纸张背景，防止路由切换后套用新章节的背景。
     clone.style.background = getComputedStyle(page).background;
-    // 副本只绘制可见内容；屏外记录保留等高占位，避免重复复制整本档案。
-    const bounds = page.getBoundingClientRect();
-    const selector = '.ledger-entry, .photo-sleeve-button';
-    const originals = page.querySelectorAll(selector);
-    clone.querySelectorAll(selector).forEach((node, index) => {
-        const rect = originals[index].getBoundingClientRect();
-        if (rect.bottom >= bounds.top - 24 && rect.top <= bounds.bottom + 24) return;
-        node.replaceChildren();
-        node.style.height = `${rect.height}px`;
-        node.style.minHeight = `${rect.height}px`;
-        node.style.boxSizing = 'border-box';
-        node.style.visibility = 'hidden';
-    });
     clone.classList.add('book-page-copy');
     return clone;
 }
@@ -3211,16 +3288,6 @@ function renderWithPageTurn(renderFn, options = {}) {
                     'backgroundAttachment', 'boxShadow', 'minHeight', 'overflow']) {
                     node.style[property] = style[property];
                 }
-            });
-            // 屏外记录只保留占位，减少分段绘制时复制的内容量。
-            const rows = '.ledger-entry, .photo-sleeve-button';
-            const originalRows = refs.spread.querySelectorAll(rows);
-            snapshot.querySelectorAll(rows).forEach((node, index) => {
-                const rect = originalRows[index].getBoundingClientRect();
-                if (rect.bottom >= top - 24 && rect.top <= window.innerHeight + 24) return;
-                node.replaceChildren();
-                Object.assign(node.style, { height: `${rect.height}px`, minHeight: `${rect.height}px`,
-                    boxSizing: 'border-box', visibility: 'hidden' });
             });
             snapshot.querySelectorAll('.context-panel').forEach(panel => panel.remove());
             const rect = refs.spread.getBoundingClientRect();
@@ -4160,6 +4227,7 @@ function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
         refs.rightPage.scrollTop = rightScrollTop;
     }
     syncMobileContextPanelState();
+    observePhotoSleeveVideos();
 
     if (isMobileContextPanelOpen) {
         requestAnimationFrame(() => {
@@ -4403,7 +4471,7 @@ function renderPhotoSleeve(record, options = {}) {
                 ` : ''}
                 <button class="photo-sleeve-button${item.kind === 'video' ? ' photo-sleeve-video' : ''}" type="button" data-action="open-media-viewer" data-media-index="${index}" data-media-kind="${item.kind}" data-media-name="${escapeHtml(item.name)}" data-media-src="${escapeHtml(item.src)}" data-media-alt="${escapeHtml(item.alt)}" aria-label="打开${item.kind === 'video' ? '视频' : '图片'} ${escapeHtml(item.name)}">
                     ${item.kind === 'video'
-                        ? `<video src="${escapeHtml(item.src)}#t=0.1" muted playsinline preload="metadata" aria-hidden="true" tabindex="-1"></video><span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>`
+                        ? `<video data-src="${escapeHtml(item.src)}#t=0.1" muted playsinline preload="none" aria-hidden="true" tabindex="-1"></video><span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>`
                         : `<img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.alt)}" loading="lazy" decoding="async" fetchpriority="low">`}
                     <span class="photo-sleeve-media-error" role="status" hidden><strong>${item.kind === 'video' ? '视频不可用' : '图片不可用'}</strong><span>${escapeHtml(item.name)}</span><small>检查 travel_data.json</small></span>
                     <span class="photo-sleeve-index">${escapeHtml(String(index + 1).padStart(2, '0'))}</span>
@@ -4428,6 +4496,30 @@ function getRecordMedia(record) {
     return [...photos, ...videos];
 }
 
+function observePhotoSleeveVideos() {
+    photoSleeveVideoObserver?.disconnect();
+    const videos = document.querySelectorAll('#leftPage .photo-sleeve video[data-src], #rightPage .photo-sleeve video[data-src]');
+    const load = video => {
+        if (!video.dataset.src) return;
+        video.preload = 'metadata';
+        video.src = video.dataset.src;
+        delete video.dataset.src;
+    };
+    if (!('IntersectionObserver' in window)) {
+        videos.forEach(load);
+        return;
+    }
+    const observer = new IntersectionObserver(entries => {
+        entries.forEach(({ target, isIntersecting }) => {
+            if (!isIntersecting) return;
+            load(target);
+            observer.unobserve(target);
+        });
+    });
+    photoSleeveVideoObserver = observer;
+    videos.forEach(video => observer.observe(video));
+}
+
 function syncPhotoSleevePreviewRows() {
     observedPhotoSleeves.forEach((sleeve) => {
         if (!sleeve.isConnected) {
@@ -4435,7 +4527,7 @@ function syncPhotoSleevePreviewRows() {
             observedPhotoSleeves.delete(sleeve);
         }
     });
-    document.querySelectorAll('.photo-sleeve-preview').forEach((sleeve) => {
+    document.querySelectorAll('#leftPage .photo-sleeve-preview, #rightPage .photo-sleeve-preview').forEach((sleeve) => {
         observePhotoSleevePreview(sleeve);
         const previewRows = Number(sleeve.dataset.previewRows || ENTRY_PHOTO_PREVIEW_ROWS);
         const columnCount = getPhotoSleeveColumnCount(sleeve);
