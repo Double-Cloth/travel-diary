@@ -1523,6 +1523,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
     perspective: none;
 }
 .mobile-page-snapshot .context-panel { display: none !important; }
+.mobile-page-starting { z-index: 1; }
 
 /* 离散显隐与透明度一起过渡；旧浏览器保留原有即时显隐。 */
 @supports (transition-behavior: allow-discrete) {

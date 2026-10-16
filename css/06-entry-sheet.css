@@ -866,7 +866,14 @@
 
 .paper-page.book-page-copy::-webkit-scrollbar-thumb { background: transparent; }
 .paper-page.book-page-copy::-webkit-scrollbar-track { background: transparent; }
+/* Chromium 的 scrollbar-color 会替换自定义滚动条并改变槽宽，副本沿用原来的槽宽。 */
+@supports selector(::-webkit-scrollbar) {
+    .paper-page.book-page-copy { scrollbar-color: auto; }
+}
 .book-turn-resting { z-index: 2; }
+.book-turn-starting { z-index: 101; }
+.turn-forward > .book-turn-starting { left: 50%; }
+.turn-back > .book-turn-starting { left: 0; }
 .turn-forward > .book-turn-resting { left: 0; }
 .turn-back > .book-turn-resting { right: 0; }
 

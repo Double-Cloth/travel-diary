@@ -3289,8 +3289,10 @@ function cloneTurningPage(page) {
     clone.querySelectorAll('[id]').forEach(node => node.removeAttribute('id'));
     clone.setAttribute('aria-hidden', 'true');
     clone.inert = true;
-    // 固定旧页的纸张背景，防止路由切换后套用新章节的背景。
-    clone.style.background = getComputedStyle(page).background;
+    // 固定纸面与内边距，避免切换路由后旧页套用新章节的样式。
+    const style = getComputedStyle(page);
+    clone.style.background = style.background;
+    clone.style.padding = style.padding;
     clone.classList.add('book-page-copy');
     return clone;
 }
@@ -3430,6 +3432,9 @@ function renderWithPageTurn(renderFn, options = {}) {
         shadow.className = 'mobile-page-shadow';
         if (backwards) viewport.append(oldPage);
         viewport.append(shadow, leaf);
+        const startingPage = oldPage.cloneNode(true);
+        startingPage.classList.add('mobile-page-starting');
+        viewport.append(startingPage);
         // 过渡层在导航下方，只对可见纸面分段变形，不变换长正文或固定夹层。
         refs.shell.append(viewport);
         const timing = { duration: MOBILE_PAGE_TURN_MS, easing: 'linear', fill: 'both',
@@ -3476,6 +3481,7 @@ function renderWithPageTurn(renderFn, options = {}) {
             startFrame = requestAnimationFrame(() => {
                 if (cancelled) return;
                 startPageTurn(animations, MOBILE_PAGE_TURN_MS);
+                startingPage.remove();
             });
         });
         return;
@@ -3559,10 +3565,12 @@ function renderWithPageTurn(renderFn, options = {}) {
         { opacity: 1, offset: 0 }, { opacity: 1, offset: .92 }, { opacity: 0, offset: 1 }
     ], timing));
     refs.spread.classList.add('book-turn-preparing');
-    refs.spread.append(resting, shadow, leaf);
+    front.classList.add('book-turn-starting');
+    refs.spread.append(resting, shadow, leaf, front);
     refs.leftPage.inert = true;
     refs.rightPage.inert = true;
     resting.scrollTop = restingScroll;
+    front.scrollTop = frontScroll;
     surfaces.forEach(({ copy, scroll }) => { copy.scrollTop = scroll; });
     refs.spread.style.setProperty('--page-turn-ms', `${PAGE_TURN_MS}ms`);
     refs.spread.classList.add(backwards ? 'turn-back' : 'turn-forward');
@@ -3575,6 +3583,7 @@ function renderWithPageTurn(renderFn, options = {}) {
         cancelAnimationFrame(startFrame);
         animations.forEach(animation => animation.cancel());
         leaf.remove();
+        front.remove();
         resting.remove();
         shadow.remove();
         [refs.leftPage.inert, refs.rightPage.inert] = pageInert;
@@ -3586,6 +3595,7 @@ function renderWithPageTurn(renderFn, options = {}) {
             if (cancelled) return;
             refs.spread.classList.remove('book-turn-preparing');
             startPageTurn(animations, PAGE_TURN_MS);
+            front.remove();
         });
     });
 }

@@ -554,7 +554,7 @@ test('桌面连续翻页加速落稳后衔接最新目标，取消会清理副�
     });
     const spread = createNode();
     globalThis.document = { createElement: createNode };
-    globalThis.getComputedStyle = () => ({ background: '#fff' });
+    globalThis.getComputedStyle = () => ({ background: '#fff', padding: '42px 40px 36px' });
     globalThis.window = { matchMedia: () => ({ matches: false }) };
     const leftPage = createNode();
     const rightPage = createNode();
@@ -600,7 +600,19 @@ test('桌面连续翻页加速落稳后衔接最新目标，取消会清理副�
     const pendingFrames = [];
     globalThis.requestAnimationFrame = callback => { pendingFrames.push(callback); return 2; };
     app.renderWithPageTurn(() => { rendered = '等待首帧'; });
+    const startingPage = [...copies].find(node => node.classList.values.has('book-turn-starting'));
+    assert.ok(startingPage, '首次建层时使用平面旧页覆盖真实新页');
+    assert.equal(startingPage.style.padding, '42px 40px 36px', '旧页内边距不受新路由样式影响');
+    assert.equal(startingPage.scrollTop, 45, '准备帧保留旧页阅读位置');
+    pendingFrames.shift()();
+    assert.equal(copies.has(startingPage), true, '首次绘制完成前保留平面旧页');
+    pendingFrames.shift()();
+    assert.equal(copies.has(startingPage), false, '播放动画时交接给曲面纸带');
+    app.clearPageTurn();
+    app.renderWithPageTurn(() => { rendered = '取消前的准备帧'; });
+    const cancelledStartingPage = [...copies].find(node => node.classList.values.has('book-turn-starting'));
     app.renderWithPageTurn(() => { rendered = '取消待开始的翻页'; }, { animate: false });
+    assert.equal(copies.has(cancelledStartingPage), false, '取消首帧时清理平面旧页');
     pendingFrames.forEach(callback => callback());
     t.mock.timers.tick(2000);
     assert.equal(rendered, '取消待开始的翻页');
