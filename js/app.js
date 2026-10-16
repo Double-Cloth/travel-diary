@@ -276,6 +276,7 @@ function cacheRefs() {
     refs.spine = document.querySelector('.journal-spine');
     refs.stage = document.getElementById('journalStage');
     refs.spread = document.getElementById('pageSpread');
+    refs.pageTurns = document.getElementById('detailPageTurns');
     refs.leftPage = document.getElementById('leftPage');
     refs.rightPage = document.getElementById('rightPage');
     refs.closedBookCover = document.getElementById('closedBookCover');
@@ -1529,7 +1530,9 @@ function renderPlace(params = {}) {
             <p class="journal-label">相关纸条</p>
             ${matching.length ? matching.map(renderLedgerEntry).join('') : '<div class="empty-note">这个地点还没有旅行记录。</div>'}
         </div>
-    `, 'dossier-page place-detail-page');
+    `, 'dossier-page place-detail-page', {
+        pageTurns: renderDetailPageTurns(getPlaceShortcutNavigation(params), 'place')
+    });
 
     requestAnimationFrame(() => queuePhotoSleevePreviewSync());
 }
@@ -1579,6 +1582,48 @@ function renderPlaceAdminAreaNeighbor(area, direction, typeLabel) {
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9 5 7 7-7 7"/></svg>
         </button>
     `;
+}
+
+function getPlaceShortcutNavigation(params) {
+    const adminAreas = getPlaceAdminAreaNavigation(params);
+    if (adminAreas) return adminAreas;
+
+    let places = travelModel.countries.map(country => ({ ...country, label: country.country }));
+    let index = places.findIndex(country => country.countryKey === params.country || country.country === params.country);
+    let typeLabel = '国家或地区';
+    if (params.locality) {
+        const records = getPlaceRecords({ ...params, locality: '' });
+        places = Array.from(new Map(records.filter(record => record.locality).map(record => [record.locationKey, {
+            countryKey: record.countryKey, adminArea: record.adminArea, locality: record.locality,
+            key: record.locationKey, label: record.locality
+        }])).values()).sort((a, b) => a.label.localeCompare(b.label, 'zh-CN'));
+        index = places.findIndex(place => place.key === params.locality || place.locality === params.locality);
+        typeLabel = '地点';
+    } else if (params.area) {
+        return null;
+    }
+    if (index < 0) return null;
+    return { previous: places[index - 1] || null, next: places[index + 1] || null, typeLabel };
+}
+
+function renderDetailPageTurns(navigation, kind) {
+    if (!navigation) return '';
+    return ['prev', 'next'].map(direction => {
+        const target = direction === 'prev' ? navigation.previous : navigation.next;
+        const label = kind === 'entry'
+            ? (direction === 'prev' ? '上一篇' : '下一篇')
+            : `${direction === 'prev' ? '上一' : '下一'}${navigation.typeLabel}`;
+        const description = target
+            ? `${label}：${target.title || target.label}`
+            : `已到${direction === 'prev' ? '首' : '末'}${kind === 'entry' ? '篇' : `个${navigation.typeLabel}`}`;
+        const attributes = !target ? 'disabled' : kind === 'entry'
+            ? `data-action="entry-${direction}" data-entry-id="${escapeHtml(target.id)}"`
+            : `data-action="place-${direction}" data-country-key="${escapeHtml(target.countryKey)}" data-admin-area="${escapeHtml(target.adminArea || '')}" data-locality="${escapeHtml(target.locality || '')}"`;
+        return `<button class="detail-page-turn detail-page-turn-${direction}" type="button" ${attributes}
+            aria-label="${escapeHtml(description)}" title="${escapeHtml(description)}">
+            <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M27 26C28 14 19 8 5 11M12 4L5 11L12 18"/></svg>
+        </button>`;
+    }).join('');
 }
 
 function renderEntryRoute(params = {}) {
@@ -1638,7 +1683,7 @@ function renderEntryRoute(params = {}) {
             <header class="entry-running-head"><span>旅行日记</span><span>${String(position).padStart(2, '0')} / ${navigation.total || 1}</span></header>
             <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
         </article>
-    `, 'entry-book-page');
+    `, 'entry-book-page', { pageTurns: renderDetailPageTurns(navigation, 'entry') });
 
     requestAnimationFrame(() => queuePhotoSleevePreviewSync());
 }
@@ -3795,9 +3840,10 @@ function handleDocumentClick(event) {
         event.preventDefault();
         const countryKey = placeNav.getAttribute('data-country-key');
         const adminArea = placeNav.getAttribute('data-admin-area');
-        if (countryKey && adminArea) {
+        const locality = placeNav.getAttribute('data-locality') || '';
+        if (countryKey) {
             navigateTo(
-                placeHash(countryKey, adminArea, ''),
+                placeHash(countryKey, adminArea || '', locality),
                 { replace: true, direction: placeNav.dataset.action === 'place-prev' ? 'back' : 'forward' }
             );
         }
@@ -4336,6 +4382,10 @@ function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
     refs.leftPage.innerHTML = leftHtml;
     refs.rightPage.className = ['paper-page', 'paper-page-right', rightPageMode].filter(Boolean).join(' ');
     refs.rightPage.innerHTML = rightHtml;
+    if (refs.pageTurns) {
+        refs.pageTurns.innerHTML = options.pageTurns || '';
+        refs.pageTurns.hidden = !options.pageTurns;
+    }
     syncProfilePictureImages(refs.leftPage);
     syncProfilePictureImages(refs.rightPage);
     enhanceCustomSelects(refs.leftPage);

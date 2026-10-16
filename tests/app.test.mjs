@@ -21,7 +21,7 @@ export function stubSearchNavigation(route) {
 export function renderTestEntry(record, navigation) {
     const originals = { setPages, getEntryNavigation, travelModel };
     let result;
-    setPages = (left, right) => { result = { left, right }; };
+    setPages = (left, right, mode, options = {}) => { result = { left, right, ...options }; };
     getEntryNavigation = () => navigation;
     travelModel = { ...deriveTravelModel([record]), recordsById: new Map([[record.id, record]]) };
     try { renderEntryRoute({ id: record.id }); return result; }
@@ -30,7 +30,7 @@ export function renderTestEntry(record, navigation) {
 export function renderTestPlace(records, params, photos = false) {
     const originals = { setPages, travelModel };
     let result;
-    setPages = (left, right) => { result = { left, right }; };
+    setPages = (left, right, mode, options = {}) => { result = { left, right, ...options }; };
     travelModel = deriveTravelModel(records);
     try {
         if (photos) renderEntryPhotosRoute(params);
@@ -263,6 +263,9 @@ test('长短篇详情正文只渲染一次，左页相邻篇目与管理入口�
         assert.equal((result.left.match(/data-action="entry-prev"/g) || []).length, 1);
         assert.match(result.left, /data-action="entry-next" data-entry-id="next"/);
         assert.match(result.left, /data-action="entry-prev" data-entry-id="prev"/);
+        assert.match(result.pageTurns, /data-action="entry-prev" data-entry-id="prev"/);
+        assert.match(result.pageTurns, /data-action="entry-next" data-entry-id="next"/);
+        assert.match(result.pageTurns, /aria-label="上一篇：前一篇"/);
         assert.doesNotMatch(result.right, /data-action="entry-next"|data-action="entry-prev"|class="sheet-nav"/);
         const toolbar = result.left.match(/<header class="entry-book-toolbar">([\s\S]*?)<\/header>/)?.[1] || '';
         assert.match(toolbar, /返回原处[\s\S]*data-action="edit-record"[\s\S]*data-action="delete-record"/);
@@ -283,6 +286,35 @@ test('首末篇在相邻篇目中显示不可点击的边界提示', t => {
     assert.match(result.left, /已到首篇/);
     assert.match(result.left, /已到末篇/);
     assert.doesNotMatch(result.left, /data-action="entry-next"|data-action="entry-prev"/);
+    assert.equal((result.pageTurns.match(/ disabled/g) || []).length, 2);
+    assert.doesNotMatch(result.pageTurns, /data-action=/);
+});
+
+test('地点快捷翻页沿用省份顺序，目的地仅在当前行政区内切换', t => {
+    const previous = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = () => 1;
+    t.after(() => { globalThis.requestAnimationFrame = previous; });
+    const records = [
+        { date: '2026-10-01', country_code: 'CN', admin_area: '江苏省', locality: '南京市' },
+        { date: '2026-10-02', country_code: 'CN', admin_area: '江苏省', locality: '苏州市' },
+        { date: '2026-10-03', country_code: 'CN', admin_area: '江苏省', locality: '苏州市' },
+        { date: '2026-10-04', country_code: 'CN', admin_area: '浙江省', locality: '杭州市' },
+        { date: '2026-10-05', country_code: 'MY', admin_area: '马六甲州', locality: '马六甲' }
+    ].map(normalizeTravelLocation);
+    const province = app.renderTestPlace(records, { country: 'CN', area: '江苏省' });
+    assert.match(province.pageTurns, /data-action="place-next"[^>]*data-admin-area="浙江省"/);
+    assert.ok(province.pageTurns.includes(province.left.match(/aria-label="下一[^"]+：浙江省"/)[0]));
+    const city = app.renderTestPlace(records, { country: 'CN', area: '江苏省', locality: records[0].locationKey });
+    assert.match(city.pageTurns, /data-action="place-next"[^>]*data-locality="苏州市"/);
+    assert.match(city.pageTurns, /aria-label="下一地点：苏州市"/);
+    assert.doesNotMatch(city.pageTurns, /杭州市|马六甲/);
+    const last = app.renderTestPlace(records, { country: 'CN', area: '江苏省', locality: '苏州市' });
+    assert.match(last.pageTurns, /aria-label="已到末个地点"/);
+    assert.doesNotMatch(last.pageTurns, /data-action="place-next"/);
+    const country = app.renderTestPlace(records, { country: 'CN' });
+    assert.match(country.pageTurns, /data-country-key="MY" data-admin-area="" data-locality=""/);
+    const photos = app.renderTestPlace(records, { country: 'CN', area: '江苏省' }, true);
+    assert.equal(photos.pageTurns, undefined);
 });
 
 test('删除已提交但数据刷新失败时返回已删除状态，避免误报删除失败', async t => {
