@@ -871,8 +871,7 @@
     .paper-page.book-page-copy { scrollbar-color: auto; }
 }
 .book-turn-resting { z-index: 2; }
-/* 保留不足一个色阶的透明度，让 Chromium 预绘制覆盖层下面的曲面，避免揭开后才首次栅格化。 */
-.book-turn-starting { z-index: 101; opacity: .999; }
+.book-turn-starting { z-index: 101; }
 .turn-forward > .book-turn-starting { left: 50%; }
 .turn-back > .book-turn-starting { left: 0; }
 .turn-forward > .book-turn-resting { left: 0; }
@@ -916,7 +915,6 @@
     top: 0;
     left: 0;
     transform-origin: 0 0;
-    will-change: transform;
 }
 
 .book-curl-surface > .paper-page.book-page-copy {

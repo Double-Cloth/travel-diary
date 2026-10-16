@@ -2946,10 +2946,7 @@ function startPageTurn(animations, duration) {
         }
     };
     pageTurnInterrupt = interrupt;
-    animations.forEach(animation => {
-        animation.playbackRate = 1;
-        animation.play();
-    });
+    animations.forEach(animation => animation.play());
     if (animations[0].finished) {
         animations[0].finished.then(finish, () => {});
     } else {
@@ -3577,8 +3574,7 @@ function renderWithPageTurn(renderFn, options = {}) {
     surfaces.forEach(({ copy, scroll }) => { copy.scrollTop = scroll; });
     refs.spread.style.setProperty('--page-turn-ms', `${PAGE_TURN_MS}ms`);
     refs.spread.classList.add(backwards ? 'turn-back' : 'turn-forward');
-    // 保持动画参与合成，但停在起点；暂停状态下 Chromium 会推迟首次动画建层。
-    animations.forEach(animation => { animation.playbackRate = 0; animation.currentTime = 0; });
+    animations.forEach(animation => { animation.pause(); animation.currentTime = 0; });
     let startFrame = null;
     let cancelled = false;
     // 保留旧的对页直到纸张落稳，避免翻至中途时底页突然跳变。
@@ -3592,25 +3588,16 @@ function renderWithPageTurn(renderFn, options = {}) {
         shadow.remove();
         [refs.leftPage.inert, refs.rightPage.inert] = pageInert;
     };
-    // 直接刷新内页没有开书阶段的预绘制，不能用固定两个回调代替绘制就绪。
-    const preparationStarted = performance.now();
-    let previousPaint = null;
-    let stableSince = preparationStarted;
-    const awaitPaint = () => {
+    // 先完成首帧栅格化，再开始掀角，防止建层耗时吃掉动画开头。
+    startFrame = requestAnimationFrame(() => {
         if (cancelled) return;
-        const now = performance.now();
-        if (previousPaint === null || now - previousPaint >= 34) stableSince = now;
-        previousPaint = now;
-        // 连续稳定一段真实时间，避免重绘后密集补发的回调被误判为已就绪。
-        if (now - stableSince >= 64 || now - preparationStarted >= 900) {
+        startFrame = requestAnimationFrame(() => {
+            if (cancelled) return;
             refs.spread.classList.remove('book-turn-preparing');
             startPageTurn(animations, PAGE_TURN_MS);
             front.remove();
-        } else {
-            startFrame = requestAnimationFrame(awaitPaint);
-        }
-    };
-    startFrame = requestAnimationFrame(awaitPaint);
+        });
+    });
 }
 
 function getPageCurlStripCount(width) {
