@@ -143,8 +143,6 @@
         overflow: visible;
         overscroll-behavior: auto;
         scrollbar-gutter: auto;
-        scrollbar-width: auto;
-        scrollbar-color: auto;
         padding: clamp(16px, 4.5vw, 20px);
         border-radius: 3px 3px 6px 6px;
         box-shadow: inset 8px 0 12px -12px #61451f99;
@@ -163,8 +161,6 @@
         overflow: visible;
         overscroll-behavior: auto;
         scrollbar-gutter: auto;
-        scrollbar-width: auto;
-        scrollbar-color: auto;
     }
 
     /* 详情页在窄屏按阅读顺序排列：顶部摘要、正文或相关记录、相邻项导航。 */

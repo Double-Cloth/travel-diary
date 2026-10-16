@@ -292,8 +292,6 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(117, 73, 40, 0.52) transparent;
     padding: clamp(24px, 2.6vw, 40px);
     border: 0;
     color: var(--ink);
@@ -307,26 +305,12 @@
         inset 0 -1px 0 rgba(122, 82, 38, 0.12);
 }
 
-.paper-page::-webkit-scrollbar {
-    width: 7px;
-}
-
 .paper-page::-webkit-scrollbar-track {
     margin: 12px 0;
-    background: transparent;
 }
 
 .paper-page::-webkit-scrollbar-track-piece {
     background: transparent;
-}
-
-.paper-page::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: rgba(117, 73, 40, 0.42);
-}
-
-.paper-page::-webkit-scrollbar-thumb:hover {
-    background: rgba(143, 53, 39, 0.62);
 }
 
 .paper-page::-webkit-scrollbar-button {
@@ -388,16 +372,6 @@ body[data-route="preface"] .paper-page-left {
         url("../assets/textures/paper-grain.png"),
         #f1e4c5;
     box-shadow: inset 20px 0 28px -22px #61451f99;
-}
-
-.entry-sheet::-webkit-scrollbar {
-    width: 9px;
-}
-
-.entry-sheet::-webkit-scrollbar-thumb {
-    border: 2px solid rgba(245, 224, 184, 0.56);
-    border-radius: 999px;
-    background: rgba(117, 81, 44, 0.46);
 }
 
 .journal-label {

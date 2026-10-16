@@ -810,9 +810,7 @@ body::after {
         margin: 0;
         padding: 0 0 5px;
         overflow-x: auto;
-        scrollbar-width: none;
     }
-    .year-bookmarks::-webkit-scrollbar { display: none; }
     .year-bookmark { flex: 0 0 auto; min-height: 36px; padding: 7px 13px; border: 0; border-radius: 18px; background: transparent; }
     .year-bookmark-active,
     .year-bookmark-active:hover,

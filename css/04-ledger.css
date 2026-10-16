@@ -285,8 +285,6 @@
     padding-bottom: 6px;
     overflow-x: auto;
     overscroll-behavior-x: contain;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(120, 88, 54, 0.3) transparent;
 }
 
 .year-bookmarks::-webkit-scrollbar {
@@ -295,21 +293,9 @@
 
 .year-bookmarks::-webkit-scrollbar-track {
     margin-inline: 2px;
-    background: transparent;
 }
 
-.year-bookmarks::-webkit-scrollbar-thumb {
-    border: 1.5px solid transparent;
-    border-radius: 999px;
-    background: rgba(120, 88, 54, 0.28);
-    background-clip: padding-box;
-    transition: background 0.2s ease;
-}
-
-.year-bookmarks::-webkit-scrollbar-thumb:hover {
-    background: rgba(120, 88, 54, 0.46);
-    background-clip: padding-box;
-}
+.year-bookmarks::-webkit-scrollbar-thumb { border-width: 1px; }
 
 .year-bookmark {
     flex: 0 0 auto;
@@ -644,8 +630,6 @@
     overflow-y: auto;
     overscroll-behavior: contain;
     scrollbar-gutter: stable;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(117, 73, 40, 0.58) transparent;
     padding: clamp(24px, 2.6vw, 40px);
     border: 0;
     border-radius: var(--book-right-radius, 1px 5px 8px 0);
@@ -656,32 +640,15 @@
     box-shadow: inset 20px 0 28px -22px #61451f99;
 }
 
-.paper-page-right.map-pocket::-webkit-scrollbar,
-.paper-page-right.dossier-page::-webkit-scrollbar {
-    width: 7px;
-}
-
 .paper-page-right.map-pocket::-webkit-scrollbar-track,
 .paper-page-right.dossier-page::-webkit-scrollbar-track {
     margin: 0;
-    background: transparent;
 }
 
 .paper-page-right.map-pocket::-webkit-scrollbar-track-piece,
 .paper-page-right.dossier-page::-webkit-scrollbar-track-piece {
     margin: 0;
     background: transparent;
-}
-
-.paper-page-right.map-pocket::-webkit-scrollbar-thumb,
-.paper-page-right.dossier-page::-webkit-scrollbar-thumb {
-    border-radius: 999px;
-    background: rgba(117, 73, 40, 0.48);
-}
-
-.paper-page-right.map-pocket::-webkit-scrollbar-thumb:hover,
-.paper-page-right.dossier-page::-webkit-scrollbar-thumb:hover {
-    background: rgba(143, 53, 39, 0.68);
 }
 
 .paper-page-right.map-pocket::-webkit-scrollbar-button,

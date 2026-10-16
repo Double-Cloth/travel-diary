@@ -791,8 +791,7 @@ body[data-route="ledger"] .paper-page-left::-webkit-scrollbar-track-piece {
 .entry-location { font-size: 11px; line-height: 1.6; color: var(--ink-soft); }
 .entry-tags { gap: 8px; align-items: center; }
 .trip-stamp { font-size: 10px; }
-.paper-page { scrollbar-width: thin; scrollbar-color: #aa906557 transparent; scrollbar-gutter: stable; }
-.paper-page:hover { scrollbar-color: #9473479c transparent; }
+.paper-page { scrollbar-gutter: stable; }
 .journal-stage:focus { outline: none; }
 .paper-page :is(button, a, input, select):focus-visible { outline: 2px solid #815535; outline-offset: 3px; }
 .paper-page .search-field > input:focus-visible { outline: none; box-shadow: none; }

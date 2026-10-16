@@ -121,8 +121,6 @@
         0 2px 0 rgba(255, 255, 255, 0.72) inset,
         0 14px 24px rgba(60, 36, 16, 0.2),
         0 4px 7px rgba(60, 36, 16, 0.1);
-    scrollbar-color: rgba(117, 73, 40, 0.58) transparent;
-    scrollbar-width: thin;
     touch-action: pan-y;
     -webkit-overflow-scrolling: touch;
 }
@@ -140,10 +138,6 @@
 .record-editor-autocomplete-menu[hidden] { display: none; }
 .custom-select-menu::-webkit-scrollbar,
 .record-editor-autocomplete-menu::-webkit-scrollbar { width: 8px; }
-.custom-select-menu::-webkit-scrollbar-track,
-.record-editor-autocomplete-menu::-webkit-scrollbar-track { background: transparent; }
-.custom-select-menu::-webkit-scrollbar-thumb,
-.record-editor-autocomplete-menu::-webkit-scrollbar-thumb { border: 2px solid transparent; border-radius: 999px; background: rgba(117, 73, 40, 0.56); background-clip: padding-box; }
 
 .custom-select-menu > [role="option"],
 .record-editor-autocomplete-menu > [role="option"] {

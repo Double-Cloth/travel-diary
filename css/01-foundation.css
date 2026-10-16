@@ -59,11 +59,88 @@
     --deep-shadow: 0 28px 52px rgba(9, 4, 2, 0.48);
     --soft-shadow: 0 10px 22px rgba(30, 18, 10, 0.2);
     --ring: 0 0 0 3px rgba(229, 197, 123, 0.34);
+    --scrollbar-thumb: #9b7a50;
+    --scrollbar-thumb-hover: #82603a;
+    --scrollbar-thumb-active: var(--brass-300);
+    --scrollbar-track: rgba(130, 91, 46, 0.08);
+    --scrollbar-track-hover: rgba(130, 91, 46, 0.14);
     --page-turn-ms: 1050ms;
 }
 
 * {
     box-sizing: border-box;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+
+*:hover {
+    scrollbar-color: var(--scrollbar-thumb-hover) var(--scrollbar-track);
+}
+
+*:active {
+    scrollbar-color: var(--scrollbar-thumb-active) var(--scrollbar-track);
+}
+
+/* Chromium 和 Safari 使用伪元素，避免标准属性覆盖滑块的交互状态。 */
+@supports selector(::-webkit-scrollbar) {
+    *,
+    *:hover,
+    *:active {
+        scrollbar-width: auto;
+        scrollbar-color: auto;
+    }
+}
+
+*::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+    border-radius: 999px;
+    background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-track:hover {
+    background: var(--scrollbar-track-hover);
+}
+
+*::-webkit-scrollbar-thumb {
+    min-width: 32px;
+    min-height: 32px;
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: var(--scrollbar-thumb);
+    background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+    background-color: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-thumb:active {
+    background-color: var(--scrollbar-thumb-active);
+}
+
+*::-webkit-scrollbar-button {
+    display: none;
+    width: 0;
+    height: 0;
+}
+
+*::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+@media (forced-colors: active) {
+    *,
+    *:hover,
+    *:active { scrollbar-color: auto; }
+    *::-webkit-scrollbar-thumb,
+    *::-webkit-scrollbar-thumb:hover,
+    *::-webkit-scrollbar-thumb:active { background-color: ButtonText; }
+    *::-webkit-scrollbar-track,
+    *::-webkit-scrollbar-track:hover { background: Canvas; }
 }
 
 .sr-only {

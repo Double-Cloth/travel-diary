@@ -303,7 +303,7 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
     assert.match(journalCss, /\.custom-select\.is-open\.is-open-upward \.custom-select-chevron\s*\{\s*transform: translateY\(-65%\) rotate\(45deg\);\s*\}/);
     assert.match(journalCss, /.custom-select\.is-open-upward \.custom-select-menu\s*\{\s*inset: auto 0 calc\(100% \+ 8px\);\s*\}/);
     assert.match(appJs, /class="index-filter-field\$\{visuallyHiddenLabel \? ' index-sort-field' : ''\}"/);
-    assert.match(journalEntryCss, /08-custom-select\.css\?v=20260930-review-v1/);
+    assert.match(journalEntryCss, /08-custom-select\.css\?v=20261016-scrollbars-v1/);
     assert.doesNotMatch(journalCss, /\.index-sort-field \.custom-select-chevron\s*\{/);
     assert.doesNotMatch(journalCss, /\.index-filter-section:last-child\s*\{\s*padding-bottom:/);
 });
