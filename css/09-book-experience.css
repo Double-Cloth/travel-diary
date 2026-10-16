@@ -364,25 +364,7 @@ body[data-route="cover"] .page-spread { visibility: hidden; }
     }
 }
 
-/* 卷页纸背保留纸纤维和透光差异；边缘高光与接触阴影共同强化纸张厚度。 */
-.book-curl-back .book-curl-surface::after,
-.book-curl-front .book-curl-surface::after {
-    content: "";
-    position: absolute;
-    z-index: 24;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(90deg, rgba(255, 250, 225, 0.62), rgba(255, 245, 217, 0.1) 5%, transparent 76%, rgba(77, 45, 23, 0.28) 98%, rgba(255, 244, 207, 0.45));
-    mix-blend-mode: soft-light;
-}
-
-.book-curl-back .book-curl-surface::after {
-    background:
-        linear-gradient(90deg, rgba(91, 55, 27, 0.23), rgba(255, 246, 211, 0.42) 9%, transparent 50%, rgba(95, 62, 30, 0.15)),
-        url("../assets/textures/paper-grain.png");
-    opacity: 0.52;
-}
-
+/* 曲面沿用纸页副本的材质与动态明暗，避免额外高光在起落页时闪现。 */
 .book-curl-contact {
     filter: blur(5px);
     background: linear-gradient(90deg, transparent, rgba(36, 20, 8, 0.62) 44%, rgba(36, 20, 8, 0.24) 72%, transparent);
