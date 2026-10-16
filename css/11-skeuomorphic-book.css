@@ -872,7 +872,7 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
 .detail-page-turn { position: absolute; bottom: 0; display: grid; place-items: center; width: 48px; height: 48px; padding: 11px; border: 0; border-radius: 50%; color: #8b7658; background: transparent; box-shadow: none; cursor: pointer; pointer-events: auto; touch-action: manipulation; transition: color 160ms ease-out; }
 .detail-page-turn-prev { left: 0; }
 .detail-page-turn-next { right: 0; }
-.detail-page-turn svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.detail-page-turn svg { width: 26px; height: 26px; fill: currentColor; stroke: none; }
 .detail-page-turn-next svg { transform: scaleX(-1); }
 .detail-page-turn:hover:not(:disabled),
 .detail-page-turn:focus-visible { color: #684b30; }

@@ -1621,7 +1621,7 @@ function renderDetailPageTurns(navigation, kind) {
             : `data-action="place-${direction}" data-country-key="${escapeHtml(target.countryKey)}" data-admin-area="${escapeHtml(target.adminArea || '')}" data-locality="${escapeHtml(target.locality || '')}"`;
         return `<button class="detail-page-turn detail-page-turn-${direction}" type="button" ${attributes}
             aria-label="${escapeHtml(description)}" title="${escapeHtml(description)}">
-            <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M27 26C28 14 19 8 5 11M12 4L5 11L12 18"/></svg>
+            <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M2 12 12 2v6c14 2 20 12 18 22C27 21 20 16 12 16v6Z"/></svg>
         </button>`;
     }).join('');
 }
