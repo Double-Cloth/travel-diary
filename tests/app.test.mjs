@@ -57,6 +57,9 @@ export function stubReadingRoutes() {
         restoreReadingScrollPosition, travelModel, activeRoute, renderedPageHash, lastReadingHash,
         shell: refs.shell };
     const calls = [];
+    const turns = [];
+    let deferred = false;
+    let pending;
     renderLedger = () => calls.push('ledger');
     renderCover = () => calls.push('cover');
     renderEntryRoute = params => calls.push('entry:' + params.id);
@@ -65,7 +68,12 @@ export function stubReadingRoutes() {
     updateChapterTabs = () => {};
     restoreFocus = () => {};
     restoreReadingScrollPosition = () => {};
-    renderWithPageTurn = (render, options) => { calls.push(options.animate ? 'turn' : 'direct'); render(); };
+    renderWithPageTurn = (render, options) => {
+        calls.push(options.animate ? 'turn' : 'direct');
+        turns.push(options);
+        if (deferred) pending = render;
+        else render();
+    };
     refs.shell = { dataset: {} };
     travelModel = { recordsById: new Map([['a', { id: 'a' }], ['b', { id: 'b' }]]) };
     activeRoute = null;
@@ -73,6 +81,9 @@ export function stubReadingRoutes() {
     lastReadingHash = '#ledger';
     return {
         calls,
+        turns,
+        defer: () => { deferred = true; },
+        finish: () => pending?.(),
         render: renderRoute,
         invalidate: () => { renderedPageHash = ''; },
         restore() {
@@ -468,10 +479,10 @@ test('多项媒体继续循环切换，归一化后仍是当前项时不重新�
     } finally { viewer.restore(); }
 });
 
-test('快速切换与取消翻页会清理旧副本并保持最后一次渲染', t => {
+test('桌面连续翻页加速落稳后衔接最新目标，取消会清理副本', t => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const previous = { window: globalThis.window, document: globalThis.document, getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame };
-    t.after(() => Object.assign(globalThis, previous));
+    t.after(() => { app.clearPageTurn(); Object.assign(globalThis, previous); });
     globalThis.requestAnimationFrame = callback => { callback(); return 1; };
     globalThis.cancelAnimationFrame = () => {};
     const copies = new Set();
@@ -517,6 +528,14 @@ test('快速切换与取消翻页会清理旧副本并保持最后一次渲染',
     assert.equal(animations[0].keyframes.at(-1).opacity, 0, '对页副本在落页前完成交接');
     t.mock.timers.tick(100);
     app.renderWithPageTurn(() => { rendered = '第二页'; }, { direction: 'back' });
+    assert.equal(copies.has(firstLeaf), true, '打断时保留当前卷曲纸面');
+    assert.equal(rendered, '第一页', '先落稳旧纸页，再渲染新目标');
+    assert.equal(animations.every(animation => animation.playbackRate === 920 / 160), true, '纸带与阴影同步加速');
+    app.renderWithPageTurn(() => { rendered = '最新目标'; }, { direction: 'back' });
+    t.mock.timers.tick(159);
+    assert.equal(copies.has(firstLeaf), true);
+    t.mock.timers.tick(1);
+    assert.equal(rendered, '最新目标', '连点只渲染最后一次目标');
     assert.equal(copies.has(firstLeaf), false);
     assert.equal(animations.slice(0, 12).every(animation => animation.cancelled), true);
     assert.equal(spread.classList.values.has('turn-back'), true);
@@ -544,6 +563,14 @@ test('快速切换与取消翻页会清理旧副本并保持最后一次渲染',
     assert.equal(rendered, '取消待开始的翻页');
     assert.equal(spread.classList.values.size, 0);
     assert.equal(animations.every(animation => animation.cancelled), true);
+    globalThis.requestAnimationFrame = callback => { callback(); return 1; };
+    app.renderWithPageTurn(() => { rendered = '调整窗口前'; });
+    app.renderWithPageTurn(() => { rendered = '窗口调整后的目标'; });
+    app.clearPageTurn();
+    assert.equal(rendered, '窗口调整后的目标', '尺寸变化清理动画时仍呈现最新路由');
+    t.mock.timers.tick(2000);
+    assert.equal(spread.classList.values.size, 0);
+    assert.equal(leftPage.inert, false);
 });
 
 test('翻页复制前裁掉屏外记录，保持占位且不深拷贝屏外媒体', () => {
@@ -863,7 +890,22 @@ test('详情、附件与返回都作为书页路由参与翻页', t => {
     assert.deepEqual(scenario.calls.slice(-2), ['turn', 'entry:a']);
 });
 
-test('手机翻页共用左侧曲面正反播放，过期回调不清理新动画，取消与完成恢复交互', async t => {
+test('合并连续导航时以实际显示的页面计算翻页方向', t => {
+    const previous = { document: globalThis.document, window: globalThis.window };
+    globalThis.window = { matchMedia: () => ({ matches: false }) };
+    globalThis.document = { body: { dataset: {} } };
+    const scenario = app.stubReadingRoutes();
+    t.after(() => { scenario.restore(); Object.assign(globalThis, previous); });
+    scenario.render(app.parseRoute('#ledger'), { initial: true });
+    scenario.defer();
+    scenario.render(app.parseRoute('#photos?id=b'));
+    scenario.render(app.parseRoute('#entry?id=b'));
+    assert.deepEqual(scenario.turns.slice(-2).map(turn => turn.direction), ['forward', 'forward']);
+    scenario.finish();
+    assert.equal(scenario.calls.at(-1), 'entry:b', '只渲染合并后的目标');
+});
+
+test('手机翻页保留当前曲面加速落稳，过期回调不清理新动画，取消与完成恢复交互', async t => {
     const previous = { window: globalThis.window, document: globalThis.document, getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame };
     t.after(() => { app.clearPageTurn(); Object.assign(globalThis, previous); });
     const nodes = new Set();
@@ -900,7 +942,15 @@ test('手机翻页共用左侧曲面正反播放，过期回调不清理新动�
     assert.equal([...nodes].findLast(node => node.className === 'mobile-page-leaf').style.transformOrigin, 'left center');
     const secondStart = animations.length;
     assert.equal(spread.inert, true);
+    first.currentTime = 380;
     app.renderWithPageTurn(() => { rendered = '第二页'; }, { direction: 'back' });
+    assert.equal(rendered, '第一页');
+    assert.equal(animations.length, secondStart, '落稳前不创建另一组纸带');
+    assert.equal(animations.every(animation => animation.playbackRate === 380 / 160), true);
+    app.renderWithPageTurn(() => { rendered = '最新页'; }, { direction: 'back' });
+    assert.equal(first.playbackRate, 380 / 160, '重复打断不重置落页时间');
+    first.finish();
+    await Promise.resolve();
     const second = animations[secondStart];
     assert.equal(second.timing.direction, 'reverse');
     assert.deepEqual(second.keyframes, first.keyframes, '返回反放相同左侧曲面');
@@ -908,7 +958,7 @@ test('手机翻页共用左侧曲面正反播放，过期回调不清理新动�
     assert.equal([...nodes].find(node => node.className === 'mobile-page-transition').style.top, '0px');
     first.finish();
     await Promise.resolve();
-    assert.equal(rendered, '第二页');
+    assert.equal(rendered, '最新页');
     assert.equal(first.cancelled, true);
     assert.equal(second.cancelled, undefined);
     assert.equal([...nodes].filter(node => node.className === 'mobile-page-transition').length, 1);
@@ -930,4 +980,15 @@ test('手机翻页共用左侧曲面正反播放，过期回调不清理新动�
     app.renderWithPageTurn(() => { rendered = '减少动态效果'; });
     assert.equal(rendered, '减少动态效果');
     assert.equal(animations.length, animationCount);
+    globalThis.window.matchMedia = query => ({ matches: !query.includes('reduced-motion') });
+    globalThis.requestAnimationFrame = callback => { callback(); return 1; };
+    app.renderWithPageTurn(() => { rendered = '取消前'; });
+    const cancelledTurn = animations[animationCount];
+    app.renderWithPageTurn(() => { rendered = '不应出现的旧请求'; });
+    app.renderWithPageTurn(() => { rendered = '直接切换'; }, { animate: false });
+    cancelledTurn.finish();
+    await Promise.resolve();
+    assert.equal(rendered, '直接切换', '显式取消丢弃排队目标，过期完成回调不重放');
+    assert.equal(spread.inert, false);
+    assert.equal([...nodes].filter(node => node.className === 'mobile-page-transition').length, 0);
 });

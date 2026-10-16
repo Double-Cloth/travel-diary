@@ -44,6 +44,7 @@ const LEDGER_FILTER_DEFAULTS = {
 };
 const PAGE_TURN_MS = 920;
 const MOBILE_PAGE_TURN_MS = 760;
+const PAGE_TURN_INTERRUPT_MS = 160;
 const BOOK_COVER_TURN_MS = 1180;
 const MOBILE_BOOK_COVER_OPEN_MS = 1040;
 const MOBILE_BOOK_COVER_CLOSE_MS = 920;
@@ -72,6 +73,8 @@ let travelModel = null;
 let activeRoute = null;
 let pageTurnTimer = null;
 let pageTurnCleanup = null;
+let pageTurnInterrupt = null;
+let pendingPageTurn = null;
 let lastReadingHash = '#ledger';
 let renderedPageHash = '';
 let lastReadingScrollPosition = null;
@@ -588,7 +591,7 @@ function renderRoute(route, options = {}) {
     }
     renderWithPageTurn(render, {
         animate: shouldAnimate,
-        direction: options.direction || getTurnDirection(previousRoute, route)
+        direction: options.direction || getTurnDirection(renderedPageHash ? parseRoute(renderedPageHash) : previousRoute, route)
     });
 }
 
@@ -2887,13 +2890,48 @@ function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
 }
 
-function clearPageTurn() {
+function clearPageTurn({ renderPending = true } = {}) {
+    const pending = pendingPageTurn;
+    pendingPageTurn = null;
+    pageTurnInterrupt = null;
     clearTimeout(pageTurnTimer);
     pageTurnTimer = null;
     pageTurnCleanup?.();
     pageTurnCleanup = null;
     refs.closedBookCover?.removeAttribute('aria-hidden');
     refs.spread?.classList.remove('turn-forward', 'turn-back', 'book-turn-preparing');
+    if (renderPending) pending?.renderFn();
+}
+
+function startPageTurn(animations, duration) {
+    const finish = () => {
+        if (pageTurnInterrupt !== interrupt) return;
+        const pending = pendingPageTurn;
+        clearPageTurn({ renderPending: false });
+        if (pending) renderWithPageTurn(pending.renderFn, pending.options);
+    };
+    let interrupted = false;
+    const interrupt = () => {
+        if (interrupted) return;
+        interrupted = true;
+        // 保留当前曲面和阴影，只加快剩余落页；连续请求合并为最新目标。
+        const remaining = Math.max(0, duration - Number(animations[0].currentTime || 0));
+        const playbackRate = Math.max(1, remaining / PAGE_TURN_INTERRUPT_MS);
+        animations.forEach(animation => {
+            animation.playbackRate = playbackRate;
+        });
+        if (!animations[0].finished) {
+            clearTimeout(pageTurnTimer);
+            pageTurnTimer = setTimeout(finish, remaining / playbackRate);
+        }
+    };
+    pageTurnInterrupt = interrupt;
+    animations.forEach(animation => animation.play());
+    if (animations[0].finished) {
+        animations[0].finished.then(finish, () => {});
+    } else {
+        pageTurnTimer = setTimeout(finish, duration);
+    }
 }
 
 let lastCoverBounds = null;
@@ -3009,7 +3047,7 @@ function createTransitionBook() {
 }
 
 function renderWithBookCover(renderFn, mode) {
-    clearPageTurn();
+    clearPageTurn({ renderPending: false });
     if (!refs.shell || prefersReducedMotion()) {
         renderFn();
         return;
@@ -3318,9 +3356,15 @@ function createMobilePageCurlFrames(width, count = 18) {
 }
 
 function renderWithPageTurn(renderFn, options = {}) {
-    clearPageTurn();
+    const shouldAnimate = refs.spread && options.animate !== false && !prefersReducedMotion();
+    if (shouldAnimate && pageTurnInterrupt) {
+        pageTurnInterrupt();
+        pendingPageTurn = { renderFn, options };
+        return;
+    }
+    clearPageTurn({ renderPending: false });
 
-    if (!refs.spread || options.animate === false || prefersReducedMotion()) {
+    if (!shouldAnimate) {
         renderFn();
         return;
     }
@@ -3411,8 +3455,7 @@ function renderWithPageTurn(renderFn, options = {}) {
             if (cancelled) return;
             startFrame = requestAnimationFrame(() => {
                 if (cancelled) return;
-                animations.forEach(animation => animation.play());
-                animations[0].finished.then(() => { if (!cancelled) clearPageTurn(); }, () => {});
+                startPageTurn(animations, MOBILE_PAGE_TURN_MS);
             });
         });
         return;
@@ -3522,12 +3565,7 @@ function renderWithPageTurn(renderFn, options = {}) {
         startFrame = requestAnimationFrame(() => {
             if (cancelled) return;
             refs.spread.classList.remove('book-turn-preparing');
-            animations.forEach(animation => animation.play());
-            if (animations[0].finished) {
-                animations[0].finished.then(() => { if (!cancelled) clearPageTurn(); }, () => {});
-            } else {
-                pageTurnTimer = setTimeout(clearPageTurn, PAGE_TURN_MS);
-            }
+            startPageTurn(animations, PAGE_TURN_MS);
         });
     });
 }
