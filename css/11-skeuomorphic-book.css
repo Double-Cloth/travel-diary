@@ -869,21 +869,24 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
 /* 快捷箭头独立于纸页滚动区，长篇阅读时仍留在书页下角。 */
 .detail-page-turns { position: absolute; z-index: 12; inset: auto 24px 28px; height: 48px; pointer-events: none; }
 .detail-page-turns[hidden] { display: none; }
-.detail-page-turn { position: absolute; bottom: 0; display: grid; place-items: center; width: 48px; height: 48px; padding: 8px; border: 1px solid transparent; border-radius: 4px; color: #754633; background: #f3e6c8ed; cursor: pointer; pointer-events: auto; touch-action: manipulation; }
+.detail-page-turn { position: absolute; bottom: 0; display: grid; place-items: center; width: 48px; height: 48px; padding: 11px; border: 0; border-radius: 50%; color: #8b7658; background: transparent; box-shadow: none; cursor: pointer; pointer-events: auto; touch-action: manipulation; transition: color 160ms ease-out; }
 .detail-page-turn-prev { left: 0; }
 .detail-page-turn-next { right: 0; }
-.detail-page-turn svg { width: 32px; height: 32px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.detail-page-turn svg { width: 26px; height: 26px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 .detail-page-turn-next svg { transform: scaleX(-1); }
-.detail-page-turn:hover:not(:disabled) { border-color: #96794b66; background: #fff4d8; }
-.detail-page-turn:focus-visible { outline: 2px solid #815535; outline-offset: 3px; }
-.detail-page-turn:active:not(:disabled) { background: #e7d3ac; }
-.detail-page-turn:disabled { color: #a3947c; cursor: default; }
+.detail-page-turn:hover:not(:disabled),
+.detail-page-turn:focus-visible { color: #684b30; }
+.detail-page-turn:focus-visible { outline: 1px dashed #815535; outline-offset: -5px; }
+.detail-page-turn:active:not(:disabled) { color: #4e3623; }
+.detail-page-turn:disabled { color: #b6a88d; cursor: default; }
 .notebook:has(.page-spread:is([inert], .turn-back, .turn-forward)) .detail-page-turns { visibility: hidden; }
 body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padding-bottom: 88px; }
 @media (max-width: 760px) {
     .detail-page-turns { position: fixed; inset: auto 18px max(18px, env(safe-area-inset-bottom)); }
-    .detail-page-turn { border-color: #96794b66; box-shadow: 0 3px 8px #3b281c26; }
     body:is([data-route='entry'], [data-route='place']) .notebook { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+}
+@media (prefers-reduced-motion: reduce) {
+    .detail-page-turn { transition: none; }
 }
 .entry-book-index .sheet-record-actions { margin: 0 0 0 auto; padding: 0; border: 0; flex-wrap: wrap; }
 .entry-book-article { display: flex; flex-direction: column; gap: 0; }
