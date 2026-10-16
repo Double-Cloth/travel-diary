@@ -874,7 +874,9 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
 .detail-page-turn-next { right: 0; }
 .detail-page-turn svg { width: 26px; height: 26px; fill: currentColor; stroke: none; }
 .detail-page-turn-next svg { transform: scaleX(-1); }
-.detail-page-turn:hover:not(:disabled),
+@media (hover: hover) and (pointer: fine) {
+    .detail-page-turn:hover:not(:disabled) { color: #684b30; }
+}
 .detail-page-turn:focus-visible { color: #684b30; }
 .detail-page-turn:focus-visible { outline: 1px dashed #815535; outline-offset: -5px; }
 .detail-page-turn:active:not(:disabled) { color: #4e3623; }
@@ -882,8 +884,19 @@ button.entry-neighbor:hover svg, button.entry-neighbor:focus-visible svg { trans
 .notebook:has(.page-spread:is([inert], .turn-back, .turn-forward)) .detail-page-turns { visibility: hidden; }
 body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padding-bottom: 88px; }
 @media (max-width: 760px) {
-    .detail-page-turns { position: fixed; inset: auto 18px max(18px, env(safe-area-inset-bottom)); }
-    body:is([data-route='entry'], [data-route='place']) .notebook { padding-bottom: calc(80px + env(safe-area-inset-bottom)); }
+    .detail-page-turns {
+        position: fixed;
+        inset: auto calc(8px + env(safe-area-inset-right)) calc(8px + env(safe-area-inset-bottom)) calc(8px + env(safe-area-inset-left));
+        height: 56px;
+    }
+    .detail-page-turn { width: 56px; height: 56px; padding: 13px; -webkit-tap-highlight-color: transparent; }
+    .detail-page-turn svg { width: 30px; height: 30px; }
+    .detail-page-turn:active:not(:disabled) svg { translate: 0 2px; }
+    .detail-page-turn:disabled { visibility: hidden; }
+    /* 在连续纸面内预留操作空间，避免纸页和笔记本重复增加底部留白。 */
+    body:is([data-route='entry'], [data-route='place']) .notebook { padding-bottom: 0; }
+    body:is([data-route='entry'], [data-route='place']) .page-spread { padding-bottom: calc(76px + env(safe-area-inset-bottom)); }
+    body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padding-bottom: 24px; }
 }
 @media (prefers-reduced-motion: reduce) {
     .detail-page-turn { transition: none; }
