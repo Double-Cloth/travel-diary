@@ -467,7 +467,7 @@
     width: var(--viewer-media-width, 100%);
     height: var(--viewer-media-height, 100%);
     box-sizing: border-box;
-    border: 1px solid #171410;
+    border: 2px solid var(--viewer-media-border, #000);
     pointer-events: none;
     transform: translate(-50%, -50%) rotate(var(--viewer-media-rotation, 0deg));
 }
