@@ -105,6 +105,44 @@ export function setTestState(values) {
     if (values.observer) photoSleeveResizeObserver = values.observer;
     if (values.sleeve) observedPhotoSleeves.add(values.sleeve);
 }
+export function stubBookReadingRoutes() {
+    const originals = { restoreReadingScrollPosition, closedBookReadingContext,
+        lastReadingScrollPosition, leftPage: refs.leftPage, rightPage: refs.rightPage };
+    const scenario = stubReadingRoutes();
+    restoreReadingScrollPosition = originals.restoreReadingScrollPosition;
+    closedBookReadingContext = null;
+    refs.leftPage = { scrollTop: 0 };
+    refs.rightPage = { scrollTop: 0 };
+    return {
+        render(hash) {
+            scenario.render(parseRoute(hash), { animate: false });
+        },
+        position(left, right, windowY) {
+            refs.leftPage.scrollTop = left;
+            refs.rightPage.scrollTop = right;
+            window.scrollTo(0, windowY);
+        },
+        getPosition: () => [refs.leftPage.scrollTop, refs.rightPage.scrollTop, window.scrollY],
+        rememberBackground: rememberReadingContext,
+        open() {
+            const original = navigateTo;
+            let hash;
+            navigateTo = next => { hash = next; };
+            try {
+                handleDocumentClick({ preventDefault() {}, target: {
+                    closest: selector => selector === '[data-action="open-book"]' ? {} : null
+                } });
+                return hash;
+            } finally { navigateTo = original; }
+        },
+        restore() {
+            scenario.restore();
+            ({ closedBookReadingContext, lastReadingScrollPosition } = originals);
+            refs.leftPage = originals.leftPage;
+            refs.rightPage = originals.rightPage;
+        }
+    };
+}
 `);
 delete globalThis.document;
 
@@ -975,6 +1013,36 @@ test('详情、附件与返回都作为书页路由参与翻页', t => {
     scenario.invalidate();
     scenario.render(app.parseRoute('#entry?id=a'));
     assert.deepEqual(scenario.calls.slice(-2), ['turn', 'entry:a']);
+});
+
+test('合书后重开保留筛选、详情与附件位置，且不覆盖详情返回目录的位置', t => {
+    const previous = { document: globalThis.document, window: globalThis.window };
+    globalThis.window = { scrollY: 0, matchMedia: () => ({ matches: false }),
+        scrollTo(options, y) { this.scrollY = typeof options === 'object' ? options.top : y; } };
+    globalThis.document = { body: { dataset: {}, scrollTop: 0 }, documentElement: { scrollTop: 0 } };
+    const scenario = app.stubBookReadingRoutes();
+    t.after(() => { scenario.restore(); Object.assign(globalThis, previous); });
+    scenario.render('#cover');
+    assert.equal(scenario.open(), '#preface', '首次翻开仍进入扉页');
+    const ledger = '#ledger?q=旅行&sort=asc';
+    scenario.render(ledger);
+    scenario.position(180, 320, 0);
+    scenario.rememberBackground();
+    for (const hash of [ledger, '#entry?id=a', '#photos?id=a']) {
+        scenario.render(hash);
+        scenario.position(240, 560, 720);
+        scenario.render('#cover');
+        scenario.position(0, 0, 0);
+        assert.equal(scenario.open(), app.serializeRoute(app.parseRoute(hash)));
+        scenario.render(scenario.open());
+        assert.deepEqual(scenario.getPosition(), [240, 560, 720]);
+    }
+    scenario.render(ledger);
+    assert.deepEqual(scenario.getPosition(), [180, 320, 0], '返回目录仍恢复进入详情前的位置');
+    scenario.render('#cover');
+    scenario.position(0, 0, 0);
+    scenario.render('#ledger?q=other');
+    assert.deepEqual(scenario.getPosition(), [0, 0, 0], '打开其他页面不套用合书位置');
 });
 
 test('合并连续导航时以实际显示的页面计算翻页方向', t => {

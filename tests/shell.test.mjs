@@ -81,7 +81,7 @@ test('左侧三个章节入口更新为扉页、日记目录与日记归档', ()
     assert.match(indexHtml, /href="#preface"[^>]*data-route-link="preface"[\s\S]*>扉页</);
     assert.match(indexHtml, /href="#ledger"[^>]*data-route-link="ledger"[\s\S]*>日记目录</);
     assert.match(indexHtml, /href="#archive"[^>]*data-route-link="archive"[\s\S]*>日记归档</);
-    assert.match(appJs, /data-action="open-book"[\s\S]*navigateTo\('#preface'\)/);
+    assert.match(appJs, /data-action="open-book"[\s\S]*navigateTo\(closedBookReadingContext\?\.hash \|\| '#preface'\)/);
 });
 
 test('桌面端实体书签为标题和铆钉保留独立空间且不会伸出视口', () => {
@@ -281,7 +281,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261017-page-turn-shortcuts-v3');
+    assert.equal(appVersion, '20261017-resume-book-v1');
     assert.ok(cssVersion);
     assert.match(appJs, /\.\/record-editor\.js\?v=20261016-select-direction-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20261016-select-direction-v1/);
@@ -538,7 +538,7 @@ test('日记详情作为书内页渲染且返回时恢复路线档案滚动位�
     assert.match(appJs, /function renderEntryRoute[\s\S]*setPages\([\s\S]*entry-book-index[\s\S]*entry-book-article/);
     assert.doesNotMatch(appJs, /function renderEntryRoute[\s\S]{0,1200}openEntrySheet\(record\)/);
     assert.match(appJs, /const shouldRestoreReadingScroll = isReturningToReadingBackground\(previousRoute, route\);[\s\S]*if \(shouldRestoreReadingScroll\) \{[\s\S]*restoreReadingScrollPosition\(\);/);
-    assert.match(appJs, /function restoreReadingScrollPosition\(\)[\s\S]*refs\.leftPage\.scrollTop = lastReadingScrollPosition\.left;[\s\S]*refs\.rightPage\.scrollTop = lastReadingScrollPosition\.right;[\s\S]*window\.scrollTo\(0, lastReadingScrollPosition\.windowY\);/);
+    assert.match(appJs, /function restoreReadingScrollPosition\(position = lastReadingScrollPosition\)[\s\S]*refs\.leftPage\.scrollTop = position\.left;[\s\S]*refs\.rightPage\.scrollTop = position\.right;[\s\S]*window\.scrollTo\(\{ top: position\.windowY, behavior: 'instant' \}\);/);
 });
 
 test('每篇日记按最早行程起显示编号但不暴露 trip_id', () => {

@@ -78,6 +78,7 @@ let pendingPageTurn = null;
 let lastReadingHash = '#ledger';
 let renderedPageHash = '';
 let lastReadingScrollPosition = null;
+let closedBookReadingContext = null;
 let searchRouteTimer = null;
 let isSearchComposing = false;
 let isMobileContextPanelOpen = false;
@@ -536,6 +537,19 @@ function renderRoute(route, options = {}) {
     if (photoViewerState) closePhotoViewerDialog();
     const previousRoute = activeRoute;
     const shouldRestoreReadingScroll = isReturningToReadingBackground(previousRoute, route);
+    if (route.name === 'cover' && previousRoute?.name !== 'cover'
+        && renderedPageHash && renderedPageHash !== '#cover') {
+        // 合书位置独立于详情页的返回目录，避免覆盖原有阅读上下文。
+        closedBookReadingContext = {
+            hash: renderedPageHash,
+            left: refs.leftPage?.scrollTop || 0,
+            right: refs.rightPage?.scrollTop || 0,
+            windowY: isMobileContextPageScrollLocked ? mobileContextScrollY : (window.scrollY || 0)
+        };
+    }
+    const reopeningPosition = previousRoute?.name === 'cover'
+        && serializeRoute(route) === closedBookReadingContext?.hash
+        ? closedBookReadingContext : null;
     activeRoute = route;
 
     if (shouldRestoreReadingScroll && renderedPageHash === serializeRoute(route)) {
@@ -578,6 +592,8 @@ function renderRoute(route, options = {}) {
         renderedPageHash = serializeRoute(route);
         if (shouldRestoreReadingScroll) {
             restoreReadingScrollPosition();
+        } else if (reopeningPosition) {
+            restoreReadingScrollPosition(reopeningPosition);
         } else if (!isSameChapter && !options.initial && isMobileLayout()) {
             window.scrollTo({ top: 0, behavior: 'instant' });
         }
@@ -3662,7 +3678,7 @@ function handleDocumentClick(event) {
     }
     if (event.target.closest('[data-action="open-book"]')) {
         event.preventDefault();
-        navigateTo('#preface');
+        navigateTo(closedBookReadingContext?.hash || '#preface');
         return;
     }
 
@@ -4056,14 +4072,14 @@ function isReturningToReadingBackground(previousRoute, nextRoute) {
     return serializeRoute(nextRoute) === lastReadingHash;
 }
 
-function restoreReadingScrollPosition() {
-    if (!lastReadingScrollPosition) {
+function restoreReadingScrollPosition(position = lastReadingScrollPosition) {
+    if (!position) {
         return;
     }
 
-    refs.leftPage.scrollTop = lastReadingScrollPosition.left;
-    refs.rightPage.scrollTop = lastReadingScrollPosition.right;
-    window.scrollTo(0, lastReadingScrollPosition.windowY);
+    refs.leftPage.scrollTop = position.left;
+    refs.rightPage.scrollTop = position.right;
+    window.scrollTo({ top: position.windowY, behavior: 'instant' });
 }
 
 function handleDocumentInput(event) {
