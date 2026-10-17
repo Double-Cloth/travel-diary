@@ -894,8 +894,15 @@ body::after {
         transform: none;
     }
 
+    /* 移动端沿用纸面筛选样式，避免叠加桌面按钮的立体高光与暗角。 */
+    .paper-page-right.context-panel .index-segment::before,
+    .paper-page-right.context-panel .index-segment::after {
+        content: none;
+    }
+
     .paper-page-right.context-panel .index-segment:hover,
     .paper-page-right.context-panel .index-segment:focus-visible {
+        color: var(--stamp);
         border-color: rgba(155, 61, 46, 0.28);
         background: rgba(155, 61, 46, 0.04);
         box-shadow: none;
@@ -905,11 +912,17 @@ body::after {
     .paper-page-right.context-panel .index-segment-active,
     .paper-page-right.context-panel .index-segment-active:hover,
     .paper-page-right.context-panel .index-segment-active:focus-visible {
-        color: #fff8e9;
-        border-color: var(--green);
-        background: var(--green);
+        color: var(--stamp);
+        border-color: var(--stamp);
+        background: rgba(143, 53, 39, 0.15);
+        font-weight: 700;
         box-shadow: none;
         transform: none;
+    }
+
+    .paper-page-right.context-panel .index-segment:focus-visible {
+        outline: 2px solid var(--stamp);
+        outline-offset: 2px;
     }
 
 }
