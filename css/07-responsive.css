@@ -264,6 +264,14 @@
         order: 3;
     }
 
+    body[data-route="place"] .paper-page-right > .place-records {
+        padding-bottom: 0;
+    }
+
+    body[data-route="place"] .place-media > .photo-sleeve {
+        margin-top: 0;
+    }
+
     body[data-route="entry"] .entry-neighbors,
     body[data-route="place"] .place-neighbors {
         padding-bottom: clamp(16px, 4.5vw, 20px);
