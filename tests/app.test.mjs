@@ -6,7 +6,7 @@ import { normalizeTravelLocation } from '../js/location.mjs';
 globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
-    renderWithPageTurn, renderWithBookCover, clearPageTurn, cloneTurningPage, cloneTransitionContent, createTransitionMediaImage, observePhotoSleeveVideos, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
+    renderWithPageTurn, renderWithBookCover, clearPageTurn, waitForPageTurnAssets, cloneTurningPage, cloneTransitionContent, createTransitionMediaImage, observePhotoSleeveVideos, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
     restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute,
@@ -592,7 +592,69 @@ test('多项媒体继续循环切换，归一化后仍是当前项时不重新�
     } finally { viewer.restore(); }
 });
 
-test('桌面连续翻页加速落稳后衔接最新目标，取消会清理副本', t => {
+test('翻页等待纸面、可见图片和字体解码，忽略屏外图片并能取消、失败和超时回退', async t => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const previous = { document: globalThis.document, window: globalThis.window,
+        Image: globalThis.Image, getComputedStyle: globalThis.getComputedStyle };
+    t.after(() => Object.assign(globalThis, previous));
+    const deferred = () => {
+        let resolve, reject;
+        const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+        return { promise, resolve, reject };
+    };
+    let background = deferred();
+    let fonts = deferred();
+    const photo = deferred();
+    const requests = [];
+    globalThis.document = { fonts: { get ready() { return fonts.promise; } } };
+    globalThis.window = { innerHeight: 800 };
+    globalThis.Image = class {
+        set src(value) { requests.push(value); }
+        decode() { return background.promise; }
+    };
+    globalThis.getComputedStyle = () => ({ backgroundImage: 'url("paper.webp"), url("paper.webp")' });
+    const visible = { getBoundingClientRect: () => ({ width: 100, height: 100, top: 40, bottom: 140 }), decode: () => photo.promise };
+    const offscreen = { getBoundingClientRect: () => ({ width: 100, height: 100, top: 900, bottom: 1000 }),
+        decode() { assert.fail('屏外懒加载图片不阻塞翻页'); } };
+    const page = { getBoundingClientRect: () => ({ top: 0, bottom: 800 }), querySelectorAll: () => [visible, offscreen] };
+    const calls = [];
+    app.waitForPageTurnAssets([page, page], ready => calls.push(ready));
+    assert.deepEqual(requests, ['paper.webp'], '两页共用纸面只准备一次');
+    background.resolve();
+    fonts.resolve();
+    await Promise.resolve();
+    assert.deepEqual(calls, [], '可见照片未解码时不开始动画');
+    photo.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(calls, [true]);
+
+    fonts = deferred();
+    const cancel = app.waitForPageTurnAssets([page], ready => calls.push(ready));
+    cancel();
+    fonts.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(calls, [true], '取消后的旧资源回调不重启动画');
+
+    background = deferred();
+    app.waitForPageTurnAssets([page], ready => calls.push(ready));
+    background.reject(new Error('纸面加载失败'));
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.deepEqual(calls, [true, false]);
+
+    background = deferred();
+    app.waitForPageTurnAssets([page], ready => calls.push(ready));
+    t.mock.timers.tick(2000);
+    assert.deepEqual(calls, [true, false, false], '过慢资源直接切页，不无限等待');
+    background.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(calls.length, 3, '超时后的迟到回调不重复播放');
+});
+
+test('桌面连续翻页加速落稳后衔接最新目标，取消会清理副本', async t => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const previous = { window: globalThis.window, document: globalThis.document, getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame };
     t.after(() => { app.clearPageTurn(); Object.assign(globalThis, previous); });
@@ -694,6 +756,30 @@ test('桌面连续翻页加速落稳后衔接最新目标，取消会清理副�
     app.clearPageTurn();
     assert.equal(rendered, '窗口调整后的目标', '尺寸变化清理动画时仍呈现最新路由');
     t.mock.timers.tick(2000);
+    assert.equal(spread.classList.values.size, 0);
+    assert.equal(leftPage.inert, false);
+
+    let finishFonts;
+    globalThis.document.fonts = { ready: new Promise(resolve => { finishFonts = resolve; }) };
+    const count = animations.length;
+    app.renderWithPageTurn(() => { rendered = '首次加载资源'; });
+    assert.equal(animations.length, count, '目标资源就绪前不生成曲面动画');
+    assert.ok([...copies].some(node => node.classList.values.has('book-turn-starting')), '加载时由平面旧页覆盖');
+    finishFonts();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.ok(animations.length > count, '资源就绪后生成纸背副本并翻页');
+    app.clearPageTurn();
+
+    globalThis.document.fonts = { ready: new Promise(resolve => { finishFonts = resolve; }) };
+    app.renderWithPageTurn(() => { rendered = '取消资源准备'; });
+    app.renderWithPageTurn(() => { rendered = '直接显示最新页'; }, { animate: false });
+    const afterCancel = animations.length;
+    finishFonts();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(animations.length, afterCancel, '取消资源准备后不创建旧动画');
+    assert.equal(rendered, '直接显示最新页');
     assert.equal(spread.classList.values.size, 0);
     assert.equal(leftPage.inert, false);
 });

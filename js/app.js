@@ -45,6 +45,7 @@ const LEDGER_FILTER_DEFAULTS = {
 const PAGE_TURN_MS = 920;
 const MOBILE_PAGE_TURN_MS = 760;
 const PAGE_TURN_INTERRUPT_MS = 160;
+const PAGE_TURN_ASSET_WAIT_MS = 2000;
 const BOOK_COVER_TURN_MS = 1180;
 const MOBILE_BOOK_COVER_OPEN_MS = 1040;
 const MOBILE_BOOK_COVER_CLOSE_MS = 920;
@@ -3438,6 +3439,47 @@ function createMobilePageCurlFrames(width, count = 18) {
     return frames;
 }
 
+function waitForPageTurnAssets(pages, onReady) {
+    const pending = [];
+    const backgrounds = new Set();
+    pages.forEach(page => {
+        const bounds = page.getBoundingClientRect();
+        const background = getComputedStyle(page).backgroundImage || '';
+        for (const match of background.matchAll(/url\(["']?([^"')]+)["']?\)/g)) {
+            backgrounds.add(match[1]);
+        }
+        page.querySelectorAll('img[src]').forEach(image => {
+            const rect = image.getBoundingClientRect();
+            if (!rect.width || !rect.height || rect.bottom <= Math.max(0, bounds.top)
+                || rect.top >= Math.min(window.innerHeight, bounds.bottom)) return;
+            if (image.decode) pending.push(image.decode());
+        });
+    });
+    backgrounds.forEach(src => {
+        const image = new Image();
+        image.src = src;
+        pending.push(image.decode());
+    });
+    // 上面的布局读取先触发目标页需要的字形，再取得对应的字体就绪状态。
+    if (document.fonts) pending.push(document.fonts.ready);
+    if (!pending.length) {
+        onReady(true);
+        return () => {};
+    }
+    let finished = false;
+    let timer;
+    const finish = ready => {
+        if (finished) return;
+        finished = true;
+        clearTimeout(timer);
+        onReady(ready);
+    };
+    // 资源失败或过慢时直接交还真实页面，避免在翻动途中补画资源或阻塞导航。
+    timer = setTimeout(() => finish(false), PAGE_TURN_ASSET_WAIT_MS);
+    Promise.all(pending).then(() => finish(true), () => finish(false));
+    return () => { finished = true; clearTimeout(timer); };
+}
+
 function renderWithPageTurn(renderFn, options = {}) {
     const shouldAnimate = refs.spread && options.animate !== false && !prefersReducedMotion();
     if (shouldAnimate && pageTurnInterrupt) {
@@ -3479,7 +3521,6 @@ function renderWithPageTurn(renderFn, options = {}) {
         refs.spread.inert = true;
         const backwards = options.direction === 'back';
         // 前进卷起旧页，返回从左侧展开新页；旧页在新页落稳前保留在下面。
-        const snapshot = backwards ? capture() : oldPage;
         const viewport = document.createElement('div');
         viewport.className = 'mobile-page-transition';
         viewport.setAttribute('aria-hidden', 'true');
@@ -3500,49 +3541,55 @@ function renderWithPageTurn(renderFn, options = {}) {
         refs.shell.append(viewport);
         const timing = { duration: MOBILE_PAGE_TURN_MS, easing: 'linear', fill: 'both',
             direction: backwards ? 'reverse' : 'normal' };
-        const frames = createMobilePageCurlFrames(bounds.width, getPageCurlStripCount(bounds.width));
-        const stripWidth = bounds.width / frames.length;
         const animations = [];
-        frames.forEach((keyframes, index) => {
-            const strip = document.createElement('div');
-            strip.className = 'mobile-page-strip';
-            strip.style.width = `${stripWidth + .5}px`;
-            const front = document.createElement('div');
-            front.className = 'mobile-page-front';
-            const copy = snapshot.cloneNode(true);
-            copy.style.left = `${-index * stripWidth}px`;
-            const shade = document.createElement('div');
-            shade.className = 'mobile-page-shade';
-            const back = document.createElement('div');
-            back.className = 'mobile-page-back';
-            front.append(copy, shade);
-            strip.append(front, back);
-            leaf.append(strip);
-            animations.push(strip.animate(keyframes.map(({ offset, transform }) => ({ offset, transform })), timing));
-            animations.push(shade.animate(keyframes.map(({ offset, shade }) => ({ offset, opacity: Math.max(0, shade) })), timing));
-        });
-        animations.push(shadow.animate([
-            { opacity: 0 }, { opacity: .28, offset: .5 }, { opacity: 0 }
-        ], timing));
-        if (backwards) animations.push(oldPage.animate([
-            { opacity: 1, offset: 0 }, { opacity: 1, offset: .88 }, { opacity: 0, offset: 1 }
-        ], { ...timing, direction: 'normal' }));
-        animations.forEach(animation => { animation.pause(); animation.currentTime = 0; });
         let startFrame = null;
         let cancelled = false;
+        let cancelAssets = () => {};
         pageTurnCleanup = () => {
             cancelled = true;
+            cancelAssets();
             cancelAnimationFrame(startFrame);
             animations.forEach(animation => animation.cancel());
             viewport.remove();
             refs.spread.inert = wasInert;
         };
-        startFrame = requestAnimationFrame(() => {
-            if (cancelled) return;
+        cancelAssets = waitForPageTurnAssets([refs.leftPage, refs.rightPage], ready => {
+            if (!ready) { clearPageTurn(); return; }
+            const snapshot = backwards ? capture() : oldPage;
+            const frames = createMobilePageCurlFrames(bounds.width, getPageCurlStripCount(bounds.width));
+            const stripWidth = bounds.width / frames.length;
+            frames.forEach((keyframes, index) => {
+                const strip = document.createElement('div');
+                strip.className = 'mobile-page-strip';
+                strip.style.width = `${stripWidth + .5}px`;
+                const front = document.createElement('div');
+                front.className = 'mobile-page-front';
+                const copy = snapshot.cloneNode(true);
+                copy.style.left = `${-index * stripWidth}px`;
+                const shade = document.createElement('div');
+                shade.className = 'mobile-page-shade';
+                const back = document.createElement('div');
+                back.className = 'mobile-page-back';
+                front.append(copy, shade);
+                strip.append(front, back);
+                leaf.append(strip);
+                animations.push(strip.animate(keyframes.map(({ offset, transform }) => ({ offset, transform })), timing));
+                animations.push(shade.animate(keyframes.map(({ offset, shade }) => ({ offset, opacity: Math.max(0, shade) })), timing));
+            });
+            animations.push(shadow.animate([
+                { opacity: 0 }, { opacity: .28, offset: .5 }, { opacity: 0 }
+            ], timing));
+            if (backwards) animations.push(oldPage.animate([
+                { opacity: 1, offset: 0 }, { opacity: 1, offset: .88 }, { opacity: 0, offset: 1 }
+            ], { ...timing, direction: 'normal' }));
+            animations.forEach(animation => { animation.pause(); animation.currentTime = 0; });
             startFrame = requestAnimationFrame(() => {
                 if (cancelled) return;
-                startPageTurn(animations, MOBILE_PAGE_TURN_MS);
-                startingPage.remove();
+                startFrame = requestAnimationFrame(() => {
+                    if (cancelled) return;
+                    startPageTurn(animations, MOBILE_PAGE_TURN_MS);
+                    startingPage.remove();
+                });
             });
         });
         return;
@@ -3559,72 +3606,17 @@ function renderWithPageTurn(renderFn, options = {}) {
     const restingScroll = restingPage.scrollTop;
     renderFn();
     const reversePage = backwards ? refs.rightPage : refs.leftPage;
-    const back = cloneTurningPage(reversePage);
     const leaf = document.createElement('div');
     leaf.className = 'book-turn-leaf';
     leaf.setAttribute('aria-hidden', 'true');
     leaf.inert = true;
     resting.classList.add('book-turn-resting');
-    const frames = createPageCurlFrames(width, height, backwards, getPageCurlStripCount(width));
-    const stripWidth = Math.hypot(width, height) / frames.length;
-    const animations = [];
-    const surfaces = [];
-    const timing = { duration: PAGE_TURN_MS, fill: 'both', easing: 'linear' };
-    // 纸张落下的最后阶段逐渐交接底页，消除副本移除瞬间的闪变。
-    animations.push(resting.animate([
-        { opacity: 1, offset: 0 }, { opacity: 1, offset: .72 },
-        { opacity: 0, offset: .96 }, { opacity: 0, offset: 1 }
-    ], timing));
-    frames.forEach((keyframes) => {
-        const strip = document.createElement('div');
-        strip.className = 'book-curl-strip';
-        strip.style.width = `${stripWidth + 0.5}px`;
-        strip.style.height = `${width + height}px`;
-        strip.style.transform = keyframes[0].transform;
-        [front, back].forEach((source, side) => {
-            const face = document.createElement('div');
-            face.className = `book-curl-face${side ? ' book-curl-back' : ' book-curl-front'}`;
-            const surface = document.createElement('div');
-            surface.className = 'book-curl-surface';
-            surface.style.width = `${width}px`;
-            surface.style.height = `${height}px`;
-            const copy = source.cloneNode(true);
-            copy.style.width = `${width}px`;
-            copy.style.height = `${height}px`;
-            copy.style.left = '0';
-            const shade = document.createElement('div');
-            shade.className = 'book-curl-shade';
-            surface.append(copy, shade);
-            face.append(surface);
-            strip.append(face);
-            surfaces.push({ copy, scroll: side ? reversePage.scrollTop : frontScroll });
-            animations.push(surface.animate(keyframes.map(frame => ({ offset: frame.offset,
-                transform: side ? frame.back : frame.front })), timing));
-            animations.push(shade.animate(keyframes.map(frame => ({ offset: frame.offset,
-                opacity: frame.shade })), timing));
-        });
-        leaf.append(strip);
-        animations.push(strip.animate(keyframes.map(({ offset, transform }) => ({ offset, transform })), timing));
-    });
     const shadow = document.createElement('div');
     shadow.className = 'book-turn-shadow';
-    const contact = document.createElement('div');
-    contact.className = 'book-curl-contact';
-    contact.style.width = `${width * 0.2}px`;
-    contact.style.height = `${width + height}px`;
-    const ambient = document.createElement('div');
-    ambient.className = 'book-curl-ambient';
-    ambient.style.width = `${width * 0.42}px`;
-    ambient.style.height = `${width + height}px`;
-    shadow.append(ambient, contact);
-    animations.push(ambient.animate(frames[0].map(frame => ({ offset: frame.offset,
-        transform: frame.shadow, opacity: frame.shadowOpacity * .42 })), timing));
-    animations.push(contact.animate(frames[0].map(frame => ({ offset: frame.offset,
-        transform: frame.shadow, opacity: frame.shadowOpacity })), timing));
-    // 纸面在落稳前交还真实正文，避免分条副本与最终页面之间出现细缝闪动。
-    animations.push(leaf.animate([
-        { opacity: 1, offset: 0 }, { opacity: 1, offset: .92 }, { opacity: 0, offset: 1 }
-    ], timing));
+    const animations = [];
+    let startFrame = null;
+    let cancelled = false;
+    let cancelAssets = () => {};
     refs.spread.classList.add('book-turn-preparing');
     front.classList.add('book-turn-starting');
     refs.spread.append(resting, shadow, leaf, front);
@@ -3632,15 +3624,10 @@ function renderWithPageTurn(renderFn, options = {}) {
     refs.rightPage.inert = true;
     resting.scrollTop = restingScroll;
     front.scrollTop = frontScroll;
-    surfaces.forEach(({ copy, scroll }) => { copy.scrollTop = scroll; });
-    refs.spread.style.setProperty('--page-turn-ms', `${PAGE_TURN_MS}ms`);
     refs.spread.classList.add(backwards ? 'turn-back' : 'turn-forward');
-    animations.forEach(animation => { animation.pause(); animation.currentTime = 0; });
-    let startFrame = null;
-    let cancelled = false;
-    // 保留旧的对页直到纸张落稳，避免翻至中途时底页突然跳变。
     pageTurnCleanup = () => {
         cancelled = true;
+        cancelAssets();
         cancelAnimationFrame(startFrame);
         animations.forEach(animation => animation.cancel());
         leaf.remove();
@@ -3649,14 +3636,78 @@ function renderWithPageTurn(renderFn, options = {}) {
         shadow.remove();
         [refs.leftPage.inert, refs.rightPage.inert] = pageInert;
     };
-    // 先完成首帧栅格化，再开始掀角，防止建层耗时吃掉动画开头。
-    startFrame = requestAnimationFrame(() => {
-        if (cancelled) return;
+    cancelAssets = waitForPageTurnAssets([refs.leftPage, refs.rightPage], ready => {
+        if (!ready) { clearPageTurn(); return; }
+        const back = cloneTurningPage(reversePage);
+        const frames = createPageCurlFrames(width, height, backwards, getPageCurlStripCount(width));
+        const stripWidth = Math.hypot(width, height) / frames.length;
+        const surfaces = [];
+        const timing = { duration: PAGE_TURN_MS, fill: 'both', easing: 'linear' };
+        // 纸张落下的最后阶段逐渐交接底页，消除副本移除瞬间的闪变。
+        animations.push(resting.animate([
+            { opacity: 1, offset: 0 }, { opacity: 1, offset: .72 },
+            { opacity: 0, offset: .96 }, { opacity: 0, offset: 1 }
+        ], timing));
+        frames.forEach((keyframes) => {
+            const strip = document.createElement('div');
+            strip.className = 'book-curl-strip';
+            strip.style.width = `${stripWidth + 0.5}px`;
+            strip.style.height = `${width + height}px`;
+            strip.style.transform = keyframes[0].transform;
+            [front, back].forEach((source, side) => {
+                const face = document.createElement('div');
+                face.className = `book-curl-face${side ? ' book-curl-back' : ' book-curl-front'}`;
+                const surface = document.createElement('div');
+                surface.className = 'book-curl-surface';
+                surface.style.width = `${width}px`;
+                surface.style.height = `${height}px`;
+                const copy = source.cloneNode(true);
+                copy.style.width = `${width}px`;
+                copy.style.height = `${height}px`;
+                copy.style.left = '0';
+                const shade = document.createElement('div');
+                shade.className = 'book-curl-shade';
+                surface.append(copy, shade);
+                face.append(surface);
+                strip.append(face);
+                surfaces.push({ copy, scroll: side ? reversePage.scrollTop : frontScroll });
+                animations.push(surface.animate(keyframes.map(frame => ({ offset: frame.offset,
+                    transform: side ? frame.back : frame.front })), timing));
+                animations.push(shade.animate(keyframes.map(frame => ({ offset: frame.offset,
+                    opacity: frame.shade })), timing));
+            });
+            leaf.append(strip);
+            animations.push(strip.animate(keyframes.map(({ offset, transform }) => ({ offset, transform })), timing));
+        });
+        const contact = document.createElement('div');
+        contact.className = 'book-curl-contact';
+        contact.style.width = `${width * 0.2}px`;
+        contact.style.height = `${width + height}px`;
+        const ambient = document.createElement('div');
+        ambient.className = 'book-curl-ambient';
+        ambient.style.width = `${width * 0.42}px`;
+        ambient.style.height = `${width + height}px`;
+        shadow.append(ambient, contact);
+        animations.push(ambient.animate(frames[0].map(frame => ({ offset: frame.offset,
+            transform: frame.shadow, opacity: frame.shadowOpacity * .42 })), timing));
+        animations.push(contact.animate(frames[0].map(frame => ({ offset: frame.offset,
+            transform: frame.shadow, opacity: frame.shadowOpacity })), timing));
+        // 纸面在落稳前交还真实正文，避免分条副本与最终页面之间出现细缝闪动。
+        animations.push(leaf.animate([
+            { opacity: 1, offset: 0 }, { opacity: 1, offset: .92 }, { opacity: 0, offset: 1 }
+        ], timing));
+        surfaces.forEach(({ copy, scroll }) => { copy.scrollTop = scroll; });
+        refs.spread.style.setProperty('--page-turn-ms', `${PAGE_TURN_MS}ms`);
+        animations.forEach(animation => { animation.pause(); animation.currentTime = 0; });
+        // 先完成首帧栅格化，再开始掀角，防止建层耗时吃掉动画开头。
         startFrame = requestAnimationFrame(() => {
             if (cancelled) return;
-            refs.spread.classList.remove('book-turn-preparing');
-            startPageTurn(animations, PAGE_TURN_MS);
-            front.remove();
+            startFrame = requestAnimationFrame(() => {
+                if (cancelled) return;
+                refs.spread.classList.remove('book-turn-preparing');
+                startPageTurn(animations, PAGE_TURN_MS);
+                front.remove();
+            });
         });
     });
 }
