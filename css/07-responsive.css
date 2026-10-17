@@ -254,9 +254,14 @@
         padding: 24px clamp(16px, 4.5vw, 20px) 0;
     }
 
-    body[data-route="entry"] .entry-book-media {
+    body[data-route="entry"] .entry-book-media,
+    body[data-route="place"] .place-media {
         order: 2;
         padding: 0 clamp(16px, 4.5vw, 20px);
+    }
+
+    body[data-route="place"] .place-neighbors {
+        order: 3;
     }
 
     body[data-route="entry"] .entry-neighbors,

@@ -1527,13 +1527,13 @@ function renderPlace(params = {}) {
                         <a class="location-chip" href="${placeHash(params.country, params.area, locality)}">${escapeHtml(locality)}</a>
                     `).join('')}
                 </div>
-                ${media.length ? renderPhotoSleeve(matching[0], {
+            </div>
+            ${media.length ? `<div class="place-media">${renderPhotoSleeve(matching[0], {
                     media,
                     previewRows: ENTRY_PHOTO_PREVIEW_ROWS,
                     showViewAll: true,
                     viewAllHref: serializeRoute({ name: 'photos', params })
-                }) : ''}
-            </div>
+                })}</div>` : ''}
             ${adminAreaNavigation ? `
                 <nav class="place-neighbors entry-neighbors" aria-label="相邻${escapeHtml(adminAreaNavigation.typeLabel)}">
                     <h2>相邻${escapeHtml(adminAreaNavigation.typeLabel)}</h2>
@@ -3500,7 +3500,7 @@ function renderWithPageTurn(renderFn, options = {}) {
         const capture = () => {
             const snapshot = prepareTransitionClone(refs.spread, 'mobile-page-snapshot');
             // 固定当前路由的纸面和阅读顺序，尤其是详情页的 display: contents 布局。
-            const selector = '.paper-page, .entry-book-index, .entry-book-summary, .entry-neighbors, .place-page, .place-summary, .place-neighbors, .entry-photos-summary';
+            const selector = '.paper-page, .entry-book-index, .entry-book-summary, .entry-neighbors, .place-page, .place-summary, .place-media, .place-neighbors, .entry-photos-summary';
             const originals = [refs.spread, ...refs.spread.querySelectorAll(selector)];
             [snapshot, ...snapshot.querySelectorAll(selector)].forEach((node, index) => {
                 const style = getComputedStyle(originals[index]);
