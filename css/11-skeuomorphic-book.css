@@ -342,43 +342,62 @@ body[data-route='preface'] .paper-page {
 }
 
 .preface-owner-plaque {
+    position: relative;
     display: grid;
-    gap: 3px;
+    gap: 12px;
     width: 100%;
-    padding: 14px 16px 16px;
-    border: 1px solid #76532e;
-    border-radius: 5px;
-    color: #563921;
-    background: var(--plaque-face);
-    box-shadow: inset 0 1px #fff5d1, inset 0 -1px #8b6438, 0 3px 6px #4f301828;
-    text-shadow: 0 1px #fff4cf;
+    padding: 22px 20px 24px;
+    border: 1px solid #9c5846;
+    border-radius: 2px;
+    color: #593d2d;
+    background:
+        url('../assets/textures/paper-grain.png') repeat,
+        linear-gradient(105deg, #fff8e5, #f3e4c5);
+    box-shadow: inset 0 1px #fffbed, 0 3px 8px #583b201a;
+    text-shadow: none;
     font: inherit;
     text-align: left;
     cursor: pointer;
-    transition: transform 180ms cubic-bezier(.2,.7,.2,1), filter 180ms, box-shadow 180ms;
+    transition: transform 180ms cubic-bezier(.2,.7,.2,1), box-shadow 180ms;
+}
+
+/* 朱砂双线落在纸面上，保留署名章的印记感与姓名的呼吸空间。 */
+.preface-owner-plaque::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px solid #9c58465c;
+    border-radius: 1px;
+    pointer-events: none;
 }
 
 .preface-owner-plaque:hover,
 .preface-owner-plaque:focus-visible {
-    filter: brightness(1.04);
-    transform: translateY(-2px);
-    box-shadow: inset 0 1px #fff5d1, inset 0 -2px #8b6438, 0 4px 0 #79532d, 0 12px 16px #4f301836;
+    transform: translateY(-1px);
+    box-shadow: inset 0 1px #fffbed, 0 5px 12px #583b2029;
+}
+
+.preface-owner-plaque:active {
+    transform: translateY(0);
+    box-shadow: inset 0 1px 3px #583b201a, 0 1px 3px #583b2014;
 }
 
 .preface-owner-plaque:focus-visible {
-    outline: 2px solid #8f3527;
-    outline-offset: 2px;
+    outline: 2px solid var(--stamp);
+    outline-offset: 4px;
 }
 
 .preface-owner-plaque span {
+    color: #874838;
     font: 9px/1.5 var(--font-code);
-    letter-spacing: .1em;
+    letter-spacing: .12em;
 }
 
 .preface-owner-plaque strong {
     font-size: clamp(21px, 2vw, 25px);
-    line-height: 1.5;
-    letter-spacing: .04em;
+    font-weight: 400;
+    line-height: 1.4;
+    letter-spacing: .01em;
     overflow-wrap: anywhere;
 }
 
