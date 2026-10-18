@@ -220,6 +220,7 @@ function enhanceCustomSelect(select) {
     menu.className = 'custom-select-menu';
     menu.dataset.customSelectMenu = '';
     menu.setAttribute('role', 'listbox');
+    menu.tabIndex = -1;
     if (select.multiple) menu.setAttribute('aria-multiselectable', 'true');
     menu.hidden = true;
     wrapper.append(menu);
@@ -251,10 +252,11 @@ function enhanceCustomSelect(select) {
         optionPointer = null;
     }, { passive: true });
     menu.addEventListener('click', event => {
-        const option = event.target.closest('[data-custom-select-option]');
-        if (!option) return;
+        // 菜单空白处也要取消 label 的默认激活，避免再次点击关联按钮。
         event.preventDefault();
         event.stopPropagation();
+        const option = event.target.closest('[data-custom-select-option]');
+        if (!option) return;
         if (suppressOptionClick) {
             suppressOptionClick = false;
             return;
@@ -277,7 +279,7 @@ function enhanceCustomSelect(select) {
         if (wrapper.classList.contains('is-open')) closeCustomSelect(wrapper);
         else openCustomSelect(wrapper);
     });
-    trigger.addEventListener('keydown', event => {
+    wrapper.addEventListener('keydown', event => {
         if (event.key === 'ArrowDown') {
             event.preventDefault();
             moveCustomSelectSelection(wrapper, 1);
@@ -297,11 +299,12 @@ function enhanceCustomSelect(select) {
             event.preventDefault();
             event.stopPropagation();
             closeCustomSelect(wrapper);
+            trigger.focus({ preventScroll: true });
         } else if (event.key === 'Tab') {
             closeCustomSelect(wrapper);
         }
     });
-    trigger.addEventListener('focusout', () => {
+    wrapper.addEventListener('focusout', () => {
         window.setTimeout(() => {
             if (!wrapper.contains(document.activeElement)) closeCustomSelect(wrapper);
         }, 0);

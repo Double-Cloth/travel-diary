@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
-import { createRecordEditor } from './record-editor.js?v=20261016-select-direction-v1';
+import { createRecordEditor } from './record-editor.js?v=20261018-select-scroll-focus-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261013-danger-first-v1';
 import { createDataTransfer } from './data-transfer.js?v=20261013-danger-first-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
@@ -10,7 +10,7 @@ import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owne
 import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260930-review-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
-import { enhanceCustomSelects } from './custom-select.js?v=20261016-select-direction-v1';
+import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
     formatLocationText,
