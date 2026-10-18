@@ -968,25 +968,28 @@ function renderPreface() {
                             <span>TRAVEL DIARY OWNER</span>
                             <strong>${escapeHtml(profileOwnerName)}</strong>
                         </button>
-                        <blockquote class="preface-signature">且将新火试新茶，<br>诗酒趁年华</blockquote>
-                        <span class="preface-seal" aria-hidden="true">
-                            <svg class="preface-seal-art" viewBox="0 0 100 100" focusable="false">
-                                <defs>
-                                    <path id="prefaceSealTextRing" d="M14 50a36 36 0 1 1 72 0a36 36 0 1 1-72 0"/>
-                                </defs>
-                                <g fill="none" stroke="currentColor">
-                                    <circle cx="50" cy="50" r="47" stroke-width="1.8"/>
-                                    <circle cx="50" cy="50" r="30" stroke-width=".9"/>
-                                </g>
-                                <text><textPath href="#prefaceSealTextRing" startOffset="25%" text-anchor="middle">MEMORY · ARCHIVE</textPath></text>
-                                <g transform="translate(34 34)" fill="none" stroke="currentColor" stroke-width="1.2">
-                                    <path d="M16 2 19 13 30 16 19 19 16 30 13 19 2 16 13 13Z"/>
-                                    <path d="m16 2 0 11 3 3 11 0M16 30V19l-3-3H2"/>
-                                    <circle cx="16" cy="16" r="3"/>
-                                </g>
-                            </svg>
-                        </span>
                     </div>
+                </div>
+
+                <div class="preface-inscription">
+                    <blockquote class="preface-signature">且将新火试新茶，<br>诗酒趁年华</blockquote>
+                    <span class="preface-seal" aria-hidden="true">
+                        <svg class="preface-seal-art" viewBox="0 0 100 100" focusable="false">
+                            <defs>
+                                <path id="prefaceSealTextRing" d="M14 50a36 36 0 1 1 72 0a36 36 0 1 1-72 0"/>
+                            </defs>
+                            <g fill="none" stroke="currentColor">
+                                <circle cx="50" cy="50" r="47" stroke-width="1.8"/>
+                                <circle cx="50" cy="50" r="30" stroke-width=".9"/>
+                            </g>
+                            <text><textPath href="#prefaceSealTextRing" startOffset="25%" text-anchor="middle">MEMORY · ARCHIVE</textPath></text>
+                            <g transform="translate(34 34)" fill="none" stroke="currentColor" stroke-width="1.2">
+                                <path d="M16 2 19 13 30 16 19 19 16 30 13 19 2 16 13 13Z"/>
+                                <path d="m16 2 0 11 3 3 11 0M16 30V19l-3-3H2"/>
+                                <circle cx="16" cy="16" r="3"/>
+                            </g>
+                        </svg>
+                    </span>
                 </div>
 
                 <div class="preface-route-rule" aria-hidden="true"><span></span><i></i><span></span></div>
@@ -996,11 +999,6 @@ function renderPreface() {
                     <div><dt>${travelModel.stats.localities}</dt><dd>个目的地</dd></div>
                     <div><dt>${travelModel.stats.adminAreas}</dt><dd>个一级行政区</dd></div>
                 </dl>
-
-                <footer class="preface-colophon" aria-hidden="true">
-                    <span></span>
-                    <span></span>
-                </footer>
             </section>
 
             ${renderMobileContextToggle('打开日记工具箱', '新增、备份与安全管理')}
