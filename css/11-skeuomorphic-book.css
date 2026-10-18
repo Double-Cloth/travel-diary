@@ -217,29 +217,58 @@ body[data-route='preface'] .paper-page {
 }
 
 .preface-portrait {
+    --portrait-mat: 11px;
     position: relative;
     display: grid;
     width: 100%;
     max-width: 178px;
-    aspect-ratio: 4 / 4.75;
-    padding: 10px 10px 37px;
-    border: 1px solid #9c7c55;
+    aspect-ratio: 1;
+    padding: var(--portrait-mat);
+    border: 1px solid #b29670;
     border-radius: 3px;
     color: #70583d;
-    background: linear-gradient(135deg, #fffef6, #ead9b8 74%, #c9ad7b);
-    box-shadow: inset 0 0 0 3px #fff8e4, 0 3px 0 #96734d, 0 12px 18px #4a301b38;
-    transform: rotate(-2deg);
+    background:
+        url('../assets/textures/paper-grain.png'),
+        linear-gradient(145deg, #fffcf2, #f3e9d4 70%, #e3d2b2);
+    box-shadow: inset 0 1px 1px #fffef5, inset 0 -1px 2px #b89c7466, 0 2px 3px #4a301b26, 2px 8px 14px #4a301b2e;
+    transform: rotate(-1.4deg);
     cursor: pointer;
     transition: transform 180ms cubic-bezier(.2,.7,.2,1), filter 180ms, box-shadow 180ms;
+}
+
+/* 细线卡纸包边与照片内沿分层，角贴独立压在相片上方。 */
+.preface-portrait::before,
+.preface-portrait::after {
+    content: '';
+    position: absolute;
+    z-index: 3;
+    pointer-events: none;
+}
+
+.preface-portrait::before {
+    inset: 4px;
+    border: 1px solid #b79a6b70;
+    border-radius: 1px;
+}
+
+.preface-portrait::after {
+    inset: var(--portrait-mat);
+    border: 1px solid #70543780;
+    box-shadow: inset 0 1px 3px #3f2b1d38, 0 1px #fffdf0;
 }
 
 .preface-portrait:focus-visible { outline: 2px solid var(--stamp); outline-offset: 5px; }
 
 .preface-portrait:hover,
 .preface-portrait:focus-visible {
-    filter: brightness(1.04);
-    transform: rotate(-.7deg) translateY(-3px);
-    box-shadow: inset 0 0 0 3px #fff8e4, 0 3px 0 #96734d, 0 16px 24px #4a301b45;
+    filter: brightness(1.025);
+    transform: rotate(-.3deg) translateY(-2px);
+    box-shadow: inset 0 1px 1px #fffef5, inset 0 -1px 2px #b89c7466, 0 3px 5px #4a301b26, 3px 11px 18px #4a301b38;
+}
+
+.preface-portrait:active {
+    transform: rotate(-.3deg);
+    box-shadow: inset 0 1px 1px #fffef5, 0 2px 5px #4a301b30;
 }
 
 .preface-portrait img,
@@ -247,7 +276,10 @@ body[data-route='preface'] .paper-page {
     grid-area: 1 / 1;
     width: 100%;
     height: 100%;
-    border: 1px solid #876843;
+    min-width: 0;
+    min-height: 0;
+    aspect-ratio: 1;
+    border: 0;
     border-radius: 1px;
 }
 
@@ -273,26 +305,24 @@ body[data-route='preface'] .paper-page {
 
 .preface-photo-corner {
     position: absolute;
-    z-index: 3;
-    top: 3px;
-    width: 36px;
-    height: 36px;
-    filter: drop-shadow(0 1px 1px #42281240);
-    opacity: .78;
+    z-index: 4;
+    width: 25px;
+    height: 25px;
+    background: linear-gradient(135deg, #b58a4e, #ead2a0 44%, #a77d43 50%, #dac08c 56%, #927044);
+    filter: drop-shadow(0 1px 1px #42281259);
+    pointer-events: none;
 }
 
 .preface-photo-corner-left {
-    left: 3px;
-    background:
-        linear-gradient(#c49f5f 0 0) top / 100% 9px no-repeat,
-        linear-gradient(#c49f5f 0 0) left / 9px 100% no-repeat;
+    top: 2px;
+    left: 2px;
+    clip-path: polygon(0 0, 100% 0, 0 100%);
 }
 
 .preface-photo-corner-right {
-    right: 3px;
-    background:
-        linear-gradient(#c49f5f 0 0) top / 100% 9px no-repeat,
-        linear-gradient(#c49f5f 0 0) right / 9px 100% no-repeat;
+    right: 2px;
+    bottom: 2px;
+    clip-path: polygon(100% 0, 100% 100%, 0 100%);
 }
 
 .preface-owner-copy {
@@ -1470,7 +1500,7 @@ body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padd
     .preface-identity-sheet { gap: 20px; padding: 18px 16px 22px; }
     .preface-sheet-kicker { gap: 8px 12px; font-size: 9px; }
     .preface-profile-composition { gap: 22px; padding-inline: 2px; }
-    .preface-portrait { padding: 8px 8px 33px; }
+    .preface-portrait { --portrait-mat: 10px; }
     .preface-inscription { grid-template-columns: minmax(0, 1fr) 60px; gap: 12px; }
     .preface-signature { padding-left: 14px; font-size: 16px; }
     .preface-seal { width: 60px; }
