@@ -902,9 +902,9 @@ body::after {
 
     .paper-page-right.context-panel .index-segment:hover,
     .paper-page-right.context-panel .index-segment:focus-visible {
-        color: var(--stamp);
-        border-color: rgba(155, 61, 46, 0.28);
-        background: rgba(155, 61, 46, 0.04);
+        color: var(--brass-300);
+        border-color: var(--brass-300);
+        background: rgba(183, 138, 69, 0.08);
         box-shadow: none;
         transform: none;
     }
@@ -912,16 +912,16 @@ body::after {
     .paper-page-right.context-panel .index-segment-active,
     .paper-page-right.context-panel .index-segment-active:hover,
     .paper-page-right.context-panel .index-segment-active:focus-visible {
-        color: var(--stamp);
-        border-color: var(--stamp);
-        background: rgba(143, 53, 39, 0.15);
+        color: var(--ink);
+        border-color: var(--brass-300);
+        background: linear-gradient(180deg, var(--brass-100), var(--brass-200));
         font-weight: 700;
-        box-shadow: none;
+        box-shadow: inset 0 1px 0 var(--brass-50), inset 0 -1px 2px rgba(123, 82, 40, 0.18);
         transform: none;
     }
 
     .paper-page-right.context-panel .index-segment:focus-visible {
-        outline: 2px solid var(--stamp);
+        outline: 2px solid var(--brass-300);
         outline-offset: 2px;
     }
 
