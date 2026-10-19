@@ -572,7 +572,9 @@ body[data-route='preface'] .paper-page {
 }
 
 .paper-page .paper-button,
-.paper-page .ribbon-back {
+.paper-page .ribbon-back,
+.paper-page-right.context-panel .index-segment-active,
+.paper-page-right.context-panel .index-segment-active:focus-visible {
     border: 1px solid var(--metal-edge);
     border-radius: 5px;
     color: #513824;
@@ -583,7 +585,8 @@ body[data-route='preface'] .paper-page {
 }
 
 .paper-page .paper-button:hover,
-.paper-page .ribbon-back:hover {
+.paper-page .ribbon-back:hover,
+.paper-page-right.context-panel .index-segment-active:hover {
     color: #452c1b;
     border-color: #805b31;
     background: var(--control-face);
@@ -593,7 +596,8 @@ body[data-route='preface'] .paper-page {
 }
 
 .paper-page .paper-button:active,
-.paper-page .ribbon-back:active {
+.paper-page .ribbon-back:active,
+.paper-page-right.context-panel .index-segment-active:active {
     transform: translateY(2px);
     box-shadow: inset 0 2px 4px #4c301a40, 0 1px #fff7df;
 }
