@@ -550,5 +550,31 @@
     "desc_md": "data/travel-diary/2026/2026-10-06-hangzhou.md",
     "photo_folder": "data/photos/hangzhou",
     "photos": []
+  },
+  {
+    "date": "2026-10-23",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "宁夏回族自治区",
+    "admin_area_type": "自治区",
+    "locality": "银川市",
+    "locality_type": "城市",
+    "trip_id": "2026-10-23-tengri",
+    "desc_md": "data/travel-diary/2026/2026-10-23-yinchuan.md",
+    "photo_folder": "data/photos/yinchuan",
+    "photos": []
+  },
+  {
+    "date": "2026-10-25",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "内蒙古自治区",
+    "admin_area_type": "自治区",
+    "locality": "阿拉善盟",
+    "locality_type": "沙漠",
+    "trip_id": "2026-10-23-tengri",
+    "desc_md": "data/travel-diary/2026/2026-10-25-alashan.md",
+    "photo_folder": "data/photos/alashan",
+    "photos": []
   }
 ]
