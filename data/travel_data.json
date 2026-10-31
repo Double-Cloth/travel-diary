@@ -508,6 +508,7 @@
     "country": "中国",
     "country_code": "CN",
     "admin_area": "重庆市",
+    "admin_area_type": "直辖市",
     "locality": "重庆市",
     "locality_type": "城市",
     "trip_id": "2026-08-28-chongqing",
