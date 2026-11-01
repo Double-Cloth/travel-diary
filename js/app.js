@@ -2314,12 +2314,17 @@ async function toggleViewerFullscreen() {
 }
 
 function renderPhotoViewerCaption(photo) {
-    const label = String(photo.alt || photo.name || getMediaFileName(photo.src));
-    const characters = Array.from(label);
-    const tailLength = Math.min(12, Array.from(photo.name || getMediaFileName(photo.src) || label).length);
+    const name = String(photo.name || getMediaFileName(photo.src) || photo.alt || '旅行媒体');
+    const label = String(photo.alt || name);
+    const title = label.endsWith(` · ${name}`) ? label.slice(0, -(name.length + 3)) : '';
+    const characters = Array.from(name);
+    const tailLength = Math.min(12, characters.length);
     const head = characters.slice(0, characters.length - tailLength).join('');
     const tail = characters.slice(characters.length - tailLength).join('');
-    return `<span class="photo-viewer-filename" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}"><span class="photo-viewer-filename-head" aria-hidden="true">${escapeHtml(head)}</span><span class="photo-viewer-filename-tail" aria-hidden="true">${escapeHtml(tail)}</span></span>
+    const separator = '<span class="photo-viewer-caption-separator" aria-hidden="true">·</span>';
+    return `${title ? `<span class="photo-viewer-caption-title" title="${escapeHtml(title)}">${escapeHtml(title)}</span>${separator}` : ''}
+        <span class="photo-viewer-filename" title="${escapeHtml(name)}" aria-label="${escapeHtml(name)}"><span class="photo-viewer-filename-head" aria-hidden="true">${escapeHtml(head)}</span><span class="photo-viewer-filename-tail" aria-hidden="true">${escapeHtml(tail)}</span></span>
+        ${separator}
         <span class="photo-viewer-file-size" data-photo-viewer-size aria-live="polite">读取大小中…</span>`;
 }
 

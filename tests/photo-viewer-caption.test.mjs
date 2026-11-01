@@ -11,12 +11,17 @@ delete globalThis.document;
 test('文件名保留完整提示和尾部，正确转义特殊字符及 Unicode 字符', () => {
     const name = '旅途📷<照片>"_20261101.jpg';
     const html = app.renderPhotoViewerCaption({ name, alt: `日记 · ${name}`, src: '/photo.jpg' });
-    assert.ok(html.includes('title="日记 · 旅途📷&lt;照片&gt;&quot;_20261101.jpg"'));
+    assert.ok(html.includes('title="旅途📷&lt;照片&gt;&quot;_20261101.jpg"'));
+    assert.match(html, /photo-viewer-caption-title[^>]*>日记<\/span>/);
+    assert.equal((html.match(/photo-viewer-caption-separator/g) || []).length, 2);
     assert.match(html, /photo-viewer-filename-tail[^>]*>20261101\.jpg<\/span>/);
     assert.match(html, /data-photo-viewer-size/);
     assert.ok(!html.includes('\uFFFD'));
     const short = app.renderPhotoViewerCaption({ name: 'a.jpg', alt: '日记 · a.jpg' });
     assert.match(short, /photo-viewer-filename-tail[^>]*>a\.jpg<\/span>/);
+    const untitled = app.renderPhotoViewerCaption({ name: 'a.jpg', alt: 'a.jpg' });
+    assert.equal((untitled.match(/photo-viewer-caption-separator/g) || []).length, 1);
+    assert.ok(!untitled.includes('photo-viewer-caption-title'));
 });
 
 test('文件大小按字节单位格式化，包括零字节及大文件', () => {
