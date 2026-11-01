@@ -99,6 +99,7 @@ let photoGestureState = createPhotoGestureState();
 let photoRotationTimer = null;
 let photoViewerFitFrame = null;
 let photoViewerStageResizeObserver = null;
+const mediaFileSizeCache = new Map();
 
 document.addEventListener('DOMContentLoaded', () => {
     void initApp();
@@ -1939,12 +1940,13 @@ function renderPhotoViewer() {
                     <div class="photo-viewer-media-error" data-photo-viewer-media-error role="status" hidden></div>
                 </div>
                 ${isVideo ? renderVideoControls() : renderPhotoControls()}
-                <p class="photo-viewer-caption">${escapeHtml(photo.alt)}</p>
+                <p class="photo-viewer-caption">${renderPhotoViewerCaption(photo)}</p>
             </section>
         </div>
     `);
 
     enhanceCustomSelects(root.querySelector('[data-photo-viewer]'));
+    void updatePhotoViewerFileSize(photo, root.querySelector('[data-photo-viewer-size]'));
     observePhotoViewerStage();
 
     if (isVideo) {
@@ -2309,6 +2311,46 @@ async function toggleViewerFullscreen() {
     }
     const stage = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-stage]');
     await stage?.requestFullscreen?.();
+}
+
+function renderPhotoViewerCaption(photo) {
+    const label = String(photo.alt || photo.name || getMediaFileName(photo.src));
+    const characters = Array.from(label);
+    const tailLength = Math.min(12, Array.from(photo.name || getMediaFileName(photo.src) || label).length);
+    const head = characters.slice(0, characters.length - tailLength).join('');
+    const tail = characters.slice(characters.length - tailLength).join('');
+    return `<span class="photo-viewer-filename" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}"><span class="photo-viewer-filename-head" aria-hidden="true">${escapeHtml(head)}</span><span class="photo-viewer-filename-tail" aria-hidden="true">${escapeHtml(tail)}</span></span>
+        <span class="photo-viewer-file-size" data-photo-viewer-size aria-live="polite">读取大小中…</span>`;
+}
+
+function formatMediaFileSize(bytes) {
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const index = bytes > 0 ? Math.min(Math.floor(Math.log(bytes) / Math.log(1024)), units.length - 1) : 0;
+    return `${Number((bytes / (1024 ** index)).toFixed(index ? 2 : 0))} ${units[index]}`;
+}
+
+async function updatePhotoViewerFileSize(photo, sizeLabel) {
+    if (!sizeLabel) return;
+    try {
+        let bytes = mediaFileSizeCache.get(photo.src);
+        if (bytes === undefined) {
+            const response = await fetch(photo.src, {
+                method: 'HEAD',
+                credentials: 'same-origin',
+                signal: AbortSignal.timeout(10000)
+            });
+            const length = response.headers.get('Content-Length');
+            if (!response.ok || !/^\d+$/.test(length || '') || !Number.isSafeInteger(Number(length))) {
+                throw new Error('无法读取文件大小');
+            }
+            bytes = Number(length);
+            mediaFileSizeCache.set(photo.src, bytes);
+        }
+        // 仅更新本次渲染的节点，避免快速切换时将旧文件大小写入新文件。
+        if (sizeLabel.isConnected) sizeLabel.textContent = formatMediaFileSize(bytes);
+    } catch {
+        if (sizeLabel.isConnected) sizeLabel.textContent = '大小未知';
+    }
 }
 
 function showViewerFullscreenError() {

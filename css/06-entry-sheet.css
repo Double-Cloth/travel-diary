@@ -263,6 +263,8 @@
     position: relative;
     z-index: 1;
     display: grid;
+    min-width: 0;
+    grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto auto;
     gap: 12px;
     width: min(1080px, 100%);
@@ -842,7 +844,12 @@
 
 .photo-viewer-caption {
     position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
     justify-self: center;
+    min-width: 0;
     min-height: 26px;
     width: 100%;
     max-width: 88%;
@@ -852,6 +859,28 @@
     font-size: 13px;
     text-align: center;
     word-break: break-word;
+}
+
+.photo-viewer-filename {
+    display: inline-flex;
+    min-width: 0;
+    white-space: nowrap;
+}
+
+.photo-viewer-filename-head {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.photo-viewer-filename-tail,
+.photo-viewer-file-size {
+    flex-shrink: 0;
+    white-space: nowrap;
+}
+
+.photo-viewer-file-size {
+    font-variant-numeric: tabular-nums;
 }
 
 /* 翻动层只包含不可交互的纸页副本，真实页面与导航始终可用。 */
