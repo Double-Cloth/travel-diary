@@ -281,9 +281,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261018-preface-layout-v1');
+    assert.equal(appVersion, '20261101-operation-progress-v1');
     assert.ok(cssVersion);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20261018-select-scroll-focus-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20261101-operation-progress-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
 });
@@ -430,7 +430,7 @@ test('Markdown 源码高亮层与输入层使用相同字形和滚动槽', () =>
     assert.doesNotMatch(journalCss, /\.record-editor-source-layer \.md-(?:marker|fence|heading)[^{]*\{[^}]*font-weight:\s*700/);
 });
 
-test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => {
+test('全部数据导出通过认证 API 流式下载并反馈进度', () => {
     assert.match(appJs, /<button class="paper-button" type="button" data-action="export-all-data"/);
     assert.match(appJs, /const requestDataExportAuthorization = createPasswordGate/);
     assert.match(appJs, /dataTransfer\.exportAll\(`travel-diary-data-\$\{getTodayDate\(\)\}\.zip`, capability\)/);
@@ -440,7 +440,7 @@ test('全部数据导出使用真实 HTTP 链接而不是浏览器 Blob', () => 
     assert.match(dataTransferJs, /api\/travel-data/);
     assert.match(dataTransferJs, /detectWriterCapability\(\)/);
     assert.doesNotMatch(dataTransferJs, /new URL\('travel-diary-data\.zip'/);
-    assert.match(dataTransferJs, /async function exportAll\([^)]*\)[\s\S]+link\.href = await getExportHref\(authenticatedCapability\);[\s\S]+link\.click\(\);/);
+    assert.match(dataTransferJs, /downloadWithProgress\(await getExportHref\(authenticatedCapability\), downloadName, progress\)/);
     assert.doesNotMatch(dataTransferJs, /createObjectURL|new Blob|\.exportAll\(/);
     assert.doesNotMatch(dataTransferJs, /window\.location\.hostname|isLocalWriterHost/);
 });
@@ -707,7 +707,7 @@ test('点击头像先验证密码，再选择常见图片并写入服务更新�
     assert.match(appJs, /prepareProfilePicture/);
     assert.match(appJs, /createPasswordGate\(capability => \{\s*profilePictureCapability = capability;\s*refs\.profilePictureInput\?\.click\(\);/);
     assert.match(appJs, /const capability = profilePictureCapability;\s*profilePictureCapability = null;/);
-    assert.match(appJs, /await uploadProfilePicture\(picture, capability\);/);
+    assert.match(appJs, /await uploadProfilePicture\(picture, capability,\s*\(loaded, total\) => progress\.update/);
     assert.match(profilePictureJs, /api\/travel-profile/);
     assert.match(profilePictureJs, /'X-Travel-Token': capability\.token/);
     assert.match(serverJs, /'\/api\/travel-profile'/);
@@ -855,7 +855,7 @@ test('不存在的媒体引用显示可定位到 travel_data.json 字段的错�
 test('视频共用媒体入口并提供完整播放控制与键盘操作', () => {
     assert.match(recordEditorJs, /选择图片或视频/);
     assert.match(recordEditorJs, /accept="\.mp4,\.m4v,\.mov,\.webm,\.ogv,\.ogg,[^"]*video\/quicktime/);
-    assert.match(recordEditorJs, /AbortSignal\.timeout\(8 \* 60 \* 60 \* 1000\)/);
+    assert.match(recordEditorJs, /timeout: 8 \* 60 \* 60 \* 1000/);
     assert.match(recordStoreJs, /const MAXIMUM_RECORD_BYTES = 768 \* 1024 \* 1024/);
     assert.match(recordEditorJs, /photo\.kind === 'image' \? await createPhotoPreviewUrl\(file\) : URL\.createObjectURL\(file\)/);
     assert.match(appJs, /data-video-action="toggle-play"/);

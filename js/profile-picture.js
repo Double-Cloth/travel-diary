@@ -1,4 +1,5 @@
 import { MAXIMUM_PROFILE_SOURCE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
+import { uploadWithProgress } from './operation-progress.js';
 const MAXIMUM_EDGE = 1024;
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
@@ -58,7 +59,7 @@ function blobToBase64(blob) {
     });
 }
 
-export async function prepareProfilePicture(file) {
+export async function prepareProfilePicture(file, onStage = () => {}) {
     if (!file || !SUPPORTED_IMAGE_TYPES.has(file.type)) {
         throw new Error('请选择 JPEG、PNG、GIF 或 WebP 图片。');
     }
@@ -66,6 +67,7 @@ export async function prepareProfilePicture(file) {
         throw new Error(`头像图片不能超过 ${MAXIMUM_PROFILE_SOURCE_BYTES / 1024 / 1024} MiB。`);
     }
 
+    onStage('正在读取头像图片…');
     const source = await loadImageSource(file);
     try {
         if (!source.width || !source.height) throw new Error('所选图片尺寸无效。');
@@ -80,21 +82,23 @@ export async function prepareProfilePicture(file) {
         outputContext.imageSmoothingEnabled = true;
         outputContext.imageSmoothingQuality = 'high';
         source.draw(outputContext, width, height);
+        onStage('正在调整尺寸并转换头像…');
         const png = await canvasToPng(outputCanvas);
+        onStage('正在编码头像…');
         return { data: await blobToBase64(png) };
     } finally {
         source.close();
     }
 }
 
-export async function uploadProfilePicture(picture, capability) {
+export async function uploadProfilePicture(picture, capability, onProgress, onUploaded) {
     if (!capability?.token || !capability.methods?.has('PUT')) {
         throw new Error('当前服务不支持更新头像。');
     }
     const endpoint = new URL('api/travel-profile', window.location.href);
     let response;
     try {
-        response = await fetch(endpoint, {
+        response = await uploadWithProgress(endpoint, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
@@ -102,8 +106,9 @@ export async function uploadProfilePicture(picture, capability) {
             },
             body: JSON.stringify(picture),
             credentials: 'same-origin',
+            timeout: 30000,
             signal: AbortSignal.timeout(30000)
-        });
+        }, onProgress, onUploaded);
     } catch {
         throw new Error('头像上传服务暂时无法连接，请稍后重试。');
     }

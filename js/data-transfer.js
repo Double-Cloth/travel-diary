@@ -2,6 +2,7 @@ import { createPasswordGate } from './record-password.js?v=20261013-danger-first
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { readZipSource } from './zip-stream.mjs';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -63,6 +64,7 @@ export function createDataTransfer(onImported) {
     let importCapability;
     let importCurrentPassword = '';
     let confirmationResolver;
+    let importUploadProgress;
 
     async function getExportHref(authenticatedCapability = null) {
         const capability = authenticatedCapability || await detectWriterCapability();
@@ -80,19 +82,26 @@ export function createDataTransfer(onImported) {
     }
 
     async function exportAll(downloadName = 'travel-diary-data.zip', authenticatedCapability = null) {
-        const link = document.createElement('a');
-        link.href = await getExportHref(authenticatedCapability);
-        link.download = downloadName;
-        link.hidden = true;
-        document.body.append(link);
-        link.click();
-        link.remove();
-        noteExportStarted();
+        if (busy) throw new Error('另一项全部数据操作正在进行，请稍后重试。');
+        busy = true;
+        const progress = createOperationProgress('导出全部数据');
+        try {
+            const result = await downloadWithProgress(await getExportHref(authenticatedCapability), downloadName, progress);
+            setStatus(result.cancelled ? '已取消导出。' : result.handedOff
+                ? '备份已交给浏览器下载，请在浏览器下载列表查看进度。'
+                : '全部数据备份已传输完成，请查看保存的文件。');
+        } catch (error) {
+            progress.fail(error);
+            setStatus(`导出失败：${error.message}`);
+            throw error;
+        } finally { busy = false; }
     }
 
     async function clearAll(authenticatedCapability) {
         if (busy) throw new Error('另一项全部数据操作正在进行，请稍后重试。');
         busy = true;
+        const progress = createOperationProgress('清空全部数据');
+        progress.phase('正在清空旅行数据…');
         setStatus('正在清空全部旅行数据…');
         try {
             const response = await fetch(new URL('api/travel-data', window.location.href), {
@@ -105,15 +114,19 @@ export function createDataTransfer(onImported) {
             try { result = await response.json(); }
             catch { throw new Error('清空全部数据返回了无法识别的结果。'); }
             if (!response.ok || !result.cleared) throw new Error(result.error || '全部数据未能清空。');
+            progress.phase('数据已清空，正在刷新页面…');
             try { await onImported(); }
             catch {
                 const message = '全部数据已清空，页面刷新失败。请手动刷新后查看。';
                 setStatus(message);
+                progress.complete(message);
                 return { refreshFailed: true };
             }
             setStatus('');
+            progress.complete('全部旅行数据已清空。');
             return { refreshFailed: false };
         } catch (error) {
+            progress.fail(error);
             setStatus(error?.message || '全部数据未能清空。');
             throw error;
         } finally {
@@ -215,24 +228,27 @@ export function createDataTransfer(onImported) {
     }
 
     async function uploadArchive(file, token, currentPassword, backupPassword = '') {
+        importUploadProgress?.remove();
+        const progress = importUploadProgress = createOperationProgress('导入全部数据');
         const headers = {
             'Content-Type': 'application/zip',
             'X-Travel-Token': token,
             'X-Travel-Current-Password': currentPassword,
             'X-Travel-Backup-Password': backupPassword
         };
-        const response = await fetch(new URL('api/travel-data', window.location.href), {
-            method: 'POST',
-            headers,
-            body: file,
-            credentials: 'same-origin',
-            signal: AbortSignal.timeout(8 * 60 * 60 * 1000)
-        });
-        let result;
-        try { result = await response.json(); }
-        catch { throw new Error('全部数据导入返回了无法识别的结果。'); }
-        if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
-        return result;
+        try {
+            progress.phase('正在上传备份…');
+            const response = await uploadWithProgress(new URL('api/travel-data', window.location.href), {
+                method: 'POST', headers, body: file, credentials: 'same-origin'
+            }, (loaded, total) => progress.update(loaded, total, '正在上传备份…'),
+            () => progress.phase('备份上传完成，服务器正在校验并恢复数据，请勿关闭页面…'));
+            let result;
+            try { result = await response.json(); }
+            catch { throw new Error('全部数据导入返回了无法识别的结果。'); }
+            if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
+            progress.complete('备份已校验并导入。');
+            return result;
+        } catch (error) { progress.fail(error); throw error; }
     }
 
     dialog.addEventListener('cancel', event => {
@@ -279,9 +295,12 @@ export function createDataTransfer(onImported) {
             return;
         }
         busy = true;
+        const progress = createOperationProgress('读取数据备份');
         try {
+            progress.phase('正在读取并核对 ZIP 备份目录…');
             const entries = await readZipSource(file);
             const hasBackupPassword = entries.some(entry => entry.name.toLowerCase() === '.secrets/auth.json');
+            progress.remove();
             if (!await confirmImport(file, hasBackupPassword)) return;
             setStatus('正在校验备份并导入数据…');
             const token = writerToken(capability);
@@ -291,15 +310,21 @@ export function createDataTransfer(onImported) {
                 })
                 : await uploadArchive(file, token, currentPassword);
             if (!result) { setStatus(''); return; }
+            importUploadProgress?.remove();
+            const refreshProgress = createOperationProgress('刷新旅行档案');
+            refreshProgress.phase('数据已导入，正在刷新页面…');
             try { await onImported(); }
             catch {
+                refreshProgress.complete('数据已导入，请手动刷新后查看。');
                 setStatus('数据已导入，页面刷新失败。请手动刷新后查看。');
                 showImportSuccess(`数据已导入，页面刷新失败。请手动刷新后查看。${importSuccessMessage(result)}`);
                 return;
             }
+            refreshProgress.complete('旅行档案已更新。');
             setStatus('');
             showImportSuccess(importSuccessMessage(result));
         } catch (error) {
+            progress.remove();
             setStatus(error.message);
         } finally {
             busy = false;

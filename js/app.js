@@ -1,13 +1,14 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
-import { createRecordEditor } from './record-editor.js?v=20261018-select-scroll-focus-v1';
+import { createRecordEditor } from './record-editor.js?v=20261101-operation-progress-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261013-danger-first-v1';
-import { createDataTransfer } from './data-transfer.js?v=20261013-danger-first-v1';
+import { createDataTransfer } from './data-transfer.js?v=20261101-operation-progress-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { confirmFeedback, showFeedback } from './feedback-dialog.js';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20261009-stream-files-v2';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20261101-operation-progress-v1';
 import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=20260930-review-v1';
 import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260930-review-v1';
+import { createOperationProgress, downloadWithProgress } from './operation-progress.js';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
@@ -340,12 +341,18 @@ async function handleProfilePictureSelection(input) {
         button.setAttribute('aria-busy', 'true');
         button.disabled = true;
     });
+    const progress = createOperationProgress('更新个人头像');
     try {
-        const picture = await prepareProfilePicture(file);
-        await uploadProfilePicture(picture, capability);
+        const picture = await prepareProfilePicture(file, message => progress.phase(message));
+        progress.phase('正在上传头像…');
+        await uploadProfilePicture(picture, capability,
+            (loaded, total) => progress.update(loaded, total, '正在上传头像…'),
+            () => progress.phase('头像上传完成，正在保存…'));
         refreshProfilePicture();
+        progress.complete('新头像已保存。');
         void showFeedback('新头像已保存。', { label: '个人头像', title: '头像更新成功' });
     } catch (error) {
+        progress.fail(error);
         void showFeedback(error?.message || '头像处理失败，请换一张图片后重试。', {
             label: '个人头像',
             title: '无法使用这张图片'
@@ -2110,6 +2117,7 @@ function renderVideoControls() {
                 <label class="video-viewer-volume-label"><span class="video-viewer-volume-text" aria-hidden="true">音量</span><input class="video-viewer-range video-viewer-volume" type="range" min="0" max="1" step="0.05" value="${DEFAULT_VIDEO_VOLUME}" data-video-volume aria-label="音量"></label>
                 <label class="video-viewer-rate-label"><span>倍速</span><select id="videoPlaybackRate" data-custom-select data-video-rate aria-label="播放速度"><option value="0.5">0.5×</option><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.25">1.25×</option><option value="1.5">1.5×</option><option value="2">2×</option></select></label>
                 <button class="photo-viewer-control video-viewer-fullscreen" type="button" data-video-action="fullscreen" aria-label="全屏播放">全屏</button>
+                <button class="photo-viewer-control" type="button" data-action="download-media" aria-label="下载原视频">下载</button>
             </div>
         </div>`;
 }
@@ -2147,6 +2155,7 @@ function renderPhotoControls() {
                 ${renderZoomControls('图片缩放')}
                 <button class="photo-viewer-control photo-viewer-reset" type="button" data-action="photo-reset" data-photo-action="reset" aria-label="恢复到初始适配比例">适应</button>
                 <div class="photo-viewer-image-tail-controls">
+                    <button class="photo-viewer-control" type="button" data-action="download-media" aria-label="下载原图片">下载</button>
                     <button class="photo-viewer-control photo-viewer-fullscreen" type="button" data-action="photo-fullscreen" data-photo-action="fullscreen" aria-label="全屏查看图片">全屏</button>
                 </div>
             </div>
@@ -3717,7 +3726,30 @@ function getPageCurlStripCount(width) {
     return width < 520 ? 18 : 24;
 }
 
+let downloadingMedia = false;
+
+async function downloadViewerMedia() {
+    if (downloadingMedia || !photoViewerState) return;
+    const media = photoViewerState.photos[photoViewerState.index];
+    const name = media.name || new URL(media.src, window.location.href).pathname.split('/').pop() || 'travel-media';
+    downloadingMedia = true;
+    const progress = createOperationProgress(media.kind === 'video' ? '下载原视频' : '下载原图片');
+    try {
+        const result = await downloadWithProgress(media.src, name, progress);
+        if (result.handedOff) {
+            progress.remove();
+            void showFeedback('文件已交给浏览器下载，请在浏览器下载列表查看进度。');
+        }
+    } catch { /* 下载组件保留具体错误与重试提示。 */ }
+    finally { downloadingMedia = false; }
+}
+
 function handleDocumentClick(event) {
+    if (event.target.closest('[data-action="download-media"]')) {
+        event.preventDefault();
+        void downloadViewerMedia();
+        return;
+    }
     const skipLink = event.target.closest('.skip-link');
     if (skipLink) {
         event.preventDefault();
