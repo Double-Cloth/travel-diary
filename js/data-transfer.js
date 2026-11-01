@@ -2,7 +2,7 @@ import { createPasswordGate } from './record-password.js?v=20261013-danger-first
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { readZipSource } from './zip-stream.mjs';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261101-floating-progress-v1';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');

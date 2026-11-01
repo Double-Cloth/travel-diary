@@ -16,7 +16,7 @@ import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scrol
 import { confirmFeedback } from './feedback-dialog.js';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
 import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=20261101-floating-progress-v1';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -65,7 +65,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     const status = message => { dialog.querySelector('[data-editor-status]').textContent = message; };
     function startProgress(title, phase) {
         operationProgress?.remove();
-        operationProgress = createOperationProgress(title, dialog);
+        operationProgress = createOperationProgress(title);
         operationProgress.phase(phase);
     }
     const getDraft = () => ({

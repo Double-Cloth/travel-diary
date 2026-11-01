@@ -1,5 +1,5 @@
 import { MAXIMUM_PROFILE_SOURCE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
-import { uploadWithProgress } from './operation-progress.js';
+import { uploadWithProgress } from './operation-progress.js?v=20261101-floating-progress-v1';
 const MAXIMUM_EDGE = 1024;
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 

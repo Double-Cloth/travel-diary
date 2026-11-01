@@ -9,12 +9,11 @@ export function formatProgressBytes(bytes) {
     return `${value.toFixed(1)} ${units[index]}`;
 }
 
-export function createOperationProgress(title, container = null) {
+export function createOperationProgress(title) {
     const activeModal = document.querySelector('dialog[open]');
-    const modal = container || (activeModal?.open ? activeModal : null);
-    const host = modal || document.body;
+    const host = activeModal?.open ? activeModal : document.body;
     const root = document.createElement('section');
-    root.className = `operation-progress${modal ? '' : ' operation-progress-floating'}`;
+    root.className = 'operation-progress operation-progress-floating';
     root.setAttribute('aria-label', title);
     root.innerHTML = `<div class="operation-progress-heading"><strong data-progress-title></strong><button type="button" class="paper-button" data-progress-dismiss aria-label="关闭进度提示" hidden>关闭</button></div>
         <p data-progress-message role="status" aria-live="polite" aria-atomic="true"></p>
@@ -30,8 +29,8 @@ export function createOperationProgress(title, container = null) {
     let lastAnnouncement = '';
     let lastRender = 0;
     host.append(root);
-    // 无模态窗口时进入顶层，避免被媒体查看器或书页动画遮住。
-    if (!modal && typeof root.showPopover === 'function') {
+    // 统一进入顶层悬浮显示；挂在当前 dialog 下以保留模态期间的交互能力。
+    if (typeof root.showPopover === 'function') {
         root.setAttribute('popover', 'manual');
         root.showPopover();
     }

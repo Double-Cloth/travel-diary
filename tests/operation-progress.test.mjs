@@ -12,7 +12,8 @@ function installEnvironment(t) {
         const children = new Map();
         return {
             events: {}, attributes: {}, hidden: false,
-            append() {}, remove() { this.removed = true; }, click() { this.clicked = true; },
+            append(child) { child.parentNode = this; }, remove() { this.removed = true; }, click() { this.clicked = true; },
+            showPopover() { this.popoverShown = true; },
             setAttribute(name, value) { this.attributes[name] = value; },
             removeAttribute(name) { delete this.attributes[name]; if (name === 'value') delete this.value; },
             addEventListener(name, callback) { this.events[name] = callback; },
@@ -36,6 +37,9 @@ test('数值进度、未知长度和服务器等待阶段切换正确，失败�
     const nodes = installEnvironment(t);
     const progress = createOperationProgress('上传媒体');
     const root = nodes[0];
+    assert.match(root.className, /operation-progress-floating/);
+    assert.equal(root.parentNode, document.body);
+    assert.equal(root.popoverShown, true);
     const bar = root.querySelector('[data-progress-bar]');
     assert.equal(bar.value, undefined);
     progress.update(50, 100, '上传中');
@@ -51,6 +55,23 @@ test('数值进度、未知长度和服务器等待阶段切换正确，失败�
     assert.equal(root.querySelector('[data-progress-message]').textContent, '连接中断');
     assert.equal(bar.hidden, true);
     root.querySelector('[data-progress-dismiss]').events.click();
+    assert.equal(root.removed, true);
+});
+
+test('模态窗口内的进度也进入悬浮顶层，完成提示仍可关闭', t => {
+    const nodes = installEnvironment(t);
+    const modal = { open: true, append(child) { child.parentNode = this; } };
+    document.querySelector = () => modal;
+    const progress = createOperationProgress('导入草稿');
+    const root = nodes[0];
+    assert.equal(root.parentNode, modal);
+    assert.match(root.className, /operation-progress-floating/);
+    assert.equal(root.attributes.popover, 'manual');
+    assert.equal(root.popoverShown, true);
+    progress.complete('草稿已导入');
+    const dismiss = root.querySelector('[data-progress-dismiss]');
+    assert.equal(dismiss.hidden, false);
+    dismiss.events.click();
     assert.equal(root.removed, true);
 });
 
