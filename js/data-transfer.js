@@ -2,7 +2,7 @@ import { createPasswordGate } from './record-password.js?v=20261013-danger-first
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { readZipSource } from './zip-stream.mjs';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261101-cancel-progress-v1';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261101-progress-timing-v1';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -238,6 +238,7 @@ export function createDataTransfer(onImported) {
             'X-Travel-Backup-Password': backupPassword
         };
         try {
+            setStatus('正在校验备份并导入数据…');
             progress.phase('正在上传备份…');
             const response = await uploadWithProgress(new URL('api/travel-data', window.location.href), {
                 method: 'POST', headers, body: file, credentials: 'same-origin', signal: progress.signal
@@ -253,8 +254,10 @@ export function createDataTransfer(onImported) {
             progress.complete('备份已校验并导入。');
             return result;
         } catch (error) {
-            progress.fail(error);
-            if (progress.signal.aborted) return null;
+            if (progress.signal.aborted) { progress.fail(error); return null; }
+            // 验证失败回到密码窗口重试，由该窗口提示错误，不遗留上一次上传的浮层。
+            progress.remove();
+            setStatus('');
             throw error;
         }
     }
@@ -303,15 +306,11 @@ export function createDataTransfer(onImported) {
             return;
         }
         busy = true;
-        const progress = createOperationProgress('读取数据备份');
         try {
-            progress.phase('正在读取并核对 ZIP 备份目录…');
+            // 文件核对仍属于导入确认流程，全部确认后才在 uploadArchive 中显示进度。
             const entries = await readZipSource(file);
-            progress.throwIfCancelled();
             const hasBackupPassword = entries.some(entry => entry.name.toLowerCase() === '.secrets/auth.json');
-            progress.remove();
             if (!await confirmImport(file, hasBackupPassword)) return;
-            setStatus('正在校验备份并导入数据…');
             const token = writerToken(capability);
             const result = hasBackupPassword
                 ? await new Promise((resolve, reject) => {
@@ -334,8 +333,6 @@ export function createDataTransfer(onImported) {
             setStatus('');
             showImportSuccess(importSuccessMessage(result));
         } catch (error) {
-            if (progress.signal.aborted) progress.fail(error);
-            else progress.remove();
             setStatus(error.message);
         } finally {
             busy = false;

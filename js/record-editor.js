@@ -16,7 +16,7 @@ import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scrol
 import { confirmFeedback } from './feedback-dialog.js';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
 import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=20261101-cancel-progress-v1';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=20261101-progress-timing-v1';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;

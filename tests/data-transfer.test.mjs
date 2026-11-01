@@ -260,6 +260,7 @@ test('新备份先确认覆盖风险，再验证当前密码、核对文件和�
         const children = new Map();
         return {
             events: {}, open: false,
+            remove() { this.removed = true; },
             classList: { add() {}, remove() {}, toggle() {} },
             setAttribute() {}, focus() {}, click() {},
             addEventListener(name, handler) { this.events[name] = handler; },
@@ -289,6 +290,8 @@ test('新备份先确认覆盖风险，再验证当前密码、核对文件和�
             return { ok: true, json: async () => ({ service: 'travel-diary-writer-v1', authenticated: true, token: 'test', methods: ['POST', 'PUT', 'DELETE'] }) };
         }
         uploads += 1;
+        const activeProgress = nodes.filter(item => item.className?.includes('operation-progress') && !item.removed);
+        assert.equal(activeProgress.length, 1, '上传开始后才显示唯一进度');
         assert.equal(options.headers['X-Travel-Current-Password'], AUTH_PASSWORD);
         const valid = options.headers['X-Travel-Backup-Password'] === '590247';
         return { ok: valid, json: async () => valid ? { imported: true, authPreserved: false } : { error: '备份密码不正确。' } };
@@ -302,6 +305,7 @@ test('新备份先确认覆盖风险，再验证当前密码、核对文件和�
         });
     };
     const begin = async () => {
+        const progressCount = nodes.filter(item => item.className?.includes('operation-progress')).length;
         await confirmImportRisk(transfer, confirmation);
         assert.equal(currentGate.open, true);
         digits(currentGate, AUTH_PASSWORD);
@@ -316,6 +320,7 @@ test('新备份先确认覆盖风险，再验证当前密码、核对文件和�
         assert.equal(confirmation.querySelector('[data-import-file-summary]').hidden, false);
         assert.match(confirmation.querySelector('#dataImportConfirmDescription').textContent, /访问密码.*恢复为备份密码/);
         assert.equal(backupGate.open, false);
+        assert.equal(nodes.filter(item => item.className?.includes('operation-progress')).length, progressCount, '风险确认、当前密码与文件核对阶段不创建进度');
         return { pending };
     };
     const cancelled = transfer.chooseImport();
@@ -340,6 +345,7 @@ test('新备份先确认覆盖风险，再验证当前密码、核对文件和�
     assert.equal(backupGate.open, true);
     assert.match(backupGate.querySelector('[data-password-status]').textContent, /备份密码不正确/);
     assert.equal(refreshed, 0);
+    assert.equal(nodes.filter(item => item.className?.includes('operation-progress') && !item.removed).length, 0, '密码错误重试时不遗留上传浮层');
     digits(backupGate, '590247');
     await first.pending;
     assert.equal(refreshed, 1);

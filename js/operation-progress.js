@@ -10,8 +10,6 @@ export function formatProgressBytes(bytes) {
 }
 
 export function createOperationProgress(title) {
-    const activeModal = document.querySelector('dialog[open]');
-    const host = activeModal?.open ? activeModal : document.body;
     const root = document.createElement('section');
     root.className = 'operation-progress operation-progress-floating';
     root.setAttribute('aria-label', title);
@@ -30,13 +28,21 @@ export function createOperationProgress(title) {
     let finished = false;
     let lastAnnouncement = '';
     let lastRender = 0;
-    host.append(root);
-    // 统一进入顶层悬浮显示；挂在当前 dialog 下以保留模态期间的交互能力。
-    if (typeof root.showPopover === 'function') {
-        root.setAttribute('popover', 'manual');
-        root.showPopover();
+    let shown = false;
+    let removed = false;
+    function show() {
+        if (shown || removed) return;
+        shown = true;
+        const activeModal = document.querySelector('dialog[open]');
+        const host = activeModal?.open ? activeModal : document.body;
+        host.append(root);
+        // 实际处理开始后才显示；挂在此时的 dialog 下以保留模态期间的交互能力。
+        if (typeof root.showPopover === 'function') {
+            root.setAttribute('popover', 'manual');
+            root.showPopover();
+        }
     }
-    function remove() { clearTimeout(timer); root.remove?.(); }
+    function remove() { removed = true; clearTimeout(timer); root.remove?.(); }
     dismiss.addEventListener('click', remove);
     function setCancelable(value, reason = '服务器正在处理，暂不能取消。') {
         cancelButton.disabled = !value || controller.signal.aborted || finished;
@@ -53,6 +59,7 @@ export function createOperationProgress(title) {
     cancelButton.addEventListener('click', cancel);
     function phase(text) {
         if (finished || controller.signal.aborted) return;
+        show();
         message.textContent = text;
         bar.removeAttribute?.('value');
         detail.textContent = '正在处理…';
@@ -61,6 +68,7 @@ export function createOperationProgress(title) {
     }
     function update(loaded, total, text = '正在处理…', unit = 'bytes') {
         if (finished || controller.signal.aborted) return;
+        show();
         const now = Date.now();
         if (now - lastRender < 80 && loaded !== total) return;
         lastRender = now;
@@ -93,7 +101,6 @@ export function createOperationProgress(title) {
             timer.unref?.();
         }
     }
-    phase('正在准备…');
     return { phase, update, complete: text => finish(text), fail: error => finish(error?.message || String(error), true), remove,
         signal: controller.signal, cancel, setCancelable, throwIfCancelled: () => controller.signal.throwIfAborted() };
 }

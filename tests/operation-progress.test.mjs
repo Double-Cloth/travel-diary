@@ -33,9 +33,30 @@ function progressLog() {
     return Object.fromEntries(['phase', 'update', 'complete', 'fail', 'remove'].map(name => [name, (...args) => calls.push([name, ...args])]).concat([['calls', calls]]));
 }
 
+test('准备阶段不挂载进度，实际处理时选择当前模态窗口，移除后不会重新出现', t => {
+    const nodes = installEnvironment(t);
+    const progress = createOperationProgress('多步骤导入');
+    const root = nodes[0];
+    assert.equal(root.parentNode, undefined);
+    assert.equal(root.popoverShown, undefined);
+    const modal = { open: true, append(child) { child.parentNode = this; } };
+    document.querySelector = () => modal;
+    progress.phase('正在写入…');
+    assert.equal(root.parentNode, modal);
+    assert.equal(root.popoverShown, true);
+    progress.remove();
+    root.popoverShown = false;
+    progress.update(1, 2);
+    assert.equal(root.popoverShown, false);
+    const preparation = createOperationProgress('权限检查');
+    preparation.fail(new Error('验证未通过'));
+    assert.equal(nodes[1].parentNode, undefined);
+});
+
 test('数值进度、未知长度和服务器等待阶段切换正确，失败后不显示完成', t => {
     const nodes = installEnvironment(t);
     const progress = createOperationProgress('上传媒体');
+    progress.phase('正在上传…');
     const root = nodes[0];
     assert.match(root.className, /operation-progress-floating/);
     assert.equal(root.parentNode, document.body);
@@ -63,6 +84,7 @@ test('模态窗口内的进度也进入悬浮顶层，完成提示仍可关闭',
     const modal = { open: true, append(child) { child.parentNode = this; } };
     document.querySelector = () => modal;
     const progress = createOperationProgress('导入草稿');
+    progress.update(0, 2, '正在导入…', 'files');
     const root = nodes[0];
     assert.equal(root.parentNode, modal);
     assert.match(root.className, /operation-progress-floating/);
@@ -204,6 +226,30 @@ test('下载按分块写盘，在文件关闭后才报告成功', async t => {
     assert.deepEqual(written, [1, 2, 3, 4]);
     assert.deepEqual(progress.calls.filter(call => call[0] === 'update').map(call => call.slice(1, 3)), [[0, 4], [2, 4], [4, 4]]);
     assert.equal(progress.calls.at(-1)[0], 'complete');
+});
+
+test('选择下载保存位置时不显示进度，确认后开始传输，取消选择不显示浮层', async t => {
+    const nodes = installEnvironment(t);
+    const progress = createOperationProgress('下载备份');
+    let choose;
+    let fetched = false;
+    window.showSaveFilePicker = () => new Promise(resolve => { choose = resolve; });
+    globalThis.fetch = async () => { fetched = true; return new Response('backup'); };
+    const pending = downloadWithProgress('/backup.zip', 'backup.zip', progress);
+    assert.equal(nodes[0].parentNode, undefined);
+    assert.equal(fetched, false);
+    choose({ createWritable: async () => ({ write() {}, close() {} }) });
+    await pending;
+    assert.equal(fetched, true);
+    assert.equal(nodes[0].popoverShown, true);
+    assert.equal(nodes[0].attributes['data-state'], 'complete');
+    fetched = false;
+    const cancelled = createOperationProgress('取消下载');
+    window.showSaveFilePicker = async () => { throw new DOMException('取消', 'AbortError'); };
+    assert.deepEqual(await downloadWithProgress('/backup.zip', 'backup.zip', cancelled), { cancelled: true });
+    assert.equal(fetched, false);
+    assert.equal(nodes[1].parentNode, undefined);
+    assert.equal(nodes[1].popoverShown, undefined);
 });
 
 test('下载中断会放弃未完成文件，取消保存对话框不发起请求', async t => {
