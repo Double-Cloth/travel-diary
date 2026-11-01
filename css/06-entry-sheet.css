@@ -593,6 +593,7 @@
 
 .photo-viewer-image-tail-controls {
     display: flex;
+    gap: 8px;
     align-items: center;
 }
 
@@ -1390,6 +1391,7 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
     box-shadow: var(--soft-shadow);
 }
 .operation-progress-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.operation-progress-actions { display: flex; flex: none; gap: 8px; }
 .operation-progress-heading .paper-button { flex: none; width: auto; min-width: 44px; min-height: 36px; padding: 4px 10px; font-size: 12px; }
 .operation-progress [hidden] { display: none; }
 .operation-progress p { margin: 6px 0; color: var(--ink-soft); }

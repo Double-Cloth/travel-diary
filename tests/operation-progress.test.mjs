@@ -75,6 +75,82 @@ test('模态窗口内的进度也进入悬浮顶层，完成提示仍可关闭',
     assert.equal(root.removed, true);
 });
 
+test('取消中止操作并保留取消结果，服务器提交期间不能取消', t => {
+    const nodes = installEnvironment(t);
+    const progress = createOperationProgress('上传视频');
+    const root = nodes[0];
+    progress.setCancelable(false);
+    progress.cancel();
+    assert.equal(progress.signal.aborted, false);
+    progress.setCancelable(true);
+    root.querySelector('[data-progress-cancel]').events.click();
+    assert.equal(progress.signal.aborted, true);
+    assert.throws(() => progress.throwIfCancelled(), { name: 'AbortError' });
+    progress.phase('不应继续上传');
+    assert.equal(root.querySelector('[data-progress-message]').textContent, '正在取消…');
+    progress.fail(progress.signal.reason);
+    progress.complete('不应显示成功');
+    assert.equal(root.attributes['data-state'], 'cancelled');
+    assert.equal(root.querySelector('[data-progress-message]').textContent, '操作已取消。');
+    assert.equal(root.querySelector('[data-progress-cancel]').hidden, true);
+    assert.equal(root.querySelector('[data-progress-dismiss]').hidden, false);
+});
+
+test('上传取消会真正中止 XHR，已取消的上传不发送，完成后移除监听', async t => {
+    installEnvironment(t);
+    let xhr;
+    let sent = 0;
+    let aborted = 0;
+    globalThis.XMLHttpRequest = class {
+        constructor() { xhr = this; this.upload = {}; }
+        open() {} setRequestHeader() {}
+        send() { sent += 1; }
+        abort() { aborted += 1; this.onabort(); }
+    };
+    const controller = new AbortController();
+    const pending = uploadWithProgress('/video', { body: new Blob(['video']), signal: controller.signal });
+    controller.abort(new DOMException('操作已取消。', 'AbortError'));
+    await assert.rejects(pending, { name: 'AbortError' });
+    assert.equal(aborted, 1);
+    await assert.rejects(uploadWithProgress('/video', { signal: controller.signal }), { name: 'AbortError' });
+    assert.equal(sent, 1);
+    const completed = new AbortController();
+    const success = uploadWithProgress('/video', { signal: completed.signal });
+    xhr.status = 200;
+    xhr.onload();
+    await success;
+    completed.abort();
+    assert.equal(aborted, 1);
+});
+
+test('取消下载停止网络和后续保存，放弃已写入的临时文件', async t => {
+    const nodes = installEnvironment(t);
+    const progress = createOperationProgress('下载视频');
+    let fetchedSignal;
+    let discarded = false;
+    let closed = false;
+    let sourceCancelled = false;
+    window.showSaveFilePicker = async () => ({ createWritable: async () => ({
+        write: async () => progress.cancel(),
+        close: async () => { closed = true; },
+        abort: async () => { discarded = true; }
+    }) });
+    globalThis.fetch = async (_, options) => {
+        fetchedSignal = options.signal;
+        return new Response(new ReadableStream({
+            pull(controller) { controller.enqueue(Uint8Array.of(1)); },
+            cancel() { sourceCancelled = true; }
+        }));
+    };
+    assert.deepEqual(await downloadWithProgress('/video', 'video.mp4', progress), { cancelled: true });
+    assert.equal(fetchedSignal.aborted, true);
+    assert.equal(sourceCancelled, true);
+    assert.equal(discarded, true);
+    assert.equal(closed, false);
+    assert.equal(nodes[0].attributes['data-state'], 'cancelled');
+    assert.equal(nodes.some(node => node.clicked), false);
+});
+
 test('上传使用原始文件和认证头，上传完成与服务器返回成功分开', async t => {
     installEnvironment(t);
     let xhr;

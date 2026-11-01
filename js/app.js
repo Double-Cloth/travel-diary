@@ -1,14 +1,14 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
-import { createRecordEditor } from './record-editor.js?v=20261101-floating-progress-v1';
+import { createRecordEditor } from './record-editor.js?v=20261101-cancel-progress-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261013-danger-first-v1';
-import { createDataTransfer } from './data-transfer.js?v=20261101-floating-progress-v1';
+import { createDataTransfer } from './data-transfer.js?v=20261101-cancel-progress-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { confirmFeedback, showFeedback } from './feedback-dialog.js';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20261101-floating-progress-v1';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20261101-cancel-progress-v1';
 import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=20260930-review-v1';
 import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260930-review-v1';
-import { createOperationProgress, downloadWithProgress } from './operation-progress.js?v=20261101-floating-progress-v1';
+import { createOperationProgress, downloadWithProgress } from './operation-progress.js?v=20261101-cancel-progress-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
@@ -343,16 +343,24 @@ async function handleProfilePictureSelection(input) {
     });
     const progress = createOperationProgress('更新个人头像');
     try {
-        const picture = await prepareProfilePicture(file, message => progress.phase(message));
+        const picture = await prepareProfilePicture(file, message => {
+            progress.throwIfCancelled();
+            progress.phase(message);
+        });
+        progress.throwIfCancelled();
         progress.phase('正在上传头像…');
         await uploadProfilePicture(picture, capability,
             (loaded, total) => progress.update(loaded, total, '正在上传头像…'),
-            () => progress.phase('头像上传完成，正在保存…'));
+            () => {
+                progress.setCancelable(false);
+                progress.phase('头像上传完成，正在保存…');
+            }, progress.signal);
         refreshProfilePicture();
         progress.complete('新头像已保存。');
         void showFeedback('新头像已保存。', { label: '个人头像', title: '头像更新成功' });
     } catch (error) {
         progress.fail(error);
+        if (progress.signal.aborted) return;
         void showFeedback(error?.message || '头像处理失败，请换一张图片后重试。', {
             label: '个人头像',
             title: '无法使用这张图片'

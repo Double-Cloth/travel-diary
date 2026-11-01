@@ -353,7 +353,7 @@ test('新备份先确认覆盖风险，再验证当前密码、核对文件和�
     backupGate.events.cancel({ preventDefault() {} });
     await second.pending;
     assert.equal(uploads, 2);
-    assert.equal(output.textContent, '');
+    assert.equal(output.textContent, '备份导入已取消。');
     const third = await begin();
     confirmation.events.cancel({ preventDefault() {} });
     await third.pending;

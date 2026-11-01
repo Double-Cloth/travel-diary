@@ -644,7 +644,7 @@
         grid-column: 1 / -1;
         grid-row: 4;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
+        grid-template-columns: minmax(0, 1fr) auto auto;
         width: min(100%, 320px);
         justify-self: center;
         gap: 8px;
@@ -660,7 +660,7 @@
     }
     .video-viewer-volume-text { display: inline; }
     .video-viewer-volume { width: 100%; }
-    .video-viewer-rate-label { justify-self: end; }
+    .video-viewer-rate-label { min-width: 0; justify-self: end; }
     .video-viewer-fullscreen { justify-self: start; }
     .video-viewer-big-play { width: 60px; height: 60px; }
 

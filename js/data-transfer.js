@@ -2,7 +2,7 @@ import { createPasswordGate } from './record-password.js?v=20261013-danger-first
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { readZipSource } from './zip-stream.mjs';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261101-floating-progress-v1';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261101-cancel-progress-v1';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -101,6 +101,7 @@ export function createDataTransfer(onImported) {
         if (busy) throw new Error('另一项全部数据操作正在进行，请稍后重试。');
         busy = true;
         const progress = createOperationProgress('清空全部数据');
+        progress.setCancelable(false, '数据正在清空，无法取消。');
         progress.phase('正在清空旅行数据…');
         setStatus('正在清空全部旅行数据…');
         try {
@@ -239,16 +240,23 @@ export function createDataTransfer(onImported) {
         try {
             progress.phase('正在上传备份…');
             const response = await uploadWithProgress(new URL('api/travel-data', window.location.href), {
-                method: 'POST', headers, body: file, credentials: 'same-origin'
+                method: 'POST', headers, body: file, credentials: 'same-origin', signal: progress.signal
             }, (loaded, total) => progress.update(loaded, total, '正在上传备份…'),
-            () => progress.phase('备份上传完成，服务器正在校验并恢复数据，请勿关闭页面…'));
+            () => {
+                progress.setCancelable(false);
+                progress.phase('备份上传完成，服务器正在校验并恢复数据，请勿关闭页面…');
+            });
             let result;
             try { result = await response.json(); }
             catch { throw new Error('全部数据导入返回了无法识别的结果。'); }
             if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
             progress.complete('备份已校验并导入。');
             return result;
-        } catch (error) { progress.fail(error); throw error; }
+        } catch (error) {
+            progress.fail(error);
+            if (progress.signal.aborted) return null;
+            throw error;
+        }
     }
 
     dialog.addEventListener('cancel', event => {
@@ -299,6 +307,7 @@ export function createDataTransfer(onImported) {
         try {
             progress.phase('正在读取并核对 ZIP 备份目录…');
             const entries = await readZipSource(file);
+            progress.throwIfCancelled();
             const hasBackupPassword = entries.some(entry => entry.name.toLowerCase() === '.secrets/auth.json');
             progress.remove();
             if (!await confirmImport(file, hasBackupPassword)) return;
@@ -309,9 +318,10 @@ export function createDataTransfer(onImported) {
                     void requestBackupAuthorization({ file, token, currentPassword, resolve }).catch(reject);
                 })
                 : await uploadArchive(file, token, currentPassword);
-            if (!result) { setStatus(''); return; }
+            if (!result) { setStatus('备份导入已取消。'); return; }
             importUploadProgress?.remove();
             const refreshProgress = createOperationProgress('刷新旅行档案');
+            refreshProgress.setCancelable(false, '数据已导入，正在刷新页面。');
             refreshProgress.phase('数据已导入，正在刷新页面…');
             try { await onImported(); }
             catch {
@@ -324,7 +334,8 @@ export function createDataTransfer(onImported) {
             setStatus('');
             showImportSuccess(importSuccessMessage(result));
         } catch (error) {
-            progress.remove();
+            if (progress.signal.aborted) progress.fail(error);
+            else progress.remove();
             setStatus(error.message);
         } finally {
             busy = false;

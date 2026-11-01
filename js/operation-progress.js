@@ -15,7 +15,7 @@ export function createOperationProgress(title) {
     const root = document.createElement('section');
     root.className = 'operation-progress operation-progress-floating';
     root.setAttribute('aria-label', title);
-    root.innerHTML = `<div class="operation-progress-heading"><strong data-progress-title></strong><button type="button" class="paper-button" data-progress-dismiss aria-label="关闭进度提示" hidden>关闭</button></div>
+    root.innerHTML = `<div class="operation-progress-heading"><strong data-progress-title></strong><div class="operation-progress-actions"><button type="button" class="paper-button" data-progress-cancel>取消</button><button type="button" class="paper-button" data-progress-dismiss aria-label="关闭进度提示" hidden>关闭</button></div></div>
         <p data-progress-message role="status" aria-live="polite" aria-atomic="true"></p>
         <progress max="100" aria-label="${title}" data-progress-bar></progress>
         <p class="operation-progress-detail" data-progress-detail></p>`;
@@ -24,6 +24,8 @@ export function createOperationProgress(title) {
     const bar = root.querySelector('[data-progress-bar]');
     const detail = root.querySelector('[data-progress-detail]');
     const dismiss = root.querySelector('[data-progress-dismiss]');
+    const cancelButton = root.querySelector('[data-progress-cancel]');
+    const controller = new AbortController();
     let timer;
     let finished = false;
     let lastAnnouncement = '';
@@ -36,8 +38,21 @@ export function createOperationProgress(title) {
     }
     function remove() { clearTimeout(timer); root.remove?.(); }
     dismiss.addEventListener('click', remove);
+    function setCancelable(value, reason = '服务器正在处理，暂不能取消。') {
+        cancelButton.disabled = !value || controller.signal.aborted || finished;
+        cancelButton.title = value ? '取消当前操作' : reason;
+    }
+    function cancel() {
+        if (finished || cancelButton.disabled) return;
+        controller.abort(new DOMException('操作已取消。', 'AbortError'));
+        cancelButton.disabled = true;
+        message.textContent = '正在取消…';
+        detail.textContent = '正在停止传输或处理…';
+        bar.removeAttribute('value');
+    }
+    cancelButton.addEventListener('click', cancel);
     function phase(text) {
-        if (finished) return;
+        if (finished || controller.signal.aborted) return;
         message.textContent = text;
         bar.removeAttribute?.('value');
         detail.textContent = '正在处理…';
@@ -45,7 +60,7 @@ export function createOperationProgress(title) {
         lastRender = 0;
     }
     function update(loaded, total, text = '正在处理…', unit = 'bytes') {
-        if (finished) return;
+        if (finished || controller.signal.aborted) return;
         const now = Date.now();
         if (now - lastRender < 80 && loaded !== total) return;
         lastRender = now;
@@ -64,12 +79,14 @@ export function createOperationProgress(title) {
     function finish(text, failed = false) {
         if (finished) return;
         finished = true;
-        root.setAttribute('data-state', failed ? 'error' : 'complete');
-        message.textContent = text;
-        if (failed) bar.removeAttribute?.('value');
+        const cancelled = controller.signal.aborted;
+        root.setAttribute('data-state', cancelled ? 'cancelled' : failed ? 'error' : 'complete');
+        message.textContent = cancelled ? '操作已取消。' : text;
+        if (failed || cancelled) bar.removeAttribute?.('value');
         else bar.value = 100;
-        bar.hidden = failed;
-        detail.textContent = failed ? '请重试，或查看操作提示。' : '处理完成';
+        bar.hidden = failed || cancelled;
+        detail.textContent = cancelled ? '可重新开始操作。' : failed ? '请重试，或查看操作提示。' : '处理完成';
+        cancelButton.hidden = true;
         dismiss.hidden = false;
         if (!failed) {
             timer = setTimeout(remove, 6000);
@@ -77,7 +94,8 @@ export function createOperationProgress(title) {
         }
     }
     phase('正在准备…');
-    return { phase, update, complete: text => finish(text), fail: error => finish(error?.message || String(error), true), remove };
+    return { phase, update, complete: text => finish(text), fail: error => finish(error?.message || String(error), true), remove,
+        signal: controller.signal, cancel, setCancelable, throwIfCancelled: () => controller.signal.throwIfAborted() };
 }
 
 // Fetch 尚不提供普遍可用的上传进度事件；原生 XHR 保留同源 Cookie、令牌和 HTTP 错误响应。
@@ -85,20 +103,29 @@ export function uploadWithProgress(url, options, onProgress, onUploaded = () => 
     if (typeof XMLHttpRequest === 'undefined') return fetch(url, options);
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
+        const signal = options.signal;
+        if (signal?.aborted) { reject(signal.reason); return; }
+        const abort = () => xhr.abort();
+        function settle(callback, value) {
+            signal?.removeEventListener('abort', abort);
+            callback(value);
+        }
         xhr.open(options.method || 'POST', url);
         xhr.timeout = options.timeout || 8 * 60 * 60 * 1000;
         for (const [name, value] of Object.entries(options.headers || {})) xhr.setRequestHeader(name, value);
         xhr.upload.onprogress = event => onProgress?.(event.loaded, event.lengthComputable ? event.total : 0);
         xhr.upload.onload = onUploaded;
-        xhr.onload = () => resolve({
+        xhr.onload = () => settle(resolve, {
             ok: xhr.status >= 200 && xhr.status < 300,
             status: xhr.status,
             json: async () => JSON.parse(xhr.responseText)
         });
-        xhr.onerror = () => reject(new Error('网络连接中断，请检查网络后重试。'));
-        xhr.ontimeout = () => reject(new Error('传输超时，请稍后重试。'));
-        xhr.onabort = () => reject(new Error('传输已取消。'));
-        xhr.send(options.body);
+        xhr.onerror = () => settle(reject, new Error('网络连接中断，请检查网络后重试。'));
+        xhr.ontimeout = () => settle(reject, new Error('传输超时，请稍后重试。'));
+        xhr.onabort = () => settle(reject, signal?.reason || new DOMException('传输已取消。', 'AbortError'));
+        signal?.addEventListener('abort', abort, { once: true });
+        try { xhr.send(options.body); }
+        catch (error) { settle(reject, error); }
     });
 }
 
@@ -122,19 +149,23 @@ function startNativeDownload(url, name) {
 export async function downloadWithProgress(url, name, progress, options = {}) {
     let writable;
     let reader;
+    const signal = AbortSignal.any([AbortSignal.timeout(8 * 60 * 60 * 1000), ...[progress.signal, options.signal].filter(Boolean)]);
     try {
+        signal.throwIfAborted();
         // 支持时直接流式写盘，大视频与备份不会在内存中累积。
         if (typeof window.showSaveFilePicker === 'function') {
             try {
                 const handle = await window.showSaveFilePicker({ suggestedName: name });
+                signal.throwIfAborted();
                 writable = await handle.createWritable();
             } catch (error) {
-                if (error.name === 'AbortError') { progress.remove(); return { cancelled: true }; }
+                if (error.name === 'AbortError' && !signal.aborted) { progress.remove(); return { cancelled: true }; }
                 if (error.name !== 'SecurityError') throw error;
             }
         }
         progress.phase('正在连接并准备下载…');
-        const response = await fetch(url, { credentials: 'same-origin', signal: AbortSignal.timeout(8 * 60 * 60 * 1000), ...options });
+        signal.throwIfAborted();
+        const response = await fetch(url, { credentials: 'same-origin', ...options, signal });
         if (!response.ok) {
             let result;
             try { result = await response.json(); } catch { /* 非 JSON 响应使用通用提示。 */ }
@@ -144,6 +175,7 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
         async function handOff() {
             if (reader) await reader.cancel();
             else await response.body?.cancel();
+            signal.throwIfAborted();
             startNativeDownload(url, name);
             progress.remove();
             // 浏览器接管后，网页无法观测其落盘进度，不能宣称已下载完成。
@@ -157,6 +189,7 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
         progress.update(0, total, '正在下载…');
         while (true) {
             const { done, value } = await reader.read();
+            signal.throwIfAborted();
             if (done) break;
             loaded += value.byteLength;
             if (writable) await writable.write(value);
@@ -166,6 +199,8 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
             }
             progress.update(loaded, total, '正在下载…');
         }
+        signal.throwIfAborted();
+        progress.setCancelable?.(false, '文件正在保存，暂不能取消。');
         progress.phase('下载传输完成，正在保存文件…');
         if (writable) { await writable.close(); writable = null; }
         else saveBlobDownload(new Blob(parts, { type: response.headers.get('Content-Type') || 'application/octet-stream' }), name);
@@ -175,6 +210,7 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
         try { await reader?.cancel(); } catch { /* 保留原始错误。 */ }
         try { await writable?.abort(); } catch { /* 保留原始错误。 */ }
         progress.fail(error);
+        if (progress.signal?.aborted || options.signal?.aborted) return { cancelled: true };
         throw error;
     } finally {
         reader?.releaseLock();

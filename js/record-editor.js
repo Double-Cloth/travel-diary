@@ -16,7 +16,7 @@ import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scrol
 import { confirmFeedback } from './feedback-dialog.js';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
 import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=20261101-floating-progress-v1';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=20261101-cancel-progress-v1';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -661,6 +661,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 operationProgress.update(fileIndex, files.length, `正在处理：${file.name}`, 'files');
                 const data = sourceOf(file);
                 data.head = await data.read(0, Math.min(16386, data.size));
+                operationProgress.throwIfCancelled();
                 const photo = readUploads([{ id, name: file.name.slice(0, 200), data }])[0];
                 let previewUrl;
                 try { previewUrl = photo.kind === 'image' ? await createPhotoPreviewUrl(file) : URL.createObjectURL(file); }
@@ -668,6 +669,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                     throw new Error(error.message.startsWith('无法') ? error.message : `无法解码媒体：${file.name}`);
                 }
                 pendingPreviews.push([id, previewUrl]);
+                operationProgress.throwIfCancelled();
                 pending.push(photo);
                 operationProgress.update(fileIndex + 1, files.length, '正在生成媒体预览…', 'files');
             }
@@ -689,10 +691,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function archiveProgress(processed, total) {
+        operationProgress?.throwIfCancelled();
         operationProgress?.update(processed, total, archivePhase);
     }
 
     function download(content, name, type) {
+        operationProgress?.throwIfCancelled();
         saveBlobDownload(new Blob([content], { type }), name);
     }
 
@@ -872,7 +876,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 status('草稿已开始下载，所选图片和视频已一并打包。');
                 operationProgress.complete('草稿已打包，已交给浏览器保存。');
             } catch (error) {
-                status(`草稿导出失败：${error.message}`);
+                status(operationProgress.signal.aborted ? '草稿导出已取消。' : `草稿导出失败：${error.message}`);
                 operationProgress.fail(error);
             } finally {
                 busy = false;
@@ -925,6 +929,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             const draft = isZip
                 ? (await readRecordSource(file, { verifyMedia: true, onProgress: archiveProgress })).draft
                 : readDraft(JSON.parse(await file.text()));
+            operationProgress.throwIfCancelled();
             for (const key of RECORD_FIELDS) field(key).value = ['photos', 'videos'].includes(key) ? draft.input[key].join('\n') : draft.input[key];
             // 程序赋值后同步原生选择框的增强显示。
             field('country_code').dispatchEvent(new Event('change'));
@@ -970,21 +975,26 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         startProgress('保存旅行记录', archivePhase);
         dialog.querySelector('[data-editor-rich]').contentEditable = 'false';
         dialog.querySelector('[data-editor-source]').readOnly = true;
-        dialog.querySelectorAll('[name], button').forEach(control => { control.disabled = true; });
+        dialog.querySelectorAll('[name], button:not([data-progress-cancel])').forEach(control => { control.disabled = true; });
         status('正在保存旅行记录…');
         try {
             const archive = await createDraftBlob(draft, editingRecord ? {
                 originalDescMd: editingRecord.desc_md,
                 expected: { record: editingRecord.sourceRecord || editingRecord, markdown: editingRecord.descMarkdown }
             } : {}, archiveProgress);
+            operationProgress.throwIfCancelled();
             operationProgress.phase('正在上传旅行记录和媒体…');
             const response = await uploadWithProgress(new URL('api/travel-records', window.location.href), {
                 method: editingRecord ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token },
                 credentials: 'same-origin',
                 body: archive,
                 timeout: 8 * 60 * 60 * 1000,
+                signal: operationProgress.signal,
             }, (loaded, total) => operationProgress.update(loaded, total, '正在上传旅行记录和媒体…'),
-            () => operationProgress.phase('上传完成，服务器正在校验并保存记录…'));
+            () => {
+                operationProgress.setCancelable(false);
+                operationProgress.phase('上传完成，服务器正在校验并保存记录…');
+            });
             const result = await response.json();
             if (!response.ok || !result.saved) throw new Error(result.error || '未收到服务器的成功响应。');
             saved = true;
@@ -995,7 +1005,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             catch { status(`记录已保存：${result.record.desc_md}。页面数据刷新失败，请手动刷新后查看。`); }
             operationProgress.complete('记录和媒体已保存。');
         } catch (error) {
-            status(`保存结果未确认：${error.message} 草稿仍在本页，可导出或重试。`);
+            status(operationProgress.signal.aborted ? '保存已取消，草稿仍在本页。' : `保存结果未确认：${error.message} 草稿仍在本页，可导出或重试。`);
             operationProgress.fail(error);
         } finally {
             busy = false;

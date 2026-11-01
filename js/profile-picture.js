@@ -1,5 +1,5 @@
 import { MAXIMUM_PROFILE_SOURCE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
-import { uploadWithProgress } from './operation-progress.js?v=20261101-floating-progress-v1';
+import { uploadWithProgress } from './operation-progress.js?v=20261101-cancel-progress-v1';
 const MAXIMUM_EDGE = 1024;
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
@@ -91,7 +91,7 @@ export async function prepareProfilePicture(file, onStage = () => {}) {
     }
 }
 
-export async function uploadProfilePicture(picture, capability, onProgress, onUploaded) {
+export async function uploadProfilePicture(picture, capability, onProgress, onUploaded, signal) {
     if (!capability?.token || !capability.methods?.has('PUT')) {
         throw new Error('当前服务不支持更新头像。');
     }
@@ -107,9 +107,10 @@ export async function uploadProfilePicture(picture, capability, onProgress, onUp
             body: JSON.stringify(picture),
             credentials: 'same-origin',
             timeout: 30000,
-            signal: AbortSignal.timeout(30000)
+            signal: AbortSignal.any([AbortSignal.timeout(30000), ...[signal].filter(Boolean)])
         }, onProgress, onUploaded);
-    } catch {
+    } catch (error) {
+        if (signal?.aborted) throw error;
         throw new Error('头像上传服务暂时无法连接，请稍后重试。');
     }
     let result = {};
