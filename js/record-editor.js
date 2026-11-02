@@ -58,6 +58,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let existingMediaEntries = { photo: [], video: [] };
     let mediaKeySequence = 0;
     const selectedMedia = new Set();
+    const selectedRemovedMedia = new Set();
+    const mediaReferenceEdits = new Map();
     let readingPhotos = false;
     let operationProgress;
     let archivePhase = '正在校验并打包媒体…';
@@ -295,7 +297,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                     </div>
                     <section class="record-editor-photos" aria-labelledby="${editorId('PhotosTitle')}">
                         <div class="record-editor-media-heading">
-                            <h3 id="${editorId('PhotosTitle')}">图片与视频</h3>
+                            <h3 id="${editorId('PhotosTitle')}"><span>03</span> 图片与视频</h3>
                             <span data-editor-media-count></span>
                         </div>
                         <p class="record-editor-media-intro">点击缩略图或文件名查看，勾选后可批量操作。新文件可移到已有文件之间，排序与移除在保存后生效。</p>
@@ -307,8 +309,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <input type="file" data-editor-photos accept=".mp4,.m4v,.mov,.webm,.ogv,.ogg,image/jpeg,image/png,image/gif,image/webp,video/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
                         </div>
                         <div data-editor-media-empty class="record-editor-media-empty">还没有图片或视频，添加文件来记录旅途。</div>
-                        <div class="record-editor-media-batch" data-editor-media-batch role="group" aria-label="批量文件操作">
-                            <button class="paper-button" type="button" data-media-select-all>全选图片</button>
+                        <div class="record-editor-media-batch" data-editor-media-batch role="group" aria-label="批量文件操作" hidden>
+                            <button class="paper-button" type="button" data-media-select-all>全选文件</button>
                             <button class="paper-button" type="button" data-media-select-clear disabled>取消选择</button>
                             <span data-media-selected-count role="status">未选择文件</span>
                             <button class="paper-button" type="button" data-media-batch="previous" disabled>前移所选</button>
@@ -324,6 +326,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         </div>
                         <div class="record-editor-media-group record-editor-removed-group" data-editor-removed-group hidden>
                             <h4>待移除 <span>保存前可恢复</span></h4>
+                            <div class="record-editor-media-batch" data-editor-restore-batch role="group" aria-label="批量恢复操作" hidden>
+                                <button class="paper-button" type="button" data-media-restore-all>全选待移除</button>
+                                <button class="paper-button" type="button" data-media-restore-clear hidden>取消选择</button>
+                                <span data-media-restore-count role="status" hidden></span>
+                                <button class="paper-button" type="button" data-media-restore-selected hidden>恢复所选</button>
+                            </div>
                             <ul class="media-file-list" data-editor-removed-list data-media-viewer-group aria-label="待移除文件"></ul>
                         </div>
                         <p class="record-editor-media-announcement" data-editor-media-announcement role="status" aria-live="polite"></p>
@@ -371,6 +379,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         mediaOrder = { photo: [], video: [] };
         existingMediaEntries = { photo: [], video: [] };
         selectedMedia.clear();
+        selectedRemovedMedia.clear();
+        mediaReferenceEdits.clear();
         bodyView = 'source';
         userEditedAutofillFields.clear();
         autoFilledValues.clear();
@@ -440,11 +450,46 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         field(`${type}s`).value = orderedMedia(type).filter(item => !item.upload).map(item => item.name).join('\n');
     }
 
+    function syncAdvancedMediaOrder(type) {
+        const previousKeys = new Set(existingMediaEntries[type].map(item => item.key));
+        if (!mediaReferenceEdits.has(type)) {
+            mediaReferenceEdits.set(type, existingMediaEntries[type].map(item => ({ ...item,
+                path: existingMediaPath(type, item.name) })));
+        }
+        const baseline = mediaReferenceEdits.get(type);
+        // 一次文本编辑只追踪原有引用，避免逐字输入产生大量待恢复的临时文件名。
+        existingMediaEntries[type].push(...baseline.filter(item => !previousKeys.has(item.key)));
+        const keys = canonicalMedia(type).filter(item => !item.upload).map(item => item.key);
+        const active = new Set(keys);
+        removedMedia = removedMedia.filter(item => !active.has(item.orderKey));
+        const removedKeys = new Set(removedMedia.map(item => item.orderKey));
+        baseline.forEach((item, index) => {
+            if (active.has(item.key) || removedKeys.has(item.key)) return;
+            removedMedia.push({ ...item, orderKey: item.key, index });
+            removedKeys.add(item.key);
+        });
+        const order = mediaOrder[type];
+        const slots = new Set([...previousKeys, ...keys]);
+        let lastSlot = -1;
+        order.forEach((key, index) => { if (slots.has(key) && !removedKeys.has(key)) lastSlot = index; });
+        let index = 0;
+        // 已有引用按文本框排列，新增文件与待恢复文件继续保留各自的槽位。
+        mediaOrder[type] = order.flatMap((key, position) => {
+            if (!slots.has(key) || removedKeys.has(key)) return [key];
+            const replacement = index < keys.length ? [keys[index++]] : [];
+            if (position === lastSlot) replacement.push(...keys.slice(index));
+            return replacement;
+        });
+        if (lastSlot === -1) mediaOrder[type].unshift(...keys);
+    }
+
     function renderExistingMedia() {
         let mediaIndex = 0;
         for (const type of ['photo', 'video']) {
             const list = dialog.querySelector(`[data-editor-existing-media="${type}"]`);
             const items = orderedMedia(type);
+            const targetFolder = uploads.some(upload => upload.kind === (type === 'photo' ? 'image' : 'video'))
+                ? `data/${type}s/${recordSlug(field('locality').value || '目的地')}` : field(`${type}_folder`).value.trim();
             const existing = new Map([...list.children].map(row => [row.dataset.mediaKey, row]));
             const rows = items.map((item, index) => {
                 const path = item.upload ? '' : existingMediaPath(type, item.name);
@@ -473,7 +518,11 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 link.dataset.mediaIndex = String(mediaIndex);
                 if (link.matches('a')) {
                     mediaIndex++;
-                    link.querySelector('.media-file-detail').textContent = `${type === 'photo' ? '图片' : '视频'} · ${index + 1} / ${items.length}${item.upload ? saved ? ' · 已保存' : ' · 待上传' : ''}`;
+                    const destination = `${targetFolder}/${item.name}`;
+                    const note = item.upload ? saved ? '已保存' : `待上传 · 保存到 ${targetFolder}/`
+                        : !getMediaFileUrl(destination) ? '目标路径无效，请检查高级设置'
+                        : destination !== path ? `保存到 ${destination} · 当前预览原文件` : `引用 ${destination}`;
+                    link.querySelector('.media-file-detail').textContent = `${type === 'photo' ? '图片' : '视频'} · ${index + 1} / ${items.length} · ${note}`;
                 }
                 const actions = row.lastElementChild;
                 actions.className = 'media-file-actions';
@@ -499,11 +548,22 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             checkbox.disabled = saved;
             checkbox.closest('li').classList.toggle('is-selected', checkbox.checked);
         });
-        dialog.querySelector('[data-media-selected-count]').textContent = selectedMedia.size ? `已选 ${selectedMedia.size} 项` : '未选择文件';
-        dialog.querySelector('[data-media-select-all]').disabled = saved || !canonicalMedia('photo').length;
-        dialog.querySelector('[data-media-select-clear]').disabled = saved || !selectedMedia.size;
+        dialog.querySelector('[data-editor-media-batch]').hidden = saved || !items.length;
+        const allSelected = items.length > 0 && selectedMedia.size === items.length;
+        const selectAll = dialog.querySelector('[data-media-select-all]');
+        selectAll.textContent = items.every(item => item.type === 'photo') ? '全选图片'
+            : items.every(item => item.type === 'video') ? '全选视频' : '全选文件';
+        selectAll.hidden = allSelected;
+        selectAll.disabled = saved || !items.length;
+        const count = dialog.querySelector('[data-media-selected-count]');
+        count.textContent = `已选 ${selectedMedia.size} 项`;
+        count.hidden = !selectedMedia.size;
+        const clear = dialog.querySelector('[data-media-select-clear]');
+        clear.hidden = !selectedMedia.size;
+        clear.disabled = saved || !selectedMedia.size;
         dialog.querySelectorAll('[data-media-batch]').forEach(button => {
             const action = button.dataset.mediaBatch;
+            button.hidden = !selectedMedia.size;
             button.disabled = saved || (action === 'remove' ? !selectedMedia.size : !['photo', 'video'].some(type => {
                 const ordered = orderedMedia(type);
                 return ordered.some((item, index) => selectedMedia.has(item.key)
@@ -560,8 +620,15 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             : !canonicalMedia(item.type).some(active => active.key === item.orderKey));
         const list = dialog.querySelector('[data-editor-removed-list]');
         let mediaIndex = 0;
-        list.replaceChildren(...removedMedia.map((item, index) => {
+        list.replaceChildren(...removedMedia.map(item => {
             const row = document.createElement('li');
+            const selection = document.createElement('label');
+            selection.className = 'media-file-selection';
+            const checkbox = document.createElement('input');
+            checkbox.type = 'checkbox';
+            checkbox.dataset.mediaRemovedSelect = item.orderKey;
+            checkbox.setAttribute('aria-label', `选择待恢复 ${item.name}`);
+            selection.append(checkbox);
             const link = item.upload ? uploadMediaLink(item.upload, mediaIndex) : createMediaFileLink({
                 path: item.path, name: item.name, kind: item.type === 'video' ? 'video' : 'image', index: mediaIndex,
                 detail: field('syncMediaFiles')?.checked ? '保存时删除原文件（其他日记仍引用时保留）' : '仅移除引用，原文件保留'
@@ -571,14 +638,55 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             const restore = document.createElement('button');
             restore.type = 'button';
             restore.className = 'media-file-restore';
-            restore.dataset.mediaRestore = String(index);
+            restore.dataset.mediaRestore = item.orderKey;
             restore.textContent = '恢复';
             restore.setAttribute('aria-label', `恢复 ${item.name}`);
             restore.disabled = saved;
-            row.append(link, restore);
+            row.append(selection, link, restore);
             return row;
         }));
+        updateRemovedSelection();
         updateMediaSummary();
+    }
+
+    function updateRemovedSelection() {
+        const keys = new Set(removedMedia.map(item => item.orderKey));
+        for (const key of selectedRemovedMedia) if (!keys.has(key)) selectedRemovedMedia.delete(key);
+        dialog.querySelectorAll('[data-media-removed-select]').forEach(checkbox => {
+            checkbox.checked = selectedRemovedMedia.has(checkbox.dataset.mediaRemovedSelect);
+            checkbox.disabled = saved;
+            checkbox.closest('li').classList.toggle('is-selected', checkbox.checked);
+        });
+        dialog.querySelector('[data-editor-restore-batch]').hidden = saved || !keys.size;
+        dialog.querySelector('[data-media-restore-all]').hidden = selectedRemovedMedia.size === keys.size;
+        dialog.querySelector('[data-media-restore-clear]').hidden = !selectedRemovedMedia.size;
+        dialog.querySelector('[data-media-restore-selected]').hidden = !selectedRemovedMedia.size;
+        const count = dialog.querySelector('[data-media-restore-count]');
+        count.hidden = !selectedRemovedMedia.size;
+        count.textContent = `已选 ${selectedRemovedMedia.size} 项`;
+    }
+
+    function restoreMedia(keys) {
+        const items = removedMedia.filter(item => keys.has(item.orderKey));
+        for (const item of items) {
+            // 逐项恢复，其他选中项的槽位在它们恢复之前仍由待移除列表保留。
+            removedMedia = removedMedia.filter(removed => removed.orderKey !== item.orderKey);
+            if (item.upload) uploads.splice(Math.min(item.index, uploads.length), 0, item.upload);
+            else {
+                const names = mediaNames(item.type);
+                names.push(item.name);
+                existingMediaEntries[item.type].push({ key: item.orderKey, type: item.type, name: item.name });
+                field(`${item.type}s`).value = names.join('\n');
+            }
+            syncExistingOrder(item.type);
+            selectedRemovedMedia.delete(item.orderKey);
+        }
+        renderPhotos();
+        updatePhotoStatus();
+        dirty = true;
+        dialog.querySelector('[data-editor-media-announcement]').textContent = `已恢复 ${items.length} 项，文件已回到上方列表。`;
+        const row = [...dialog.querySelectorAll('[data-media-key]')].find(row => row.dataset.mediaKey === items[0]?.orderKey);
+        (row?.querySelector('a, [data-media-select]') || dialog.querySelector('[data-editor-upload]')).focus();
     }
 
     function updateMediaSummary() {
@@ -854,6 +962,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         mediaOrder = { photo: [], video: [] };
         existingMediaEntries = { photo: [], video: [] };
         selectedMedia.clear();
+        selectedRemovedMedia.clear();
+        mediaReferenceEdits.clear();
         for (const key of RECORD_FIELDS) field(key).value = '';
         field('country_code').selectedIndex = -1;
         field('country_code').dispatchEvent(new Event('change', { bubbles: true }));
@@ -1015,10 +1125,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (event.target.name === 'title') updateBodyView(bodyView);
         if (['photos', 'videos'].includes(event.target.name)) {
             const type = event.target.name === 'photos' ? 'photo' : 'video';
-            const keys = canonicalMedia(type).filter(item => !item.upload).map(item => item.key);
-            const existingKeys = new Set(keys);
-            let index = 0;
-            mediaOrder[type] = mediaOrder[type].map(key => existingKeys.has(key) ? keys[index++] : key);
+            syncAdvancedMediaOrder(type);
         }
         if (['photo_folder', 'photos', 'video_folder', 'videos', 'date', 'locality', 'syncMediaFiles'].includes(event.target.name)) renderExistingMedia();
     });
@@ -1087,29 +1194,27 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             return;
         }
         if (event.target.closest('[data-editor-fullscreen]')) setBodyFullscreen(!bodyFullscreen);
+        if (event.target.closest('[data-media-restore-all]') && !saved) {
+            removedMedia.forEach(item => selectedRemovedMedia.add(item.orderKey));
+            updateRemovedSelection();
+            dialog.querySelector('[data-media-restore-selected]').focus();
+            return;
+        }
+        if (event.target.closest('[data-media-restore-clear]') && !saved) {
+            selectedRemovedMedia.clear();
+            updateRemovedSelection();
+            dialog.querySelector('[data-media-restore-all]').focus();
+            return;
+        }
         const restore = event.target.closest('[data-media-restore]');
-        if (restore && !saved) {
-            const [item] = removedMedia.splice(Number(restore.dataset.mediaRestore), 1);
-            if (!item) return;
-            if (item.upload) {
-                uploads.splice(Math.min(item.index, uploads.length), 0, item.upload);
-            } else {
-                const names = mediaNames(item.type);
-                names.push(item.name);
-                existingMediaEntries[item.type].push({ key: item.orderKey, type: item.type, name: item.name });
-                field(`${item.type}s`).value = names.join('\n');
-            }
-            syncExistingOrder(item.type);
-            renderPhotos();
-            updatePhotoStatus();
-            [...dialog.querySelectorAll('[data-media-key]')].find(row => row.dataset.mediaKey === item.orderKey)?.querySelector('a')?.focus();
-            dirty = true;
-            dialog.querySelector('[data-editor-media-announcement]').textContent = `已恢复 ${item.name}`;
+        if ((restore || event.target.closest('[data-media-restore-selected]')) && !saved) {
+            restoreMedia(restore ? new Set([restore.dataset.mediaRestore]) : new Set(selectedRemovedMedia));
             return;
         }
         if (event.target.closest('[data-media-select-all]') && !saved) {
-            canonicalMedia('photo').forEach(item => selectedMedia.add(item.key));
+            ['photo', 'video'].flatMap(orderedMedia).forEach(item => selectedMedia.add(item.key));
             updateMediaSelection();
+            dialog.querySelector('[data-media-select-clear]').focus();
             return;
         }
         if (event.target.closest('[data-media-select-clear]') && !saved) {
@@ -1126,7 +1231,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             const keys = batch ? new Set(selectedMedia) : new Set([key]);
             operateMedia(keys, action);
             const row = [...dialog.querySelectorAll('[data-media-key]')].find(row => row.dataset.mediaKey === key);
-            const focus = batch && !batch.disabled ? batch
+            const focus = batch && !batch.disabled && !batch.hidden ? batch
                 : row?.querySelector(`[data-media-action="${action}"]:not(:disabled)`) || row?.querySelector('a')
                 || dialog.querySelector('[data-media-restore]') || dialog.querySelector('[data-media-select-all]');
             focus.focus();
@@ -1182,15 +1287,21 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (event.target.closest('[data-editor-import]')) dialog.querySelector('[data-editor-file]').click();
     });
     dialog.addEventListener('change', async event => {
-        if (event.target.matches('[data-media-select]')) {
-            const key = event.target.dataset.mediaSelect;
+        if (['photos', 'videos'].includes(event.target.name)) {
+            mediaReferenceEdits.delete(event.target.name === 'photos' ? 'photo' : 'video');
+        }
+        if (event.target.matches('[data-media-select], [data-media-removed-select]')) {
+            const removed = event.target.matches('[data-media-removed-select]');
+            const selection = removed ? selectedRemovedMedia : selectedMedia;
+            const key = removed ? event.target.dataset.mediaRemovedSelect : event.target.dataset.mediaSelect;
             if (saved || busy || readingPhotos) {
-                event.target.checked = selectedMedia.has(key);
+                event.target.checked = selection.has(key);
                 return;
             }
-            if (event.target.checked) selectedMedia.add(key);
-            else selectedMedia.delete(key);
-            updateMediaSelection();
+            if (event.target.checked) selection.add(key);
+            else selection.delete(key);
+            if (removed) updateRemovedSelection();
+            else updateMediaSelection();
             return;
         }
         if (event.target.name === 'country_code') {
@@ -1239,6 +1350,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             uploads = readUploads(draft.uploads);
             removedMedia = [];
             selectedMedia.clear();
+            selectedRemovedMedia.clear();
+            mediaReferenceEdits.clear();
             mediaOrder = { photo: [], video: [] };
             existingMediaEntries = { photo: [], video: [] };
             for (const type of ['photo', 'video']) {
@@ -1313,7 +1426,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         startProgress('保存旅行记录', archivePhase);
         dialog.querySelector('[data-editor-rich]').contentEditable = 'false';
         dialog.querySelector('[data-editor-source]').readOnly = true;
-        dialog.querySelectorAll('[name], [data-media-select], button:not([data-progress-cancel])').forEach(control => { control.disabled = true; });
+        dialog.querySelectorAll('[name], [data-media-select], [data-media-removed-select], button:not([data-progress-cancel])').forEach(control => { control.disabled = true; });
         status('正在保存旅行记录…');
         try {
             const customMediaOrder = Object.values(draft.mediaOrder).some(order => order.some((index, position) => index !== position));
@@ -1345,6 +1458,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             saved = true;
             removedMedia = [];
             selectedMedia.clear();
+            selectedRemovedMedia.clear();
             dirty = false;
             status(`${editingRecord ? '修改' : '记录'}已保存并更新旅行索引：${result.record.desc_md}`);
             operationProgress.phase('记录已保存，正在刷新旅行档案…');

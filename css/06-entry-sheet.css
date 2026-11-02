@@ -1036,6 +1036,7 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 .record-editor-section + .record-editor-section { padding-left: 28px; border-left: 1px dashed var(--hairline); }
 .record-editor-section > h3 { margin: 0 0 20px; font-size: 19px; }
 .record-editor-section > h3 span,
+.record-editor-media-heading h3 span,
 .record-editor-files summary b { margin-right: 10px; color: var(--stamp); font: 13px var(--font-code); }
 .record-editor-fields { display: grid; gap: 14px; min-width: 0; }
 .record-editor-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 12px; }
@@ -1206,11 +1207,14 @@ dialog.record-editor.is-body-fullscreen { --editor-page-inset: 28px; inset: 0; w
 .record-editor-upload-help:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
 .record-editor-upload-limits { grid-column: 1 / -1; max-width: 70ch; color: var(--ink-soft); font-size: 12px; line-height: 1.7; }
 .record-editor-media-batch { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 16px; }
+.record-editor-media-batch[hidden],
+.record-editor-media-batch > [hidden] { display: none; }
 .record-editor-media-batch > span { margin-inline: 4px auto; color: var(--ink-soft); font-size: 13px; }
 .record-editor-media-batch button { min-height: 44px; }
 .record-editor-media-batch .media-file-remove { color: var(--stamp); }
-.media-file-list.record-editor-existing-media > li { grid-template-columns: 44px minmax(0, 1fr) auto; column-gap: 10px; }
-.record-editor-existing-media > li.is-selected { background: rgba(142, 102, 52, 0.08); }
+.media-file-list.record-editor-existing-media > li,
+.media-file-list[data-editor-removed-list] > li { grid-template-columns: 44px minmax(0, 1fr) auto; column-gap: 10px; }
+.record-editor .media-file-list > li.is-selected { background: rgba(142, 102, 52, 0.08); }
 .record-editor label.media-file-selection { display: grid; place-items: center; width: 44px; min-height: 44px; margin: 0; cursor: pointer; }
 .record-editor .media-file-selection input { width: 18px; height: 18px; min-height: 18px; margin: 0; padding: 0; accent-color: var(--stamp); cursor: pointer; }
 .record-editor-media-empty { padding: 28px 12px 12px; color: var(--ink-soft); text-align: center; font-size: 14px; }
@@ -1219,6 +1223,7 @@ dialog.record-editor.is-body-fullscreen { --editor-page-inset: 28px; inset: 0; w
 .record-editor-media-group h4 span { color: var(--ink-soft); font-size: 12px; font-weight: 400; }
 .record-editor-removed-group { padding-top: 16px; border-top: 1px dashed var(--hairline); }
 .record-editor-removed-group h4 { color: var(--stamp); }
+.record-editor-removed-group .record-editor-media-batch { margin: 12px 0 4px; }
 .record-editor-media-announcement { margin: 12px 0 0; color: var(--ink-soft); font-size: 13px; line-height: 1.7; }
 .record-editor-media-announcement:empty { display: none; }
 .media-file-list { margin: 0; padding: 0; list-style: none; }
@@ -1628,7 +1633,9 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
     .media-file-link { gap: 12px; }
     .media-file-thumbnail { flex-basis: 64px; height: 54px; }
     .media-file-actions { grid-column: 1 / -1; padding-left: 76px; }
-    .media-file-list.record-editor-existing-media > li { grid-template-columns: 44px minmax(0, 1fr); }
+    .media-file-list.record-editor-existing-media > li,
+    .media-file-list[data-editor-removed-list] > li { grid-template-columns: 44px minmax(0, 1fr); }
+    [data-editor-removed-list] .media-file-restore { grid-column: 2; justify-self: start; }
     .record-editor-existing-media .media-file-actions { grid-column: 2 / -1; padding-left: 0; flex-wrap: wrap; }
     .record-editor-upload-zone { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
     .record-editor-upload-zone > p { grid-column: 1 / -1; grid-row: 2; padding-block: 4px; }
@@ -1638,7 +1645,10 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
     .record-editor-media-batch > span { grid-column: 1 / -1; order: -1; margin: 0; }
     .record-editor-media-batch button { grid-column: span 2; width: 100%; padding: 8px 4px; font-size: 12px; }
     .record-editor-media-batch [data-media-select-all],
-    .record-editor-media-batch [data-media-select-clear] { grid-column: span 3; }
+    .record-editor-media-batch [data-media-select-clear],
+    .record-editor-media-batch [data-media-restore-all],
+    .record-editor-media-batch [data-media-restore-clear],
+    .record-editor-media-batch [data-media-restore-selected] { grid-column: span 3; }
     .media-file-actions button { border-color: var(--line); }
     .media-file-name { font-size: 14px; }
     .feedback-file-destination { margin-left: 76px; }
