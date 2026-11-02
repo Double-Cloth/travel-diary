@@ -9,28 +9,7 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2024/2024-07-08-yuxi.md",
     "photo_folder": "data/photos/yuxi",
-    "photos": [
-      "Example1.png",
-      "Example2.png",
-      "Example1.png",
-      "Example2.png",
-      "Example1.png",
-      "Example2.png",
-      "Example1.png",
-      "Example2.png",
-      "Example1.png",
-      "Example2.png",
-      "Example1.png",
-      "Example2.png",
-      "Example1.png",
-      "Example2.png",
-      "Example1.png",
-      "Example2.png",
-      "Example1.png",
-      "Example2.png",
-      "Example1.png",
-      "Example2.png"
-    ]
+    "photos": []
   },
   {
     "date": "2024-07-28",
@@ -44,9 +23,7 @@
     "photo_folder": "data/photos/chuxiong",
     "photos": [],
     "video_folder": "data/videos/chuxiong",
-    "videos": [
-      "example3.mp4"
-    ]
+    "videos": []
   },
   {
     "date": "2024-08-12",
@@ -58,13 +35,9 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2024/2024-08-12-shanghai.md",
     "photo_folder": "data/photos/shanghai",
-    "photos": [
-      "Example1.png"
-    ],
+    "photos": [],
     "video_folder": "data/videos/shanghai",
-    "videos": [
-      "example3.mp4"
-    ]
+    "videos": []
   },
   {
     "date": "2024-10-04",
