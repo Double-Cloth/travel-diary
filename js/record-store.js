@@ -329,6 +329,7 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
     const folder = record[options.folderField] || '';
     const sourceNames = sourceMedia.names || [];
     if (!names.length && !uploads.length) return { rollback };
+    if (options.syncMediaFiles === false && !uploads.length) return { rollback };
 
     // 记录修改目的地后目录会变化，原目录作为回退来源，用于搬运已有媒体。
     const sourceFolders = [sourceMedia.folder, ...(options.fallbackFolders || [])].filter(Boolean);
@@ -379,6 +380,7 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
 
     try {
         for (let index = 0; index < sourceNames.length; index += 1) {
+            if (options.syncMediaFiles === false) continue;
             const name = names[index];
             if (!name) continue;
             let exists = false;
@@ -410,7 +412,7 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
     }
 }
 
-async function stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos, previousMedia = {}) {
+async function stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos, previousMedia = {}, syncMediaFiles = true) {
     const stages = [];
     const rollback = async () => {
         for (const stage of [...stages].reverse()) await stage.rollback();
@@ -418,11 +420,11 @@ async function stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideo
     try {
         stages.push(await stageRecordMediaType(root, record, uploads.filter(upload => upload.kind === 'image'), sourcePhotos, {
             label: '照片', storageDirectory: 'photos', folderField: 'photo_folder', listField: 'photos',
-            fallbackFolders: [previousMedia.photo_folder]
+            fallbackFolders: [previousMedia.photo_folder], syncMediaFiles
         }));
         stages.push(await stageRecordMediaType(root, record, uploads.filter(upload => upload.kind === 'video'), sourceVideos, {
             label: '视频', storageDirectory: 'videos', folderField: 'video_folder', listField: 'videos',
-            fallbackFolders: [previousMedia.video_folder]
+            fallbackFolders: [previousMedia.video_folder], syncMediaFiles
         }));
         return { rollback };
     } catch (error) {
@@ -431,26 +433,50 @@ async function stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideo
     }
 }
 
-async function removeRelocatedMedia(root, records, previous, next) {
-    for (const { folderField, listField } of [
-        { folderField: 'photo_folder', listField: 'photos' },
-        { folderField: 'video_folder', listField: 'videos' }
-    ]) {
-        const oldFolder = previous[folderField] || '';
-        if (!oldFolder || oldFolder === (next[folderField] || '')) continue;
-        const oldNames = previous[listField] || [];
-        if (!oldNames.length) continue;
-        let directory;
-        try { directory = await checkedDirectory(root, oldFolder.split('/')); }
-        catch { continue; }
-        const stillReferenced = new Set(records
-            .filter(record => record && record[folderField] === oldFolder)
-            .flatMap(record => record[listField] || []));
-        for (const name of oldNames) {
-            if (stillReferenced.has(name) || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(name)) continue;
-            await fs.unlink(path.join(directory, name)).catch(() => {});
+async function stageUnusedMedia(root, records, previous) {
+    const { isSafeAsciiFileName } = await import('./slug.mjs');
+    const staged = [];
+    const directories = new Set();
+    const fileKey = file => process.platform === 'win32' ? file.toLowerCase() : file;
+    const rollback = async () => {
+        const results = await Promise.allSettled([...staged].reverse().map(({ file, backup }) => fs.rename(backup, file)));
+        const failed = results.find(result => result.status === 'rejected');
+        if (failed) throw failed.reason;
+    };
+    const commit = async () => {
+        for (const { backup } of staged) await fs.unlink(backup).catch(() => {});
+        for (const directory of directories) await fs.rmdir(directory).catch(() => {});
+    };
+    try {
+        for (const { folderField, listField, prefix } of [
+            { folderField: 'photo_folder', listField: 'photos', prefix: 'data/photos/' },
+            { folderField: 'video_folder', listField: 'videos', prefix: 'data/videos/' }
+        ]) {
+            const oldFolder = previous[folderField] || '';
+            if (!oldFolder.startsWith(prefix) || !oldFolder.slice(prefix.length).split('/').every(isSafeAsciiFileName)) continue;
+            const oldNames = previous[listField] || [];
+            if (!oldNames.length) continue;
+            const stillReferenced = new Set(records.flatMap(record => record?.[folderField] && Array.isArray(record[listField])
+                ? record[listField].map(name => fileKey(path.resolve(root, record[folderField], name))) : []));
+            let directory;
+            try { directory = await checkedDirectory(root, oldFolder.split('/')); }
+            catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+            for (const name of new Set(oldNames)) {
+                if (!isSafeAsciiFileName(name)) continue;
+                const file = path.join(directory, name);
+                if (stillReferenced.has(fileKey(file))) continue;
+                try { await checkedFile(file); }
+                catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+                const backup = path.join(directory, `.travel-media-${randomBytes(16).toString('hex')}.bak`);
+                await fs.rename(file, backup);
+                staged.push({ file, backup });
+                directories.add(directory);
+            }
         }
-        await fs.rmdir(directory).catch(() => {});
+        return { rollback, commit };
+    } catch (error) {
+        await rollback();
+        throw error;
     }
 }
 
@@ -579,6 +605,10 @@ async function updateRecord(root, payload) {
         || Array.isArray(payload.expected.record) || typeof payload.expected.markdown !== 'string')) {
         throw failure(400, '原旅行记录快照无效，请重新打开编辑器。');
     }
+    if (payload.syncMediaFiles !== undefined && typeof payload.syncMediaFiles !== 'boolean') {
+        throw failure(400, '真实媒体文件同步选项必须是布尔值。');
+    }
+    const syncMediaFiles = payload.syncMediaFiles !== false;
     const { prepareRecord, recordMetadataSnapshot } = await import('./record-input.mjs');
     const catalog = JSON.parse(await fs.readFile(path.join(root, 'assets/catalogs/countries.json'), 'utf8'));
     let prepared;
@@ -593,6 +623,7 @@ async function updateRecord(root, payload) {
     const indexFile = path.join(dataDir, 'travel_data.json');
     const releaseLock = await acquireDataLock(root);
     let mediaStage;
+    let unusedMediaStage;
     let temporaryMarkdown;
     let backupMarkdown;
     let createdMarkdown;
@@ -631,7 +662,11 @@ async function updateRecord(root, payload) {
 
         mediaStage = await stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos, {
             photo_folder: existing.photo_folder, video_folder: existing.video_folder
-        });
+        }, syncMediaFiles);
+        const nextRecords = [...records];
+        nextRecords[index] = updatedRecord;
+        // 先暂存待删除或已搬迁的文件，索引提交失败时恢复原文件。
+        if (syncMediaFiles) unusedMediaStage = await stageUnusedMedia(root, nextRecords, existing);
         if (newDiaryFile === oldDiaryFile) {
             if (oldMarkdown !== markdown) {
                 temporaryMarkdown = path.join(path.dirname(newDiaryFile), `.travel-edit-${randomBytes(16).toString('hex')}.tmp`);
@@ -653,28 +688,32 @@ async function updateRecord(root, payload) {
             }
         }
 
-        const nextRecords = [...records];
-        nextRecords[index] = updatedRecord;
         await replaceIndex(dataDir, indexFile, previous, nextRecords);
         committed = true;
         if (backupMarkdown) await fs.unlink(backupMarkdown).catch(() => {});
         backupMarkdown = null;
         if (oldDiaryFile !== newDiaryFile) await fs.unlink(oldDiaryFile).catch(() => {});
         createdMarkdown = null;
-        // 提交成功后，将已搬迁且无其他记录引用的旧媒体目录清理掉。
-        await removeRelocatedMedia(root, nextRecords, existing, updatedRecord).catch(() => {});
+        if (unusedMediaStage) await unusedMediaStage.commit();
         return { record: updatedRecord, alreadySaved: false };
     } finally {
-        if (!committed) {
-            if (temporaryMarkdown) await fs.unlink(temporaryMarkdown).catch(() => {});
-            if (backupMarkdown) {
-                await fs.unlink(oldDiaryFile).catch(() => {});
-                await fs.rename(backupMarkdown, oldDiaryFile).catch(() => {});
+        try {
+            if (!committed) {
+                if (temporaryMarkdown) await fs.unlink(temporaryMarkdown).catch(() => {});
+                if (backupMarkdown) {
+                    await fs.unlink(oldDiaryFile).catch(() => {});
+                    await fs.rename(backupMarkdown, oldDiaryFile).catch(() => {});
+                }
+                if (createdMarkdown) await fs.unlink(createdMarkdown).catch(() => {});
+                try {
+                    if (unusedMediaStage) await unusedMediaStage.rollback();
+                } finally {
+                    if (mediaStage) await mediaStage.rollback();
+                }
             }
-            if (createdMarkdown) await fs.unlink(createdMarkdown).catch(() => {});
-            if (mediaStage) await mediaStage.rollback();
+        } finally {
+            await releaseLock();
         }
-        await releaseLock();
     }
 }
 

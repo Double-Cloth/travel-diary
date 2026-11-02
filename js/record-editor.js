@@ -10,7 +10,7 @@ import {
 } from './photo-uploads.mjs?v=20261013-cleanup-v1';
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=20261013-cleanup-v1';
 import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=20261013-cleanup-v1';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=20261102-sync-media-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
 import { confirmFeedback } from './feedback-dialog.js';
@@ -281,6 +281,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <input type="file" data-editor-photos accept=".mp4,.m4v,.mov,.webm,.ogv,.ogg,image/jpeg,image/png,image/gif,image/webp,video/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
                         </div>
                         <div class="record-editor-photo-list" data-editor-photo-list aria-label="待保存图片和视频"></div>
+                        ${editing ? `<label class="record-editor-media-sync"><input type="checkbox" name="syncMediaFiles" checked aria-describedby="${editorId('MediaSyncHelp')}">删除、移动照片和视频时，同时操作真实文件</label>
+                        <p class="record-editor-note" id="${editorId('MediaSyncHelp')}">保存修改后生效：移除已有文件名会删除文件，更改媒体目录会移动文件；其他日记仍在引用的文件会保留。取消勾选仅更新引用，原文件保留，新上传文件仍会保存。</p>` : ''}
                     </section>
                     <details class="record-editor-files">
                         <summary><span>文件设置</span><span>按需设置正文路径或引用已有媒体</span></summary>
@@ -757,7 +759,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     dialog.addEventListener('input', event => {
         if (event.target.matches('[data-editor-source]')) syncMarkdown(event.target.value);
         if (event.target.closest('[data-editor-rich]')) syncPreview();
-        if (!saved && RECORD_FIELDS.includes(event.target.name)) dirty = true;
+        if (!saved && (RECORD_FIELDS.includes(event.target.name) || event.target.name === 'syncMediaFiles')) dirty = true;
         if (['country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'desc_md'].includes(event.target.name)) {
             userEditedAutofillFields.add(event.target.name);
             autoFilledValues.delete(event.target.name);
@@ -980,6 +982,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         try {
             const archive = await createDraftBlob(draft, editingRecord ? {
                 originalDescMd: editingRecord.desc_md,
+                syncMediaFiles: field('syncMediaFiles').checked,
                 expected: { record: editingRecord.sourceRecord || editingRecord, markdown: editingRecord.descMarkdown }
             } : {}, archiveProgress);
             operationProgress.throwIfCancelled();

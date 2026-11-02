@@ -1146,6 +1146,8 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 .record-editor-photos { margin-top: 24px; padding-top: 20px; border-top: 1px dashed var(--hairline); }
 .record-editor-photos h3 { margin: 0 0 16px; font-size: 19px; }
 .record-editor-photos h3 span { margin-right: 10px; color: var(--stamp); font: 13px var(--font-code); }
+.record-editor label.record-editor-media-sync { display: flex; align-items: center; gap: 10px; min-height: 44px; margin-top: 14px; cursor: pointer; }
+.record-editor .record-editor-media-sync input[type="checkbox"] { flex: 0 0 18px; width: 18px; height: 18px; min-height: 18px; margin: 0; padding: 0; accent-color: var(--stamp); }
 .record-editor-upload-zone { padding: 18px; border: 1px dashed rgba(127, 88, 43, 0.5); border-radius: 8px; background: rgba(255, 249, 229, 0.35); text-align: center; }
 .record-editor-upload-zone.is-dragging { background: var(--paper-50); box-shadow: var(--ring); }
 .record-editor-upload-zone button { width: auto; }

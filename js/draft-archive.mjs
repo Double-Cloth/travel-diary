@@ -23,7 +23,11 @@ function draftEntries(value, editContext = {}) {
         requestId: draft.requestId,
         input: draft.input,
         uploads: packageUploads,
-        ...(editContext.originalDescMd ? { originalDescMd: editContext.originalDescMd, expected: editContext.expected } : {})
+        ...(editContext.originalDescMd ? {
+            originalDescMd: editContext.originalDescMd,
+            expected: editContext.expected,
+            syncMediaFiles: editContext.syncMediaFiles
+        } : {})
     };
     return [{ name: 'draft.json', data: JSON.stringify(metadata, null, 2) + '\n' }, ...entries];
 }
@@ -79,6 +83,7 @@ function recordFromEntries(entries) {
     return {
         draft: readDraft({ format: DRAFT_FORMAT, requestId: metadata.requestId, input: metadata.input, uploads }),
         originalDescMd: metadata.originalDescMd,
-        expected: metadata.expected
+        expected: metadata.expected,
+        syncMediaFiles: metadata.syncMediaFiles
     };
 }

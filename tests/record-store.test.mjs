@@ -90,9 +90,9 @@ const readIndex = async () => JSON.parse(await fs.readFile(path.join(root, 'data
 const post = (value, headers = {}) => fetch(`${base}/api/travel-records`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers }, body: JSON.stringify(value)
 });
-const put = (originalDescMd, value, headers = {}, expected) => fetch(`${base}/api/travel-records`, {
+const put = (originalDescMd, value, headers = {}, expected, options = {}) => fetch(`${base}/api/travel-records`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers },
-    body: JSON.stringify({ originalDescMd, draft: value, ...(expected ? { expected } : {}) })
+    body: JSON.stringify({ originalDescMd, draft: value, ...(expected ? { expected } : {}), ...options })
 });
 const remove = (descMd, headers = {}) => fetch(`${base}/api/travel-records`, {
     method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers },
@@ -526,4 +526,114 @@ test('目的地变更时仍被其他记录引用的媒体不会被删除', async
     assert.equal((await put(created.desc_md, edited)).status, 200);
     assert.deepEqual(await fs.readFile(path.join(root, 'data/photos/wuxi', sharedName)), Buffer.from(png, 'base64'));
     assert.deepEqual(await fs.readFile(path.join(root, sharedFolder, sharedName)), Buffer.from(png, 'base64'));
+});
+
+test('默认同步删除照片与视频，保留其他日记引用的文件和未列入记录的文件', async () => {
+    const input = {
+        date: '2032-01-01', locality: '媒体删除',
+        photo_folder: 'data/photos/sync-delete', photos: ['removed.png', 'shared.png'],
+        video_folder: 'data/videos/sync-delete', videos: ['removed.mp4', 'shared.mp4']
+    };
+    for (const [folder, names] of [[input.photo_folder, [...input.photos, 'unlisted.png']], [input.video_folder, [...input.videos, 'unlisted.mp4']]]) {
+        await fs.mkdir(path.join(root, folder), { recursive: true });
+        for (const name of names) await fs.writeFile(path.join(root, folder, name), name);
+    }
+    const value = draft('a', input);
+    const created = (await (await post(value)).json()).record;
+    assert.equal((await post(draft('b', { ...input, date: '2032-01-02', photos: ['shared.png'], videos: ['shared.mp4'] }))).status, 201);
+    const edited = { ...value, input: { ...value.input, photos: [], videos: [] } };
+    assert.equal((await put(created.desc_md, edited)).status, 200);
+    for (const folder of [input.photo_folder, input.video_folder]) {
+        const extension = folder.startsWith('data/photos/') ? 'png' : 'mp4';
+        await assert.rejects(fs.stat(path.join(root, folder, `removed.${extension}`)), { code: 'ENOENT' });
+        for (const name of [`shared.${extension}`, `unlisted.${extension}`]) {
+            assert.equal(await fs.readFile(path.join(root, folder, name), 'utf8'), name);
+        }
+        assert.equal((await fs.readdir(path.join(root, folder))).some(name => name.endsWith('.bak')), false);
+    }
+});
+
+test('ZIP 保存可关闭真实文件同步，只更新删除与目录引用且仍写入新媒体', async () => {
+    const input = {
+        date: '2032-02-01', locality: '媒体引用',
+        photo_folder: 'data/photos/references-only', photos: ['keep.png', 'removed.png'],
+        video_folder: 'data/videos/references-only', videos: ['keep.mp4', 'removed.mp4']
+    };
+    for (const [folder, names] of [[input.photo_folder, input.photos], [input.video_folder, input.videos]]) {
+        await fs.mkdir(path.join(root, folder), { recursive: true });
+        for (const name of names) await fs.writeFile(path.join(root, folder, name), name);
+    }
+    const value = draft('a', input);
+    const created = (await (await post(value)).json()).record;
+    const edited = { ...value, input: { ...value.input, photo_folder: 'data/photos/references-target', photos: ['keep.png'], video_folder: 'data/videos/references-target', videos: ['keep.mp4'] } };
+    const response = await fetch(`${base}/api/travel-records`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Cookie: cookie, Origin: base },
+        body: await createDraftBlob(edited, { originalDescMd: created.desc_md, syncMediaFiles: false })
+    });
+    assert.equal(response.status, 200);
+    const updated = (await response.json()).record;
+    assert.equal(updated.photo_folder, edited.input.photo_folder);
+    assert.deepEqual(updated.photos, ['keep.png']);
+    assert.equal(updated.video_folder, edited.input.video_folder);
+    assert.deepEqual(updated.videos, ['keep.mp4']);
+    for (const [folder, names] of [[input.photo_folder, input.photos], [input.video_folder, input.videos]]) {
+        for (const name of names) assert.equal(await fs.readFile(path.join(root, folder, name), 'utf8'), name);
+    }
+    for (const folder of [updated.photo_folder, updated.video_folder]) await assert.rejects(fs.stat(path.join(root, folder)), { code: 'ENOENT' });
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=', 'base64');
+    const uploaded = { ...edited, uploads: [{ id: 'b'.repeat(32), name: 'new.png', data: png.toString('base64') }] };
+    const uploadResponse = await put(created.desc_md, uploaded, {}, undefined, { syncMediaFiles: false });
+    assert.equal(uploadResponse.status, 200);
+    const withUpload = (await uploadResponse.json()).record;
+    assert.deepEqual(await fs.readFile(path.join(root, withUpload.photo_folder, withUpload.photos.at(-1))), png);
+    assert.equal(await fs.readFile(path.join(root, input.photo_folder, 'keep.png'), 'utf8'), 'keep.png');
+});
+
+test('同步移动照片与视频并移除列表中的文件，后续写入失败时恢复全部原文件', async () => {
+    const input = {
+        date: '2032-03-01', locality: '媒体回滚',
+        photo_folder: 'data/photos/sync-rollback', photos: ['keep.png', 'removed.png'],
+        video_folder: 'data/videos/sync-rollback', videos: ['keep.mp4', 'removed.mp4']
+    };
+    for (const [folder, names] of [[input.photo_folder, input.photos], [input.video_folder, input.videos]]) {
+        await fs.mkdir(path.join(root, folder), { recursive: true });
+        for (const name of names) await fs.writeFile(path.join(root, folder, name), name);
+    }
+    const value = draft('a', input);
+    const created = (await (await post(value)).json()).record;
+    const targetMarkdown = 'data/travel-diary/2032/2032-03-01-occupied.md';
+    await fs.writeFile(path.join(root, targetMarkdown), '# 已有文件\n');
+    const edited = { ...value, input: { ...value.input, desc_md: targetMarkdown, photo_folder: 'data/photos/sync-moved', photos: ['keep.png'], video_folder: 'data/videos/sync-moved', videos: ['keep.mp4'] } };
+    const previous = await readIndex();
+    assert.equal((await put(created.desc_md, edited)).status, 409);
+    assert.deepEqual(await readIndex(), previous);
+    for (const [folder, names] of [[input.photo_folder, input.photos], [input.video_folder, input.videos]]) {
+        assert.deepEqual((await fs.readdir(path.join(root, folder))).sort(), [...names].sort());
+        for (const name of names) assert.equal(await fs.readFile(path.join(root, folder, name), 'utf8'), name);
+    }
+    for (const folder of [edited.input.photo_folder, edited.input.video_folder]) await assert.rejects(fs.stat(path.join(root, folder)), { code: 'ENOENT' });
+    edited.input.desc_md = created.desc_md;
+    const rename = fs.rename;
+    for (const stage of ['media', 'index']) {
+        fs.rename = async (from, to) => {
+            if ((stage === 'media' && from === path.join(root, input.video_folder, 'keep.mp4'))
+                || (stage === 'index' && to === path.join(root, 'data/travel_data.json'))) throw new Error(`模拟 ${stage} 提交失败`);
+            return rename(from, to);
+        };
+        try { assert.equal((await put(created.desc_md, edited)).status, 500); }
+        finally { fs.rename = rename; }
+        assert.deepEqual(await readIndex(), previous);
+        for (const [folder, names] of [[input.photo_folder, input.photos], [input.video_folder, input.videos]]) {
+            assert.deepEqual((await fs.readdir(path.join(root, folder))).sort(), [...names].sort());
+            for (const name of names) assert.equal(await fs.readFile(path.join(root, folder, name), 'utf8'), name);
+        }
+        for (const folder of [edited.input.photo_folder, edited.input.video_folder]) await assert.rejects(fs.stat(path.join(root, folder)), { code: 'ENOENT' });
+        await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
+    }
+    assert.equal((await put(created.desc_md, edited, {}, undefined, { syncMediaFiles: 'false' })).status, 400);
+    assert.equal((await put(created.desc_md, edited, {}, undefined, { syncMediaFiles: true })).status, 200);
+    for (const [folder, name] of [[edited.input.photo_folder, 'keep.png'], [edited.input.video_folder, 'keep.mp4']]) {
+        assert.equal(await fs.readFile(path.join(root, folder, name), 'utf8'), name);
+    }
+    for (const folder of [input.photo_folder, input.video_folder]) await assert.rejects(fs.stat(path.join(root, folder)), { code: 'ENOENT' });
 });

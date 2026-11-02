@@ -189,10 +189,11 @@ test('草稿 Blob 保留媒体源、修改快照与进度，导入分块校验 C
         input: { date: '2026-10-09', country: '中国', country_code: 'CN', locality: '苏州', title: '旅途', body: '', admin_area: '', admin_area_type: '', locality_type: '', trip_id: '', desc_md: '', photo_folder: '', photos: [], video_folder: '', videos: [] },
         uploads: [{ id: 'b'.repeat(32), name: 'movie.mp4', data }]
     };
-    const blob = await createDraftBlob(draft, { originalDescMd: 'old.md', expected: { markdown: '原文' } }, bytes => { progress = bytes; });
+    const blob = await createDraftBlob(draft, { originalDescMd: 'old.md', expected: { markdown: '原文' }, syncMediaFiles: false }, bytes => { progress = bytes; });
     const result = await readRecordSource(blob, { verifyMedia: true });
     assert.equal(result.originalDescMd, 'old.md');
     assert.equal(result.expected.markdown, '原文');
+    assert.equal(result.syncMediaFiles, false);
     assert.equal(result.draft.uploads[0].data.size, data.size);
     assert.ok(result.draft.uploads[0].data.blob instanceof Blob);
     assert.ok(progress >= data.size);
