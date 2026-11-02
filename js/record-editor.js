@@ -300,7 +300,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <h3 id="${editorId('PhotosTitle')}"><span>03</span> 图片与视频</h3>
                             <span data-editor-media-count></span>
                         </div>
-                        <p class="record-editor-media-intro">点击缩略图或文件名查看，勾选后可批量操作。新文件可移到已有文件之间，排序与移除在保存后生效。</p>
+                        <p class="record-editor-media-intro">更改在保存后生效。</p>
                         <div class="record-editor-upload-zone" data-editor-drop>
                             <button class="paper-button" type="button" data-editor-upload>添加图片或视频</button>
                             <p>或将文件拖到这里</p>
@@ -308,7 +308,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <small id="${editorId('UploadLimits')}" class="record-editor-upload-limits" data-editor-upload-limits hidden>图片：JPEG / PNG / GIF / WebP，单张最大 ${MAXIMUM_IMAGE_FILE_BYTES / 1024 / 1024} MiB · 视频：MP4 / M4V / MOV / WebM / Ogg，单个最大 ${MAXIMUM_VIDEO_FILE_BYTES / 1024 / 1024} MiB · 本次新媒体合计最大 ${MAXIMUM_MEDIA_BATCH_BYTES / 1024 / 1024} MiB</small>
                             <input type="file" data-editor-photos accept=".mp4,.m4v,.mov,.webm,.ogv,.ogg,image/jpeg,image/png,image/gif,image/webp,video/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
                         </div>
-                        <div data-editor-media-empty class="record-editor-media-empty">还没有图片或视频，添加文件来记录旅途。</div>
+                        <div data-editor-media-empty class="record-editor-media-empty">暂无图片或视频</div>
                         <div class="record-editor-media-batch" data-editor-media-batch role="group" aria-label="批量文件操作" hidden>
                             <button class="paper-button" type="button" data-media-select-all>全选文件</button>
                             <button class="paper-button" type="button" data-media-select-clear disabled>取消选择</button>
@@ -318,7 +318,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <button class="paper-button media-file-remove" type="button" data-media-batch="remove" disabled>移除所选</button>
                         </div>
                         <div class="record-editor-media-group" data-editor-existing-group hidden>
-                            <h4>文件顺序 <span>同类文件按此顺序展示 · 新文件标记为待上传</span></h4>
+                            <h4>文件顺序</h4>
                             <div data-media-viewer-group>
                                 <ul class="record-editor-existing-media media-file-list" data-editor-existing-media="photo" aria-label="图片文件操作"></ul>
                                 <ul class="record-editor-existing-media media-file-list" data-editor-existing-media="video" aria-label="视频文件操作"></ul>
@@ -337,11 +337,11 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <p class="record-editor-media-announcement" data-editor-media-announcement role="status" aria-live="polite"></p>
                         ${editing ? `<div class="record-editor-sync-setting">
                             <label class="record-editor-media-sync"><input type="checkbox" name="syncMediaFiles" checked aria-describedby="${editorId('MediaSyncHelp')}">保存时同步删除、移动真实文件</label>
-                            <p class="record-editor-note" id="${editorId('MediaSyncHelp')}">保存前会列出受影响文件供你确认；其他日记仍在使用的文件会保留。关闭后仅更新引用，保留原文件。</p>
+                            <p class="record-editor-note" id="${editorId('MediaSyncHelp')}">关闭后保留原文件；共用文件不会删除。</p>
                         </div>` : ''}
                     </section>
                     <details class="record-editor-files">
-                        <summary><span>高级文件设置</span><span>存储路径与已有文件引用</span></summary>
+                        <summary><span>高级文件设置</span><span>路径与文件名</span></summary>
                         <div class="record-editor-fields">
                             <label>正文路径 <span>自动填写 · 可修改</span><input name="desc_md" maxlength="200"></label>
                             <div class="record-editor-grid record-editor-files-grid">
@@ -354,7 +354,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                     <label>已有视频文件名 <span>选填 · 每行一个</span><textarea name="videos" rows="3" maxlength="201000" placeholder="sunset.mp4&#10;street.webm" aria-describedby="${editorId('PhotoHelp')}"></textarea></label>
                                 </div>
                             </div>
-                            <p class="record-editor-note" id="${editorId('PhotoHelp')}">这里仅填写项目内已有的文件，每行一个文件名，列表会同步更新。新图片保存到 <output data-editor-photo-path-preview></output>，新视频保存到 <output data-editor-video-path-preview></output>。</p>
+                            <p class="record-editor-note" id="${editorId('PhotoHelp')}">填写项目内已有文件。新图片：<output data-editor-photo-path-preview></output>；新视频：<output data-editor-video-path-preview></output>。</p>
                         </div>
                     </details>
                 </div>
@@ -520,8 +520,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                     mediaIndex++;
                     const destination = `${targetFolder}/${item.name}`;
                     const note = item.upload ? saved ? '已保存' : `待上传 · 保存到 ${targetFolder}/`
-                        : !getMediaFileUrl(destination) ? '目标路径无效，请检查高级设置'
-                        : destination !== path ? `保存到 ${destination} · 当前预览原文件` : `引用 ${destination}`;
+                        : !getMediaFileUrl(destination) ? '路径无效，请检查高级设置'
+                        : destination !== path ? `保存到 ${destination} · 预览原文件` : `引用 ${destination}`;
                     link.querySelector('.media-file-detail').textContent = `${type === 'photo' ? '图片' : '视频'} · ${index + 1} / ${items.length} · ${note}`;
                 }
                 const actions = row.lastElementChild;
@@ -634,7 +634,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 detail: field('syncMediaFiles')?.checked ? '保存时删除原文件（其他日记仍引用时保留）' : '仅移除引用，原文件保留'
             });
             if (link.matches('a')) mediaIndex++;
-            if (item.upload) link.querySelector('.media-file-detail').textContent = '已取消上传，恢复后加入待上传';
+            if (item.upload) link.querySelector('.media-file-detail').textContent = '已取消上传';
             const restore = document.createElement('button');
             restore.type = 'button';
             restore.className = 'media-file-restore';

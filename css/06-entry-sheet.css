@@ -1638,9 +1638,8 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
     [data-editor-removed-list] .media-file-restore { grid-column: 2; justify-self: start; }
     .record-editor-existing-media .media-file-actions { grid-column: 2 / -1; padding-left: 0; flex-wrap: wrap; }
     .record-editor-upload-zone { grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; }
-    .record-editor-upload-zone > p { grid-column: 1 / -1; grid-row: 2; padding-block: 4px; }
     .record-editor-upload-help { grid-column: 2; grid-row: 1; }
-    .record-editor-upload-limits { grid-row: 3; }
+    .record-editor-upload-limits { grid-row: 2; }
     .record-editor-media-batch { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); }
     .record-editor-media-batch > span { grid-column: 1 / -1; order: -1; margin: 0; }
     .record-editor-media-batch button { grid-column: span 2; width: 100%; padding: 8px 4px; font-size: 12px; }
@@ -1659,6 +1658,10 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
 }
 
 @media (max-width: 760px) {
+    .record-editor-upload-zone { grid-template-columns: minmax(0, 1fr) auto; }
+    .record-editor-upload-zone > p { display: none; }
+    .record-editor-upload-help { grid-column: 2; grid-row: 1; }
+    .record-editor-upload-limits { grid-row: 2; }
     .record-editor-footer > .record-editor-note { display: none; }
 }
 
