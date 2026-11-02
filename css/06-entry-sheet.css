@@ -1062,6 +1062,7 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 }
 .record-editor textarea { resize: vertical; line-height: 1.7; }
 .record-editor-workbench { margin: 18px 0 10px; border: 1px solid var(--hairline); border-radius: 6px; overflow: hidden; }
+.record-editor-word-count { display: block; padding: 6px 16px; border-top: 1px solid var(--hairline); color: var(--ink-soft); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; background: rgba(142, 102, 52, 0.08); }
 .record-editor-tabs { display: flex; align-items: stretch; gap: 4px; padding: 6px; background: rgba(142, 102, 52, 0.08); border-bottom: 1px solid var(--hairline); }
 .record-editor-tabs button { min-height: 36px; padding: 6px 14px; border: 1px solid transparent; border-radius: 4px; color: var(--ink-soft); background: transparent; cursor: pointer; }
 .record-editor-tabs button[aria-selected="true"] { color: var(--stamp); background: var(--paper-50); border-color: var(--hairline); box-shadow: 0 2px 4px rgba(78, 48, 19, 0.1); }

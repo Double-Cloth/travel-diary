@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
-import { createRecordEditor } from './record-editor.js?v=20261102-sync-media-files-v1';
+import { createRecordEditor } from './record-editor.js?v=20261102-editor-word-count-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261013-danger-first-v1';
 import { createDataTransfer } from './data-transfer.js?v=20261101-progress-timing-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';

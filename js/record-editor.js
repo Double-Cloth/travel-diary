@@ -269,6 +269,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                     <div class="record-editor-preview markdown-content" data-editor-rich contenteditable="true" role="textbox" aria-label="预览正文，可直接编辑" aria-multiline="true"></div>
                                 </div>
                                 <textarea name="body" hidden></textarea>
+                                <output class="record-editor-word-count" data-editor-word-count aria-live="off" title="统计标题与正文中的非空白字符，不含 Markdown 格式标记和链接地址">0 字</output>
                             </div>
                         </section>
                     </div>
@@ -527,6 +528,15 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             button.tabIndex = active ? 0 : -1;
         });
         dialog.querySelectorAll('[data-editor-panel]').forEach(panel => { panel.hidden = panel.dataset.editorPanel !== view; });
+        updateWordCount();
+    }
+
+    function updateWordCount() {
+        const preview = document.createElement('div');
+        // 固定解析用标题，避免空标题的标记被计入正文，并保留正文开头的内容。
+        preview.innerHTML = previewHtml(`# _\n\n${field('body').value}`, field('title').value);
+        const count = Array.from(preview.textContent.replace(/\s/g, '')).length;
+        dialog.querySelector('[data-editor-word-count]').textContent = `${count} 字`;
     }
 
     function syncMarkdown(source) {
@@ -534,6 +544,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         field('title').value = input.title;
         field('body').value = input.body;
         updateMarkdownHighlight(source);
+        updateWordCount();
         dirty = true;
     }
 
@@ -624,6 +635,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         dialog.querySelector('[data-editor-rich]').innerHTML = previewHtml('', '');
         dialog.querySelector('[data-editor-source]').value = '';
         updateMarkdownHighlight('');
+        updateWordCount();
         userEditedAutofillFields.clear();
         autoFilledValues.clear();
         userEditedPaths.clear();
