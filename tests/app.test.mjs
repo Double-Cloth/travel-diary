@@ -10,7 +10,7 @@ export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteConten
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
     restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute,
-    getInitialPhotoScale, getPhotoViewerBounds, constrainPhotoViewerTransform, getPhotoViewerBackgroundColor, updatePhotoViewerBackground };
+    getInitialPhotoScale, getPhotoViewerBounds, constrainPhotoViewerTransform, getPhotoViewerBackgroundColor, updatePhotoViewerBackground, toggleViewerFullscreen };
 export function stubSearchNavigation(route) {
     const originals = { navigateTo, activeRoute };
     const calls = [];
@@ -471,6 +471,25 @@ test('异常照片索引回退且循环切换始终得到整数下标', () => {
     assert.equal(app.normalizePhotoIndex(-1, 3), 2);
     assert.equal(app.normalizePhotoIndex(3, 3), 0);
     assert.equal(app.normalizePhotoIndex(1, 0), 0);
+});
+
+test('全屏包含整个查看器的切换按钮，再次点击退出全屏', async t => {
+    const previousDocument = globalThis.document;
+    t.after(() => { globalThis.document = previousDocument; });
+    const calls = [];
+    const viewer = { requestFullscreen: async () => calls.push('enter') };
+    globalThis.document = {
+        body: { querySelector(selector) {
+            assert.equal(selector, '[data-photo-viewer]');
+            return viewer;
+        } },
+        exitFullscreen: async () => calls.push('exit')
+    };
+    await app.toggleViewerFullscreen();
+    assert.deepEqual(calls, ['enter']);
+    document.fullscreenElement = viewer;
+    await app.toggleViewerFullscreen();
+    assert.deepEqual(calls, ['enter', 'exit']);
 });
 
 test('查看器背景避开媒体边缘颜色，黑白混合边缘采用中间色阶', () => {

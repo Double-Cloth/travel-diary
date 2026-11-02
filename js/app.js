@@ -1920,7 +1920,6 @@ function renderPhotoViewer() {
     const previousFrame = previousImage?.complete && previousImage.naturalWidth
         ? previousImage.closest('[data-photo-viewer-frame]').cloneNode(true) : null;
     releaseViewerVideo();
-    document.querySelector('[data-photo-viewer]')?.remove();
     const root = getPhotoViewerRoot();
     if (!photoViewerState || !root) {
         return;
@@ -1931,7 +1930,7 @@ function renderPhotoViewer() {
     const position = `${photoViewerState.index + 1} / ${photoViewerState.photos.length}`;
     const navigationDisabled = photoViewerState.photos.length <= 1 ? ' disabled' : '';
 
-    root.insertAdjacentHTML('beforeend', `
+    const viewerHtml = `
         <div class="photo-viewer" data-photo-viewer>
             <div class="photo-viewer-backdrop" data-action="close-photo-viewer"></div>
             <section class="photo-viewer-panel${isVideo ? ' has-video' : ''}" ${photoViewerDialog ? '' : 'role="dialog" aria-modal="true" aria-label="媒体查看器"'} tabindex="-1">
@@ -1958,7 +1957,25 @@ function renderPhotoViewer() {
                 <p class="photo-viewer-caption">${renderPhotoViewerCaption(photo)}</p>
             </section>
         </div>
-    `);
+    `;
+
+    const viewer = root.querySelector('[data-photo-viewer]');
+    if (viewer) {
+        // 保留全屏宿主和舞台，切换时沿用当前背景，不回退到默认色。
+        const template = document.createElement('template');
+        template.innerHTML = viewerHtml;
+        const nextViewer = template.content;
+        const stage = viewer.querySelector('[data-photo-viewer-stage]');
+        stage.replaceChildren(...nextViewer.querySelector('[data-photo-viewer-stage]').childNodes);
+        stage.classList.remove('is-media-error');
+        viewer.querySelector('.photo-viewer-panel').classList.toggle('has-video', isVideo);
+        viewer.querySelector('.photo-viewer-count').textContent = position;
+        for (const selector of ['.photo-viewer-controls', '.photo-viewer-caption']) {
+            viewer.querySelector(selector).replaceWith(nextViewer.querySelector(selector));
+        }
+    } else {
+        root.insertAdjacentHTML('beforeend', viewerHtml);
+    }
 
     enhanceCustomSelects(root.querySelector('[data-photo-viewer]'));
     void updatePhotoViewerFileSize(photo, root.querySelector('[data-photo-viewer-size]'));
@@ -2062,7 +2079,7 @@ function updatePhotoViewerBackground(media) {
         stage.style.setProperty('--viewer-screen', getPhotoViewerBackgroundColor(pixels, canvas.width, canvas.height));
         return true;
     } catch {
-        // 媒体不可读取像素时沿用暖灰底色，不影响查看和播放。
+        // 媒体不可读取像素时沿用当前底色，不影响查看和播放。
     }
 }
 
@@ -2338,8 +2355,8 @@ async function toggleViewerFullscreen() {
         await document.exitFullscreen?.();
         return;
     }
-    const stage = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-stage]');
-    await stage?.requestFullscreen?.();
+    const viewer = getPhotoViewerRoot()?.querySelector('[data-photo-viewer]');
+    await viewer?.requestFullscreen?.();
 }
 
 function renderPhotoViewerCaption(photo) {
