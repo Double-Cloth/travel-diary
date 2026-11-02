@@ -253,6 +253,29 @@ test('原生对话框打开时媒体和夹层的 Escape 快捷键不响应', t =
     assert.doesNotThrow(() => app.handleDocumentKeydown({ key: 'Escape' }));
 });
 
+test('原生对话框内的媒体查看器接收切换快捷键，背景对话框不响应', t => {
+    const previous = globalThis.document;
+    const state = { photos: [{ kind: 'image' }, { kind: 'video' }], index: 0 };
+    const navigation = app.stubViewerNavigation(state);
+    globalThis.document = {
+        querySelector: selector => ['dialog[open]', '[data-photo-viewer]'].includes(selector) ? {} : null,
+        body: { querySelector: () => null }
+    };
+    t.after(() => { globalThis.document = previous; navigation.restore(); });
+    let prevented = 0;
+    app.handleDocumentKeydown({
+        key: 'ArrowRight', preventDefault: () => prevented++,
+        target: { closest: selector => selector === '[data-photo-viewer]' ? {} : null }
+    });
+    assert.equal(state.index, 1);
+    assert.equal(prevented, 1);
+    app.handleDocumentKeydown({
+        key: 'ArrowLeft', preventDefault: () => prevented++, target: { closest: () => null }
+    });
+    assert.equal(state.index, 1);
+    assert.equal(prevented, 1);
+});
+
 test('跳到内容直接聚焦正文，不改变章节路由', t => {
     const previous = globalThis.document;
     const calls = [];

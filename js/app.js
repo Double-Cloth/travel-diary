@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
-import { createRecordEditor } from './record-editor.js?v=20261102-editor-word-count-v1';
+import { createRecordEditor } from './record-editor.js?v=20261102-editor-media-viewer-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261013-danger-first-v1';
 import { createDataTransfer } from './data-transfer.js?v=20261101-progress-timing-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
@@ -93,6 +93,7 @@ let photoSleeveVideoObserver = null;
 const observedPhotoSleeves = new Set();
 const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
+let photoViewerDialog = null;
 let photoViewerTrigger = null;
 let photoViewerShellWasInert = false;
 let photoGestureState = createPhotoGestureState();
@@ -1881,6 +1882,18 @@ function openPhotoViewer(photos, index = 0) {
     if (!photoViewerState) {
         photoViewerTrigger = document.activeElement;
         photoViewerShellWasInert = Boolean(refs.shell?.inert);
+        // 用独立的原生对话框进入顶层，保留背后的编辑器和删除确认状态。
+        if (document.querySelector('dialog[open]')) {
+            photoViewerDialog = document.createElement('dialog');
+            photoViewerDialog.className = 'media-viewer-host';
+            photoViewerDialog.setAttribute('aria-label', '媒体查看器');
+            photoViewerDialog.addEventListener('cancel', event => {
+                event.preventDefault();
+                closePhotoViewerDialog();
+            });
+            document.body.append(photoViewerDialog);
+            photoViewerDialog.showModal();
+        }
     }
     if (refs.shell) refs.shell.inert = true;
     document.body.classList.add('media-viewer-open');
@@ -1919,7 +1932,7 @@ function renderPhotoViewer() {
     root.insertAdjacentHTML('beforeend', `
         <div class="photo-viewer" data-photo-viewer>
             <div class="photo-viewer-backdrop" data-action="close-photo-viewer"></div>
-            <section class="photo-viewer-panel${isVideo ? ' has-video' : ''}" role="dialog" aria-modal="true" aria-label="媒体查看器" tabindex="-1">
+            <section class="photo-viewer-panel${isVideo ? ' has-video' : ''}" ${photoViewerDialog ? '' : 'role="dialog" aria-modal="true" aria-label="媒体查看器"'} tabindex="-1">
                 <div class="photo-viewer-toolbar">
                     <div class="photo-viewer-nav-group photo-viewer-control-group" aria-label="媒体切换">
                         <button class="photo-viewer-control" type="button" data-action="photo-prev" data-photo-action="prev" aria-label="上一项媒体"${navigationDisabled}>${renderPhotoViewerControlIcon('previous')}</button>
@@ -2085,6 +2098,9 @@ function closePhotoViewerDialog() {
     stopObservingPhotoViewerStage();
     document.querySelector('[data-photo-viewer]')?.remove();
     photoViewerState = null;
+    photoViewerDialog?.close();
+    photoViewerDialog?.remove();
+    photoViewerDialog = null;
     photoGestureState = createPhotoGestureState();
     clearPhotoRotationTimer();
     if (refs.shell) refs.shell.inert = photoViewerShellWasInert;
@@ -2094,11 +2110,12 @@ function closePhotoViewerDialog() {
 }
 
 function getPhotoViewerRoot() {
+    if (photoViewerDialog) return photoViewerDialog;
     return document.body;
 }
 
 function getPhotoViewerItems(button) {
-    const buttons = Array.from(button.closest('.photo-sleeve')?.querySelectorAll('[data-action="open-media-viewer"]:not([hidden])') || [button]);
+    const buttons = Array.from(button.closest('.photo-sleeve, [data-media-viewer-group]')?.querySelectorAll('[data-action="open-media-viewer"]:not([hidden])') || [button]);
     return buttons.map(item => ({
         kind: item.dataset.mediaKind === 'video' ? 'video' : 'image',
         name: item.dataset.mediaName || '',
@@ -4067,8 +4084,8 @@ function getEntryBackgroundHash() {
 }
 
 function handleDocumentKeydown(event) {
-    // 原生对话框独占键盘操作，避免 Escape 关闭其背后的夹层或触发媒体快捷键。
-    if (document.querySelector('dialog[open]')) return;
+    // 仅当前查看器接收快捷键，其他原生对话框仍独占键盘操作。
+    if (document.querySelector('dialog[open]') && !event.target?.closest?.('[data-photo-viewer]')) return;
     if (isPhotoViewerOpen()) {
         if (trapPanelFocus(event, document.querySelector('.photo-viewer-panel'))) return;
         if (event.key === 'Escape' && document.fullscreenElement) {

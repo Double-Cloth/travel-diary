@@ -1,4 +1,4 @@
-import { escapeHtml } from './utils.js';
+import { escapeHtml, getMediaFileUrl } from './utils.js';
 import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
@@ -289,11 +289,17 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <label>正文路径 <span>自动填写 · 可修改</span><input name="desc_md" maxlength="200"></label>
                             <div class="record-editor-grid record-editor-files-grid">
                                 <label>照片目录 <span>选填</span><input name="photo_folder" maxlength="200" placeholder="data/photos/suzhou" aria-describedby="${editorId('PhotoHelp')}"></label>
-                                <label>已有照片文件名 <span>选填 · 每行一个</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="${editorId('PhotoHelp')}"></textarea></label>
+                                <div>
+                                    <label>已有照片文件名 <span>选填 · 每行一个</span><textarea name="photos" rows="3" maxlength="201000" placeholder="canal.jpg&#10;garden.jpg" aria-describedby="${editorId('PhotoHelp')}"></textarea></label>
+                                    <ul class="record-editor-existing-media" data-editor-existing-media="photo" data-media-viewer-group aria-label="已有照片操作"></ul>
+                                </div>
                                 <label>视频目录 <span>选填</span><input name="video_folder" maxlength="200" placeholder="data/videos/suzhou" aria-describedby="${editorId('PhotoHelp')}"></label>
-                                <label>已有视频文件名 <span>选填 · 每行一个</span><textarea name="videos" rows="3" maxlength="201000" placeholder="sunset.mp4&#10;street.webm" aria-describedby="${editorId('PhotoHelp')}"></textarea></label>
+                                <div>
+                                    <label>已有视频文件名 <span>选填 · 每行一个</span><textarea name="videos" rows="3" maxlength="201000" placeholder="sunset.mp4&#10;street.webm" aria-describedby="${editorId('PhotoHelp')}"></textarea></label>
+                                    <ul class="record-editor-existing-media" data-editor-existing-media="video" data-media-viewer-group aria-label="已有视频操作"></ul>
+                                </div>
                             </div>
-                            <p class="record-editor-note" id="${editorId('PhotoHelp')}">这里仅填写项目内已有的媒体；新图片保存到 <output data-editor-photo-path-preview></output>，新视频保存到 <output data-editor-video-path-preview></output>。</p>
+                            <p class="record-editor-note" id="${editorId('PhotoHelp')}">这里仅填写项目内已有的媒体；点击下方文件名可查看、旋转或下载，排序和移除在保存后生效。新图片保存到 <output data-editor-photo-path-preview></output>，新视频保存到 <output data-editor-video-path-preview></output>。</p>
                             ${editing ? `<div>
                                 <label class="record-editor-media-sync"><input type="checkbox" name="syncMediaFiles" checked aria-describedby="${editorId('MediaSyncHelp')}">删除、移动照片和视频时，同时操作真实文件</label>
                                 <p class="record-editor-note" id="${editorId('MediaSyncHelp')}">保存修改后生效：移除已有文件名会删除文件，更改媒体目录会移动文件；其他日记仍在引用的文件会保留。取消勾选仅更新引用，原文件保留。</p>
@@ -345,6 +351,28 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         updatePathHint();
         updateAutofill();
         updateBodyView(bodyView);
+        renderExistingMedia();
+    }
+
+    function renderExistingMedia() {
+        for (const type of ['photo', 'video']) {
+            const list = dialog.querySelector(`[data-editor-existing-media="${type}"]`);
+            const names = field(`${type}s`).value.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
+            const folder = field(`${type}_folder`).value.trim();
+            let mediaIndex = 0;
+            list.innerHTML = names.map((name, index) => {
+                const src = getMediaFileUrl(`${folder}/${name}`);
+                const label = escapeHtml(name);
+                return `<li>
+                    ${src ? `<a href="${escapeHtml(src)}" data-action="open-media-viewer" data-media-kind="${type === 'video' ? 'video' : 'image'}" data-media-src="${escapeHtml(src)}" data-media-name="${label}" data-media-alt="${label}" data-media-index="${mediaIndex++}" aria-label="查看文件：${label}">${label}</a>` : `<span>${label}</span>`}
+                    <div class="record-editor-existing-actions">
+                        <button type="button" data-existing-media-action="previous" data-media-type="${type}" data-media-row="${index}" aria-label="前移 ${label}"${saved || index === 0 ? ' disabled' : ''}>前移</button>
+                        <button type="button" data-existing-media-action="next" data-media-type="${type}" data-media-row="${index}" aria-label="后移 ${label}"${saved || index === names.length - 1 ? ' disabled' : ''}>后移</button>
+                        <button type="button" data-existing-media-action="remove" data-media-type="${type}" data-media-row="${index}" aria-label="移除 ${label}"${saved ? ' disabled' : ''}>移除</button>
+                    </div>
+                </li>`;
+            }).join('');
+        }
     }
 
     function updateCountry(fillName = false) {
@@ -645,6 +673,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         updatePathHint();
         updateAutofill();
         renderPhotos();
+        renderExistingMedia();
         status('编辑器已清空，可以重新填写内容。');
         field('date').focus();
     }
@@ -781,6 +810,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (['desc_md', 'photo_folder', 'video_folder'].includes(event.target.name)) userEditedPaths.add(event.target.name);
         if (['country_code', 'date', 'admin_area', 'locality'].includes(event.target.name)) updateAutofill();
         if (event.target.name === 'title') updateBodyView(bodyView);
+        if (['photo_folder', 'photos', 'video_folder', 'videos', 'date', 'locality'].includes(event.target.name)) renderExistingMedia();
     });
     dialog.addEventListener('scroll', event => {
         if (!event.target.matches('[data-editor-source]')) return;
@@ -839,6 +869,22 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     dialog.addEventListener('click', async event => {
         if (event.target.closest('[data-editor-close]')) close();
         if (busy || readingPhotos) return;
+        const mediaAction = event.target.closest('[data-existing-media-action]');
+        if (mediaAction && !saved) {
+            const input = field(`${mediaAction.dataset.mediaType}s`);
+            const names = input.value.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
+            const index = Number(mediaAction.dataset.mediaRow);
+            const action = mediaAction.dataset.existingMediaAction;
+            const next = index + (action === 'previous' ? -1 : 1);
+            if (action === 'remove') names.splice(index, 1);
+            else if (next >= 0 && next < names.length) [names[index], names[next]] = [names[next], names[index]];
+            input.value = names.join('\n');
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            const list = dialog.querySelector(`[data-editor-existing-media="${mediaAction.dataset.mediaType}"]`);
+            const row = list.children[Math.min(action === 'remove' ? index : next, names.length - 1)];
+            (row?.querySelector(`[data-existing-media-action="${action}"]:not(:disabled)`) || row?.querySelector('a') || input).focus();
+            return;
+        }
         const autocompleteOption = event.target.closest('[data-autocomplete-value]');
         if (autocompleteOption) {
             event.preventDefault();
@@ -965,6 +1011,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             updateBodyView(bodyView);
             renderPhotos();
             dialog.querySelector('.record-editor-files').open = Boolean(draft.input.desc_md || draft.input.photo_folder || draft.input.photos.length || draft.input.video_folder || draft.input.videos.length);
+            renderExistingMedia();
             status('草稿已导入，请核对内容后保存。');
             operationProgress.complete('草稿和媒体已导入，请核对后保存。');
         } catch (error) {
@@ -1066,6 +1113,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             dialog.querySelector('[data-editor-rich]').contentEditable = String(!saved);
             dialog.querySelector('[data-editor-source]').readOnly = saved;
             renderPhotos();
+            renderExistingMedia();
         }
     });
     window.addEventListener('beforeunload', event => {

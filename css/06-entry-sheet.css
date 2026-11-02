@@ -240,6 +240,21 @@
 /* 桌面端保持原有左右书页结构，移动端由响应式层把摘要和媒体网格串成连续纸面。 */
 .entry-photos-summary { display: contents; }
 
+.media-viewer-host {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+}
+.media-viewer-host::backdrop { background: transparent; }
+
 .photo-viewer {
     /* 中等明度的暖灰衬底，让深色与浅色媒体都能显出边界。 */
     --viewer-screen: #b8b5ad;
@@ -1126,6 +1141,17 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 .record-editor-files { margin-top: 24px; border-top: 1px dashed var(--hairline); }
 .record-editor-files summary { padding: 18px 0; cursor: pointer; color: var(--ink-soft); font-size: 17px; }
 .record-editor-files summary > span:last-child { margin-left: 10px; font-size: 12px; color: var(--ink-muted); }
+.record-editor-existing-media { display: grid; gap: 8px; max-height: 240px; overflow-y: auto; overscroll-behavior: contain; margin: 10px 0 0; padding: 0; list-style: none; }
+.record-editor-existing-media:empty { display: none; }
+.record-editor-existing-media li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding-block: 6px; border-bottom: 1px solid var(--hairline); }
+.record-editor-existing-media a,
+.record-editor-existing-media li > span { flex: 1 1 120px; min-width: 0; color: var(--ink); font-size: 14px; line-height: 1.6; overflow-wrap: anywhere; }
+.record-editor-existing-media a { text-decoration: underline; text-underline-offset: 3px; }
+.record-editor-existing-media a:hover { color: var(--stamp); }
+.record-editor-existing-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.record-editor-existing-actions button { min-height: 44px; padding: 6px 8px; border: 1px solid var(--hairline); border-radius: 3px; background: var(--paper-50); color: var(--ink-soft); font: inherit; font-size: 13px; cursor: pointer; }
+.record-editor-existing-actions button:hover:not(:disabled) { background: var(--control-face); }
+.record-editor-existing-actions button:disabled { opacity: 0.4; cursor: default; }
 .record-editor-note { margin: 0; color: var(--ink-muted); font-size: 12px; line-height: 1.7; }
 .record-editor-autofill { padding: 9px 11px; border-left: 3px solid rgba(139, 52, 45, 0.42); background: rgba(142, 102, 52, 0.07); }
 .record-editor-note output { color: var(--ink-soft); font-family: var(--font-code); overflow-wrap: anywhere; }

@@ -1,3 +1,5 @@
+import { getMediaFileUrl } from './utils.js';
+
 let feedbackDialog;
 let feedbackResolver;
 let feedbackTrigger;
@@ -24,7 +26,7 @@ function getFeedbackDialog() {
             <div class="feedback-dialog-guide" data-feedback-guide hidden></div>
             <details class="feedback-dialog-files" data-feedback-files hidden>
                 <summary data-feedback-files-title>查看待删除文件</summary>
-                <ul data-feedback-files-list></ul>
+                <ul data-feedback-files-list data-media-viewer-group></ul>
             </details>
             <div class="feedback-dialog-actions">
                 <button class="paper-button feedback-dialog-cancel" type="button" data-feedback-cancel>取消</button>
@@ -68,23 +70,25 @@ function openFeedback(message, options = {}) {
     dialog.querySelector('[data-feedback-label]').textContent = options.label || '旅行档案';
     dialog.querySelector('[data-feedback-title]').textContent = options.title || (isConfirmation ? '请确认操作' : '操作提示');
     dialog.querySelector('[data-feedback-message]').textContent = message || '';
-    const files = (Array.isArray(options.files) ? options.files : []).filter(file => typeof file?.path === 'string'
-        && /^data\/(photos|videos)\//.test(file.path)
-        && file.path.split('/').every(part => part && part !== '.' && part !== '..'));
+    const files = (Array.isArray(options.files) ? options.files : []).filter(file => getMediaFileUrl(file?.path));
     const fileDetails = dialog.querySelector('[data-feedback-files]');
     fileDetails.hidden = !files.length;
     fileDetails.open = false;
     dialog.querySelector('[data-feedback-files-title]').textContent = `查看待删除文件（${files.length}）`;
     const fileList = dialog.querySelector('[data-feedback-files-list]');
     fileList.textContent = '';
-    for (const file of files) {
+    for (const [index, file] of files.entries()) {
         const item = document.createElement('li');
         const link = document.createElement('a');
         link.textContent = file.path;
-        link.href = new URL(file.path.split('/').map(encodeURIComponent).join('/'), window.location.href).href;
-        link.target = '_blank';
-        link.rel = 'noopener noreferrer';
-        link.setAttribute('aria-label', `查看文件：${file.path}（新窗口）`);
+        link.href = getMediaFileUrl(file.path);
+        link.dataset.action = 'open-media-viewer';
+        link.dataset.mediaKind = file.path.startsWith('data/videos/') ? 'video' : 'image';
+        link.dataset.mediaSrc = link.href;
+        link.dataset.mediaName = file.path.split('/').pop();
+        link.dataset.mediaAlt = file.path;
+        link.dataset.mediaIndex = String(index);
+        link.setAttribute('aria-label', `查看文件：${file.path}`);
         item.append(link);
         if (file.destination) {
             const note = document.createElement('p');
