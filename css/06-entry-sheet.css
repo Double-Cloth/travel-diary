@@ -1141,22 +1141,27 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 .record-editor-formatting button { min-height: 32px; padding: 4px 10px; border-radius: 4px; background: transparent; color: var(--ink-soft); cursor: pointer; font-size: 13px; }
 .record-editor-formatting button:hover { background: rgba(142, 102, 52, 0.13); }
 .record-editor-formatting button:disabled { cursor: default; opacity: 0.5; }
-dialog.record-editor.is-body-fullscreen { inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; translate: none; }
+dialog.record-editor.is-body-fullscreen { --editor-page-inset: 28px; inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; box-shadow: none; translate: none; }
 .record-editor.is-body-fullscreen > .record-editor-heading,
 .record-editor.is-body-fullscreen .record-editor-footer,
 .record-editor.is-body-fullscreen .record-editor-scroll > :not(.record-editor-layout),
 .record-editor.is-body-fullscreen .record-editor-layout > :not(.record-editor-body-section),
 .record-editor.is-body-fullscreen .record-editor-body-section > :not(.record-editor-workbench) { display: none; }
 .record-editor.is-body-fullscreen form { flex: 1; }
-.record-editor.is-body-fullscreen .record-editor-scroll { flex: 1; min-height: 0; padding: 0; overflow: hidden; }
+.record-editor.is-body-fullscreen .record-editor-scroll { flex: 1; min-height: 0; padding: 0; overflow: hidden; scrollbar-gutter: auto; }
 .record-editor.is-body-fullscreen .record-editor-layout { display: block; height: 100%; }
 .record-editor.is-body-fullscreen .record-editor-body-section { height: 100%; padding: 0; border: 0; }
 .record-editor.is-body-fullscreen .record-editor-workbench { display: flex; flex-direction: column; height: 100%; margin: 0; border: 0; border-radius: 0; }
 .record-editor.is-body-fullscreen .record-editor-toolbar,
 .record-editor.is-body-fullscreen .record-editor-formatting,
 .record-editor.is-body-fullscreen .record-editor-word-count { flex-shrink: 0; }
-.record-editor.is-body-fullscreen .record-editor-toolbar { padding-top: env(safe-area-inset-top); padding-right: env(safe-area-inset-right); padding-left: env(safe-area-inset-left); }
-.record-editor.is-body-fullscreen .record-editor-word-count { padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+.record-editor.is-body-fullscreen .record-editor-toolbar { padding: env(safe-area-inset-top) max(calc(var(--editor-page-inset) - 6px), env(safe-area-inset-right)) 0 max(calc(var(--editor-page-inset) - 6px), env(safe-area-inset-left)); }
+.record-editor.is-body-fullscreen .record-editor-formatting,
+.record-editor.is-body-fullscreen .record-editor-word-count { padding-right: max(var(--editor-page-inset), env(safe-area-inset-right)); padding-left: max(var(--editor-page-inset), env(safe-area-inset-left)); }
+.record-editor.is-body-fullscreen .record-editor-word-count { padding-bottom: calc(6px + env(safe-area-inset-bottom)); }
+.record-editor.is-body-fullscreen .record-editor-source-layer pre,
+.record-editor.is-body-fullscreen .record-editor-source-layer textarea,
+.record-editor.is-body-fullscreen .record-editor-preview { padding: var(--editor-page-inset) max(var(--editor-page-inset), env(safe-area-inset-right)) var(--editor-page-inset) max(var(--editor-page-inset), env(safe-area-inset-left)); }
 .record-editor.is-body-fullscreen [data-editor-panel] { flex: 1; min-height: 0; }
 .record-editor.is-body-fullscreen [data-editor-panel="preview"]:not([hidden]) { display: flex; flex-direction: column; }
 .record-editor.is-body-fullscreen .record-editor-source-layer { height: 100%; }
@@ -1531,6 +1536,7 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
 }
 
 @media (max-width: 540px) {
+    dialog.record-editor.is-body-fullscreen { --editor-page-inset: 16px; }
     .record-editor::backdrop { backdrop-filter: none; }
     dialog.record-password.entry-sheet,
     dialog.data-import-confirm.entry-sheet,
