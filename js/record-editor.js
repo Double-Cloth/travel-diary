@@ -300,7 +300,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <h3 id="${editorId('PhotosTitle')}"><span>03</span> 图片与视频</h3>
                             <span data-editor-media-count></span>
                         </div>
-                        <p class="record-editor-media-intro">更改在保存后生效。</p>
+                        <p class="record-editor-media-intro">点击缩略图或文件名预览，勾选文件可批量排序或移除。更改保存后生效。</p>
                         <div class="record-editor-upload-zone" data-editor-drop>
                             <button class="paper-button" type="button" data-editor-upload>添加图片或视频</button>
                             <p>或将文件拖到这里</p>
@@ -308,14 +308,18 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <small id="${editorId('UploadLimits')}" class="record-editor-upload-limits" data-editor-upload-limits hidden>图片：JPEG / PNG / GIF / WebP，单张最大 ${MAXIMUM_IMAGE_FILE_BYTES / 1024 / 1024} MiB · 视频：MP4 / M4V / MOV / WebM / Ogg，单个最大 ${MAXIMUM_VIDEO_FILE_BYTES / 1024 / 1024} MiB · 本次新媒体合计最大 ${MAXIMUM_MEDIA_BATCH_BYTES / 1024 / 1024} MiB</small>
                             <input type="file" data-editor-photos accept=".mp4,.m4v,.mov,.webm,.ogv,.ogg,image/jpeg,image/png,image/gif,image/webp,video/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
                         </div>
-                        <div data-editor-media-empty class="record-editor-media-empty">暂无图片或视频</div>
+                        <div data-editor-media-empty class="record-editor-media-empty">暂无图片或视频，可从上方添加。</div>
                         <div class="record-editor-media-batch" data-editor-media-batch role="group" aria-label="批量文件操作" hidden>
-                            <button class="paper-button" type="button" data-media-select-all>全选文件</button>
-                            <button class="paper-button" type="button" data-media-select-clear disabled>取消选择</button>
-                            <span data-media-selected-count role="status">未选择文件</span>
-                            <button class="paper-button" type="button" data-media-batch="previous" disabled>前移所选</button>
-                            <button class="paper-button" type="button" data-media-batch="next" disabled>后移所选</button>
-                            <button class="paper-button media-file-remove" type="button" data-media-batch="remove" disabled>移除所选</button>
+                            <div class="record-editor-media-selection">
+                                <span data-media-selected-count role="status" hidden>未选择文件</span>
+                                <button class="paper-button" type="button" data-media-select-all>全选文件</button>
+                                <button class="paper-button" type="button" data-media-select-clear disabled>取消选择</button>
+                            </div>
+                            <div class="record-editor-media-operations" data-editor-media-operations hidden>
+                                <button class="paper-button" type="button" data-media-batch="previous" disabled>前移所选</button>
+                                <button class="paper-button" type="button" data-media-batch="next" disabled>后移所选</button>
+                                <button class="paper-button media-file-remove" type="button" data-media-batch="remove" disabled>移除所选</button>
+                            </div>
                         </div>
                         <div class="record-editor-media-group" data-editor-existing-group hidden>
                             <h4>文件顺序</h4>
@@ -327,17 +331,21 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <div class="record-editor-media-group record-editor-removed-group" data-editor-removed-group hidden>
                             <h4>待移除 <span>保存前可恢复</span></h4>
                             <div class="record-editor-media-batch" data-editor-restore-batch role="group" aria-label="批量恢复操作" hidden>
-                                <button class="paper-button" type="button" data-media-restore-all>全选待移除</button>
-                                <button class="paper-button" type="button" data-media-restore-clear hidden>取消选择</button>
-                                <span data-media-restore-count role="status" hidden></span>
-                                <button class="paper-button" type="button" data-media-restore-selected hidden>恢复所选</button>
+                                <div class="record-editor-media-selection">
+                                    <span data-media-restore-count role="status" hidden></span>
+                                    <button class="paper-button" type="button" data-media-restore-all>全选待移除</button>
+                                    <button class="paper-button" type="button" data-media-restore-clear hidden>取消选择</button>
+                                </div>
+                                <div class="record-editor-media-operations" data-editor-restore-operations hidden>
+                                    <button class="paper-button" type="button" data-media-restore-selected hidden>恢复所选</button>
+                                </div>
                             </div>
                             <ul class="media-file-list" data-editor-removed-list data-media-viewer-group aria-label="待移除文件"></ul>
                         </div>
                         <p class="record-editor-media-announcement" data-editor-media-announcement role="status" aria-live="polite"></p>
                         ${editing ? `<div class="record-editor-sync-setting">
                             <label class="record-editor-media-sync"><input type="checkbox" name="syncMediaFiles" checked aria-describedby="${editorId('MediaSyncHelp')}">保存时同步删除、移动真实文件</label>
-                            <p class="record-editor-note" id="${editorId('MediaSyncHelp')}">关闭后保留原文件；共用文件不会删除。</p>
+                            <p class="record-editor-note" id="${editorId('MediaSyncHelp')}">关闭后仅更新文件引用，原文件不删除或移动；其他日记使用的文件始终保留。</p>
                         </div>` : ''}
                     </section>
                     <details class="record-editor-files">
@@ -354,7 +362,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                     <label>已有视频文件名 <span>选填 · 每行一个</span><textarea name="videos" rows="3" maxlength="201000" placeholder="sunset.mp4&#10;street.webm" aria-describedby="${editorId('PhotoHelp')}"></textarea></label>
                                 </div>
                             </div>
-                            <p class="record-editor-note" id="${editorId('PhotoHelp')}">填写项目内已有文件。新图片：<output data-editor-photo-path-preview></output>；新视频：<output data-editor-video-path-preview></output>。</p>
+                            <p class="record-editor-note" id="${editorId('PhotoHelp')}">已有文件名与上方列表同步。新图片保存到 <output data-editor-photo-path-preview></output>；新视频保存到 <output data-editor-video-path-preview></output>。</p>
                         </div>
                     </details>
                 </div>
@@ -558,6 +566,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const count = dialog.querySelector('[data-media-selected-count]');
         count.textContent = `已选 ${selectedMedia.size} 项`;
         count.hidden = !selectedMedia.size;
+        dialog.querySelector('[data-editor-media-operations]').hidden = !selectedMedia.size;
         const clear = dialog.querySelector('[data-media-select-clear]');
         clear.hidden = !selectedMedia.size;
         clear.disabled = saved || !selectedMedia.size;
@@ -661,6 +670,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         dialog.querySelector('[data-media-restore-all]').hidden = selectedRemovedMedia.size === keys.size;
         dialog.querySelector('[data-media-restore-clear]').hidden = !selectedRemovedMedia.size;
         dialog.querySelector('[data-media-restore-selected]').hidden = !selectedRemovedMedia.size;
+        dialog.querySelector('[data-editor-restore-operations]').hidden = !selectedRemovedMedia.size;
         const count = dialog.querySelector('[data-media-restore-count]');
         count.hidden = !selectedRemovedMedia.size;
         count.textContent = `已选 ${selectedRemovedMedia.size} 项`;
