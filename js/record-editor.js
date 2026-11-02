@@ -295,7 +295,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <p class="record-editor-note" id="${editorId('PhotoHelp')}">这里仅填写项目内已有的媒体；新图片保存到 <output data-editor-photo-path-preview></output>，新视频保存到 <output data-editor-video-path-preview></output>。</p>
                             ${editing ? `<div>
                                 <label class="record-editor-media-sync"><input type="checkbox" name="syncMediaFiles" checked aria-describedby="${editorId('MediaSyncHelp')}">删除、移动照片和视频时，同时操作真实文件</label>
-                                <p class="record-editor-note" id="${editorId('MediaSyncHelp')}">保存修改后生效：移除已有文件名会删除文件，更改媒体目录会移动文件；其他日记仍在引用的文件会保留。取消勾选仅更新引用，原文件保留，新上传文件仍会保存。</p>
+                                <p class="record-editor-note" id="${editorId('MediaSyncHelp')}">保存修改后生效：移除已有文件名会删除文件，更改媒体目录会移动文件；其他日记仍在引用的文件会保留。取消勾选仅更新引用，原文件保留。</p>
                             </div>` : ''}
                         </div>
                     </details>
