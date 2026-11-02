@@ -551,5 +551,31 @@
     "desc_md": "data/travel-diary/2026/2026-10-25-alashan.md",
     "photo_folder": "data/photos/alashan",
     "photos": []
+  },
+  {
+    "date": "2024-07-10",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "云南省",
+    "admin_area_type": "省",
+    "locality": "昆明市",
+    "locality_type": "山脉",
+    "trip_id": "2024-07-10-kunming",
+    "desc_md": "data/travel-diary/2024/2024-07-10-kunming.md",
+    "photo_folder": "data/photos/kunming",
+    "photos": []
+  },
+  {
+    "date": "2024-07-18",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "云南省",
+    "admin_area_type": "省",
+    "locality": "昆明市",
+    "locality_type": "山脉",
+    "trip_id": "2024-07-18-kunming",
+    "desc_md": "data/travel-diary/2024/2024-07-18-kunming.md",
+    "photo_folder": "data/photos/kunming",
+    "photos": []
   }
 ]
