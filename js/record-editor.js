@@ -972,8 +972,26 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             return;
         }
         const draft = getDraft();
-        try { prepareRecord(draft, countries); }
+        let prepared;
+        try { prepared = prepareRecord(draft, countries); }
         catch (error) { status(error.message); return; }
+        if (editingRecord && field('syncMediaFiles').checked) {
+            const previous = editingRecord.sourceRecord || editingRecord;
+            const removesMedia = ['photo', 'video'].some(type => {
+                const folder = `${type}_folder`;
+                const list = `${type}s`;
+                return (previous[list] || []).some(name => previous[folder] !== prepared.record[folder]
+                    || !(prepared.record[list] || []).includes(name));
+            });
+            if (removesMedia) {
+                busy = true;
+                try {
+                    if (!await confirmFeedback('本次保存可能删除照片或视频原文件，并清理空目录。移动的文件会先保存到新目录，其他日记仍引用的文件会保留。删除无法撤销，是否继续保存？', {
+                        label: '文件设置', title: '确认删除真实文件', cancelLabel: '取消', confirmLabel: '确认并保存'
+                    })) return;
+                } finally { busy = false; }
+            }
+        }
         busy = true;
         archivePhase = '正在校验并打包待上传媒体…';
         startProgress('保存旅行记录', archivePhase);
