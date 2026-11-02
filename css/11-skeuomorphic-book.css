@@ -461,7 +461,7 @@ body[data-route='preface'] .paper-page {
 
 .preface-facts {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     margin: 0;
     background: transparent;
 }
@@ -835,6 +835,7 @@ body[data-route="ledger"] .paper-page-left::-webkit-scrollbar-track-piece {
 .search-empty-state p { max-width: 30em; margin: 0; font-size: 14px; line-height: 1.8; }
 .search-empty-state .paper-button { min-height: 44px; }
 .index-dashboard-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+.index-dashboard-grid span:first-child { grid-column: 1 / -1; }
 .index-dashboard-grid span:last-child { grid-column: 1 / -1; }
 .entry-note { min-width: 0; }
 .entry-note h3 { font-size: 20px; line-height: 1.5; overflow-wrap: anywhere; }

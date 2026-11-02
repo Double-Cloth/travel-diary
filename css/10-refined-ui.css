@@ -265,16 +265,20 @@ body::after {
     margin-bottom: 12px;
 }
 
+.archive-overview-scope .overview-metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
 .archive-overview-scope .overview-metric,
 .archive-rhythm-metrics .overview-metric {
     padding: 9px 12px 12px;
     border-bottom: 0;
 }
 
-.archive-overview-scope .overview-metric + .overview-metric,
+.archive-overview-scope .overview-metric:nth-child(even),
 .archive-rhythm-metrics .overview-metric + .overview-metric {
     border-left: 1px solid var(--line);
 }
+
+.archive-overview-scope .overview-metric:nth-child(n + 3) { border-top: 1px solid var(--line); }
 
 .overview-metric,
 .overview-insight,

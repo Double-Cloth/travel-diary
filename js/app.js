@@ -9,7 +9,7 @@ import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.j
 import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=20260930-review-v1';
 import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260930-review-v1';
 import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=20261101-progress-timing-v1';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=20261103-media-stats-v1';
 import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js';
 import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=20261102-native-preview-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
@@ -691,6 +691,7 @@ function deriveTravelModel(records) {
     const topAdminAreas = buildTopAdminAreas(countries);
     const repeatLocations = buildRepeatLocations(enhanced);
     const filterOptions = buildLedgerFilterOptions(enhanced);
+    const snapshot = buildRecordSetSnapshot(enhanced);
 
     return {
         records: enhanced,
@@ -707,6 +708,8 @@ function deriveTravelModel(records) {
         overviewAnalytics: deriveOverviewAnalytics(enhanced, todayDate),
         stats: {
             total: enhanced.length,
+            photos: snapshot.photoCount,
+            videos: snapshot.videoCount,
             countries: countries.length,
             adminAreas: countries.reduce((sum, country) => sum + country.adminAreas.length, 0),
             localities: new Set(enhanced.map(record => record.locationKey)).size
@@ -1015,7 +1018,8 @@ function renderPreface() {
                 <dl class="preface-facts" aria-label="日记概况">
                     <div><dt>${travelModel.stats.total}</dt><dd>篇日记</dd></div>
                     <div><dt>${travelModel.stats.localities}</dt><dd>个目的地</dd></div>
-                    <div><dt>${travelModel.stats.adminAreas}</dt><dd>个一级行政区</dd></div>
+                    <div><dt>${travelModel.stats.photos}</dt><dd>张图片</dd></div>
+                    <div><dt>${travelModel.stats.videos}</dt><dd>个视频</dd></div>
                 </dl>
             </section>
 
@@ -1154,7 +1158,8 @@ function renderLedgerSnapshot(snapshot, resultLabel) {
             </div>
             <div class="index-dashboard-grid">
                 <span><strong>${snapshot.localityCount}</strong> 个地点</span>
-                <span><strong>${snapshot.adminAreaCount}</strong> 个一级行政区</span>
+                <span><strong>${snapshot.photoCount}</strong> 张图片</span>
+                <span><strong>${snapshot.videoCount}</strong> 个视频</span>
                 <span>${escapeHtml(dateRange)}</span>
             </div>
         </div>
@@ -1329,8 +1334,9 @@ function renderArchive(params = {}) {
                 <h3>足迹分布</h3>
                 <div class="overview-metric-grid">
                     ${renderOverviewMetric('国家', travelModel.stats.countries)}
-                    ${renderOverviewMetric('一级行政区', travelModel.stats.adminAreas)}
                     ${renderOverviewMetric('目的地', travelModel.stats.localities)}
+                    ${renderOverviewMetric('图片', travelModel.stats.photos)}
+                    ${renderOverviewMetric('视频', travelModel.stats.videos)}
                 </div>
             </section>
             <section class="archive-overview-block archive-overview-rhythm">

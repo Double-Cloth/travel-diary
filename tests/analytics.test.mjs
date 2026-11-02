@@ -69,9 +69,25 @@ test('统计筛选后的记录集合', () => {
         count: 4,
         localityCount: 3,
         adminAreaCount: 3,
+        photoCount: 0,
+        videoCount: 0,
         firstDate: '2024-01-01',
         latestDate: '2025-03-12'
     });
+});
+
+test('媒体数量按记录附件累计，缺省字段和筛选后的空集合均为零', () => {
+    const mediaRecords = [
+        { photos: ['a.jpg', 'b.jpg'], videos: ['a.mp4'] },
+        { photos: ['a.jpg'], videos: ['b.mp4', 'c.mp4'] },
+        { photos: [], videos: [] },
+        {}
+    ];
+    const snapshot = buildRecordSetSnapshot(mediaRecords);
+    assert.equal(snapshot.photoCount, 3);
+    assert.equal(snapshot.videoCount, 3);
+    assert.equal(buildRecordSetSnapshot(mediaRecords.slice(1)).photoCount, 1);
+    assert.equal(buildRecordSetSnapshot([]).videoCount, 0);
 });
 
 test('统计复访地点、活跃周期和最长记录间隔', () => {
@@ -128,6 +144,8 @@ test('空数据和无效日期不会产生错误统计', () => {
         count: 0,
         localityCount: 0,
         adminAreaCount: 0,
+        photoCount: 0,
+        videoCount: 0,
         firstDate: '',
         latestDate: ''
     });

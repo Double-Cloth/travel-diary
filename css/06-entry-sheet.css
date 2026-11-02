@@ -1264,9 +1264,14 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .record-editor.is-media-dragging,
 .record-editor.is-media-dragging * { cursor: grabbing; }
 .record-editor.is-media-dragging { user-select: none; }
-.record-editor .media-file-list > li.is-media-drag-source { opacity: 0.5; background: var(--paper-100); }
-.record-editor-existing-media > li.is-drop-before { box-shadow: 0 -2px var(--stamp); }
-.record-editor-existing-media > li.is-drop-after { box-shadow: 0 2px var(--stamp); }
+.record-editor .media-file-list > li.is-media-drag-source { background: var(--paper-100); }
+.record-editor .media-file-list > li.is-media-drag-source > * { opacity: 0.5; }
+.record-editor-existing-media > li.is-drop-before,
+.record-editor-existing-media > li.is-drop-after { position: relative; }
+.record-editor-existing-media > li.is-drop-before::before,
+.record-editor-existing-media > li.is-drop-after::after { content: ''; position: absolute; z-index: 1; inset-inline: 0; height: 2px; background: var(--stamp); pointer-events: none; }
+.record-editor-existing-media > li.is-drop-before::before { top: 0; }
+.record-editor-existing-media > li.is-drop-after::after { bottom: 0; }
 .media-drag-badge { position: fixed; z-index: 2; padding: 7px 12px; border: 1px solid var(--hairline); border-radius: 4px; color: var(--paper-50); background: var(--stamp); font-size: 13px; pointer-events: none; }
 .media-file-actions .media-file-remove { margin-left: 8px; color: var(--stamp); }
 .media-file-actions button:hover:not(:disabled),

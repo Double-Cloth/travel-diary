@@ -39,6 +39,19 @@ export function renderTestPlace(records, params, photos = false) {
     }
     finally { ({ setPages, travelModel } = originals); }
 }
+export function renderTestSummary(records, route, params = {}) {
+    const originals = { setPages, travelModel };
+    let result;
+    setPages = (left, right) => { result = { left, right }; };
+    travelModel = deriveTravelModel(records);
+    try {
+        if (route === 'preface') renderPreface();
+        else if (route === 'archive') renderArchive(params);
+        else renderLedger(params);
+        return result;
+    }
+    finally { ({ setPages, travelModel } = originals); }
+}
 export function stubViewerNavigation(state) {
     const originals = { photoViewerState, renderPhotoViewer, resetPhotoTransform };
     const calls = [];
@@ -422,6 +435,28 @@ test('同名或缺少正文路径的记录保留独立身份及原始顺序', ()
     assert.equal(model.records[1].id, 'note-2');
     assert.equal(model.stats.total, 4);
     assert.equal(app.deriveTravelModel([]).recordsById.size, 0);
+});
+
+test('扉页和足迹摘要显示全量媒体，高级筛选显示结果集媒体数量', () => {
+    const records = [
+        { date: '2026-01-02', country_code: 'CN', admin_area: '江苏省', locality: '南京市', photos: ['a.jpg', 'b.jpg'], videos: ['a.mp4'] },
+        { date: '2025-01-01', country_code: 'CN', admin_area: '浙江省', locality: '杭州市', photos: ['c.jpg'], videos: ['b.mp4', 'c.mp4'] }
+    ].map(normalizeTravelLocation);
+    const preface = app.renderTestSummary(records, 'preface').left;
+    assert.match(preface, /<dt>3<\/dt><dd>张图片/);
+    assert.match(preface, /<dt>3<\/dt><dd>个视频/);
+    assert.doesNotMatch(preface, /个一级行政区/);
+    const archive = app.renderTestSummary(records, 'archive').right;
+    assert.match(archive, /图片<\/span>\s*<strong>3<\/strong>/);
+    assert.match(archive, /视频<\/span>\s*<strong>3<\/strong>/);
+    assert.doesNotMatch(archive, /<span>一级行政区<\/span>/);
+    const filtered = app.renderTestSummary(records, 'ledger', { year: ['2026'] }).right;
+    assert.match(filtered, /<strong>2<\/strong> 张图片/);
+    assert.match(filtered, /<strong>1<\/strong> 个视频/);
+    assert.doesNotMatch(filtered, /个一级行政区/);
+    const empty = app.renderTestSummary(records, 'ledger', { year: ['2024'] }).right;
+    assert.match(empty, /<strong>0<\/strong> 张图片/);
+    assert.match(empty, /<strong>0<\/strong> 个视频/);
 });
 
 test('空档案提供新增与导入入口，不再显示不可用死路', () => {

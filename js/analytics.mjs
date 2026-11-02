@@ -20,6 +20,8 @@ export function buildRecordSetSnapshot(records = []) {
         count: records.length,
         localityCount: localities.size,
         adminAreaCount: adminAreas.size,
+        photoCount: records.reduce((sum, record) => sum + (Array.isArray(record.photos) ? record.photos.length : 0), 0),
+        videoCount: records.reduce((sum, record) => sum + (Array.isArray(record.videos) ? record.videos.length : 0), 0),
         firstDate: dates[0] || '',
         latestDate: dates[dates.length - 1] || ''
     };
