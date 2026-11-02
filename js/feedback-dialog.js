@@ -22,6 +22,10 @@ function getFeedbackDialog() {
             <h2 id="feedbackDialogTitle" data-feedback-title>操作提示</h2>
             <p class="feedback-dialog-message" id="feedbackDialogMessage" data-feedback-message></p>
             <div class="feedback-dialog-guide" data-feedback-guide hidden></div>
+            <details class="feedback-dialog-files" data-feedback-files hidden>
+                <summary data-feedback-files-title>查看待删除文件</summary>
+                <ul data-feedback-files-list></ul>
+            </details>
             <div class="feedback-dialog-actions">
                 <button class="paper-button feedback-dialog-cancel" type="button" data-feedback-cancel>取消</button>
                 <button class="paper-button feedback-dialog-confirm" type="button" data-feedback-confirm>知道了</button>
@@ -64,6 +68,31 @@ function openFeedback(message, options = {}) {
     dialog.querySelector('[data-feedback-label]').textContent = options.label || '旅行档案';
     dialog.querySelector('[data-feedback-title]').textContent = options.title || (isConfirmation ? '请确认操作' : '操作提示');
     dialog.querySelector('[data-feedback-message]').textContent = message || '';
+    const files = (Array.isArray(options.files) ? options.files : []).filter(file => typeof file?.path === 'string'
+        && /^data\/(photos|videos)\//.test(file.path)
+        && file.path.split('/').every(part => part && part !== '.' && part !== '..'));
+    const fileDetails = dialog.querySelector('[data-feedback-files]');
+    fileDetails.hidden = !files.length;
+    fileDetails.open = false;
+    dialog.querySelector('[data-feedback-files-title]').textContent = `查看待删除文件（${files.length}）`;
+    const fileList = dialog.querySelector('[data-feedback-files-list]');
+    fileList.textContent = '';
+    for (const file of files) {
+        const item = document.createElement('li');
+        const link = document.createElement('a');
+        link.textContent = file.path;
+        link.href = new URL(file.path.split('/').map(encodeURIComponent).join('/'), window.location.href).href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.setAttribute('aria-label', `查看文件：${file.path}（新窗口）`);
+        item.append(link);
+        if (file.destination) {
+            const note = document.createElement('p');
+            note.textContent = `移至：${file.destination}`;
+            item.append(note);
+        }
+        fileList.append(item);
+    }
     const guide = dialog.querySelector('[data-feedback-guide]');
     const hasSteps = Array.isArray(options.steps) && options.steps.length > 0;
     guide.hidden = !hasSteps;

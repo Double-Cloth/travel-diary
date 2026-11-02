@@ -1358,6 +1358,13 @@ dialog.feedback-dialog.entry-sheet {
 .feedback-dialog .journal-label { margin: 0 auto 8px; }
 .feedback-dialog h2 { margin: 0; color: var(--ink); font-size: 27px; line-height: 1.25; }
 .feedback-dialog-message { margin: 10px 0 22px; color: var(--ink-soft); font-size: 14px; line-height: 1.8; overflow-wrap: anywhere; }
+.feedback-dialog-files { margin: 0 0 22px; text-align: left; color: var(--ink); font-size: 14px; line-height: 1.7; }
+.feedback-dialog-files[hidden] { display: none; }
+.feedback-dialog-files summary { cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+.feedback-dialog-files ul { max-height: 30vh; overflow-y: auto; overscroll-behavior: contain; margin: 12px 0 0; padding-left: 22px; }
+.feedback-dialog-files li + li { margin-top: 12px; }
+.feedback-dialog-files a { color: var(--ink); overflow-wrap: anywhere; text-decoration: underline; text-underline-offset: 3px; }
+.feedback-dialog-files p { margin: 4px 0 0; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
 dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32px)); }
 .feedback-dialog-with-guide .feedback-dialog-seal { width: 44px; height: 44px; margin-bottom: 12px; }
 .feedback-dialog-with-guide .feedback-dialog-message { margin: 16px 0; text-align: left; }

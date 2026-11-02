@@ -977,17 +977,25 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         catch (error) { status(error.message); return; }
         if (editingRecord && field('syncMediaFiles').checked) {
             const previous = editingRecord.sourceRecord || editingRecord;
-            const removesMedia = ['photo', 'video'].some(type => {
+            const files = ['photo', 'video'].flatMap(type => {
                 const folder = `${type}_folder`;
                 const list = `${type}s`;
-                return (previous[list] || []).some(name => previous[folder] !== prepared.record[folder]
-                    || !(prepared.record[list] || []).includes(name));
+                const remaining = new Set([prepared.record, ...getRecords()
+                    .map(record => record.sourceRecord || record)
+                    .filter(record => record.desc_md !== previous.desc_md)]
+                    .flatMap(record => (record[list] || []).map(name => `${record[folder]}/${name}`)));
+                return [...new Set(previous[list] || [])]
+                    .map(name => ({
+                        path: `${previous[folder]}/${name}`,
+                        destination: (prepared.record[list] || []).includes(name) ? `${prepared.record[folder]}/${name}` : ''
+                    }))
+                    .filter(file => !remaining.has(file.path));
             });
-            if (removesMedia) {
+            if (files.length) {
                 busy = true;
                 try {
-                    if (!await confirmFeedback('本次保存可能删除照片或视频原文件，并清理空目录。移动的文件会先保存到新目录，其他日记仍引用的文件会保留。删除无法撤销，是否继续保存？', {
-                        label: '文件设置', title: '确认删除真实文件', cancelLabel: '取消', confirmLabel: '确认并保存'
+                    if (!await confirmFeedback('将删除原文件并清理空目录，无法撤销。', {
+                        label: '文件设置', title: '确认删除真实文件', cancelLabel: '取消', confirmLabel: '确认并保存', files
                     })) return;
                 } finally { busy = false; }
             }
