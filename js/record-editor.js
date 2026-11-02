@@ -1,5 +1,5 @@
 import { escapeHtml, getMediaFileUrl } from './utils.js';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=20261102-file-manager-v1';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=20261102-media-preview-v1';
 import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
@@ -14,7 +14,7 @@ import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTr
 import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=20261102-media-batch-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261102-media-batch-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
-import { confirmFeedback } from './feedback-dialog.js';
+import { confirmFeedback } from './feedback-dialog.js?v=20261102-media-preview-v1';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
 import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=20261101-progress-timing-v1';
@@ -119,10 +119,43 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function ensurePhotoPreviewUrl(media) {
-        if (!photoPreviewUrls.has(media.id)) {
-            photoPreviewUrls.set(media.id, URL.createObjectURL(previewBlob(media)));
+        return photoPreviewUrls.get(media.id) || '';
+    }
+
+    async function createVideoPreviewUrl(file) {
+        const sourceUrl = URL.createObjectURL(file);
+        const video = document.createElement('video');
+        video.muted = true;
+        video.playsInline = true;
+        video.preload = 'auto';
+        try {
+            await new Promise((resolve, reject) => {
+                const timeout = setTimeout(() => finish(new Error('视频预览超时')), 10000);
+                const finish = error => {
+                    clearTimeout(timeout);
+                    video.onloadeddata = video.onerror = null;
+                    error ? reject(error) : resolve();
+                };
+                video.onloadeddata = () => finish();
+                video.onerror = () => finish(new Error('视频编码不支持预览'));
+                video.src = sourceUrl;
+            });
+            const canvas = document.createElement('canvas');
+            canvas.width = PHOTO_PREVIEW_WIDTH;
+            canvas.height = PHOTO_PREVIEW_HEIGHT;
+            const context = canvas.getContext('2d');
+            if (!context || !video.videoWidth || !video.videoHeight) return '';
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const preview = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
+            return preview ? URL.createObjectURL(preview) : '';
+        } catch {
+            // 不支持的编码仍可保存原视频，列表保留占位，查看器可下载原文件。
+            return '';
+        } finally {
+            video.removeAttribute('src');
+            video.load();
+            URL.revokeObjectURL(sourceUrl);
         }
-        return photoPreviewUrls.get(media.id);
     }
 
     async function createPhotoPreviewUrl(file) {
@@ -1027,7 +1060,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 operationProgress.throwIfCancelled();
                 const photo = readUploads([{ id, name: file.name.slice(0, 200), data }])[0];
                 let previewUrl;
-                try { previewUrl = photo.kind === 'image' ? await createPhotoPreviewUrl(file) : URL.createObjectURL(file); }
+                try { previewUrl = photo.kind === 'image' ? await createPhotoPreviewUrl(file) : await createVideoPreviewUrl(file); }
                 catch (error) {
                     throw new Error(error.message.startsWith('无法') ? error.message : `无法解码媒体：${file.name}`);
                 }
@@ -1358,6 +1391,16 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             field('country_code').dispatchEvent(new Event('change'));
             requestId = draft.requestId;
             uploads = readUploads(draft.uploads);
+            for (const media of uploads) {
+                operationProgress.throwIfCancelled();
+                const blob = previewBlob(media);
+                try {
+                    photoPreviewUrls.set(media.id, media.kind === 'video'
+                        ? await createVideoPreviewUrl(blob) : await createPhotoPreviewUrl(blob));
+                } catch {
+                    // 草稿中的原文件不因缩略图无法解码而丢失。
+                }
+            }
             removedMedia = [];
             selectedMedia.clear();
             selectedRemovedMedia.clear();

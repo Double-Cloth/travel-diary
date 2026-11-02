@@ -1,6 +1,7 @@
 import { getMediaFileUrl } from './utils.js';
+import { getMediaPreviewUrl } from './media-preview.mjs';
 
-export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbnailSrc = src, blob, name, kind, index = 0, detail = '' }) {
+export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbnailSrc = getMediaPreviewUrl(src), blob, name, kind, index = 0, detail = '' }) {
     const link = document.createElement(src ? 'a' : 'span');
     link.className = 'media-file-link';
     if (blob) link.mediaBlob = blob;
@@ -18,21 +19,14 @@ export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbna
     const fallback = document.createElement('span');
     fallback.textContent = kind === 'video' ? '视频' : '图片';
     thumbnail.append(fallback);
-    if (src) {
-        const media = document.createElement(kind === 'video' ? 'video' : 'img');
-        if (kind === 'video') {
-            media.muted = true;
-            media.playsInline = true;
-            media.preload = 'metadata';
-            media.tabIndex = -1;
-        } else {
-            media.alt = '';
-            media.loading = 'lazy';
-            media.decoding = 'async';
-            media.fetchPriority = 'low';
-            media.width = 84;
-            media.height = 64;
-        }
+    if (thumbnailSrc) {
+        const media = document.createElement('img');
+        media.alt = '';
+        media.loading = 'lazy';
+        media.decoding = 'async';
+        media.fetchPriority = 'low';
+        media.width = 84;
+        media.height = 64;
         media.addEventListener('error', () => {
             media.hidden = true;
             fallback.textContent = '无法预览';

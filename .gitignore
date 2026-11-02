@@ -18,6 +18,7 @@ pids/
 .travel-secrets-backup-*/
 data/photos/
 data/videos/
+data/previews/
 tmp/
 temp/
 dist/

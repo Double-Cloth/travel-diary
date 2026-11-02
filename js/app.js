@@ -1,16 +1,17 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
-import { createRecordEditor } from './record-editor.js?v=20261102-media-align-v1';
+import { createRecordEditor } from './record-editor.js?v=20261102-media-preview-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261102-media-batch-v1';
 import { createDataTransfer } from './data-transfer.js?v=20261102-media-batch-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261102-media-batch-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=20261102-media-preview-v1';
 import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20261101-progress-timing-v1';
 import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=20260930-review-v1';
 import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260930-review-v1';
 import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=20261101-progress-timing-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
-import { buildFallbackTitle, escapeHtml } from './utils.js';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js';
+import { getMediaPreviewUrl } from './media-preview.mjs';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
@@ -89,7 +90,7 @@ let mobileContextScrollY = 0;
 let photoPreviewResizeTimer = null;
 let photoPreviewLateResizeTimer = null;
 let photoSleeveResizeObserver = null;
-let photoSleeveVideoObserver = null;
+let photoSleeveMediaObserver = null;
 const observedPhotoSleeves = new Set();
 const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
@@ -1918,6 +1919,7 @@ function renderPhotoViewer() {
     const previousImage = document.querySelector('[data-photo-viewer-image]');
     const previousFrame = previousImage?.complete && previousImage.naturalWidth
         ? previousImage.closest('[data-photo-viewer-frame]').cloneNode(true) : null;
+    releaseViewerVideo();
     document.querySelector('[data-photo-viewer]')?.remove();
     const root = getPhotoViewerRoot();
     if (!photoViewerState || !root) {
@@ -2094,8 +2096,17 @@ function getPhotoViewerBackgroundColor(pixels, width, height) {
     return palette[scores.indexOf(Math.min(...scores))][0];
 }
 
+function releaseViewerVideo() {
+    const video = document.querySelector('[data-video-viewer-video]');
+    if (!video) return;
+    video.pause();
+    video.removeAttribute('src');
+    video.load();
+}
+
 function closePhotoViewerDialog() {
     stopObservingPhotoViewerStage();
+    releaseViewerVideo();
     document.querySelector('[data-photo-viewer]')?.remove();
     photoViewerState = null;
     photoViewerDialog?.close();
@@ -2493,12 +2504,7 @@ function handleMediaLoadError(event) {
 
     const sleeveButton = media.closest?.('.photo-sleeve-button');
     if (sleeveButton) {
-        const kind = sleeveButton.dataset.mediaKind === 'video' ? 'video' : 'image';
-        const message = formatMediaReferenceError({
-            kind,
-            name: sleeveButton.dataset.mediaName,
-            src: sleeveButton.dataset.mediaSrc
-        });
+        const message = `预览不可用：${sleeveButton.dataset.mediaName}，点击查看原文件。`;
         sleeveButton.classList.add('is-media-error');
         sleeveButton.setAttribute('aria-label', message);
         sleeveButton.title = message;
@@ -4572,7 +4578,7 @@ function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
         refs.rightPage.scrollTop = rightScrollTop;
     }
     syncMobileContextPanelState();
-    observePhotoSleeveVideos();
+    observePhotoSleeveMedia();
 
     if (isMobileContextPanelOpen) {
         requestAnimationFrame(() => {
@@ -4815,10 +4821,9 @@ function renderPhotoSleeve(record, options = {}) {
                     </div>
                 ` : ''}
                 <button class="photo-sleeve-button${item.kind === 'video' ? ' photo-sleeve-video' : ''}" type="button" data-action="open-media-viewer" data-media-index="${index}" data-media-kind="${item.kind}" data-media-name="${escapeHtml(item.name)}" data-media-src="${escapeHtml(item.src)}" data-media-alt="${escapeHtml(item.alt)}" aria-label="打开${item.kind === 'video' ? '视频' : '图片'} ${escapeHtml(item.name)}">
-                    ${item.kind === 'video'
-                        ? `<video data-src="${escapeHtml(item.src)}#t=0.1" muted playsinline preload="none" aria-hidden="true" tabindex="-1"></video><span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>`
-                        : `<img src="${escapeHtml(item.src)}" alt="${escapeHtml(item.alt)}" loading="lazy" decoding="async" fetchpriority="low">`}
-                    <span class="photo-sleeve-media-error" role="status" hidden><strong>${item.kind === 'video' ? '视频不可用' : '图片不可用'}</strong><span>${escapeHtml(item.name)}</span><small>检查 travel_data.json</small></span>
+                    <img data-src="${escapeHtml(getMediaPreviewUrl(item.src))}" alt="${escapeHtml(item.alt)}" loading="lazy" decoding="async" fetchpriority="low">
+                    ${item.kind === 'video' ? '<span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>' : ''}
+                    <span class="photo-sleeve-media-error" role="status" hidden><strong>预览不可用</strong><span>${escapeHtml(item.name)}</span><small>点击查看原文件</small></span>
                     <span class="photo-sleeve-index">${escapeHtml(String(index + 1).padStart(2, '0'))}</span>
                 </button>
             `).join('')}
@@ -4833,25 +4838,24 @@ function renderPhotoSleeve(record, options = {}) {
 
 function getRecordMedia(record) {
     const photos = record.photo_folder && Array.isArray(record.photos)
-        ? record.photos.map(name => ({ kind: 'image', name, src: `${record.photo_folder}/${name}`, alt: `${record.title} · ${name}` }))
+        ? record.photos.map(name => ({ kind: 'image', name, src: getMediaFileUrl(`${record.photo_folder}/${name}`), alt: `${record.title} · ${name}` }))
         : [];
     const videos = record.video_folder && Array.isArray(record.videos)
-        ? record.videos.map(name => ({ kind: 'video', name, src: `${record.video_folder}/${name}`, alt: `${record.title} · ${name}` }))
+        ? record.videos.map(name => ({ kind: 'video', name, src: getMediaFileUrl(`${record.video_folder}/${name}`), alt: `${record.title} · ${name}` }))
         : [];
     return [...photos, ...videos];
 }
 
-function observePhotoSleeveVideos() {
-    photoSleeveVideoObserver?.disconnect();
-    const videos = document.querySelectorAll('#leftPage .photo-sleeve video[data-src], #rightPage .photo-sleeve video[data-src]');
-    const load = video => {
-        if (!video.dataset.src) return;
-        video.preload = 'metadata';
-        video.src = video.dataset.src;
-        delete video.dataset.src;
+function observePhotoSleeveMedia() {
+    photoSleeveMediaObserver?.disconnect();
+    const images = document.querySelectorAll('#leftPage .photo-sleeve img[data-src], #rightPage .photo-sleeve img[data-src]');
+    const load = image => {
+        if (!image.dataset.src) return;
+        image.src = image.dataset.src;
+        delete image.dataset.src;
     };
     if (!('IntersectionObserver' in window)) {
-        videos.forEach(load);
+        images.forEach(image => { if (!image.closest('[hidden]')) load(image); });
         return;
     }
     const observer = new IntersectionObserver(entries => {
@@ -4861,8 +4865,8 @@ function observePhotoSleeveVideos() {
             observer.unobserve(target);
         });
     });
-    photoSleeveVideoObserver = observer;
-    videos.forEach(video => observer.observe(video));
+    photoSleeveMediaObserver = observer;
+    images.forEach(image => observer.observe(image));
 }
 
 function syncPhotoSleevePreviewRows() {

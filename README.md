@@ -18,6 +18,9 @@ node js/server.js --help
 
 # 运行全部测试
 npm test
+
+# 生成媒体压缩预览（需要 FFmpeg，静态发布前执行）
+npm run media:previews
 ```
 
 ### 监听与远程写入

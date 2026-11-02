@@ -6,7 +6,7 @@ import { normalizeTravelLocation } from '../js/location.mjs';
 globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
-    renderWithPageTurn, renderWithBookCover, clearPageTurn, waitForPageTurnAssets, cloneTurningPage, cloneTransitionContent, createTransitionMediaImage, observePhotoSleeveVideos, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
+    renderWithPageTurn, renderWithBookCover, clearPageTurn, waitForPageTurnAssets, cloneTurningPage, cloneTransitionContent, createTransitionMediaImage, observePhotoSleeveMedia, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
     restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute,
@@ -878,7 +878,7 @@ test('翻页视频画面缩为静态图片，未解码和跨源失败保留占�
     assert.equal(app.createTransitionMediaImage({ ...video, videoWidth: 0 }).src, undefined);
 });
 
-test('视频缩略图只在进入视口后加载，换页解除旧观察', t => {
+test('图片与视频封面只在进入视口后加载压缩资源，换页解除旧观察', t => {
     const previous = { document: globalThis.document, window: globalThis.window,
         IntersectionObserver: globalThis.IntersectionObserver };
     t.after(() => Object.assign(globalThis, previous));
@@ -890,25 +890,25 @@ test('视频缩略图只在进入视口后加载，换页解除旧观察', t => 
         unobserve(target) { this.targets.delete(target); }
         disconnect() { this.targets.clear(); }
     };
-    const video = { dataset: { src: 'movie.mp4#t=0.1' } };
+    const video = { dataset: { src: 'data/previews/videos/trip/movie.mp4.jpg' } };
     globalThis.document = { querySelectorAll: () => [video] };
-    app.observePhotoSleeveVideos();
+    app.observePhotoSleeveMedia();
     const first = observers[0];
     first.callback([{ target: video, isIntersecting: false }]);
     assert.equal(video.src, undefined);
     first.callback([{ target: video, isIntersecting: true }]);
-    assert.equal(video.src, 'movie.mp4#t=0.1');
-    assert.equal(video.preload, 'metadata');
+    assert.equal(video.src, 'data/previews/videos/trip/movie.mp4.jpg');
+    assert.equal(video.preload, undefined);
     assert.equal(first.targets.size, 0);
     assert.equal(video.dataset.src, undefined);
     first.observe(video);
-    app.observePhotoSleeveVideos();
+    app.observePhotoSleeveMedia();
     assert.equal(first.targets.size, 0);
     delete globalThis.window.IntersectionObserver;
-    const fallback = { dataset: { src: 'fallback.mp4' } };
+    const fallback = { dataset: { src: 'fallback.mp4.jpg' }, closest: () => null };
     globalThis.document.querySelectorAll = () => [fallback];
-    app.observePhotoSleeveVideos();
-    assert.equal(fallback.src, 'fallback.mp4');
+    app.observePhotoSleeveMedia();
+    assert.equal(fallback.src, 'fallback.mp4.jpg');
 });
 
 test('翻页方向与书签顺序及返回按钮一致', () => {

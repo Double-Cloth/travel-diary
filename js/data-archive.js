@@ -66,6 +66,8 @@ function validateTextField(record, recordNumber, field, { required = false } = {
 async function collectFiles(directory, prefix = 'data') {
     const entries = [];
     for (const item of await fs.readdir(directory, { withFileTypes: true })) {
+        // 预览可从原文件重新生成，跳过缓存及生成中的临时文件。
+        if (prefix === 'data' && item.name === 'previews') continue;
         const filePath = path.join(directory, item.name);
         const archivePath = `${prefix}/${item.name}`;
         const stat = await fs.lstat(filePath);

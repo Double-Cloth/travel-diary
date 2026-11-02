@@ -4,6 +4,7 @@ const path = require('path');
 const os = require('os');
 const { createRecordApi, normalizeAllowedOrigins } = require('./record-store.js');
 const { readAuthConfig } = require('./auth.js');
+const { createMediaPreviewStore } = require('./media-preview-store.js');
 
 const CONFIG = {
   defaultPort: 9000,
@@ -292,6 +293,7 @@ async function ensureDataStructure(rootDir) {
 function createHandler(rootDir, options = {}) {
   rootDir = fs.realpathSync(rootDir);
   const secretsRoot = path.join(rootDir, '.secrets');
+  const getMediaPreview = createMediaPreviewStore(rootDir, options.mediaPreview);
   const recordApi = createRecordApi(rootDir, {
     writeMode: options.writeMode || CONFIG.defaultWriteMode,
     allowedOrigins: options.allowedOrigins || []
@@ -335,6 +337,26 @@ function createHandler(rootDir, options = {}) {
     }
     if (pathname === '/') {
       pathname = '/index.html';
+    }
+
+    if (pathname.startsWith('/data/previews/')) {
+      try {
+        const { image, etag } = await getMediaPreview(pathname);
+        const headers = { ...STATIC_SECURITY_HEADERS, 'Content-Type': 'image/jpeg',
+          'Cache-Control': 'private, max-age=0, must-revalidate', ETag: etag };
+        if (req.headers['if-none-match'] === etag) {
+          res.writeHead(304, headers);
+          res.end();
+        } else {
+          res.writeHead(200, { ...headers, 'Content-Length': image.length });
+          res.end(req.method === 'HEAD' ? undefined : image);
+        }
+      } catch (error) {
+        const status = error.status || (error.code === 'ENOENT' ? 404 : 403);
+        res.writeHead(status, { ...STATIC_SECURITY_HEADERS, 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(req.method === 'HEAD' ? undefined : '媒体预览不可用。');
+      }
+      return;
     }
 
     const firstSegment = pathname.replace(/^\/+/, '').split('/')[0];

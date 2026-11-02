@@ -10,6 +10,7 @@ data/
 ├── travel-diary/YYYY/     # Markdown 正文
 ├── photos/                # 原始旅行照片
 ├── videos/                # 原始旅行视频
+├── previews/              # 可重新生成的压缩图片与视频封面
 └── profile/               # profile-picture.png、owner-name.txt
 .secrets/
 └── auth.json              # 服务端认证哈希

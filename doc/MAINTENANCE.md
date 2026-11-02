@@ -46,6 +46,16 @@ remote 模式仅接受明确配置的完整 HTTPS Origin，允许多次指定；
 
 ## 静态发布
 
+### 媒体预览
+
+普通启动仍只需要 Node；自动生成压缩预览另需 FFmpeg。安装后将 `ffmpeg` 加入 PATH，或将 `TRAVEL_FFMPEG_PATH` 设置为可执行文件的绝对路径，也可放到项目 `.cache/tools/ffmpeg.exe`（Windows）或 `.cache/tools/ffmpeg`（其他系统）。缺少 FFmpeg 或编码不受支持时列表显示占位，点击仍可打开原文件，不会自动下载原文件来生成浏览器预览。
+
+动态服务首次访问预览时生成最长边 640px 的 JPEG，图片保留比例，视频使用首帧；缓存存放在 `data/previews/`，不改变原始图片、视频。原文件变化后自动重新生成。预览目录默认被 Git 忽略，可删除后重新生成；完整备份跳过预览缓存及生成中的临时文件，恢复后按需重建。
+
+静态发布前执行 `npm run media:previews`；可指定目标目录：`npm run media:previews -- _site`。只处理索引引用的媒体，原文件缺失时计数跳过，其他生成错误使命令失败。GitHub Pages 工作流安装 FFmpeg 并在发布目录中执行生成命令；其他静态平台也必须发布生成的 `data/previews/`。列表只请求预览，图片和视频原文件仅在查看器打开相应项时读取。
+
+### 发布流程
+
 GitHub Pages 工作流在 push 或手动触发时运行：Node.js 20、Python 字体工具、完整字体构建、全部测试，然后发布 `index.html`、`api/`、`assets/`、`css/`、`doc/`、`js/` 和 `data/`。当前没有限制 push 分支；调整触发范围应修改工作流。构建会补齐缺少的空档案和头像，移除发布物中的 TTF 源文件，保留 WOFF2。
 
 发布物不包含 `.secrets/`、完整备份 ZIP 或服务端运行进程。`api/travel-records` 是静态只读标记；发布到其他静态平台时也应保留它，同时排除秘密及运行临时目录。
