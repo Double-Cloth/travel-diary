@@ -49,6 +49,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let originalDerivedLocation = null;
     let derivedPathsActivated = false;
     let bodyView = 'source';
+    let bodyFullscreen = false;
+    let bodyScrollTop = 0;
     let uploads = [];
     let readingPhotos = false;
     let operationProgress;
@@ -243,14 +245,17 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                 <div data-editor-option-lists hidden></div>
                             </div>
                         </section>
-                        <section class="record-editor-section" aria-labelledby="${editorId('BodyTitle')}">
+                        <section class="record-editor-section record-editor-body-section" aria-labelledby="${editorId('BodyTitle')}">
                             <h3 id="${editorId('BodyTitle')}"><span>02</span> 旅行正文</h3>
                             <label>日记标题 <span>必填</span><input name="title" maxlength="200" required placeholder="写下这篇日记的标题"></label>
-                            <div class="record-editor-workbench">
-                                <div class="record-editor-tabs" role="tablist" aria-label="正文视图">
-                                    <button type="button" role="tab" id="${editorId('TabSource')}" aria-controls="${editorId('PanelSource')}" aria-selected="true" data-editor-view="source">源码</button>
-                                    <button type="button" role="tab" id="${editorId('TabPreview')}" aria-controls="${editorId('PanelPreview')}" aria-selected="false" tabindex="-1" data-editor-view="preview">预览</button>
-                                    <span class="record-editor-format">Markdown</span>
+                            <div class="record-editor-workbench" id="${editorId('Workbench')}">
+                                <div class="record-editor-toolbar">
+                                    <div class="record-editor-tabs" role="tablist" aria-label="正文视图">
+                                        <button type="button" role="tab" id="${editorId('TabSource')}" aria-controls="${editorId('PanelSource')}" aria-selected="true" data-editor-view="source">源码</button>
+                                        <button type="button" role="tab" id="${editorId('TabPreview')}" aria-controls="${editorId('PanelPreview')}" aria-selected="false" tabindex="-1" data-editor-view="preview">预览</button>
+                                        <span class="record-editor-format">Markdown</span>
+                                    </div>
+                                    <button class="paper-button" type="button" data-editor-fullscreen aria-controls="${editorId('Workbench')}" aria-pressed="false" title="全屏编辑，按 Esc 退出">全屏</button>
                                 </div>
                                 <div id="${editorId('PanelSource')}" role="tabpanel" aria-labelledby="${editorId('TabSource')}" data-editor-panel="source">
                                     <div class="record-editor-source-layer">
@@ -539,6 +544,25 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         return ({ country: '国家显示名称', admin_area: '一级行政区', admin_area_type: '行政区类型', locality: '城市 / 目的地', locality_type: '目的地类型', trip_id: '旅行标识', desc_md: '正文路径' })[name] || name;
     }
 
+    function setBodyFullscreen(fullscreen, restoreFocus = true) {
+        if (bodyFullscreen === fullscreen) return;
+        const scroll = dialog.querySelector('.record-editor-scroll');
+        if (fullscreen) {
+            bodyScrollTop = scroll.scrollTop;
+            closeOtherAutocompletes();
+        }
+        bodyFullscreen = fullscreen;
+        dialog.classList.toggle('is-body-fullscreen', fullscreen);
+        const button = dialog.querySelector('[data-editor-fullscreen]');
+        button.textContent = fullscreen ? '退出全屏' : '全屏';
+        button.setAttribute('aria-pressed', String(fullscreen));
+        if (!fullscreen) scroll.scrollTop = bodyScrollTop;
+        if (restoreFocus) {
+            const target = fullscreen ? dialog.querySelector(bodyView === 'source' ? '[data-editor-source]' : '[data-editor-rich]') : button;
+            target.focus({ preventScroll: true });
+        }
+    }
+
     function updateBodyView(view) {
         bodyView = view;
         const input = getDraft().input;
@@ -747,6 +771,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
 
     function close() {
         if (busy || readingPhotos) return;
+        setBodyFullscreen(false, false);
         dialog.close();
         if (trigger?.isConnected) trigger.focus();
         else document.querySelector('[data-action="add-record"]')?.focus();
@@ -755,6 +780,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     dialog.addEventListener('cancel', event => {
         if (event.target !== dialog) return;
         event.preventDefault();
+        if (bodyFullscreen) {
+            setBodyFullscreen(false);
+            return;
+        }
         close();
     });
     // 正文标签使用方向键切换；其他按键由原生 dialog 处理，避免触发背景日记快捷键。
@@ -869,6 +898,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     dialog.addEventListener('click', async event => {
         if (event.target.closest('[data-editor-close]')) close();
         if (busy || readingPhotos) return;
+        if (event.target.closest('[data-editor-fullscreen]')) setBodyFullscreen(!bodyFullscreen);
         const mediaAction = event.target.closest('[data-existing-media-action]');
         if (mediaAction && !saved) {
             const input = field(`${mediaAction.dataset.mediaType}s`);

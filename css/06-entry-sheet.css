@@ -1077,6 +1077,9 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 }
 .record-editor textarea { resize: vertical; line-height: 1.7; }
 .record-editor-workbench { margin: 18px 0 10px; border: 1px solid var(--hairline); border-radius: 6px; overflow: hidden; }
+.record-editor-toolbar { display: flex; align-items: center; border-bottom: 1px solid var(--hairline); background: rgba(142, 102, 52, 0.08); }
+.record-editor-toolbar .record-editor-tabs { flex: 1; min-width: 0; border-bottom: 0; background: transparent; }
+.record-editor-toolbar > button { flex-shrink: 0; width: auto; min-height: 36px; margin: 6px; padding: 6px 12px; font-size: 13px; }
 .record-editor-word-count { display: block; padding: 6px 16px; border-top: 1px solid var(--hairline); color: var(--ink-soft); font-size: 12px; font-variant-numeric: tabular-nums; text-align: right; background: rgba(142, 102, 52, 0.08); }
 .record-editor-tabs { display: flex; align-items: stretch; gap: 4px; padding: 6px; background: rgba(142, 102, 52, 0.08); border-bottom: 1px solid var(--hairline); }
 .record-editor-tabs button { min-height: 36px; padding: 6px 14px; border: 1px solid transparent; border-radius: 4px; color: var(--ink-soft); background: transparent; cursor: pointer; }
@@ -1138,6 +1141,27 @@ dialog.record-editor[open] { display: flex; flex-direction: column; }
 .record-editor-formatting button { min-height: 32px; padding: 4px 10px; border-radius: 4px; background: transparent; color: var(--ink-soft); cursor: pointer; font-size: 13px; }
 .record-editor-formatting button:hover { background: rgba(142, 102, 52, 0.13); }
 .record-editor-formatting button:disabled { cursor: default; opacity: 0.5; }
+dialog.record-editor.is-body-fullscreen { inset: 0; width: 100%; max-width: none; height: 100dvh; max-height: none; margin: 0; border: 0; border-radius: 0; translate: none; }
+.record-editor.is-body-fullscreen > .record-editor-heading,
+.record-editor.is-body-fullscreen .record-editor-footer,
+.record-editor.is-body-fullscreen .record-editor-scroll > :not(.record-editor-layout),
+.record-editor.is-body-fullscreen .record-editor-layout > :not(.record-editor-body-section),
+.record-editor.is-body-fullscreen .record-editor-body-section > :not(.record-editor-workbench) { display: none; }
+.record-editor.is-body-fullscreen form { flex: 1; }
+.record-editor.is-body-fullscreen .record-editor-scroll { flex: 1; min-height: 0; padding: 0; overflow: hidden; }
+.record-editor.is-body-fullscreen .record-editor-layout { display: block; height: 100%; }
+.record-editor.is-body-fullscreen .record-editor-body-section { height: 100%; padding: 0; border: 0; }
+.record-editor.is-body-fullscreen .record-editor-workbench { display: flex; flex-direction: column; height: 100%; margin: 0; border: 0; border-radius: 0; }
+.record-editor.is-body-fullscreen .record-editor-toolbar,
+.record-editor.is-body-fullscreen .record-editor-formatting,
+.record-editor.is-body-fullscreen .record-editor-word-count { flex-shrink: 0; }
+.record-editor.is-body-fullscreen .record-editor-toolbar { padding-top: env(safe-area-inset-top); padding-right: env(safe-area-inset-right); padding-left: env(safe-area-inset-left); }
+.record-editor.is-body-fullscreen .record-editor-word-count { padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+.record-editor.is-body-fullscreen [data-editor-panel] { flex: 1; min-height: 0; }
+.record-editor.is-body-fullscreen [data-editor-panel="preview"]:not([hidden]) { display: flex; flex-direction: column; }
+.record-editor.is-body-fullscreen .record-editor-source-layer { height: 100%; }
+.record-editor.is-body-fullscreen [data-editor-source] { min-height: 0; }
+.record-editor.is-body-fullscreen .record-editor-preview { flex: 1; height: auto; min-height: 0; }
 .record-editor-files { margin-top: 24px; border-top: 1px dashed var(--hairline); }
 .record-editor-files summary { padding: 18px 0; cursor: pointer; color: var(--ink-soft); font-size: 17px; }
 .record-editor-files summary > span:last-child { margin-left: 10px; font-size: 12px; color: var(--ink-muted); }
