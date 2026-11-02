@@ -21,11 +21,10 @@ npm test
 
 # 手动生成全部媒体缩略图（复用已安装的 Edge 或 Chrome）
 npm run media:previews
+
+# 用指定的浏览器生成缩略图，并指定目标目录
+npm run media:previews -- --browser "浏览器可执行文件路径" --dir "数据所在项目目录"
 ```
-
-媒体预览由浏览器原生 Canvas 在进入视口后自动压缩，无需安装转码工具或执行生成命令。本地缓存位于 `.cache/media-previews/`；静态托管使用浏览器缓存。已有媒体首次生成会读取一次原文件，之后列表复用压缩预览。
-
-可选命令 `npm run media:previews` 提前处理索引引用的全部图片与视频，跳过有效缓存，报告失败项。无需先启动服务，也不增加 npm 依赖；自动查找本机 Edge / Chrome，以无头模式运行。可用 `npm run media:previews -- --browser "浏览器可执行文件路径"` 指定浏览器，或用 `--dir "数据所在项目目录"` 指定目标目录。输出仍位于目标的 `.cache/media-previews/`，不修改原文件。
 
 ### 监听与远程写入
 
