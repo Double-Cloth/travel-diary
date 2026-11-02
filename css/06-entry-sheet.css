@@ -1257,6 +1257,17 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-file-actions button,
 .media-file-restore { display: grid; place-items: center; flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 8px 10px; border: 1px solid transparent; border-radius: 4px; color: var(--ink-soft); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
 .media-file-actions svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.record-editor .media-file-drag { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; cursor: grab; touch-action: none; }
+.record-editor .media-file-drag svg { flex-shrink: 0; width: 20px; height: 20px; fill: currentColor; stroke: none; }
+.record-editor .media-file-drag[hidden] { display: none; }
+.record-editor .media-file-drag:active:not(:disabled),
+.record-editor.is-media-dragging,
+.record-editor.is-media-dragging * { cursor: grabbing; }
+.record-editor.is-media-dragging { user-select: none; }
+.record-editor .media-file-list > li.is-media-drag-source { opacity: 0.5; background: var(--paper-100); }
+.record-editor-existing-media > li.is-drop-before { box-shadow: 0 -2px var(--stamp); }
+.record-editor-existing-media > li.is-drop-after { box-shadow: 0 2px var(--stamp); }
+.media-drag-badge { position: fixed; z-index: 2; padding: 7px 12px; border: 1px solid var(--hairline); border-radius: 4px; color: var(--paper-50); background: var(--stamp); font-size: 13px; pointer-events: none; }
 .media-file-actions .media-file-remove { margin-left: 8px; color: var(--stamp); }
 .media-file-actions button:hover:not(:disabled),
 .media-file-restore:hover:not(:disabled) { border-color: var(--hairline); background: var(--paper-50); }
@@ -1668,6 +1679,7 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
     .record-editor-media-selection > span { order: 1; margin-left: auto; white-space: nowrap; }
     .record-editor-media-selection button { width: auto; padding: 8px 4px; border-color: transparent; background: transparent; box-shadow: none; font-size: 13px; white-space: nowrap; text-decoration: underline; text-underline-offset: 4px; }
     .record-editor-media-operations { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding-top: 8px; border-top: 1px solid var(--line); }
+    .record-editor-media-operations [data-media-drag-group] { grid-column: 1 / -1; }
     .record-editor-media-operations button { width: 100%; min-width: 0; padding: 8px 4px; font-size: 13px; }
     .record-editor-media-operations .media-file-remove { margin-left: 4px; width: calc(100% - 4px); border-color: rgba(145, 66, 44, 0.45); }
     .record-editor-media-operations button:only-child { grid-column: 1 / -1; }
