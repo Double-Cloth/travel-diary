@@ -1655,7 +1655,7 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
 @media (max-width: 760px) {
     .record-editor-media-batch { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
     .record-editor-media-selection { flex-wrap: nowrap; gap: 8px; }
-    .record-editor-media-selection > span { margin-right: auto; white-space: nowrap; }
+    .record-editor-media-selection > span { order: 1; margin-left: auto; white-space: nowrap; }
     .record-editor-media-selection button { width: auto; padding: 8px 4px; border-color: transparent; background: transparent; box-shadow: none; font-size: 13px; white-space: nowrap; text-decoration: underline; text-underline-offset: 4px; }
     .record-editor-media-operations { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding-top: 8px; border-top: 1px solid var(--line); }
     .record-editor-media-operations button { width: 100%; min-width: 0; padding: 8px 4px; font-size: 13px; }
