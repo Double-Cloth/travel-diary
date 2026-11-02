@@ -50,6 +50,15 @@ test('图片和视频均以 HEAD 读取大小，重复查看复用缓存', async
     assert.ok(calls.every(({ options }) => options.method === 'HEAD' && options.credentials === 'same-origin' && options.signal));
 });
 
+test('待上传文件直接读取 Blob 大小，不对临时地址发起网络请求', async t => {
+    const previousFetch = globalThis.fetch;
+    t.after(() => { globalThis.fetch = previousFetch; });
+    globalThis.fetch = async () => { assert.fail('本地 Blob 不应发起网络请求'); };
+    const label = { isConnected: true, textContent: '' };
+    await app.updatePhotoViewerFileSize({ src: 'blob:pending-upload', blob: new Blob(['hello']) }, label);
+    assert.equal(label.textContent, '5 B');
+});
+
 test('缺失或无效长度、HTTP 错误及网络失败显示大小未知，之后可重试', async t => {
     const previousFetch = globalThis.fetch;
     t.after(() => { globalThis.fetch = previousFetch; });

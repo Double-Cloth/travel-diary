@@ -1,5 +1,5 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
-import { createRecordEditor } from './record-editor.js?v=20261102-editor-fullscreen-v1';
+import { createRecordEditor } from './record-editor.js?v=20261102-file-manager-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261013-danger-first-v1';
 import { createDataTransfer } from './data-transfer.js?v=20261101-progress-timing-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
@@ -8,7 +8,7 @@ import { confirmFeedback, showFeedback } from './feedback-dialog.js';
 import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20261101-progress-timing-v1';
 import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=20260930-review-v1';
 import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260930-review-v1';
-import { createOperationProgress, downloadWithProgress } from './operation-progress.js?v=20261101-progress-timing-v1';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=20261101-progress-timing-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
@@ -2119,6 +2119,7 @@ function getPhotoViewerItems(button) {
     return buttons.map(item => ({
         kind: item.dataset.mediaKind === 'video' ? 'video' : 'image',
         name: item.dataset.mediaName || '',
+        blob: item.mediaBlob,
         src: item.dataset.mediaSrc || '',
         alt: item.dataset.mediaAlt || '旅行媒体'
     })).filter(item => item.src);
@@ -2354,7 +2355,7 @@ function formatMediaFileSize(bytes) {
 async function updatePhotoViewerFileSize(photo, sizeLabel) {
     if (!sizeLabel) return;
     try {
-        let bytes = mediaFileSizeCache.get(photo.src);
+        let bytes = photo.blob?.size ?? mediaFileSizeCache.get(photo.src);
         if (bytes === undefined) {
             const response = await fetch(photo.src, {
                 method: 'HEAD',
@@ -3807,6 +3808,11 @@ async function downloadViewerMedia() {
     downloadingMedia = true;
     const progress = createOperationProgress(media.kind === 'video' ? '下载原视频' : '下载原图片');
     try {
+        if (media.blob) {
+            saveBlobDownload(media.blob, name);
+            progress.remove();
+            return;
+        }
         const result = await downloadWithProgress(media.src, name, progress);
         if (result.handedOff) {
             progress.remove();

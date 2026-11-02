@@ -281,9 +281,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261102-editor-fullscreen-v1');
+    assert.equal(appVersion, '20261102-file-manager-v1');
     assert.ok(cssVersion);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20261102-editor-fullscreen-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20261102-file-manager-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
 });
@@ -853,7 +853,7 @@ test('不存在的媒体引用显示可定位到 travel_data.json 字段的错�
 });
 
 test('视频共用媒体入口并提供完整播放控制与键盘操作', () => {
-    assert.match(recordEditorJs, /选择图片或视频/);
+    assert.match(recordEditorJs, /添加图片或视频/);
     assert.match(recordEditorJs, /accept="\.mp4,\.m4v,\.mov,\.webm,\.ogv,\.ogg,[^"]*video\/quicktime/);
     assert.match(recordEditorJs, /timeout: 8 \* 60 \* 60 \* 1000/);
     assert.match(recordStoreJs, /const MAXIMUM_RECORD_BYTES = 768 \* 1024 \* 1024/);

@@ -1,4 +1,5 @@
 import { getMediaFileUrl } from './utils.js';
+import { createMediaFileLink } from './media-file-link.js?v=20261102-file-manager-v1';
 
 let feedbackDialog;
 let feedbackResolver;
@@ -24,10 +25,10 @@ function getFeedbackDialog() {
             <h2 id="feedbackDialogTitle" data-feedback-title>操作提示</h2>
             <p class="feedback-dialog-message" id="feedbackDialogMessage" data-feedback-message></p>
             <div class="feedback-dialog-guide" data-feedback-guide hidden></div>
-            <details class="feedback-dialog-files" data-feedback-files hidden>
-                <summary data-feedback-files-title>查看待删除文件</summary>
-                <ul data-feedback-files-list data-media-viewer-group></ul>
-            </details>
+            <section class="feedback-dialog-files" data-feedback-files hidden aria-label="受影响的文件">
+                <p class="feedback-dialog-files-intro" data-feedback-files-title></p>
+                <div data-feedback-files-list data-media-viewer-group></div>
+            </section>
             <div class="feedback-dialog-actions">
                 <button class="paper-button feedback-dialog-cancel" type="button" data-feedback-cancel>取消</button>
                 <button class="paper-button feedback-dialog-confirm" type="button" data-feedback-confirm>知道了</button>
@@ -73,29 +74,35 @@ function openFeedback(message, options = {}) {
     const files = (Array.isArray(options.files) ? options.files : []).filter(file => getMediaFileUrl(file?.path));
     const fileDetails = dialog.querySelector('[data-feedback-files]');
     fileDetails.hidden = !files.length;
-    fileDetails.open = false;
-    dialog.querySelector('[data-feedback-files-title]').textContent = `查看待删除文件（${files.length}）`;
+    dialog.classList.toggle('feedback-dialog-with-files', Boolean(files.length));
+    dialog.querySelector('[data-feedback-files-title]').textContent = '点击缩略图或文件名查看，关闭预览可返回这里。';
     const fileList = dialog.querySelector('[data-feedback-files-list]');
     fileList.textContent = '';
-    for (const [index, file] of files.entries()) {
-        const item = document.createElement('li');
-        const link = document.createElement('a');
-        link.textContent = file.path;
-        link.href = getMediaFileUrl(file.path);
-        link.dataset.action = 'open-media-viewer';
-        link.dataset.mediaKind = file.path.startsWith('data/videos/') ? 'video' : 'image';
-        link.dataset.mediaSrc = link.href;
-        link.dataset.mediaName = file.path.split('/').pop();
-        link.dataset.mediaAlt = file.path;
-        link.dataset.mediaIndex = String(index);
-        link.setAttribute('aria-label', `查看文件：${file.path}`);
-        item.append(link);
-        if (file.destination) {
-            const note = document.createElement('p');
-            note.textContent = `移至：${file.destination}`;
-            item.append(note);
+    let mediaIndex = 0;
+    for (const moving of [false, true]) {
+        const groupFiles = files.filter(file => Boolean(file.destination) === moving);
+        if (!groupFiles.length) continue;
+        const group = document.createElement('section');
+        group.className = moving ? 'feedback-files-moving' : 'feedback-files-deleting';
+        const heading = document.createElement('h3');
+        heading.textContent = `${moving ? '将移动' : '将删除'} · ${groupFiles.length} 项`;
+        const list = document.createElement('ul');
+        list.className = 'media-file-list';
+        for (const file of groupFiles) {
+            const item = document.createElement('li');
+            const link = createMediaFileLink({ path: file.path, name: file.path.split('/').pop(),
+                kind: file.path.startsWith('data/videos/') ? 'video' : 'image', index: mediaIndex++, detail: file.path });
+            item.append(link);
+            if (file.destination) {
+                const note = document.createElement('p');
+                note.className = 'feedback-file-destination';
+                note.textContent = `移至：${file.destination}`;
+                item.append(note);
+            }
+            list.append(item);
         }
-        fileList.append(item);
+        group.append(heading, list);
+        fileList.append(group);
     }
     const guide = dialog.querySelector('[data-feedback-guide]');
     const hasSteps = Array.isArray(options.steps) && options.steps.length > 0;
