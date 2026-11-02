@@ -22,7 +22,8 @@
     "desc_md": "data/travel-diary/2024/2024-07-28-chuxiong.md",
     "photo_folder": "data/photos/chuxiong",
     "photos": [],
-    "video_folder": "data/videos/chuxiong"
+    "video_folder": "data/videos/chuxiong",
+    "videos": []
   },
   {
     "date": "2024-08-12",
@@ -35,7 +36,8 @@
     "desc_md": "data/travel-diary/2024/2024-08-12-shanghai.md",
     "photo_folder": "data/photos/shanghai",
     "photos": [],
-    "video_folder": "data/videos/shanghai"
+    "video_folder": "data/videos/shanghai",
+    "videos": []
   },
   {
     "date": "2024-10-04",
