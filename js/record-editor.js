@@ -11,7 +11,7 @@ import {
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=20261013-cleanup-v1';
 import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=20261102-sync-media-v1';
-import { detectWriterCapability } from './writer-capability.js?v=20260914-auth-setup-v1';
+import { detectWriterCapability } from './writer-capability.js?v=20261102-sync-media-v3';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
 import { confirmFeedback } from './feedback-dialog.js';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
@@ -982,6 +982,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         dialog.querySelectorAll('[name], button:not([data-progress-cancel])').forEach(control => { control.disabled = true; });
         status('正在保存旅行记录…');
         try {
+            if (editingRecord && field('syncMediaFiles').checked) {
+                const capability = await detectWriterCapability();
+                if (!capability.syncMediaFiles) throw new Error('当前服务尚未支持真实媒体文件同步，请重新启动服务后再保存。');
+            }
             const archive = await createDraftBlob(draft, editingRecord ? {
                 originalDescMd: editingRecord.desc_md,
                 syncMediaFiles: field('syncMediaFiles').checked,

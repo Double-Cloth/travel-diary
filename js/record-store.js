@@ -436,7 +436,7 @@ async function stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideo
 async function stageUnusedMedia(root, records, previous) {
     const { isSafeAsciiFileName } = await import('./slug.mjs');
     const staged = [];
-    const directories = new Set();
+    const directories = new Map();
     const fileKey = file => process.platform === 'win32' ? file.toLowerCase() : file;
     const rollback = async () => {
         const results = await Promise.allSettled([...staged].reverse().map(({ file, backup }) => fs.rename(backup, file)));
@@ -445,7 +445,13 @@ async function stageUnusedMedia(root, records, previous) {
     };
     const commit = async () => {
         for (const { backup } of staged) await fs.unlink(backup).catch(() => {});
-        for (const directory of directories) await fs.rmdir(directory).catch(() => {});
+        for (const [directory, boundary] of directories) {
+            // 只逐级移除空目录，保留媒体根目录和任何仍有内容的父目录。
+            for (let current = directory; current !== boundary; current = path.dirname(current)) {
+                try { await fs.rmdir(current); }
+                catch (error) { if (error.code !== 'ENOENT') break; }
+            }
+        }
     };
     try {
         for (const { folderField, listField, prefix } of [
@@ -455,12 +461,12 @@ async function stageUnusedMedia(root, records, previous) {
             const oldFolder = previous[folderField] || '';
             if (!oldFolder.startsWith(prefix) || !oldFolder.slice(prefix.length).split('/').every(isSafeAsciiFileName)) continue;
             const oldNames = previous[listField] || [];
-            if (!oldNames.length) continue;
             const stillReferenced = new Set(records.flatMap(record => record?.[folderField] && Array.isArray(record[listField])
                 ? record[listField].map(name => fileKey(path.resolve(root, record[folderField], name))) : []));
             let directory;
             try { directory = await checkedDirectory(root, oldFolder.split('/')); }
             catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+            directories.set(directory, path.resolve(root, prefix));
             for (const name of new Set(oldNames)) {
                 if (!isSafeAsciiFileName(name)) continue;
                 const file = path.join(directory, name);
@@ -470,7 +476,6 @@ async function stageUnusedMedia(root, records, previous) {
                 const backup = path.join(directory, `.travel-media-${randomBytes(16).toString('hex')}.bak`);
                 await fs.rename(file, backup);
                 staged.push({ file, backup });
-                directories.add(directory);
             }
         }
         return { rollback, commit };
@@ -653,6 +658,10 @@ async function updateRecord(root, payload) {
         await checkedFile(oldDiaryFile);
         const oldMarkdown = await fs.readFile(oldDiaryFile, 'utf8');
         if (JSON.stringify(existing) === JSON.stringify(updatedRecord) && oldMarkdown === markdown && !uploads.length) {
+            if (syncMediaFiles) {
+                unusedMediaStage = await stageUnusedMedia(root, records, existing);
+                await unusedMediaStage.commit();
+            }
             return { record: updatedRecord, alreadySaved: true };
         }
         if (payload.expected && (recordMetadataSnapshot(existing) !== recordMetadataSnapshot(payload.expected.record)
@@ -1064,12 +1073,12 @@ function createRecordApi(root, options = {}) {
         }
         if (requestPath === '/api/travel-records' && req.method === 'GET') {
             if (!session) {
-                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, code: 'AUTH_REQUIRED' });
+                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, code: 'AUTH_REQUIRED' });
                 return;
             }
             send(200, {
                 service: 'travel-diary-writer-v1', authenticated: true, token: session.token,
-                methods: ['POST', 'PUT', 'DELETE'], writeMode
+                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true
             });
             return;
         }

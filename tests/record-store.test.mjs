@@ -191,7 +191,9 @@ test('ZIP64 媒体 CRC 损坏会回滚文件；上传期间注销会话则拒绝
 test('写入服务声明支持新增、修改与删除方法', async () => {
     const response = await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } });
     assert.equal(response.status, 200);
-    assert.deepEqual((await response.json()).methods, ['POST', 'PUT', 'DELETE']);
+    const capability = await response.json();
+    assert.deepEqual(capability.methods, ['POST', 'PUT', 'DELETE']);
+    assert.equal(capability.syncMediaFiles, true);
 });
 
 test('旧窗口修改不会覆盖最新元数据和正文，同内容重试仍幂等', async () => {
@@ -587,6 +589,48 @@ test('ZIP 保存可关闭真实文件同步，只更新删除与目录引用且�
     const withUpload = (await uploadResponse.json()).record;
     assert.deepEqual(await fs.readFile(path.join(root, withUpload.photo_folder, withUpload.photos.at(-1))), png);
     assert.equal(await fs.readFile(path.join(root, input.photo_folder, 'keep.png'), 'utf8'), 'keep.png');
+});
+
+test('ZIP 默认删除最后一张照片和视频，并清理空目录及空父目录', async () => {
+    const input = {
+        date: '2032-04-01', locality: '清空媒体目录',
+        photo_folder: 'data/photos/empty-parent/leaf', photos: ['last.png', 'last.png'],
+        video_folder: 'data/videos/empty-parent/leaf', videos: ['last.mp4']
+    };
+    for (const [folder, name] of [[input.photo_folder, 'last.png'], [input.video_folder, 'last.mp4']]) {
+        await fs.mkdir(path.join(root, folder), { recursive: true });
+        await fs.writeFile(path.join(root, folder, name), name);
+    }
+    const value = draft('a', input);
+    const created = (await (await post(value)).json()).record;
+    const response = await fetch(`${base}/api/travel-records`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Cookie: cookie, Origin: base },
+        body: await createDraftBlob({ ...value, input: { ...value.input, photos: [], videos: [] } }, { originalDescMd: created.desc_md })
+    });
+    assert.equal(response.status, 200);
+    for (const type of ['photos', 'videos']) {
+        await assert.rejects(fs.stat(path.join(root, 'data', type, 'empty-parent')), { code: 'ENOENT' });
+        assert.equal((await fs.stat(path.join(root, 'data', type))).isDirectory(), true);
+    }
+});
+
+test('同步保存清理已无媒体的空目录，关闭同步保留目录，有其他文件的父目录保留', async () => {
+    const input = {
+        date: '2032-04-02', locality: '已有空目录',
+        photo_folder: 'data/photos/empty-existing/leaf', photos: [],
+        video_folder: 'data/videos/empty-existing/leaf', videos: []
+    };
+    for (const folder of [input.photo_folder, input.video_folder]) await fs.mkdir(path.join(root, folder), { recursive: true });
+    const sibling = path.join(root, 'data/photos/empty-existing/keep.txt');
+    await fs.writeFile(sibling, '保留其他文件');
+    const value = draft('a', input);
+    const created = (await (await post(value)).json()).record;
+    assert.equal((await put(created.desc_md, value, {}, undefined, { syncMediaFiles: false })).status, 200);
+    for (const folder of [input.photo_folder, input.video_folder]) assert.equal((await fs.stat(path.join(root, folder))).isDirectory(), true);
+    assert.equal((await put(created.desc_md, value)).status, 200);
+    for (const folder of [input.photo_folder, input.video_folder]) await assert.rejects(fs.stat(path.join(root, folder)), { code: 'ENOENT' });
+    await assert.rejects(fs.stat(path.join(root, 'data/videos/empty-existing')), { code: 'ENOENT' });
+    assert.equal(await fs.readFile(sibling, 'utf8'), '保留其他文件');
 });
 
 test('同步移动照片与视频并移除列表中的文件，后续写入失败时恢复全部原文件', async () => {

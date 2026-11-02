@@ -13,6 +13,7 @@ function capabilityFrom(endpoint, result) {
         token: result.token,
         methods: new Set(Array.isArray(result.methods) ? result.methods : []),
         writeMode: result.writeMode || '',
+        syncMediaFiles: result.syncMediaFiles === true,
         authenticated: result.authenticated === true
     };
 }
