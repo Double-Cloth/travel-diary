@@ -281,9 +281,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261102-media-preview-v1');
+    assert.equal(appVersion, '20261102-native-preview-v1');
     assert.ok(cssVersion);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20261102-media-preview-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20261102-native-preview-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
 });
@@ -365,7 +365,7 @@ test('切换记录先确认丢弃未保存内容，再验证密码，确认时�
 });
 
 test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () => {
-    assert.match(recordEditorJs, /import \{ confirmFeedback \} from '\.\/feedback-dialog\.js\?v=20261102-media-preview-v1';/);
+    assert.match(recordEditorJs, /import \{ confirmFeedback \} from '\.\/feedback-dialog\.js\?v=20261102-native-preview-v1';/);
     assert.match(recordEditorJs, /data-editor-clear>清空编辑器/);
     assert.match(recordEditorJs, /confirmFeedback\('当前编辑器中的表单、正文和待保存图片、视频都会被清除/);
     assert.match(recordEditorJs, /releasePhotoPreviews\(\);\s*uploads = \[\];/);
@@ -379,7 +379,7 @@ test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () =>
 });
 
 test('运行时提示全部使用站内反馈弹窗而不是浏览器 alert', () => {
-    assert.match(appJs, /import \{ confirmFeedback, showFeedback \} from '\.\/feedback-dialog\.js\?v=20261102-media-preview-v1';/);
+    assert.match(appJs, /import \{ confirmFeedback, showFeedback \} from '\.\/feedback-dialog\.js\?v=20261102-native-preview-v1';/);
     assert.match(appJs, /\.catch\(error => showFeedback\(error\.message\)\)/);
     assert.match(appJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据导出。'/);
     assert.match(dataTransferJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据导入。'/);

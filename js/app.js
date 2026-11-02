@@ -1,17 +1,17 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
-import { createRecordEditor } from './record-editor.js?v=20261102-media-preview-v1';
+import { createRecordEditor } from './record-editor.js?v=20261102-native-preview-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261102-media-batch-v1';
 import { createDataTransfer } from './data-transfer.js?v=20261102-media-batch-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261102-media-batch-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=20261102-media-preview-v1';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
 import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20261101-progress-timing-v1';
 import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=20260930-review-v1';
 import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260930-review-v1';
 import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=20261101-progress-timing-v1';
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs';
 import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js';
-import { getMediaPreviewUrl } from './media-preview.mjs';
+import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=20261102-native-preview-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
@@ -4851,7 +4851,8 @@ function observePhotoSleeveMedia() {
     const images = document.querySelectorAll('#leftPage .photo-sleeve img[data-src], #rightPage .photo-sleeve img[data-src]');
     const load = image => {
         if (!image.dataset.src) return;
-        image.src = image.dataset.src;
+        const button = image.closest('.photo-sleeve-button');
+        void loadMediaPreview(image, button.dataset.mediaSrc, button.dataset.mediaKind);
         delete image.dataset.src;
     };
     if (!('IntersectionObserver' in window)) {

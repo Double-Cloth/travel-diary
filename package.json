@@ -9,7 +9,6 @@
     "china-locations": "node scripts/update-china-locations.mjs",
     "countries": "node scripts/update-countries.mjs",
     "data:archive": "node scripts/build-data-backup.js",
-    "media:previews": "node scripts/build-media-previews.js",
     "fonts": "node scripts/build-fonts.mjs",
     "fonts:core": "node scripts/build-fonts.mjs --core",
     "fonts:subset": "node scripts/build-fonts.mjs --subset",

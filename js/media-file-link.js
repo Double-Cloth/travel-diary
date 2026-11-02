@@ -1,5 +1,5 @@
 import { getMediaFileUrl } from './utils.js';
-import { getMediaPreviewUrl } from './media-preview.mjs';
+import { getMediaPreviewUrl, observeMediaPreview } from './media-preview.mjs?v=20261102-native-preview-v1';
 
 export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbnailSrc = getMediaPreviewUrl(src), blob, name, kind, index = 0, detail = '' }) {
     const link = document.createElement(src ? 'a' : 'span');
@@ -31,8 +31,9 @@ export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbna
             media.hidden = true;
             fallback.textContent = '无法预览';
         }, { once: true });
-        media.src = thumbnailSrc;
         thumbnail.append(media);
+        if (thumbnailSrc.startsWith('blob:')) media.src = thumbnailSrc;
+        else observeMediaPreview(media, src, kind);
     }
     const text = document.createElement('span');
     text.className = 'media-file-description';

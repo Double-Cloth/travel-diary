@@ -878,9 +878,9 @@ test('翻页视频画面缩为静态图片，未解码和跨源失败保留占�
     assert.equal(app.createTransitionMediaImage({ ...video, videoWidth: 0 }).src, undefined);
 });
 
-test('图片与视频封面只在进入视口后加载压缩资源，换页解除旧观察', t => {
+test('图片与视频封面只在进入视口后读取预览缓存，换页解除旧观察', async t => {
     const previous = { document: globalThis.document, window: globalThis.window,
-        IntersectionObserver: globalThis.IntersectionObserver };
+        IntersectionObserver: globalThis.IntersectionObserver, fetch: globalThis.fetch };
     t.after(() => Object.assign(globalThis, previous));
     const observers = [];
     globalThis.window = { IntersectionObserver: true };
@@ -890,14 +890,28 @@ test('图片与视频封面只在进入视口后加载压缩资源，换页解�
         unobserve(target) { this.targets.delete(target); }
         disconnect() { this.targets.clear(); }
     };
-    const video = { dataset: { src: 'data/previews/videos/trip/movie.mp4.jpg' } };
+    const requests = [];
+    globalThis.fetch = async url => {
+        requests.push(url);
+        return url === 'index.html'
+            ? { headers: new Headers({ 'X-Travel-Media-Cache': 'disk-v1' }) }
+            : new Response(new Blob(['cached-preview'], { type: 'image/jpeg' }));
+    };
+    const video = { dataset: { src: '.cache/media-previews/videos/trip/movie.mp4.jpg' },
+        isConnected: true, addEventListener() {},
+        closest: () => ({ dataset: { mediaSrc: 'data/videos/trip/movie.mp4', mediaKind: 'video' } }) };
     globalThis.document = { querySelectorAll: () => [video] };
     app.observePhotoSleeveMedia();
     const first = observers[0];
     first.callback([{ target: video, isIntersecting: false }]);
     assert.equal(video.src, undefined);
+    assert.equal(requests.length, 0);
     first.callback([{ target: video, isIntersecting: true }]);
-    assert.equal(video.src, 'data/previews/videos/trip/movie.mp4.jpg');
+    await new Promise(resolve => setTimeout(resolve, 10));
+    assert.match(video.src, /^blob:/);
+    URL.revokeObjectURL(video.src);
+    assert.ok(requests.includes('.cache/media-previews/videos/trip/movie.mp4.jpg'));
+    assert.equal(requests.some(url => url.startsWith('data/')), false);
     assert.equal(video.preload, undefined);
     assert.equal(first.targets.size, 0);
     assert.equal(video.dataset.src, undefined);
@@ -905,10 +919,12 @@ test('图片与视频封面只在进入视口后加载压缩资源，换页解�
     app.observePhotoSleeveMedia();
     assert.equal(first.targets.size, 0);
     delete globalThis.window.IntersectionObserver;
-    const fallback = { dataset: { src: 'fallback.mp4.jpg' }, closest: () => null };
+    const fallback = { ...video, dataset: { src: 'fallback.mp4.jpg' }, closest: selector => selector === '[hidden]' ? null : video.closest() };
     globalThis.document.querySelectorAll = () => [fallback];
     app.observePhotoSleeveMedia();
-    assert.equal(fallback.src, 'fallback.mp4.jpg');
+    await new Promise(resolve => setTimeout(resolve, 10));
+    assert.match(fallback.src, /^blob:/);
+    URL.revokeObjectURL(fallback.src);
 });
 
 test('翻页方向与书签顺序及返回按钮一致', () => {

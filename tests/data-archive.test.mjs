@@ -71,9 +71,9 @@ test('完整 ZIP 包含 data 与认证配置，并可恢复访问密码', async 
     await fs.writeFile(path.join(root, record.desc_md), '# 苏州\n');
     await fs.writeFile(path.join(root, record.photo_folder, record.photos[0]), Buffer.from([1, 2, 3]));
     await fs.writeFile(path.join(root, record.video_folder, record.videos[0]), Buffer.from([4, 5, 6]));
-    await fs.mkdir(path.join(root, 'data/previews'), { recursive: true });
-    await fs.writeFile(path.join(root, 'data/previews/preview.jpg'), '可重新生成的缓存');
-    await fs.writeFile(path.join(root, 'data/previews/render.tmp'), '正在生成');
+    await fs.mkdir(path.join(root, '.cache/media-previews'), { recursive: true });
+    await fs.writeFile(path.join(root, '.cache/media-previews/preview.jpg'), '可重新生成的缓存');
+    await fs.writeFile(path.join(root, '.cache/media-previews/render.tmp'), '正在生成');
 
     const archive = await exportDataArchive(root);
     assert.deepEqual((await readZip(archive)).map(entry => entry.name).sort(), [

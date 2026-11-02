@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const { createRecordApi, normalizeAllowedOrigins } = require('./record-store.js');
 const { readAuthConfig } = require('./auth.js');
-const { createMediaPreviewStore } = require('./media-preview-store.js');
+const { createMediaPreviewStore, MAXIMUM_PREVIEW_BYTES } = require('./media-preview-store.js');
 
 const CONFIG = {
   defaultPort: 9000,
@@ -15,6 +15,7 @@ const CONFIG = {
 };
 
 const STATIC_SECURITY_HEADERS = Object.freeze({
+  'X-Travel-Media-Cache': 'disk-v1',
   'Content-Security-Policy': "default-src 'self'; base-uri 'none'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; connect-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; font-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'",
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
@@ -293,7 +294,7 @@ async function ensureDataStructure(rootDir) {
 function createHandler(rootDir, options = {}) {
   rootDir = fs.realpathSync(rootDir);
   const secretsRoot = path.join(rootDir, '.secrets');
-  const getMediaPreview = createMediaPreviewStore(rootDir, options.mediaPreview);
+  const mediaPreviews = createMediaPreviewStore(rootDir);
   const recordApi = createRecordApi(rootDir, {
     writeMode: options.writeMode || CONFIG.defaultWriteMode,
     allowedOrigins: options.allowedOrigins || []
@@ -316,7 +317,8 @@ function createHandler(rootDir, options = {}) {
       return;
     }
 
-    if (req.method !== 'GET' && req.method !== 'HEAD') {
+    const previewRequest = req.url.split('?')[0].startsWith('/.cache/media-previews/');
+    if (req.method !== 'GET' && req.method !== 'HEAD' && !(previewRequest && req.method === 'PUT')) {
       res.writeHead(405, {
         'Content-Type': 'text/plain; charset=utf-8',
         Allow: 'GET, HEAD, OPTIONS'
@@ -339,12 +341,35 @@ function createHandler(rootDir, options = {}) {
       pathname = '/index.html';
     }
 
-    if (pathname.startsWith('/data/previews/')) {
+    if (pathname.startsWith('/.cache/media-previews/')) {
       try {
-        const { image, etag } = await getMediaPreview(pathname);
+        if (req.method === 'PUT') {
+          // 缓存只接收同源页面生成的小型预览，不修改原文件或个人数据。
+          const origin = new URL(req.headers.origin || 'about:blank');
+          if (!['http:', 'https:'].includes(origin.protocol) || origin.host !== req.headers.host
+              || (req.headers['sec-fetch-site'] && req.headers['sec-fetch-site'] !== 'same-origin')) {
+            throw Object.assign(new Error('拒绝跨站缓存写入。'), { status: 403 });
+          }
+          if (req.headers['content-type'] !== 'image/jpeg') throw Object.assign(new Error('无效的预览类型。'), { status: 415 });
+          const chunks = [];
+          let length = 0;
+          for await (const chunk of req) {
+            length += chunk.length;
+            if (length > MAXIMUM_PREVIEW_BYTES) throw Object.assign(new Error('预览过大。'), { status: 413 });
+            chunks.push(chunk);
+          }
+          await mediaPreviews.put(pathname, Buffer.concat(chunks), req.headers['if-match']);
+          res.writeHead(204, { ...STATIC_SECURITY_HEADERS, 'Cache-Control': 'no-store' });
+          res.end();
+          return;
+        }
+        const { image, etag } = await mediaPreviews.get(pathname);
         const headers = { ...STATIC_SECURITY_HEADERS, 'Content-Type': 'image/jpeg',
           'Cache-Control': 'private, max-age=0, must-revalidate', ETag: etag };
-        if (req.headers['if-none-match'] === etag) {
+        if (!image) {
+          res.writeHead(204, { ...headers, 'Cache-Control': 'no-store' });
+          res.end();
+        } else if (req.headers['if-none-match'] === etag) {
           res.writeHead(304, headers);
           res.end();
         } else {

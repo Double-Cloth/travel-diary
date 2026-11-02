@@ -1,5 +1,5 @@
 import { escapeHtml, getMediaFileUrl } from './utils.js';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=20261102-media-preview-v1';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=20261102-native-preview-v1';
 import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
@@ -14,7 +14,7 @@ import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTr
 import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=20261102-media-batch-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261102-media-batch-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
-import { confirmFeedback } from './feedback-dialog.js?v=20261102-media-preview-v1';
+import { confirmFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
 import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=20261101-progress-timing-v1';

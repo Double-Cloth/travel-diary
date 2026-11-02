@@ -67,9 +67,6 @@ jobs:
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
-      - name: Install media tools
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
-
       - name: Build full fonts
         run: npm run fonts
 
@@ -81,7 +78,6 @@ jobs:
           if [ -d data ]; then cp -R data/. _site/data/; fi
           if [ ! -f _site/data/travel_data.json ]; then printf '[]\n' > _site/data/travel_data.json; fi
           if [ ! -f _site/data/profile/profile-picture.png ]; then printf 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=' | base64 --decode > _site/data/profile/profile-picture.png; fi
-          npm run media:previews -- _site
           find _site/assets/fonts -name '*.ttf' -delete
           touch _site/.nojekyll
 

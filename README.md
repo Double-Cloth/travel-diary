@@ -18,10 +18,9 @@ node js/server.js --help
 
 # 运行全部测试
 npm test
-
-# 生成媒体压缩预览（需要 FFmpeg，静态发布前执行）
-npm run media:previews
 ```
+
+媒体预览由浏览器原生 Canvas 在进入视口后自动压缩，无需安装转码工具或执行生成命令。本地缓存位于 `.cache/media-previews/`；静态托管使用浏览器缓存。已有媒体首次生成会读取一次原文件，之后列表复用压缩预览。
 
 ### 监听与远程写入
 
