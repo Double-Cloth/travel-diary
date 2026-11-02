@@ -1978,6 +1978,7 @@ function renderPhotoViewer() {
     }
 
     enhanceCustomSelects(root.querySelector('[data-photo-viewer]'));
+    syncViewerFullscreenButton();
     void updatePhotoViewerFileSize(photo, root.querySelector('[data-photo-viewer-size]'));
     observePhotoViewerStage();
 
@@ -2022,7 +2023,7 @@ function renderPhotoViewer() {
 
     syncPhotoMoreControlsLayout();
     const image = getPhotoViewerRoot()?.querySelector('[data-photo-viewer-image]');
-    if (previousFrame && image && !prefersReducedMotion()) {
+    if (previousFrame && image) {
         // 新图加载、适配完成前保留旧图，避免切换大照片时露出空白舞台。
         previousFrame.removeAttribute('data-photo-viewer-frame');
         previousFrame.querySelector('img').removeAttribute('data-photo-viewer-image');
@@ -2031,12 +2032,7 @@ function renderPhotoViewer() {
         previousFrame.inert = true;
         previousFrame.style.pointerEvents = 'none';
         image.closest('[data-photo-viewer-stage]').append(previousFrame);
-        const reveal = () => {
-            if (!previousFrame.isConnected) return;
-            const fade = previousFrame.animate([{ opacity: 1 }, { opacity: 0 }],
-                { duration: 180, easing: 'ease-out', fill: 'forwards' });
-            fade.finished.then(() => previousFrame.remove(), () => previousFrame.remove());
-        };
+        const reveal = () => previousFrame.remove();
         if (image.complete) requestAnimationFrame(reveal);
         else {
             image.addEventListener('load', () => requestAnimationFrame(reveal), { once: true });
@@ -2359,6 +2355,18 @@ async function toggleViewerFullscreen() {
     await viewer?.requestFullscreen?.();
 }
 
+function syncViewerFullscreenButton() {
+    const viewer = getPhotoViewerRoot()?.querySelector('[data-photo-viewer]');
+    if (!viewer) return;
+    const isFullscreen = document.fullscreenElement === viewer;
+    for (const button of viewer.querySelectorAll('[data-photo-action="fullscreen"], [data-video-action="fullscreen"]')) {
+        button.textContent = isFullscreen ? '退出全屏' : '全屏';
+        button.setAttribute('aria-label', isFullscreen ? '退出全屏'
+            : button.matches('[data-video-action]') ? '全屏播放' : '全屏查看图片');
+        button.setAttribute('aria-pressed', String(isFullscreen));
+    }
+}
+
 function renderPhotoViewerCaption(photo) {
     const name = String(photo.name || getMediaFileName(photo.src) || photo.alt || '旅行媒体');
     const label = String(photo.alt || name);
@@ -2647,6 +2655,7 @@ function stopObservingPhotoViewerStage() {
 }
 
 function handlePhotoViewerFullscreenChange() {
+    syncViewerFullscreenButton();
     schedulePhotoViewerFit();
 }
 

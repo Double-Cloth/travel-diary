@@ -10,7 +10,7 @@ export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteConten
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
     restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute,
-    getInitialPhotoScale, getPhotoViewerBounds, constrainPhotoViewerTransform, getPhotoViewerBackgroundColor, updatePhotoViewerBackground, toggleViewerFullscreen };
+    getInitialPhotoScale, getPhotoViewerBounds, constrainPhotoViewerTransform, getPhotoViewerBackgroundColor, updatePhotoViewerBackground, toggleViewerFullscreen, syncViewerFullscreenButton };
 export function stubSearchNavigation(route) {
     const originals = { navigateTo, activeRoute };
     const calls = [];
@@ -490,6 +490,28 @@ test('全屏包含整个查看器的切换按钮，再次点击退出全屏', as
     document.fullscreenElement = viewer;
     await app.toggleViewerFullscreen();
     assert.deepEqual(calls, ['enter', 'exit']);
+});
+
+test('图片与视频全屏按钮同步文字、无障碍标签和按下状态', t => {
+    const previousDocument = globalThis.document;
+    t.after(() => { globalThis.document = previousDocument; });
+    const buttons = [false, true].map(isVideo => ({
+        attributes: {},
+        matches: () => isVideo,
+        setAttribute(name, value) { this.attributes[name] = value; }
+    }));
+    const viewer = { querySelectorAll: () => buttons };
+    globalThis.document = { body: { querySelector: () => viewer }, fullscreenElement: viewer };
+    app.syncViewerFullscreenButton();
+    for (const button of buttons) {
+        assert.equal(button.textContent, '退出全屏');
+        assert.deepEqual(button.attributes, { 'aria-label': '退出全屏', 'aria-pressed': 'true' });
+    }
+    document.fullscreenElement = null;
+    app.syncViewerFullscreenButton();
+    assert.deepEqual(buttons.map(button => button.textContent), ['全屏', '全屏']);
+    assert.deepEqual(buttons.map(button => button.attributes['aria-label']), ['全屏查看图片', '全屏播放']);
+    assert.ok(buttons.every(button => button.attributes['aria-pressed'] === 'false'));
 });
 
 test('查看器背景避开媒体边缘颜色，黑白混合边缘采用中间色阶', () => {

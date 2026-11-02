@@ -440,11 +440,6 @@
     touch-action: none;
     background: var(--viewer-screen);
     box-shadow: 0 0 0 1px var(--hairline), 0 3px 8px #4a301b30;
-    transition: background-color 180ms ease-out;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .photo-viewer-stage { transition: none; }
 }
 
 .photo-viewer-stage:active {
