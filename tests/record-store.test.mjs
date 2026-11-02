@@ -194,6 +194,7 @@ test('写入服务声明支持新增、修改与删除方法', async () => {
     const capability = await response.json();
     assert.deepEqual(capability.methods, ['POST', 'PUT', 'DELETE']);
     assert.equal(capability.syncMediaFiles, true);
+    assert.equal(capability.mediaOrder, true);
 });
 
 test('旧窗口修改不会覆盖最新元数据和正文，同内容重试仍幂等', async () => {
@@ -680,4 +681,75 @@ test('同步移动照片与视频并移除列表中的文件，后续写入失�
         assert.equal(await fs.readFile(path.join(root, folder, name), 'utf8'), name);
     }
     for (const folder of [input.photo_folder, input.video_folder]) await assert.rejects(fs.stat(path.join(root, folder)), { code: 'ENOENT' });
+});
+
+
+test('媒体混合顺序拒绝缺项、重复和越界，并兼容未指定顺序的旧草稿', () => {
+    const value = draft('d', { photo_folder: 'data/photos/order', photos: ['a.png', 'b.png'] });
+    for (const order of [[0], [0, 0], [0, 2], [-1, 0], [0, 0.5], [0,,], '0,1']) {
+        assert.throws(() => readDraft({ ...value, mediaOrder: { photos: order } }), /媒体顺序/);
+    }
+    for (const mediaOrder of [null, [], 'bad']) assert.throws(() => readDraft({ ...value, mediaOrder }), /媒体顺序/);
+    assert.deepEqual(readDraft(value), value);
+    assert.deepEqual(prepareRecord({ ...value, mediaOrder: { photos: [1, 0] } }, countries).record.photos, ['b.png', 'a.png']);
+});
+
+test('混合排序草稿 ZIP 往返保持图片、视频顺序及原始媒体', async () => {
+    const value = { ...draft('d', { photo_folder: 'data/photos/order', photos: ['a.png', 'b.png'], video_folder: 'data/videos/order', videos: ['old.webm'] }),
+        uploads: [
+            { id: 'a'.repeat(32), name: 'new.png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=' },
+            { id: 'b'.repeat(32), name: 'new.webm', data: Buffer.from('\x1aE\xdf\xa3video', 'latin1').toString('base64') }
+        ], mediaOrder: { photos: [0, 2, 1], videos: [1, 0] } };
+    const { draft: restored } = await (await import('../js/draft-archive.mjs')).readRecordSource(await createDraftBlob(value));
+    assert.deepEqual(restored.mediaOrder, value.mediaOrder);
+    const { record } = prepareRecord(restored, countries);
+    assert.deepEqual(record.photos, ['a.png', 'new.png', 'b.png']);
+    assert.deepEqual(record.videos, ['new.webm', 'old.webm']);
+});
+
+test('新旧图片交错排序真实落盘、重试与修改后文件内容保持对应', async () => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=', 'base64');
+    const first = Buffer.concat([png, Buffer.from('first')]);
+    const second = Buffer.concat([png, Buffer.from('second')]);
+    const source = 'data/photos/mixed-order-source';
+    await fs.mkdir(path.join(root, source), { recursive: true });
+    await fs.writeFile(path.join(root, source, 'first.png'), first);
+    await fs.writeFile(path.join(root, source, 'second.png'), second);
+    const value = { ...draft('d', { date: '2038-01-01', locality: '混排测试', photo_folder: source, photos: ['first.png', 'second.png'] }),
+        uploads: [{ id: 'a'.repeat(32), name: 'new.png', data: png.toString('base64') }], mediaOrder: { photos: [0, 2, 1] } };
+    const response = await post(value);
+    assert.equal(response.status, 201);
+    const created = (await response.json()).record;
+    assert.deepEqual(created.photos, ['first.png', 'new.png', 'second.png']);
+    for (const [name, bytes] of [['first.png', first], ['second.png', second], ['new.png', png]]) {
+        assert.deepEqual(await fs.readFile(path.join(root, created.photo_folder, name)), bytes);
+    }
+    assert.equal((await post(value)).status, 200);
+    assert.equal((await post({ ...value, uploads: [{ ...value.uploads[0], data: first.toString('base64') }] })).status, 409);
+
+    const edited = { ...draft('d', { date: '2038-01-01', locality: '混排测试', photo_folder: created.photo_folder, photos: created.photos }),
+        uploads: [{ id: 'b'.repeat(32), name: 'another.png', data: second.toString('base64') }], mediaOrder: { photos: [3, 0, 2, 1] } };
+    const updatedResponse = await put(created.desc_md, edited);
+    assert.equal(updatedResponse.status, 200);
+    const updated = (await updatedResponse.json()).record;
+    assert.deepEqual(updated.photos, ['another.png', 'first.png', 'second.png', 'new.png']);
+    assert.deepEqual(await fs.readFile(path.join(root, updated.photo_folder, 'another.png')), second);
+    assert.deepEqual(await fs.readFile(path.join(root, updated.photo_folder, 'new.png')), png);
+    assert.deepEqual(await fs.readFile(path.join(root, updated.photo_folder, 'first.png')), first);
+
+    const unchanged = await readIndex();
+    assert.equal((await put(created.desc_md, { ...edited, mediaOrder: { photos: [0, 0, 1, 2] } })).status, 400);
+    assert.deepEqual(await readIndex(), unchanged);
+});
+
+test('关闭真实文件同步仍按混合顺序写入新增图片并保留已有文件', async () => {
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=';
+    const value = { ...draft('e', { date: '2038-02-02', locality: '关闭同步混排' }), uploads: [{ id: 'c'.repeat(32), name: 'old.png', data: png }] };
+    const created = (await (await post(value)).json()).record;
+    const edited = { ...draft('e', { date: '2038-02-02', locality: '关闭同步混排', photo_folder: created.photo_folder, photos: created.photos }),
+        uploads: [{ id: 'd'.repeat(32), name: 'new.png', data: png }], mediaOrder: { photos: [1, 0] } };
+    const response = await put(created.desc_md, edited, {}, undefined, { syncMediaFiles: false });
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).record.photos, ['new.png', 'old.png']);
+    for (const name of ['old.png', 'new.png']) assert.deepEqual(await fs.readFile(path.join(root, created.photo_folder, name)), Buffer.from(png, 'base64'));
 });

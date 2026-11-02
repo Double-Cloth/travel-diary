@@ -381,7 +381,7 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
     try {
         for (let index = 0; index < sourceNames.length; index += 1) {
             if (options.syncMediaFiles === false) continue;
-            const name = names[index];
+            const name = (sourceMedia.targetNames || names)[index];
             if (!name) continue;
             let exists = false;
             try {
@@ -399,7 +399,7 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
             await writeMedia(name, content);
         }
         for (let index = 0; index < uploads.length; index += 1) {
-            const name = names[sourceNames.length + index];
+            const name = (sourceMedia.targetNames || names)[sourceNames.length + index];
             if (!name) continue;
             const buffer = uploadBuffer(uploads[index], options.label);
             await writeMedia(name, buffer);
@@ -507,7 +507,7 @@ async function readMediaContents(root, uploads, sourceMedia, label) {
     for (const media of uploads) {
         contents.push(uploadBuffer(media, label));
     }
-    return contents;
+    return sourceMedia.order ? sourceMedia.order.map(index => contents[index]) : contents;
 }
 
 async function digestSource(source) {
@@ -1073,12 +1073,12 @@ function createRecordApi(root, options = {}) {
         }
         if (requestPath === '/api/travel-records' && req.method === 'GET') {
             if (!session) {
-                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, code: 'AUTH_REQUIRED' });
+                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, code: 'AUTH_REQUIRED' });
                 return;
             }
             send(200, {
                 service: 'travel-diary-writer-v1', authenticated: true, token: session.token,
-                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true
+                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true
             });
             return;
         }

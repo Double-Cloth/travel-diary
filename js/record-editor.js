@@ -9,10 +9,10 @@ import {
     mediaBytes,
     readUploads
 } from './photo-uploads.mjs?v=20261013-cleanup-v1';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=20261013-cleanup-v1';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=20261102-media-batch-v1';
 import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=20261102-sync-media-v1';
-import { detectWriterCapability } from './writer-capability.js?v=20261102-sync-media-v3';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=20261102-media-batch-v1';
+import { detectWriterCapability } from './writer-capability.js?v=20261102-media-batch-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
 import { confirmFeedback } from './feedback-dialog.js';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
@@ -54,6 +54,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let bodyScrollTop = 0;
     let uploads = [];
     let removedMedia = [];
+    let mediaOrder = { photo: [], video: [] };
+    let existingMediaEntries = { photo: [], video: [] };
+    let mediaKeySequence = 0;
+    const selectedMedia = new Set();
     let readingPhotos = false;
     let operationProgress;
     let archivePhase = '正在校验并打包媒体…';
@@ -77,6 +81,11 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         format: DRAFT_FORMAT,
         requestId,
         uploads: uploads.map(({ id, name, data }) => ({ id, name, data })),
+        mediaOrder: Object.fromEntries(['photo', 'video'].map(type => {
+            const items = canonicalMedia(type);
+            const indexes = new Map(items.map((item, index) => [item.key, index]));
+            return [`${type}s`, orderedMedia(type).map(item => indexes.get(item.key))];
+        })),
         input: Object.fromEntries(RECORD_FIELDS.map(key => [key, ['photos', 'videos'].includes(key)
             ? field(key).value.split(/\r?\n/).map(name => name.trim()).filter(Boolean)
             : field(key).value]))
@@ -289,24 +298,29 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <h3 id="${editorId('PhotosTitle')}">图片与视频</h3>
                             <span data-editor-media-count></span>
                         </div>
-                        <p class="record-editor-media-intro">点击缩略图或文件名查看。排序与移除在保存后生效。</p>
+                        <p class="record-editor-media-intro">点击缩略图或文件名查看，勾选后可批量操作。新文件可移到已有文件之间，排序与移除在保存后生效。</p>
                         <div class="record-editor-upload-zone" data-editor-drop>
                             <button class="paper-button" type="button" data-editor-upload>添加图片或视频</button>
                             <p>或将文件拖到这里</p>
-                            <details class="record-editor-upload-help"><summary>支持格式与大小</summary><small>图片：JPEG / PNG / GIF / WebP，单张最大 ${MAXIMUM_IMAGE_FILE_BYTES / 1024 / 1024} MiB · 视频：MP4 / M4V / MOV / WebM / Ogg，单个最大 ${MAXIMUM_VIDEO_FILE_BYTES / 1024 / 1024} MiB · 本次新媒体合计最大 ${MAXIMUM_MEDIA_BATCH_BYTES / 1024 / 1024} MiB</small></details>
+                            <button type="button" class="record-editor-upload-help" data-editor-upload-help aria-expanded="false" aria-controls="${editorId('UploadLimits')}">支持格式与大小</button>
+                            <small id="${editorId('UploadLimits')}" class="record-editor-upload-limits" data-editor-upload-limits hidden>图片：JPEG / PNG / GIF / WebP，单张最大 ${MAXIMUM_IMAGE_FILE_BYTES / 1024 / 1024} MiB · 视频：MP4 / M4V / MOV / WebM / Ogg，单个最大 ${MAXIMUM_VIDEO_FILE_BYTES / 1024 / 1024} MiB · 本次新媒体合计最大 ${MAXIMUM_MEDIA_BATCH_BYTES / 1024 / 1024} MiB</small>
                             <input type="file" data-editor-photos accept=".mp4,.m4v,.mov,.webm,.ogv,.ogg,image/jpeg,image/png,image/gif,image/webp,video/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
                         </div>
                         <div data-editor-media-empty class="record-editor-media-empty">还没有图片或视频，添加文件来记录旅途。</div>
-                        <div class="record-editor-media-group" data-editor-existing-group hidden>
-                            <h4>已引用的文件 <span>同类文件按列表顺序展示</span></h4>
-                            <div data-media-viewer-group>
-                                <ul class="record-editor-existing-media media-file-list" data-editor-existing-media="photo" aria-label="已有图片操作"></ul>
-                                <ul class="record-editor-existing-media media-file-list" data-editor-existing-media="video" aria-label="已有视频操作"></ul>
-                            </div>
+                        <div class="record-editor-media-batch" data-editor-media-batch role="group" aria-label="批量文件操作">
+                            <button class="paper-button" type="button" data-media-select-all>全选图片</button>
+                            <button class="paper-button" type="button" data-media-select-clear disabled>取消选择</button>
+                            <span data-media-selected-count role="status">未选择文件</span>
+                            <button class="paper-button" type="button" data-media-batch="previous" disabled>前移所选</button>
+                            <button class="paper-button" type="button" data-media-batch="next" disabled>后移所选</button>
+                            <button class="paper-button media-file-remove" type="button" data-media-batch="remove" disabled>移除所选</button>
                         </div>
-                        <div class="record-editor-media-group" data-editor-upload-group hidden>
-                            <h4>待上传 <span>保存时加入日记</span></h4>
-                            <div class="record-editor-photo-list media-file-list" data-editor-photo-list data-media-viewer-group aria-label="待保存图片和视频"></div>
+                        <div class="record-editor-media-group" data-editor-existing-group hidden>
+                            <h4>文件顺序 <span>同类文件按此顺序展示 · 新文件标记为待上传</span></h4>
+                            <div data-media-viewer-group>
+                                <ul class="record-editor-existing-media media-file-list" data-editor-existing-media="photo" aria-label="图片文件操作"></ul>
+                                <ul class="record-editor-existing-media media-file-list" data-editor-existing-media="video" aria-label="视频文件操作"></ul>
+                            </div>
                         </div>
                         <div class="record-editor-media-group record-editor-removed-group" data-editor-removed-group hidden>
                             <h4>待移除 <span>保存前可恢复</span></h4>
@@ -354,6 +368,9 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         dirty = false;
         uploads = [];
         removedMedia = [];
+        mediaOrder = { photo: [], video: [] };
+        existingMediaEntries = { photo: [], video: [] };
+        selectedMedia.clear();
         bodyView = 'source';
         userEditedAutofillFields.clear();
         autoFilledValues.clear();
@@ -394,54 +411,153 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         return field(`${type}s`).value.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
     }
 
-    function mediaRemovalIndex(index, type) {
-        let position = index;
-        for (const item of removedMedia.filter(item => item.type === type).sort((a, b) => a.index - b.index)) {
-            if (item.index <= position) position++;
+    function canonicalMedia(type) {
+        const byName = new Map();
+        for (const item of existingMediaEntries[type]) {
+            if (!byName.has(item.name)) byName.set(item.name, []);
+            byName.get(item.name).push(item);
         }
-        return position;
+        existingMediaEntries[type] = mediaNames(type).map(name => byName.get(name)?.shift()
+            || { key: `${type}:${++mediaKeySequence}`, type, name });
+        return [
+            ...existingMediaEntries[type],
+            ...uploads.filter(upload => upload.kind === (type === 'photo' ? 'image' : 'video'))
+                .map(upload => ({ key: `upload:${upload.id}`, type, name: upload.name, upload }))
+        ];
+    }
+
+    function orderedMedia(type) {
+        const items = canonicalMedia(type);
+        const byKey = new Map(items.map(item => [item.key, item]));
+        const removedKeys = new Set(removedMedia.map(item => item.orderKey));
+        mediaOrder[type] = mediaOrder[type].filter(key => byKey.has(key) || removedKeys.has(key));
+        const known = new Set(mediaOrder[type]);
+        mediaOrder[type].push(...items.filter(item => !known.has(item.key)).map(item => item.key));
+        return mediaOrder[type].filter(key => byKey.has(key)).map(key => byKey.get(key));
+    }
+
+    function syncExistingOrder(type) {
+        field(`${type}s`).value = orderedMedia(type).filter(item => !item.upload).map(item => item.name).join('\n');
     }
 
     function renderExistingMedia() {
         let mediaIndex = 0;
         for (const type of ['photo', 'video']) {
             const list = dialog.querySelector(`[data-editor-existing-media="${type}"]`);
-            const names = mediaNames(type);
-            const existing = new Map([...list.children].map(item => [item.dataset.mediaKey, item]));
-            const rows = names.map((name, index) => {
-                const path = existingMediaPath(type, name);
-                const key = `${path}:${index}`;
-                const row = existing.get(key) || document.createElement('li');
-                row.dataset.mediaKey = key;
-                const label = escapeHtml(name);
-                const detail = `${type === 'photo' ? '图片' : '视频'} · ${index + 1} / ${names.length}`;
-                let link = row.querySelector('.media-file-link');
-                if (!link) {
-                    link = createMediaFileLink({ path, name, kind: type === 'video' ? 'video' : 'image', detail });
-                    row.append(link, document.createElement('div'));
+            const items = orderedMedia(type);
+            const existing = new Map([...list.children].map(row => [row.dataset.mediaKey, row]));
+            const rows = items.map((item, index) => {
+                const path = item.upload ? '' : existingMediaPath(type, item.name);
+                let row = existing.get(item.key);
+                if (row?.dataset.mediaPath !== path) row = null;
+                if (!row) {
+                    row = document.createElement('li');
+                    row.dataset.mediaKey = item.key;
+                    row.dataset.mediaPath = path;
+                    const selection = document.createElement('label');
+                    selection.className = 'media-file-selection';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.dataset.mediaSelect = item.key;
+                    checkbox.setAttribute('aria-label', `选择 ${item.name}`);
+                    selection.append(checkbox);
+                    row.append(selection, item.upload ? uploadMediaLink(item.upload, mediaIndex)
+                        : createMediaFileLink({ path, name: item.name, kind: type === 'video' ? 'video' : 'image' }),
+                    document.createElement('div'));
                 }
+                const checkbox = row.querySelector('[data-media-select]');
+                checkbox.checked = selectedMedia.has(item.key);
+                checkbox.disabled = saved;
+                row.classList.toggle('is-selected', checkbox.checked);
+                const link = row.querySelector('.media-file-link');
                 link.dataset.mediaIndex = String(mediaIndex);
-                if (getMediaFileUrl(path)) {
+                if (link.matches('a')) {
                     mediaIndex++;
-                    link.querySelector('.media-file-detail').textContent = detail;
+                    link.querySelector('.media-file-detail').textContent = `${type === 'photo' ? '图片' : '视频'} · ${index + 1} / ${items.length}${item.upload ? saved ? ' · 已保存' : ' · 待上传' : ''}`;
                 }
                 const actions = row.lastElementChild;
                 actions.className = 'media-file-actions';
+                const label = escapeHtml(item.name);
                 actions.innerHTML = `
-                    <button type="button" data-existing-media-action="previous" data-media-type="${type}" data-media-row="${index}" aria-label="前移 ${label}" title="前移"${saved || index === 0 ? ' disabled' : ''}>${mediaOrderIcon(-1)}</button>
-                    <button type="button" data-existing-media-action="next" data-media-type="${type}" data-media-row="${index}" aria-label="后移 ${label}" title="后移"${saved || index === names.length - 1 ? ' disabled' : ''}>${mediaOrderIcon(1)}</button>
-                    <button type="button" class="media-file-remove" data-existing-media-action="remove" data-media-type="${type}" data-media-row="${index}" aria-label="移除 ${label}"${saved ? ' disabled' : ''}>移除</button>`;
+                    <button type="button" data-media-action="previous" aria-label="前移 ${label}" title="前移"${saved || index === 0 ? ' disabled' : ''}>${mediaOrderIcon(-1)}</button>
+                    <button type="button" data-media-action="next" aria-label="后移 ${label}" title="后移"${saved || index === items.length - 1 ? ' disabled' : ''}>${mediaOrderIcon(1)}</button>
+                    <button type="button" class="media-file-remove" data-media-action="remove" aria-label="移除 ${label}"${saved ? ' disabled' : ''}>移除</button>`;
                 return row;
             });
             list.replaceChildren(...rows);
         }
+        updateMediaSelection();
         renderRemovedMedia();
+    }
+
+    function updateMediaSelection() {
+        const items = ['photo', 'video'].flatMap(orderedMedia);
+        const keys = new Set(items.map(item => item.key));
+        for (const key of selectedMedia) if (!keys.has(key)) selectedMedia.delete(key);
+        dialog.querySelectorAll('[data-media-select]').forEach(checkbox => {
+            checkbox.checked = selectedMedia.has(checkbox.dataset.mediaSelect);
+            checkbox.disabled = saved;
+            checkbox.closest('li').classList.toggle('is-selected', checkbox.checked);
+        });
+        dialog.querySelector('[data-media-selected-count]').textContent = selectedMedia.size ? `已选 ${selectedMedia.size} 项` : '未选择文件';
+        dialog.querySelector('[data-media-select-all]').disabled = saved || !canonicalMedia('photo').length;
+        dialog.querySelector('[data-media-select-clear]').disabled = saved || !selectedMedia.size;
+        dialog.querySelectorAll('[data-media-batch]').forEach(button => {
+            const action = button.dataset.mediaBatch;
+            button.disabled = saved || (action === 'remove' ? !selectedMedia.size : !['photo', 'video'].some(type => {
+                const ordered = orderedMedia(type);
+                return ordered.some((item, index) => selectedMedia.has(item.key)
+                    && ordered[index + (action === 'previous' ? -1 : 1)]
+                    && !selectedMedia.has(ordered[index + (action === 'previous' ? -1 : 1)].key));
+            }));
+        });
+    }
+
+    function operateMedia(keys, action) {
+        for (const type of ['photo', 'video']) {
+            const items = orderedMedia(type);
+            if (action === 'remove') {
+                for (const item of items.filter(item => keys.has(item.key))) {
+                    const index = item.upload ? uploads.indexOf(item.upload) : existingMediaEntries[type].findIndex(entry => entry.key === item.key);
+                    removedMedia.push({ ...item, orderKey: item.key, index,
+                        path: item.upload ? '' : existingMediaPath(type, item.name) });
+                    if (item.upload) uploads.splice(index, 1);
+                    else {
+                        const names = mediaNames(type);
+                        names.splice(index, 1);
+                        existingMediaEntries[type].splice(index, 1);
+                        field(`${type}s`).value = names.join('\n');
+                    }
+                    selectedMedia.delete(item.key);
+                }
+            } else {
+                const direction = action === 'previous' ? -1 : 1;
+                const indexes = items.map((_, index) => index);
+                if (direction === 1) indexes.reverse();
+                for (const index of indexes) {
+                    const next = index + direction;
+                    if (keys.has(items[index].key) && items[next] && !keys.has(items[next].key)) {
+                        [items[index], items[next]] = [items[next], items[index]];
+                    }
+                }
+                // 保留待移除条目的槽位，恢复时仍回到原来的相对位置。
+                let index = 0;
+                const active = new Set(items.map(item => item.key));
+                mediaOrder[type] = mediaOrder[type].map(key => active.has(key) ? items[index++].key : key);
+                syncExistingOrder(type);
+            }
+        }
+        dirty = true;
+        renderPhotos();
+        updatePhotoStatus();
+        dialog.querySelector('[data-editor-media-announcement]').textContent = action === 'remove'
+            ? `已移除 ${keys.size} 项，可在下方恢复。保存前不会删除文件。` : '所选文件已调整顺序，保存后生效。';
     }
 
     function renderRemovedMedia() {
         removedMedia = removedMedia.filter(item => item.upload
             ? !uploads.some(upload => upload.id === item.upload.id)
-            : !mediaNames(item.type).includes(item.name));
+            : !canonicalMedia(item.type).some(active => active.key === item.orderKey));
         const list = dialog.querySelector('[data-editor-removed-list]');
         let mediaIndex = 0;
         list.replaceChildren(...removedMedia.map((item, index) => {
@@ -468,11 +584,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     function updateMediaSummary() {
         const existingCount = mediaNames('photo').length + mediaNames('video').length;
         dialog.querySelector('[data-editor-media-count]').textContent = `${existingCount + uploads.length} 项${uploads.length && !saved ? ` · ${uploads.length} 项待上传` : ''}`;
-        const uploadHeading = dialog.querySelector('[data-editor-upload-group] h4');
-        uploadHeading.firstChild.textContent = saved ? '本次新增文件 ' : '待上传 ';
-        uploadHeading.querySelector('span').textContent = saved ? '已保存' : '保存时加入日记';
-        dialog.querySelector('[data-editor-existing-group]').hidden = !existingCount;
-        dialog.querySelector('[data-editor-upload-group]').hidden = !uploads.length;
+        dialog.querySelector('[data-editor-existing-group]').hidden = !(existingCount || uploads.length);
         dialog.querySelector('[data-editor-removed-group]').hidden = !removedMedia.length;
         dialog.querySelector('[data-editor-media-empty]').hidden = Boolean(existingCount || uploads.length || removedMedia.length);
     }
@@ -715,53 +827,9 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         syncMarkdown(previewToMarkdown(dialog.querySelector('[data-editor-rich]')));
     }
 
-    function createPhotoPreview(photo) {
-        const figure = document.createElement('figure');
-        figure.className = `record-editor-photo record-editor-${photo.kind}`;
-        figure.dataset.photoId = photo.id;
-        figure.append(uploadMediaLink(photo, 0));
-        const actions = document.createElement('div');
-        actions.className = 'media-file-actions';
-        actions.innerHTML = `
-            <button type="button" data-photo-move data-direction="-1" title="前移">${mediaOrderIcon(-1)}</button>
-            <button type="button" data-photo-move data-direction="1" title="后移">${mediaOrderIcon(1)}</button>
-            <button type="button" class="media-file-remove" data-photo-remove>移除</button>`;
-        figure.append(actions);
-        return figure;
-    }
-
-    function updatePhotoPreview(figure, photo, index) {
-        const link = figure.querySelector('.media-file-link');
-        const [previous, next] = figure.querySelectorAll('[data-photo-move]');
-        const remove = figure.querySelector('[data-photo-remove]');
-        link.dataset.mediaIndex = String(index);
-        link.querySelector('.media-file-detail').textContent = `${photo.kind === 'video' ? '视频' : '图片'} · ${saved ? '已保存' : '待上传'}`;
-        previous.dataset.photoMove = String(index);
-        previous.disabled = index === 0 || saved;
-        previous.setAttribute('aria-label', `前移 ${photo.name}`);
-        next.dataset.photoMove = String(index);
-        next.disabled = index === uploads.length - 1 || saved;
-        next.setAttribute('aria-label', `后移 ${photo.name}`);
-        remove.dataset.photoRemove = String(index);
-        remove.disabled = saved;
-        remove.setAttribute('aria-label', `移除 ${photo.name}`);
-    }
-
     function renderPhotos() {
-        const list = dialog.querySelector('[data-editor-photo-list]');
-        const existing = new Map([...list.children].map(item => [item.dataset.photoId, item]));
-        const activeIds = new Set(uploads.map(photo => photo.id));
-        uploads.forEach((photo, index) => {
-            const figure = existing.get(photo.id) || createPhotoPreview(photo);
-            updatePhotoPreview(figure, photo, index);
-            const current = list.children[index];
-            if (current !== figure) list.insertBefore(figure, current || null);
-        });
-        [...list.children].forEach(item => {
-            if (!activeIds.has(item.dataset.photoId)) item.remove();
-        });
-        releasePhotoPreviews(new Set([...activeIds, ...removedMedia.filter(item => item.upload).map(item => item.upload.id)]));
-        renderRemovedMedia();
+        releasePhotoPreviews(new Set([...uploads.map(photo => photo.id), ...removedMedia.filter(item => item.upload).map(item => item.upload.id)]));
+        renderExistingMedia();
     }
 
     function updatePhotoStatus() {
@@ -783,6 +851,9 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         releasePhotoPreviews();
         uploads = [];
         removedMedia = [];
+        mediaOrder = { photo: [], video: [] };
+        existingMediaEntries = { photo: [], video: [] };
+        selectedMedia.clear();
         for (const key of RECORD_FIELDS) field(key).value = '';
         field('country_code').selectedIndex = -1;
         field('country_code').dispatchEvent(new Event('change', { bubbles: true }));
@@ -942,6 +1013,13 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (['desc_md', 'photo_folder', 'video_folder'].includes(event.target.name)) userEditedPaths.add(event.target.name);
         if (['country_code', 'date', 'admin_area', 'locality'].includes(event.target.name)) updateAutofill();
         if (event.target.name === 'title') updateBodyView(bodyView);
+        if (['photos', 'videos'].includes(event.target.name)) {
+            const type = event.target.name === 'photos' ? 'photo' : 'video';
+            const keys = canonicalMedia(type).filter(item => !item.upload).map(item => item.key);
+            const existingKeys = new Set(keys);
+            let index = 0;
+            mediaOrder[type] = mediaOrder[type].map(key => existingKeys.has(key) ? keys[index++] : key);
+        }
         if (['photo_folder', 'photos', 'video_folder', 'videos', 'date', 'locality', 'syncMediaFiles'].includes(event.target.name)) renderExistingMedia();
     });
     dialog.addEventListener('scroll', event => {
@@ -1001,50 +1079,57 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     dialog.addEventListener('click', async event => {
         if (event.target.closest('[data-editor-close]')) close();
         if (busy || readingPhotos) return;
+        const uploadHelp = event.target.closest('[data-editor-upload-help]');
+        if (uploadHelp) {
+            const expanded = uploadHelp.getAttribute('aria-expanded') === 'true';
+            uploadHelp.setAttribute('aria-expanded', String(!expanded));
+            dialog.querySelector('[data-editor-upload-limits]').hidden = expanded;
+            return;
+        }
         if (event.target.closest('[data-editor-fullscreen]')) setBodyFullscreen(!bodyFullscreen);
         const restore = event.target.closest('[data-media-restore]');
         if (restore && !saved) {
             const [item] = removedMedia.splice(Number(restore.dataset.mediaRestore), 1);
             if (!item) return;
-            const position = item.index - removedMedia.filter(other => other.type === item.type && other.index < item.index).length;
             if (item.upload) {
-                uploads.splice(Math.min(position, uploads.length), 0, item.upload);
-                renderPhotos();
-                updatePhotoStatus();
-                dialog.querySelector(`[data-photo-id="${item.upload.id}"] .media-file-link`)?.focus();
+                uploads.splice(Math.min(item.index, uploads.length), 0, item.upload);
             } else {
-                const input = field(`${item.type}s`);
                 const names = mediaNames(item.type);
-                names.splice(Math.min(position, names.length), 0, item.name);
-                input.value = names.join('\n');
-                input.dispatchEvent(new Event('input', { bubbles: true }));
-                dialog.querySelector(`[data-editor-existing-media="${item.type}"]`).children[Math.min(position, names.length - 1)]?.querySelector('a')?.focus();
+                names.push(item.name);
+                existingMediaEntries[item.type].push({ key: item.orderKey, type: item.type, name: item.name });
+                field(`${item.type}s`).value = names.join('\n');
             }
+            syncExistingOrder(item.type);
+            renderPhotos();
+            updatePhotoStatus();
+            [...dialog.querySelectorAll('[data-media-key]')].find(row => row.dataset.mediaKey === item.orderKey)?.querySelector('a')?.focus();
             dirty = true;
             dialog.querySelector('[data-editor-media-announcement]').textContent = `已恢复 ${item.name}`;
             return;
         }
-        const mediaAction = event.target.closest('[data-existing-media-action]');
-        if (mediaAction && !saved) {
-            const input = field(`${mediaAction.dataset.mediaType}s`);
-            const names = input.value.split(/\r?\n/).map(name => name.trim()).filter(Boolean);
-            const index = Number(mediaAction.dataset.mediaRow);
-            const action = mediaAction.dataset.existingMediaAction;
-            const next = index + (action === 'previous' ? -1 : 1);
-            if (action === 'remove') {
-                removedMedia.push({ type: mediaAction.dataset.mediaType, name: names[index], index: mediaRemovalIndex(index, mediaAction.dataset.mediaType),
-                    path: existingMediaPath(mediaAction.dataset.mediaType, names[index]) });
-                names.splice(index, 1);
-            }
-            else if (next >= 0 && next < names.length) [names[index], names[next]] = [names[next], names[index]];
-            input.value = names.join('\n');
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-            const list = dialog.querySelector(`[data-editor-existing-media="${mediaAction.dataset.mediaType}"]`);
-            const row = list.children[Math.min(action === 'remove' ? index : next, names.length - 1)];
-            (row?.querySelector(`[data-existing-media-action="${action}"]:not(:disabled)`) || row?.querySelector('a')
-                || dialog.querySelector('[data-media-restore]') || dialog.querySelector('[data-editor-upload]')).focus();
-            dialog.querySelector('[data-editor-media-announcement]').textContent = action === 'remove'
-                ? '已标记移除，可在下方恢复。保存前不会删除文件。' : '文件顺序已调整，保存后生效。';
+        if (event.target.closest('[data-media-select-all]') && !saved) {
+            canonicalMedia('photo').forEach(item => selectedMedia.add(item.key));
+            updateMediaSelection();
+            return;
+        }
+        if (event.target.closest('[data-media-select-clear]') && !saved) {
+            selectedMedia.clear();
+            updateMediaSelection();
+            dialog.querySelector('[data-media-select-all]').focus();
+            return;
+        }
+        const batch = event.target.closest('[data-media-batch]');
+        const mediaAction = event.target.closest('[data-media-action]');
+        if ((batch || mediaAction) && !saved) {
+            const key = mediaAction?.closest('[data-media-key]').dataset.mediaKey;
+            const action = batch?.dataset.mediaBatch || mediaAction.dataset.mediaAction;
+            const keys = batch ? new Set(selectedMedia) : new Set([key]);
+            operateMedia(keys, action);
+            const row = [...dialog.querySelectorAll('[data-media-key]')].find(row => row.dataset.mediaKey === key);
+            const focus = batch && !batch.disabled ? batch
+                : row?.querySelector(`[data-media-action="${action}"]:not(:disabled)`) || row?.querySelector('a')
+                || dialog.querySelector('[data-media-restore]') || dialog.querySelector('[data-media-select-all]');
+            focus.focus();
             return;
         }
         const autocompleteOption = event.target.closest('[data-autocomplete-value]');
@@ -1068,30 +1153,6 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             syncPreview();
         }
         if (event.target.closest('[data-editor-upload]') && !saved) dialog.querySelector('[data-editor-photos]').click();
-        const remove = event.target.closest('[data-photo-remove]');
-        const move = event.target.closest('[data-photo-move]');
-        if (remove && !saved) {
-            const index = Number(remove.dataset.photoRemove);
-            const [upload] = uploads.splice(index, 1);
-            removedMedia.push({ upload, type: 'upload', index: mediaRemovalIndex(index, 'upload'), name: upload.name });
-            dirty = true;
-            renderPhotos();
-            updatePhotoStatus();
-            (dialog.querySelectorAll('[data-photo-remove]')[Math.min(index, uploads.length - 1)]
-                || dialog.querySelector('[data-media-restore]')).focus();
-            dialog.querySelector('[data-editor-media-announcement]').textContent = '已取消上传，可在下方恢复。';
-        }
-        if (move && !saved) {
-            const index = Number(move.dataset.photoMove);
-            const next = index + Number(move.dataset.direction);
-            if (next >= 0 && next < uploads.length) {
-                [uploads[index], uploads[next]] = [uploads[next], uploads[index]];
-                dirty = true;
-                renderPhotos();
-                updatePhotoStatus();
-                dialog.querySelector(`[data-photo-id="${uploads[next].id}"] [data-direction="${move.dataset.direction}"]`)?.focus();
-            }
-        }
         const view = event.target.closest('[data-editor-view]');
         if (view) updateBodyView(view.dataset.editorView);
         if (event.target.closest('[data-editor-download]')) {
@@ -1121,6 +1182,17 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (event.target.closest('[data-editor-import]')) dialog.querySelector('[data-editor-file]').click();
     });
     dialog.addEventListener('change', async event => {
+        if (event.target.matches('[data-media-select]')) {
+            const key = event.target.dataset.mediaSelect;
+            if (saved || busy || readingPhotos) {
+                event.target.checked = selectedMedia.has(key);
+                return;
+            }
+            if (event.target.checked) selectedMedia.add(key);
+            else selectedMedia.delete(key);
+            updateMediaSelection();
+            return;
+        }
         if (event.target.name === 'country_code') {
             if (!saved) dirty = true;
             const countryField = field('country');
@@ -1165,6 +1237,14 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             field('country_code').dispatchEvent(new Event('change'));
             requestId = draft.requestId;
             uploads = readUploads(draft.uploads);
+            removedMedia = [];
+            selectedMedia.clear();
+            mediaOrder = { photo: [], video: [] };
+            existingMediaEntries = { photo: [], video: [] };
+            for (const type of ['photo', 'video']) {
+                const items = canonicalMedia(type);
+                mediaOrder[type] = (draft.mediaOrder?.[`${type}s`] || items.map((_, index) => index)).map(index => items[index].key);
+            }
             dirty = true;
             userEditedAutofillFields.clear();
             autoFilledValues.clear();
@@ -1233,12 +1313,14 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         startProgress('保存旅行记录', archivePhase);
         dialog.querySelector('[data-editor-rich]').contentEditable = 'false';
         dialog.querySelector('[data-editor-source]').readOnly = true;
-        dialog.querySelectorAll('[name], button:not([data-progress-cancel])').forEach(control => { control.disabled = true; });
+        dialog.querySelectorAll('[name], [data-media-select], button:not([data-progress-cancel])').forEach(control => { control.disabled = true; });
         status('正在保存旅行记录…');
         try {
-            if (editingRecord && field('syncMediaFiles').checked) {
+            const customMediaOrder = Object.values(draft.mediaOrder).some(order => order.some((index, position) => index !== position));
+            if ((editingRecord && field('syncMediaFiles').checked) || customMediaOrder) {
                 const capability = await detectWriterCapability();
-                if (!capability.syncMediaFiles) throw new Error('当前服务尚未支持真实媒体文件同步，请重新启动服务后再保存。');
+                if (editingRecord && field('syncMediaFiles').checked && !capability.syncMediaFiles) throw new Error('当前服务尚未支持真实媒体文件同步，请重新启动服务后再保存。');
+                if (customMediaOrder && !capability.mediaOrder) throw new Error('当前服务尚未支持新旧文件混合排序，请重新启动服务后再保存。草稿和顺序仍保留。');
             }
             const archive = await createDraftBlob(draft, editingRecord ? {
                 originalDescMd: editingRecord.desc_md,
@@ -1262,6 +1344,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             if (!response.ok || !result.saved) throw new Error(result.error || '未收到服务器的成功响应。');
             saved = true;
             removedMedia = [];
+            selectedMedia.clear();
             dirty = false;
             status(`${editingRecord ? '修改' : '记录'}已保存并更新旅行索引：${result.record.desc_md}`);
             operationProgress.phase('记录已保存，正在刷新旅行档案…');

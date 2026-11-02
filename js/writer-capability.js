@@ -14,6 +14,7 @@ function capabilityFrom(endpoint, result) {
         methods: new Set(Array.isArray(result.methods) ? result.methods : []),
         writeMode: result.writeMode || '',
         syncMediaFiles: result.syncMediaFiles === true,
+        mediaOrder: result.mediaOrder === true,
         authenticated: result.authenticated === true
     };
 }

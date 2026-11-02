@@ -51,8 +51,24 @@ export function readDraft(value) {
         }
         input[key] = field;
     }
-    const uploads = readUploads(value.uploads).map(({ id, name, data }) => ({ id, name, data }));
-    return { format: DRAFT_FORMAT, requestId: value.requestId, input, uploads };
+    const media = readUploads(value.uploads);
+    const uploads = media.map(({ id, name, data }) => ({ id, name, data }));
+    if (value.mediaOrder !== undefined && (!value.mediaOrder || typeof value.mediaOrder !== 'object' || Array.isArray(value.mediaOrder))) {
+        throw new Error('媒体顺序格式无效。');
+    }
+    const mediaOrder = {};
+    for (const [key, kind] of [['photos', 'image'], ['videos', 'video']]) {
+        const order = value.mediaOrder?.[key];
+        if (order === undefined) continue;
+        const count = input[key].length + media.filter(upload => upload.kind === kind).length;
+        if (!Array.isArray(order) || order.length !== count || new Set(order).size !== count
+            || Array.from(order).some(index => !Number.isInteger(index) || index < 0 || index >= count)) {
+            throw new Error('媒体顺序必须完整且不重复，请重新调整文件列表。');
+        }
+        mediaOrder[key] = [...order];
+    }
+    return { format: DRAFT_FORMAT, requestId: value.requestId, input, uploads,
+        ...(Object.keys(mediaOrder).length ? { mediaOrder } : {}) };
 }
 
 export function prepareRecord(value, countries) {
@@ -109,11 +125,16 @@ export function prepareRecord(value, countries) {
         record.video_folder = `data/videos/${slug}`;
         record.videos = storedMediaNames(input.videos, videoUploads, 'video');
     }
+    // 文件分配保持来源顺序，展示顺序单独应用，避免将上传字节写入其他文件名。
+    const photoNames = [...record.photos];
+    const videoNames = [...(record.videos || [])];
+    if (draft.mediaOrder?.photos) record.photos = draft.mediaOrder.photos.map(index => photoNames[index]);
+    if (draft.mediaOrder?.videos && videoNames.length) record.videos = draft.mediaOrder.videos.map(index => videoNames[index]);
     return {
         record,
         markdown: buildMarkdown(input),
         uploads,
-        sourcePhotos: { folder: input.photo_folder, names: input.photos },
-        sourceVideos: { folder: input.video_folder, names: input.videos }
+        sourcePhotos: { folder: input.photo_folder, names: input.photos, targetNames: photoNames, order: draft.mediaOrder?.photos },
+        sourceVideos: { folder: input.video_folder, names: input.videos, targetNames: videoNames, order: draft.mediaOrder?.videos }
     };
 }

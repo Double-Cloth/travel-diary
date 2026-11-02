@@ -1,4 +1,4 @@
-import { DRAFT_FORMAT, readDraft } from './record-input.mjs?v=20261013-cleanup-v1';
+import { DRAFT_FORMAT, readDraft } from './record-input.mjs?v=20261102-media-batch-v1';
 import { mediaBytes, readUploads } from './photo-uploads.mjs?v=20261013-cleanup-v1';
 import { pinyinSlug } from './slug.mjs';
 import { MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
@@ -22,6 +22,7 @@ function draftEntries(value, editContext = {}) {
         format: DRAFT_ARCHIVE_FORMAT,
         requestId: draft.requestId,
         input: draft.input,
+        ...(draft.mediaOrder ? { mediaOrder: draft.mediaOrder } : {}),
         uploads: packageUploads,
         ...(editContext.originalDescMd ? {
             originalDescMd: editContext.originalDescMd,
@@ -81,7 +82,7 @@ function recordFromEntries(entries) {
     });
     if (files.size !== usedFiles.size) throw new Error('草稿压缩包包含未在清单中声明的文件。');
     return {
-        draft: readDraft({ format: DRAFT_FORMAT, requestId: metadata.requestId, input: metadata.input, uploads }),
+        draft: readDraft({ format: DRAFT_FORMAT, requestId: metadata.requestId, input: metadata.input, uploads, mediaOrder: metadata.mediaOrder }),
         originalDescMd: metadata.originalDescMd,
         expected: metadata.expected,
         syncMediaFiles: metadata.syncMediaFiles
