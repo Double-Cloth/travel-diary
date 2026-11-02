@@ -9,7 +9,9 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2024/2024-07-08-yuxi.md",
     "photo_folder": "data/photos/yuxi",
-    "photos": []
+    "photos": [
+      "img_20240708_122737.jpg"
+    ]
   },
   {
     "date": "2024-07-28",
@@ -563,7 +565,18 @@
     "trip_id": "2024-07-10-kunming",
     "desc_md": "data/travel-diary/2024/2024-07-10-kunming.md",
     "photo_folder": "data/photos/kunming",
-    "photos": []
+    "photos": [
+      "img_20240710_160053.jpg",
+      "mvimg_20240710_100826.jpg",
+      "img_20240720_230101.jpg",
+      "mvimg_20240710_101500.jpg",
+      "mvimg_20240710_100843.jpg",
+      "mvimg_20240710_101240.jpg",
+      "mvimg_20240710_101258.jpg",
+      "mvimg_20240710_100832.jpg",
+      "img_20240710_100419.jpg",
+      "img_20240710_100442.jpg"
+    ]
   },
   {
     "date": "2024-07-18",
@@ -576,6 +589,16 @@
     "trip_id": "2024-07-18-kunming",
     "desc_md": "data/travel-diary/2024/2024-07-18-kunming.md",
     "photo_folder": "data/photos/kunming",
-    "photos": []
+    "photos": [
+      "img_20240718_205420.jpg",
+      "mmexport1721300985400.jpg",
+      "mmexport1721300988129.jpg",
+      "mmexport1721300995350.jpg",
+      "mmexport1721306220405.jpg",
+      "img_20240718_204742.jpg",
+      "img_20240718_204759.jpg",
+      "img_20240718_160051.jpg",
+      "img_20240718_160109.jpg"
+    ]
   }
 ]
