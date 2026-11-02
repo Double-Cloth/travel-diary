@@ -281,8 +281,6 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <input type="file" data-editor-photos accept=".mp4,.m4v,.mov,.webm,.ogv,.ogg,image/jpeg,image/png,image/gif,image/webp,video/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
                         </div>
                         <div class="record-editor-photo-list" data-editor-photo-list aria-label="待保存图片和视频"></div>
-                        ${editing ? `<label class="record-editor-media-sync"><input type="checkbox" name="syncMediaFiles" checked aria-describedby="${editorId('MediaSyncHelp')}">删除、移动照片和视频时，同时操作真实文件</label>
-                        <p class="record-editor-note" id="${editorId('MediaSyncHelp')}">保存修改后生效：移除已有文件名会删除文件，更改媒体目录会移动文件；其他日记仍在引用的文件会保留。取消勾选仅更新引用，原文件保留，新上传文件仍会保存。</p>` : ''}
                     </section>
                     <details class="record-editor-files">
                         <summary><span>文件设置</span><span>按需设置正文路径或引用已有媒体</span></summary>
@@ -295,6 +293,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                 <label>已有视频文件名 <span>选填 · 每行一个</span><textarea name="videos" rows="3" maxlength="201000" placeholder="sunset.mp4&#10;street.webm" aria-describedby="${editorId('PhotoHelp')}"></textarea></label>
                             </div>
                             <p class="record-editor-note" id="${editorId('PhotoHelp')}">这里仅填写项目内已有的媒体；新图片保存到 <output data-editor-photo-path-preview></output>，新视频保存到 <output data-editor-video-path-preview></output>。</p>
+                            ${editing ? `<div>
+                                <label class="record-editor-media-sync"><input type="checkbox" name="syncMediaFiles" checked aria-describedby="${editorId('MediaSyncHelp')}">删除、移动照片和视频时，同时操作真实文件</label>
+                                <p class="record-editor-note" id="${editorId('MediaSyncHelp')}">保存修改后生效：移除已有文件名会删除文件，更改媒体目录会移动文件；其他日记仍在引用的文件会保留。取消勾选仅更新引用，原文件保留，新上传文件仍会保存。</p>
+                            </div>` : ''}
                         </div>
                     </details>
                 </div>
