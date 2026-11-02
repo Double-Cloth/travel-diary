@@ -52,6 +52,8 @@ remote 模式仅接受明确配置的完整 HTTPS Origin，允许多次指定；
 
 本地服务自动接收同源浏览器生成的预览并保存到 `.cache/media-previews/`，不修改原始图片、视频，不放进 `data/`。服务检查源文件大小、mtime、ctime，变化后自动重建。缓存目录被 Git 忽略，不进入完整备份，可随时删除并在下次浏览时自动重建；`.cache` 只有媒体预览专用接口可访问，其他文件继续禁止下载。
 
+运行 `npm run cache:clear` 可删除项目的整个 `.cache/` 目录，也可通过 `npm run cache:clear -- --dir "项目目录"` 指定目标。目录不存在时正常结束；拒绝将符号链接或 junction 作为缓存根目录。不删除 `data/`、`.secrets/` 或浏览器 Cache Storage；清理后缩略图在下次浏览时自动重建，也可运行批量生成命令。为避免与正在保存的缩略图互相干扰，建议停止批量生成任务并关闭站点页面后清理。
+
 需要提前生成全部缩略图时，运行 `npm run media:previews`。命令读取索引、去重媒体路径，启动临时回环服务并调用本机已有的 Edge / Chrome 无头浏览器，复用相同 Canvas 压缩与缓存校验；完成后关闭服务与浏览器。有效缓存跳过，缺失或过期缓存重新生成，失败项继续处理并在末尾汇总，存在失败时退出码为 1。无需 npm 或 FFmpeg 依赖，也无需先启动站点。浏览器未自动找到时可加 `-- --browser "可执行文件路径"`，或设置 `TRAVEL_BROWSER_PATH`；`--dir` 可指定含 `data/travel_data.json` 的目标目录。视频支持范围取决于所选浏览器，无法解码时报告失败并保留原文件。
 
 GitHub Pages 等静态托管不能写服务器文件系统，自动使用浏览器 Cache Storage 保存缩略图，缓存键对应 `.cache/media-previews/` 路径；通过原文件 HEAD 返回的 ETag、Last-Modified 和 Content-Length 区分版本。静态服务器应提供 ETag 或 Last-Modified，以识别同大小文件替换。不同浏览器分别生成，清理站点存储后会重新生成；浏览器禁用缓存、非安全上下文或缓存配额不足时只能复用本次已解码的预览。发布工作流无需安装媒体工具或预生成缩略图。
