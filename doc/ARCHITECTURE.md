@@ -34,7 +34,7 @@
 | `data-transfer.js` | 网页完整备份导入、导出与清空交互。 |
 | `operation-progress.js` | 共用进度提示、XHR 上传进度、流式下载与保存。 |
 | `server.js`、`record-store.js`、`auth.js`、`data-archive.js` | 静态服务、API、写入策略、认证、数据锁与恢复。 |
-| `scripts/` | 密码恢复、备份导出、字体生成、固定版本地点目录更新。 |
+| `scripts/` | 密码恢复、备份导出、调用本机浏览器批量生成媒体预览、字体生成、固定版本地点目录更新。 |
 | `js/vendor/pinyin-pro.mjs` | 随仓库分发的第三方拼音实现。 |
 
 `data/` 存个人内容，`assets/catalogs/` 提供共享国家与中国省市区目录，`.secrets/` 仅供服务端认证和授权备份读取。字段与文件格式见 [内容指南](CONTENT_GUIDE.md#元数据与手工维护)。
