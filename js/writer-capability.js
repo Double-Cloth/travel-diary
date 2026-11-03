@@ -17,6 +17,7 @@ function capabilityFrom(endpoint, result) {
         mediaOrder: result.mediaOrder === true,
         partialRecords: result.partialRecords === true,
         recordManagement: result.recordManagement === true,
+        recycleBin: result.recycleBin === true,
         authenticated: result.authenticated === true
     };
 }

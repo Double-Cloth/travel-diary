@@ -1285,6 +1285,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .record-transfer-card p { color: var(--ink-soft); font-size: 14px; line-height: 1.8; }
 .record-transfer-card input[type="search"] { width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--hairline); border-radius: 4px; color: var(--ink); background: var(--paper-50); font: inherit; font-size: 16px; }
 .record-transfer-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.record-transfer-toolbar .paper-button { width: auto; min-width: 0; }
 .record-transfer-toolbar span { color: var(--ink-soft); font-size: 13px; }
 .record-transfer-list { max-height: 42dvh; overflow-y: auto; overscroll-behavior: contain; list-style: none; margin: 0 0 20px; padding: 0; }
 .record-transfer-list li { border-bottom: 1px solid var(--hairline); }
@@ -1297,14 +1298,58 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .record-transfer :focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
 .record-transfer [hidden] { display: none !important; }
 
-.record-diff { margin: 8px 0 12px 30px; font-size: 14px; overflow-wrap: anywhere; }
-.record-diff summary { cursor: pointer; padding: 8px 0; color: var(--stamp); }
-.record-diff dl { margin: 12px 0; }
-.record-diff dt { font-weight: 700; margin-top: 12px; }
-.record-diff dd { margin: 4px 0 0; line-height: 1.8; }
-.record-diff-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
-.record-diff-columns h3 { font-size: 15px; }
-.record-diff pre { margin: 0; max-height: 300px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.8; padding: 12px; border: 1px solid var(--line); }
+.record-transfer-import.entry-sheet { width: min(880px, calc(100vw - 24px)); }
+.record-diff { margin: 0 0 16px 32px; color: var(--ink); font-size: 14px; overflow-wrap: anywhere; }
+.record-diff > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; min-height: 44px; cursor: pointer; color: var(--stamp); list-style: none; -webkit-tap-highlight-color: rgba(145, 66, 44, 0.12); }
+.record-diff > summary::before { content: ''; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 160ms ease-out; }
+.record-diff[open] > summary::before { transform: rotate(45deg); }
+.record-diff > summary small { color: var(--ink-soft); font-size: 12px; }
+.record-diff-body { padding: 4px 0 12px; border-top: 1px dashed var(--hairline); }
+.record-diff .record-diff-note { margin: 8px 0 18px; font-size: 12px; }
+.record-diff-section + .record-diff-section { margin-top: 24px; }
+.record-diff-section > h3 { display: flex; align-items: baseline; gap: 10px; margin: 0 0 10px; font-size: 16px; }
+.record-diff-section > h3 small { color: var(--ink-soft); font-size: 12px; font-weight: 400; }
+.record-diff dl { margin: 0; }
+.record-diff dl > div { padding: 12px 0; border-bottom: 1px solid var(--hairline); }
+.record-diff dt { margin-bottom: 8px; color: var(--ink-soft); font-size: 12px; }
+.record-diff dd { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; line-height: 1.7; }
+.record-diff-value { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; }
+.record-diff-value > small { font-size: 11px; }
+.record-diff-before { background: rgba(145, 66, 44, 0.06); }
+.record-diff-after { background: rgba(56, 69, 43, 0.07); }
+.record-diff-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+.record-diff-columns > div { min-width: 0; border: 1px solid var(--hairline); }
+.record-diff-columns h4 { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--hairline); font-size: 12px; }
+.record-diff-columns h4 small { color: var(--ink-soft); font-weight: 400; }
+.record-diff pre { margin: 0; max-height: 280px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 13px; line-height: 1.8; padding: 12px; }
+.record-diff-empty { color: var(--ink-soft); font-size: 12px; }
+.record-diff-media { margin: 0; padding: 0; list-style: none; }
+.record-diff-media li { display: grid; grid-template-columns: 5em minmax(0, 1fr); gap: 12px; padding: 10px 0; font-size: 12px; line-height: 1.7; }
+.record-diff-media li > span:first-child { color: var(--stamp); }
+.recycle-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; border-bottom: 1px solid var(--hairline); }
+.recycle-toolbar p { margin: 8px 0; font-variant-numeric: tabular-nums; }
+.recycle-list { list-style: none; padding: 0; margin: 0; }
+.recycle-list > li { padding: 22px 0; border-bottom: 1px solid var(--hairline); overflow-wrap: anywhere; }
+.recycle-item-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-soft); font-size: 12px; }
+.recycle-kind { font-size: 12px; color: var(--stamp); }
+.recycle-list h3 { margin: 10px 0 4px; font-size: 18px; }
+.recycle-list p { margin: 4px 0 12px; font-size: 13px; }
+.recycle-list .recycle-restore-note { font-size: 12px; }
+.recycle-list details { margin: 8px 0 14px; font-size: 12px; line-height: 1.8; }
+.recycle-list summary { cursor: pointer; display: list-item; min-height: 44px; align-content: center; color: var(--stamp); }
+.recycle-list details ul { max-height: 200px; overflow: auto; padding-left: 20px; }
+.recycle-list details small { color: var(--ink-soft); }
+.recycle-manager .paper-button { width: auto; min-width: 0; min-height: 44px; }
+.recycle-manager .media-text-button { min-height: 44px; }
+.recycle-purge { color: var(--stamp); }
+.recycle-manager [data-recycle-error] { color: var(--stamp); }
+.recycle-manager [data-recycle-error]:empty { display: none; }
+@media (max-width: 760px) {
+    .record-diff dd, .record-diff-columns { grid-template-columns: 1fr; gap: 6px; }
+    .record-diff > summary { gap: 8px; }
+    .record-diff > summary small { margin-left: auto; }
+}
+@media (prefers-reduced-motion: reduce) { .record-diff > summary::before { transition: none; } }
 .media-manager.entry-sheet { width: min(760px, calc(100vw - 24px)); }
 .media-manager-heading { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
 .media-manager-heading > div { min-width: 0; }
@@ -1339,17 +1384,6 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-manager [data-media-record] { color: var(--stamp); text-underline-offset: 3px; }
 .media-manager [data-media-error] { color: var(--stamp); }
 .media-manager [data-media-error]:empty { display: none; }
-.media-trash { padding-top: 14px; }
-.media-trash > p { margin: 0 0 12px; font-size: 13px; }
-.media-trash .media-trash-summary { margin-top: 18px; font-variant-numeric: tabular-nums; }
-.media-trash > ul { padding: 0; margin: 0; list-style: none; }
-.media-trash > ul > li { padding: 14px 0; border-bottom: 1px solid var(--hairline); }
-.media-trash li { overflow-wrap: anywhere; }
-.media-trash .media-batch-title { margin: 0; color: var(--ink); }
-.media-batch-title small { display: block; color: var(--ink-soft); }
-.media-trash details { margin: 8px 0 12px; font-size: 13px; line-height: 1.8; }
-.media-trash summary { cursor: pointer; padding: 6px 0; color: var(--stamp); }
-.media-batch-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .media-manager .media-empty { padding: 22px 0; color: var(--ink-soft); font-size: 14px; line-height: 1.8; }
 .media-manager .record-transfer-list label { min-width: 44px; min-height: 44px; justify-content: center; padding: 0; }
 .media-manager .paper-button { width: auto; min-width: 0; min-height: 44px; }
@@ -1357,7 +1391,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 @media (max-width: 760px) {
     .record-diff { margin-left: 0; }
     .record-diff-columns { grid-template-columns: 1fr; }
-    .record-transfer-toolbar .paper-button { min-height: 44px; }
+    .record-transfer-toolbar .paper-button { min-height: 44px; padding-inline: 10px; font-size: 13px; }
     .media-space-summary { gap: 10px; }
     .media-space-summary dd { font-size: 16px; }
     .media-selection > [data-media-trash] { width: 100%; }
@@ -1798,3 +1832,5 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
     .record-editor-footer > .record-editor-note { display: none; }
     .record-editor-footer { padding-block: 8px; }
 }
+
+.media-batch-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }

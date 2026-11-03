@@ -2,7 +2,7 @@ import { createPasswordGate } from './record-password.js?v=20261103-record-manag
 import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=20261103-auto-backup-v1';
+import { createRecordTransfer } from './record-transfer.js?v=20261103-recycle-bin-v1';
 import { verifyBackupPassword } from './backup-password.js?v=20261103-media-controls-v3';
 import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261103-record-management-v1';
 
@@ -227,7 +227,7 @@ export function createDataTransfer(onImported, getRecords = () => []) {
             ? (hasBackupPassword
                 ? '导入后，网站访问密码将恢复为备份时的密码。若该密码与当前密码不一致，下一步将验证备份密码。'
                 : '这是不含密码设置的旧备份。导入后，此网站的访问密码保持不变。')
-            : '导入会覆盖全部日记、照片、视频、头像和署名，无法撤销。建议先导出完整备份。';
+            : '导入会替换全部日记、图片、视频、头像和署名。替换前的数据会保存在回收站，可以恢复。';
         return new Promise(resolve => {
             confirmationResolver = resolve;
             dialog.showModal();

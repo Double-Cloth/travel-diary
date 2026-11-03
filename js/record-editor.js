@@ -1657,7 +1657,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             if (files.length) {
                 busy = true;
                 try {
-                    if (!await confirmFeedback('请核对下方文件。删除后无法恢复；移动的文件会保留在新目录中。', {
+                    if (!await confirmFeedback('请核对下方文件。移除的原文件会存入回收站；移动的文件也会保留在新目录中。', {
                         label: '文件管理', title: '确认文件变更', cancelLabel: '返回编辑', confirmLabel: '确认变更并保存', files
                     })) return;
                 } finally { busy = false; }

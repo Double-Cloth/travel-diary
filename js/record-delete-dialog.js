@@ -77,7 +77,7 @@ export function createRecordDeleteDialog() {
         trigger = document.activeElement;
         setMode('confirm');
         title.textContent = '确定删除这条旅行记录？';
-        description.textContent = '旅行索引和 Markdown 正文将被永久删除，照片文件会保留。此操作无法撤销。';
+        description.textContent = '日记、正文和不再被其他日记使用的附件将移入回收站，可以恢复。共用附件会保留在原位置。';
         recordTitle.textContent = `“${record.title}”`;
         return new Promise(resolve => {
             confirmationResolver = resolve;
@@ -115,7 +115,7 @@ export function createRecordDeleteDialog() {
     return {
         confirm,
         showSuccess(record, { refreshFailed = false } = {}) {
-            showResult('success', '记录已删除', `旅行记录“${record.title}”已删除，照片文件已保留。${refreshFailed ? '页面刷新失败，请手动刷新后查看。' : ''}`);
+            showResult('success', '记录已删除', `旅行记录“${record.title}”已移入回收站，可以恢复。${refreshFailed ? '页面刷新失败，请手动刷新后查看。' : ''}`);
         },
         showError(error) {
             showResult('error', '删除未完成', error?.message || '删除记录失败，请重试。');

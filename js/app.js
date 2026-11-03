@@ -1,10 +1,11 @@
+import { createRecycleManager } from './recycle-manager.js?v=20261103-recycle-bin-v1';
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261103-record-management-v1';
-import { createRecordEditor } from './record-editor.js?v=20261103-clear-media-ui-v1';
+import { createRecordEditor } from './record-editor.js?v=20261103-recycle-bin-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261103-record-management-v1';
-import { createDataTransfer } from './data-transfer.js?v=20261103-auto-backup-v1';
-import { createMediaManager } from './media-manager.js?v=20261103-media-list-preview-v1';
+import { createDataTransfer } from './data-transfer.js?v=20261103-recycle-bin-v1';
+import { createMediaManager } from './media-manager.js?v=20261103-recycle-bin-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20261103-recycle-bin-v1';
 import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
 import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20261103-record-management-v1';
 import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=20260930-review-v1';
@@ -74,6 +75,7 @@ let profileOwnerName = DEFAULT_OWNER_NAME;
 let ownerNameDialog;
 let dataTransfer;
 let openMediaManager;
+let openRecycleManager;
 let travelModel = null;
 let activeRoute = null;
 let pageTurnTimer = null;
@@ -169,7 +171,7 @@ async function initApp() {
         }
     }, {
         title: '删除记录验证',
-        description: '输入 6 位数字密码后永久删除这条记录。',
+        description: '输入 6 位数字密码后，将这条记录移入回收站。',
         verifying: '正在验证并删除记录…',
         actionError: '删除记录失败，请重试。',
         staticMessage: '当前站点为静态只读页面，不支持删除记录。',
@@ -184,6 +186,12 @@ async function initApp() {
         syncRouteFromHash({ initial: true });
     }, getRecords);
     openMediaManager = createMediaManager();
+    openRecycleManager = createRecycleManager(async () => {
+        resetProfilePicture();
+        profileOwnerName = await loadOwnerName(getRefreshKey());
+        await refreshTravelModel(getRefreshKey());
+        syncRouteFromHash({ initial: true });
+    });
     const requestDataExportAuthorization = createPasswordGate(
         capability => dataTransfer.exportAll(`travel-diary-data-${getTodayDate()}.zip`, capability),
         {
@@ -206,12 +214,12 @@ async function initApp() {
         );
     }, {
         title: '清空数据验证',
-        description: '输入 6 位数字密码后永久清空全部旅行数据。',
+        description: '输入 6 位数字密码后，将全部旅行数据移入回收站。',
         verifying: '正在验证并清空数据…',
         actionError: '无法清空全部数据，请重试。',
         staticMessage: '当前站点为静态只读页面，不支持清空全部数据。',
         beforePrompt: () => confirmFeedback(
-            '所有旅行记录、正文、照片、视频、自定义头像和扉页署名都将被永久删除，且无法撤销。访问密码会保留。建议先导出完整备份。',
+            '所有日记、正文、图片、视频、头像和署名将移入回收站，可以恢复。访问密码会保留。',
             {
                 label: '危险操作',
                 title: '确定清空全部数据？',
@@ -1064,10 +1072,18 @@ function renderPreface() {
                 <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
                 <button class="paper-button" type="button" data-action="export-records">导出部分记录</button>
                 <button class="paper-button" type="button" data-action="import-records">导入部分记录</button>
-                <button class="paper-button" type="button" data-action="media-health">媒体整理</button>
             </div>
             <p>增量备份可勾选部分日记及其媒体；合并导入会保留未选中的记录。</p>
             <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
+        </section>
+
+        <section class="preface-tool-section" aria-labelledby="prefaceOrganizeTitle">
+            <h3 id="prefaceOrganizeTitle">内容整理</h3>
+            <p>检查媒体使用情况，或恢复已删除的内容。</p>
+            <div class="preface-tool-actions">
+                <button class="paper-button" type="button" data-action="media-health">媒体整理</button>
+                <button class="paper-button" type="button" data-action="recycle-bin">回收站</button>
+            </div>
         </section>
 
         <section class="preface-tool-section archive-access-security" aria-labelledby="prefaceSecurityTitle">
@@ -1085,7 +1101,7 @@ function renderPreface() {
 
         <section class="preface-tool-section archive-danger-zone" aria-labelledby="prefaceDangerTitle">
             <h3 id="prefaceDangerTitle">危险操作</h3>
-            <p>永久清空所有旅行记录、自定义头像和扉页署名。操作前请先导出备份。</p>
+            <p>清空日记与个人资料，原数据会保存在回收站。</p>
             <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
         </section>
     `, 'dossier-page context-panel preface-tools-panel');
@@ -3961,6 +3977,11 @@ function handleDocumentClick(event) {
     if (event.target.closest('[data-action="media-health"]')) {
         event.preventDefault();
         void openMediaManager();
+        return;
+    }
+    if (event.target.closest('[data-action="recycle-bin"]')) {
+        event.preventDefault();
+        void openRecycleManager();
         return;
     }
     const exportTrip = event.target.closest('[data-action="export-trip"]');

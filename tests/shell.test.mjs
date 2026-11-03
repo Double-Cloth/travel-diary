@@ -281,9 +281,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261103-media-list-preview-v1');
+    assert.equal(appVersion, '20261103-recycle-bin-v1');
     assert.ok(cssVersion);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20261103-clear-media-ui-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20261103-recycle-bin-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20261103-clear-media-ui-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20261103-clear-media-ui-v1/);
 });
@@ -516,7 +516,7 @@ test('个人主页提供经二次确认和密码验证保护的全部数据清�
     assert.match(appJs, /data-action="clear-all-data"/);
     assert.match(appJs, /const result = await dataTransfer\.clearAll\(capability\)/);
     assert.match(appJs, /beforePrompt: \(\) => confirmFeedback\(/);
-    assert.match(appJs, /建议先导出完整备份/);
+    assert.match(appJs, /移入回收站，可以恢复/);
     assert.match(appJs, /访问密码会保留/);
     assert.match(dataTransferJs, /method: 'DELETE'/);
     assert.match(dataTransferJs, /result\.cleared/);

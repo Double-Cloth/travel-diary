@@ -19,7 +19,7 @@ async function waitForDialog(dialog) {
 async function confirmImportRisk(transfer, confirmation) {
     const pending = transfer.chooseImport();
     assert.equal(confirmation.open, true);
-    assert.match(confirmation.querySelector('#dataImportConfirmDescription').textContent, /覆盖全部日记.*无法撤销/);
+    assert.match(confirmation.querySelector('#dataImportConfirmDescription').textContent, /替换全部日记.*回收站.*可以恢复/);
     assert.equal(confirmation.querySelector('[data-import-file-summary]').hidden, true);
     confirmation.events.click({ target: { closest: selector => selector === '[data-import-confirm]' } });
     await pending;

@@ -6,7 +6,7 @@ import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-st
 import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=20261103-media-controls-v3';
 import { verifyBackupPassword } from './backup-password.js?v=20261103-media-controls-v3';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs';
-import { compareBackup, fileSignature } from './record-diff.mjs?v=20261103-record-management-v1';
+import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=20261103-recycle-bin-v1';
 import { recordIdentity } from './record-identity.mjs';
 
 export function createRecordTransfer(onImported, getRecords) {
@@ -84,11 +84,22 @@ export function createRecordTransfer(onImported, getRecords) {
         if (comparison.status !== 'changed') return '';
         const previous = comparison.previous;
         const labels = { date: '日期', country: '国家 / 地区', country_code: '国家代码', admin_area: '行政区', admin_area_type: '行政区类型', locality: '目的地', locality_type: '目的地类型', trip_id: '行程', desc_md: '正文路径', photo_folder: '图片目录', photos: '图片列表', video_folder: '视频目录', videos: '视频列表' };
-        return `<details class="record-diff"><summary>查看差异 · 未勾选时保留当前记录</summary>
-            ${comparison.fields.length ? `<dl>${comparison.fields.map(key => `<dt>${escapeHtml(labels[key] || key)}</dt><dd>当前：${escapeHtml(JSON.stringify(previous[key] ?? ''))}<br>备份：${escapeHtml(JSON.stringify(record[key] ?? ''))}</dd>`).join('')}</dl>` : '<p>记录信息相同。</p>'}
-            ${comparison.media.length ? `<p>新增、移除或内容变化的媒体：</p><ul>${comparison.media.map(name => `<li>${escapeHtml(name)}</li>`).join('')}</ul>` : '<p>媒体内容相同。</p>'}
-            <div class="record-diff-columns"><div><h3>当前正文</h3><pre>${escapeHtml(comparison.currentMarkdown)}</pre></div>
-                <div><h3>备份正文</h3><pre>${escapeHtml(comparison.markdown)}</pre></div></div>
+        const formatValue = (value, other) => {
+            if (!Array.isArray(value)) return String(value ?? '').trim() || '未设置';
+            const changed = value.filter(item => !Array.isArray(other) || !other.includes(item));
+            const removed = Array.isArray(other) && other.some(item => !value.includes(item));
+            return changed.length || removed ? changed.join('、') || '无' : `顺序：${value.join('、') || '无'}`;
+        };
+        const blocks = comparison.markdownChanged ? changedTextBlocks(comparison.currentMarkdown, comparison.markdown) : [];
+        const sections = [comparison.fields.length ? `${comparison.fields.length} 项信息` : '', blocks.length ? '正文' : '', comparison.media.length ? `${comparison.media.length} 个附件` : ''].filter(Boolean);
+        return `<details class="record-diff"><summary><span>查看差异</span><small>${escapeHtml(sections.join(' · '))}</small></summary>
+            <div class="record-diff-body"><p class="record-diff-note">仅显示有变化的部分。勾选这篇日记后，将采用备份内容。</p>
+            ${comparison.fields.length ? `<section class="record-diff-section"><h3>记录信息</h3><dl>${comparison.fields.map(key => `<div><dt>${escapeHtml(labels[key] || key)}</dt><dd><span class="record-diff-value record-diff-before"><small>当前</small>${escapeHtml(formatValue(previous[key], record[key]))}</span><span class="record-diff-value record-diff-after"><small>备份</small>${escapeHtml(formatValue(record[key], previous[key]))}</span></dd></div>`).join('')}</dl></section>` : ''}
+            ${blocks.length ? `<section class="record-diff-section"><h3>正文改动 <small>${blocks.length} 处</small></h3>${blocks.map(block => `<div class="record-diff-columns"><div class="record-diff-before"><h4>当前 <small>第 ${block.lineBefore} 行起</small></h4><pre>${escapeHtml(block.before) || '<span class="record-diff-empty">无内容</span>'}</pre></div><div class="record-diff-after"><h4>备份 <small>第 ${block.lineAfter} 行起</small></h4><pre>${escapeHtml(block.after) || '<span class="record-diff-empty">无内容</span>'}</pre></div></div>`).join('')}</section>` : ''}
+            ${comparison.media.length ? `<section class="record-diff-section"><h3>附件改动</h3><ul class="record-diff-media">${comparison.media.map(name => {
+                const action = !comparison.previousMediaPaths?.has(name) ? '新增' : !comparison.incomingMediaPaths?.has(name) ? '移除' : '内容变化';
+                return `<li><span>${action}</span><span>${escapeHtml(name)}</span></li>`;
+            }).join('')}</ul></section>` : ''}</div>
         </details>`;
     }
 
@@ -99,6 +110,7 @@ export function createRecordTransfer(onImported, getRecords) {
 
     function open(nextMode, nextRecords) {
         mode = nextMode;
+        dialog.classList.toggle('record-transfer-import', mode === 'import');
         records = sortBackupRecords(nextRecords);
         selected.clear();
         dialog.querySelector('input[type="search"]').value = '';
@@ -106,7 +118,7 @@ export function createRecordTransfer(onImported, getRecords) {
         dialog.querySelector('#recordTransferTitle').textContent = mode === 'export' ? '导出部分记录' : '导入部分记录';
         dialog.querySelector('[data-record-transfer-note]').textContent = mode === 'export'
             ? '日记按日期由近到远排列。备份包含正文、图片和视频，导入时会验证导出时的访问密码。'
-            : '勾选要导入的日记。新增记录会添加到网站；内容不同的记录会采用备份内容；内容相同的记录会自动跳过。路径冲突的记录无法选择。未选中的记录、个人资料和访问密码保持不变。更新无法撤销，建议先备份。';
+            : '勾选要合并的日记，有差异时采用备份，相同内容会跳过。其他记录、个人资料和密码保持不变。替换前的数据会留在回收站。';
         dialog.querySelector('[data-record-transfer-changes]').hidden = mode !== 'export';
         dialog.querySelector('[data-record-transfer-submit]').textContent = mode === 'export' ? '导出所选记录' : '确认合并所选记录';
         error('');
@@ -241,7 +253,7 @@ export function createRecordTransfer(onImported, getRecords) {
             if (!response.ok || !Array.isArray(result.records)) throw new Error(result.error || '无法读取当前记录，请重试。');
             if (context.mode === 'import') {
                 comparisons = await compareBackup(context.records, context.entries, result);
-                const changed = [...comparisons.values()].filter(comparison => comparison.status === 'changed');
+                const changed = [...comparisons.values()].filter(comparison => comparison.status === 'changed' && comparison.markdownChanged);
                 let next = 0;
                 await Promise.all(Array.from({ length: Math.min(8, changed.length) }, async () => {
                     while (next < changed.length) {

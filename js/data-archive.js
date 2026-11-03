@@ -84,6 +84,7 @@ async function exportDataArchive(root, selectedPaths = null) {
         const dataDir = path.join(root, 'data');
         const stat = await fs.lstat(dataDir);
         if (stat.isSymbolicLink() || !stat.isDirectory()) throw failure(403, 'data 必须是项目内的普通目录。');
+        await require('./recycle-bin.js').migrateLegacyTrash(root);
         let entries = await collectFiles(dataDir);
         if (!entries.length) throw failure(400, 'data 目录为空，无法导出。');
         const secretsDir = path.join(root, '.secrets');
@@ -317,6 +318,8 @@ async function importDataArchive(root, archive, options = {}) {
     const backupData = path.join(root, `.travel-data-backup-${id}`);
     let movedData = false;
     let installedData = false;
+    let recycleId;
+    let recycledCommitted = false;
     try {
         await options.authorize?.();
         const { readZipSource, readSourceText } = await import('./zip-stream.mjs');
@@ -378,6 +381,7 @@ async function importDataArchive(root, archive, options = {}) {
         } else {
             await validateCurrentAuth(root, options);
         }
+        await require('./recycle-bin.js').migrateLegacyTrash(root);
         let mergeResult;
         if (options.mergeRecords) {
             mergeResult = await mergeRecordEntries(root, entries);
@@ -437,6 +441,7 @@ async function importDataArchive(root, archive, options = {}) {
         }
         let movedSecrets = false;
         let installedSecrets = false;
+        if (!mergeResult || mergeResult.updatedRecords) recycleId = await require('./recycle-bin.js').captureRecycle(root, { kind: 'snapshot', title: options.mergeRecords ? '导入部分记录前的数据' : '导入全部数据前的数据' });
         await fs.rename(currentData, backupData);
         movedData = true;
         try {
@@ -448,6 +453,7 @@ async function importDataArchive(root, archive, options = {}) {
                 await fs.rename(stageSecrets, currentSecrets);
                 installedSecrets = true;
             }
+            await require('./recycle-bin.js').migrateLegacyTrash(root);
         } catch (error) {
             if (installedSecrets) await fs.rm(currentSecrets, { recursive: true, force: true });
             if (movedSecrets) await fs.rename(backupSecrets, currentSecrets).catch(() => {});
@@ -457,15 +463,18 @@ async function importDataArchive(root, archive, options = {}) {
             throw error;
         }
         movedData = false;
+        recycledCommitted = true;
         movedSecrets = false;
         await fs.rm(backupData, { recursive: true, force: true }).catch(() => {});
         await fs.rm(backupSecrets, { recursive: true, force: true }).catch(() => {});
         return { files: entries.length, authPreserved: !authEntry, ...validation,
             ...(mergeResult ? { merged: true, addedRecords: mergeResult.addedRecords, updatedRecords: mergeResult.updatedRecords } : {}) };
     } finally {
-        if (movedData) await fs.rename(backupData, currentData).catch(() => {});
-        await fs.rm(stageRoot, { recursive: true, force: true }).catch(() => {});
-        await release();
+        try {
+            if (recycleId && !recycledCommitted) await require('./recycle-bin.js').discardRecycle(root, recycleId);
+            if (movedData) await fs.rename(backupData, currentData).catch(() => {});
+            await fs.rm(stageRoot, { recursive: true, force: true }).catch(() => {});
+        } finally { await release(); }
     }
 }
 
@@ -537,6 +546,8 @@ async function clearTravelData(root) {
     const currentData = path.join(root, 'data');
     const backupData = path.join(root, `.travel-data-backup-${id}`);
     let movedData = false;
+    let recycleId;
+    let recycledCommitted = false;
     try {
         const currentStat = await fs.lstat(currentData);
         if (currentStat.isSymbolicLink() || !currentStat.isDirectory()) {
@@ -554,6 +565,7 @@ async function clearTravelData(root) {
             fs.writeFile(path.join(stageData, 'profile', 'profile-picture.png'), DEFAULT_PROFILE_PICTURE, { flag: 'wx' })
         ]);
 
+        recycleId = await require('./recycle-bin.js').captureRecycle(root, { kind: 'snapshot', title: '清空前的全部数据' });
         try {
             await fs.rename(currentData, backupData);
             movedData = true;
@@ -577,16 +589,19 @@ async function clearTravelData(root) {
             throw error;
         }
         movedData = false;
+        recycledCommitted = true;
         await fs.rm(backupData, { recursive: true, force: true }).catch(() => {});
         return { authPreserved: true };
     } finally {
-        if (movedData) {
-            const currentExists = await pathExists(currentData);
-            if (currentExists) await moveDirectoryContents(backupData, currentData).catch(() => {});
-            else await fs.rename(backupData, currentData).catch(() => {});
-        }
-        await fs.rm(stageRoot, { recursive: true, force: true }).catch(() => {});
-        await release();
+        try {
+            if (recycleId && !recycledCommitted) await require('./recycle-bin.js').discardRecycle(root, recycleId);
+            if (movedData) {
+                const currentExists = await pathExists(currentData);
+                if (currentExists) await moveDirectoryContents(backupData, currentData).catch(() => {});
+                else await fs.rename(backupData, currentData).catch(() => {});
+            }
+            await fs.rm(stageRoot, { recursive: true, force: true }).catch(() => {});
+        } finally { await release(); }
     }
 }
 

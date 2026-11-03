@@ -3,6 +3,7 @@ const { pipeline } = require('node:stream/promises');
 const { createHash } = require('node:crypto');
 const { fileSource, receiveArchive } = require('./file-stream.js');
 const fs = require('fs/promises');
+const { captureRecycle, discardRecycle } = require('./recycle-bin.js');
 const path = require('path');
 const { randomBytes, timingSafeEqual } = require('crypto');
 const { acquireDataLock, clearTravelData, exportDataArchive, importDataArchive } = require('./data-archive.js');
@@ -228,11 +229,14 @@ async function writeProfileFile(root, fileName, content) {
     const suffix = randomBytes(8).toString('hex');
     let temporaryFile = '';
     let backupFile = '';
+    let profileRecycleId;
     let committed = false;
     try {
         const profileDirectory = await checkedDirectory(root, ['data', 'profile'], true);
         const targetFile = path.join(profileDirectory, fileName);
         try { await checkedFile(targetFile); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; }
+        try { profileRecycleId = await captureRecycle(root, { kind: 'version', title: fileName === 'profile-picture.png' ? '更换前的头像' : '修改前的署名', files: [{ path: `data/profile/${fileName}` }] }); }
         catch (error) { if (error.code !== 'ENOENT') throw error; }
         temporaryFile = path.join(profileDirectory, `.${fileName}-${suffix}.tmp`);
         const handle = await fs.open(temporaryFile, 'wx');
@@ -266,6 +270,7 @@ async function writeProfileFile(root, fileName, content) {
         backupFile = '';
         return { path: `data/profile/${fileName}` };
     } finally {
+        if (!committed && profileRecycleId) await discardRecycle(root, profileRecycleId);
         if (temporaryFile) await fs.unlink(temporaryFile).catch(() => {});
         if (committed && backupFile) await fs.unlink(backupFile).catch(() => {});
         await releaseLock();
@@ -433,15 +438,17 @@ async function stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideo
     }
 }
 
-async function stageUnusedMedia(root, records, previous) {
+async function stageUnusedMedia(root, records, previous, recycle = true) {
     const { isSafeAsciiFileName } = await import('./slug.mjs');
     const staged = [];
     const directories = new Map();
+    let recycleId;
     const fileKey = file => process.platform === 'win32' ? file.toLowerCase() : file;
     const rollback = async () => {
         const results = await Promise.allSettled([...staged].reverse().map(({ file, backup }) => fs.rename(backup, file)));
         const failed = results.find(result => result.status === 'rejected');
         if (failed) throw failed.reason;
+        if (recycleId) await discardRecycle(root, recycleId);
     };
     const commit = async () => {
         for (const { backup } of staged) await fs.unlink(backup).catch(() => {});
@@ -478,6 +485,7 @@ async function stageUnusedMedia(root, records, previous) {
                 staged.push({ file, backup });
             }
         }
+        if (recycle && staged.length) recycleId = await captureRecycle(root, { title: '编辑日记时移除的媒体', files: staged.map(({ file, backup }) => ({ path: path.relative(root, file).split(path.sep).join('/'), source: path.relative(root, backup).split(path.sep).join('/') })) });
         return { rollback, commit };
     } catch (error) {
         await rollback();
@@ -636,6 +644,7 @@ async function updateRecord(root, payload) {
     let temporaryMarkdown;
     let backupMarkdown;
     let createdMarkdown;
+    let editRecycleId;
     let oldDiaryFile;
     let newDiaryFile;
     let committed = false;
@@ -674,6 +683,7 @@ async function updateRecord(root, payload) {
             throw failure(409, '这条旅行记录已在其他窗口或文件中修改，未覆盖最新内容。请先导出草稿，再刷新页面并重新打开记录。');
         }
 
+        if (oldMarkdown !== markdown || oldDiaryFile !== newDiaryFile) editRecycleId = await captureRecycle(root, { kind: 'version', title: '编辑前的日记正文', files: [{ path: existing.desc_md }] });
         mediaStage = await stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos, {
             photo_folder: existing.photo_folder, video_folder: existing.video_folder
         }, syncMediaFiles);
@@ -713,6 +723,7 @@ async function updateRecord(root, payload) {
     } finally {
         try {
             if (!committed) {
+                if (editRecycleId) await discardRecycle(root, editRecycleId);
                 if (temporaryMarkdown) await fs.unlink(temporaryMarkdown).catch(() => {});
                 if (backupMarkdown) {
                     await fs.unlink(oldDiaryFile).catch(() => {});
@@ -745,6 +756,8 @@ async function deleteRecord(root, payload) {
     let diaryFile;
     let backupMarkdown;
     let committed = false;
+    let recycleId;
+    let unusedMediaStage;
     try {
         await checkedFile(indexFile);
         const previous = await fs.readFile(indexFile, 'utf8');
@@ -755,6 +768,9 @@ async function deleteRecord(root, payload) {
         if (matches.length !== 1) throw failure(409, matches.length ? '记录标识不唯一，无法安全删除。' : '旅行记录已不存在，请刷新页面后重试。');
 
         const { item: deletedRecord, index } = matches[0];
+        const { recordFilePaths } = await import('./record-backup.mjs');
+        recycleId = await captureRecycle(root, { kind: 'record', title: `${deletedRecord.date || ''} ${deletedRecord.locality || '删除的日记'}`.trim(), records: [deletedRecord], files: [...recordFilePaths([deletedRecord])].map(name => ({ path: name, optional: true })) });
+        unusedMediaStage = await stageUnusedMedia(root, records.filter((_, itemIndex) => itemIndex !== index), deletedRecord, false);
         try {
             diaryFile = await resolveMarkdownFile(root, markdownPath);
             await checkedFile(diaryFile);
@@ -766,12 +782,18 @@ async function deleteRecord(root, payload) {
         }
         await replaceIndex(dataDir, indexFile, previous, records.filter((_, itemIndex) => itemIndex !== index));
         committed = true;
+        if (unusedMediaStage) await unusedMediaStage.commit();
         if (backupMarkdown) await fs.unlink(backupMarkdown).catch(() => {});
         backupMarkdown = null;
         return { record: deletedRecord };
     } finally {
         if (!committed && backupMarkdown) await fs.rename(backupMarkdown, diaryFile).catch(() => {});
-        await releaseLock();
+        try {
+            if (!committed) {
+                if (unusedMediaStage) await unusedMediaStage.rollback();
+                if (recycleId) await discardRecycle(root, recycleId);
+            }
+        } finally { await releaseLock(); }
     }
 }
 
@@ -1078,12 +1100,12 @@ function createRecordApi(root, options = {}) {
         }
         if (requestPath === '/api/travel-records' && req.method === 'GET') {
             if (!session) {
-                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, recordManagement: true, code: 'AUTH_REQUIRED' });
+                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, recordManagement: true, recycleBin: true, code: 'AUTH_REQUIRED' });
                 return;
             }
             send(200, {
                 service: 'travel-diary-writer-v1', authenticated: true, token: session.token,
-                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, recordManagement: true
+                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, recordManagement: true, recycleBin: true
             });
             return;
         }
@@ -1101,10 +1123,11 @@ function createRecordApi(root, options = {}) {
             let importAttemptReserved = false;
             try {
                 const mode = requestUrl.searchParams.get('mode');
-                if (req.method === 'GET' && ['inventory', 'media-health'].includes(mode)) {
+                if (req.method === 'GET' && ['inventory', 'media-health', 'recycle-bin'].includes(mode)) {
                     const release = await acquireDataLock(root);
                     try {
-                        if (mode === 'media-health') send(200, await require('./media-health.js').scanMedia(root));
+                        if (mode === 'recycle-bin') send(200, await require('./recycle-bin.js').readRecycleBin(root));
+                        else if (mode === 'media-health') send(200, await require('./media-health.js').scanMedia(root));
                         else {
                             const { inventory, readBackupState } = require('./record-inventory.js');
                             send(200, { ...await inventory(root), backup: await readBackupState(root) });
@@ -1112,10 +1135,11 @@ function createRecordApi(root, options = {}) {
                     } finally { await release(); }
                     return;
                 }
-                if (req.method === 'POST' && ['media-health', 'backup-complete'].includes(mode)) {
+                if (req.method === 'POST' && ['media-health', 'backup-complete', 'recycle-bin'].includes(mode)) {
                     if (!hasMediaType(req, 'application/json')) throw failure(415, '此操作必须使用 application/json。');
                     const payload = await readJsonBody(req, 4 * 1024 * 1024);
-                    if (mode === 'media-health') send(200, await require('./media-health.js').manageMedia(root, payload));
+                    if (mode === 'recycle-bin') send(200, await require('./recycle-bin.js').manageRecycleBin(root, payload));
+                    else if (mode === 'media-health') send(200, await require('./media-health.js').manageMedia(root, payload));
                     else {
                         const receipt = session.backupReceipts?.get(payload?.receipt);
                         if (!receipt?.complete) throw failure(409, '备份尚未传输完成，未更新备份状态。');

@@ -25,7 +25,7 @@ npm run media:previews
 # 用指定的浏览器生成缩略图，并指定目标目录
 npm run media:previews -- --browser "浏览器可执行文件路径" --dir "数据所在项目目录"
 
-# 清除项目 .cache 缓存，保留原始媒体和日记；下次浏览时自动重建缩略图
+# 清除项目缓存，保留回收站、原始媒体和日记；下次浏览时自动重建缩略图
 npm run cache:clear
 
 # 清除指定项目目录下的 .cache 缓存

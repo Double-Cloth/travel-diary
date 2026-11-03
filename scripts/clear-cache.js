@@ -15,14 +15,20 @@ async function clearCache(root) {
         || path.relative(projectRoot, await fs.realpath(cachePath)) !== '.cache') {
         throw new Error('.cache 必须是项目内的普通目录，不能是符号链接或 junction。');
     }
-    await fs.rm(cachePath, { recursive: true, force: true });
+    for (const name of await fs.readdir(cachePath)) {
+        if (name === 'recycle-bin') continue;
+        const target = path.resolve(cachePath, name);
+        if (path.dirname(target) !== cachePath) throw new Error('缓存路径无效。');
+        await fs.rm(target, { recursive: true, force: true });
+    }
+    if (!(await fs.readdir(cachePath)).length) await fs.rmdir(cachePath);
     return { cachePath, removed: true };
 }
 
 async function main() {
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log('用法：npm run cache:clear -- [--dir 项目目录]\n删除目标项目的 .cache 目录；原始媒体、日记和浏览器缓存不受影响。');
+        console.log('用法：npm run cache:clear -- [--dir 项目目录]\n清除目标项目的缓存，保留 .cache/recycle-bin 回收站；原始媒体、日记和浏览器缓存不受影响。');
         return;
     }
     let root = path.resolve(__dirname, '..');

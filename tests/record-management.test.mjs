@@ -203,8 +203,8 @@ test('回收文件被新增引用时禁止永久删除，回收清单损坏时�
     await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify([{ ...first, photo_folder: 'data/photos', photos: ['unused.png'] }, second]));
     report = await scanMedia(root);
     await assert.rejects(manageMedia(root, { action: 'purge', revision: report.revision, id: batch.id }), /现在被记录引用/);
-    assert.equal(await fs.readFile(path.join(root, 'data/media-trash', batch.id, 'data/photos/unused.png'), 'utf8'), 'unused');
-    await fs.unlink(path.join(root, 'data/media-trash', batch.id, 'manifest.json'));
+    assert.equal(await fs.readFile(path.join(root, '.cache/recycle-bin', batch.id, 'data/photos/unused.png'), 'utf8'), 'unused');
+    await fs.unlink(path.join(root, '.cache/recycle-bin', batch.id, 'manifest.json'));
     await assert.rejects(scanMedia(root), /清单缺失或损坏/);
 });
 
