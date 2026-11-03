@@ -186,7 +186,10 @@ function moveCustomSelectSelection(wrapper, direction) {
 
 function enhanceCustomSelect(select) {
     const existingWrapper = select.parentElement?.matches('.custom-select') ? select.parentElement : null;
-    if (existingWrapper?.dataset.customSelect !== undefined) return;
+    if (existingWrapper?.dataset.customSelect !== undefined) {
+        renderCustomSelect(existingWrapper);
+        return;
+    }
     if (!select.id) select.id = `customSelect${++customSelectId}`;
     const wrapper = existingWrapper || document.createElement('span');
     wrapper.classList.add('custom-select');

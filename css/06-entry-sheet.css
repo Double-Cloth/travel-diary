@@ -1312,13 +1312,19 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-manager-heading p { margin: 0; }
 .media-manager-heading > button { flex-shrink: 0; }
 .media-manager .media-manager-status { margin: 20px 0 12px; font-size: 13px; }
-.media-space-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 18px 0; margin: 0 0 24px; border-block: 1px solid var(--hairline); }
+.media-space-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 14px 0; margin: 0 0 16px; border-block: 1px solid var(--hairline); }
 .media-space-summary dt { color: var(--ink-soft); font-size: 12px; line-height: 1.6; }
 .media-space-summary dd { margin: 6px 0 0; font-size: 18px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
-.media-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.media-section-heading h3 { margin: 0; font-size: 19px; }
-.media-section-heading > span { color: var(--ink-soft); font-size: 13px; }
-.media-filter-row { display: grid; grid-template-columns: auto minmax(0, 220px); justify-content: start; align-items: center; gap: 12px; margin-top: 16px; }
+.media-manager-navigation { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 1px solid var(--hairline); }
+.media-manager-views { display: flex; gap: 24px; }
+.media-view-button { position: relative; min-height: 44px; padding: 10px 0; border: 0; color: var(--ink-soft); background: transparent; font: inherit; font-size: 16px; cursor: pointer; }
+.media-view-button[aria-pressed="true"] { color: var(--ink); font-weight: 700; }
+.media-view-button[aria-pressed="true"]::after { content: ''; position: absolute; height: 2px; inset: auto 0 -1px; background: var(--stamp); }
+.media-view-button > span { margin-left: 4px; font-size: 12px; font-weight: 400; font-variant-numeric: tabular-nums; }
+.media-text-button { min-height: 44px; padding: 8px 0; border: 0; color: var(--stamp); background: transparent; font: inherit; font-size: 13px; cursor: pointer; text-underline-offset: 4px; }
+.media-text-button:hover:not(:disabled) { text-decoration: underline; }
+.media-text-button:disabled { color: var(--ink-soft); opacity: 0.5; cursor: default; }
+.media-filter-row { display: grid; grid-template-columns: auto minmax(0, 280px); justify-content: start; align-items: center; gap: 12px; margin-top: 18px; }
 .media-filter-row .field-label { margin: 0; }
 .media-manager .custom-select-menu { min-width: 100%; }
 .media-manager .media-filter-hint { margin: 10px 0 4px; font-size: 13px; }
@@ -1328,14 +1334,16 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-health-file small { display: block; margin-top: 5px; }
 .media-health-name { font-size: 15px; font-weight: 700; }
 .media-health-path { overflow-wrap: anywhere; }
-.media-selection { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; }
-.media-selection-tools { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.media-selection { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 12px; padding-top: 16px; }
+.media-selection-tools { display: flex; flex-wrap: wrap; gap: 20px; }
 .media-selection > p { margin: 0; font-variant-numeric: tabular-nums; }
+.media-manager .media-selection-note { width: 100%; font-size: 12px; }
 .media-manager a { color: var(--stamp); text-underline-offset: 3px; }
 .media-manager [data-media-error] { color: var(--stamp); }
 .media-manager [data-media-error]:empty { display: none; }
-.media-trash { margin-top: 28px; border-top: 1px solid var(--hairline); padding-top: 22px; }
-.media-trash > p { margin: 8px 0 12px; font-size: 13px; }
+.media-trash { padding-top: 14px; }
+.media-trash > p { margin: 0 0 12px; font-size: 13px; }
+.media-trash .media-trash-summary { margin-top: 18px; font-variant-numeric: tabular-nums; }
 .media-trash > ul { padding: 0; margin: 0; list-style: none; }
 .media-trash > ul > li { padding: 14px 0; border-bottom: 1px solid var(--hairline); }
 .media-trash li { overflow-wrap: anywhere; }

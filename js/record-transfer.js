@@ -8,7 +8,7 @@ import { verifyBackupPassword } from './backup-password.js?v=20261103-media-cont
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs';
 import { compareBackup, fileSignature } from './record-diff.mjs?v=20261103-record-management-v1';
 import { recordIdentity } from './record-identity.mjs';
-import { confirmBackupSaved } from './backup-state.js?v=20261103-record-management-v1';
+import { confirmBackupSaved } from './backup-state.js?v=20261103-clear-media-ui-v1';
 
 export function createRecordTransfer(onImported, getRecords) {
     const dialog = document.createElement('dialog');
@@ -23,7 +23,7 @@ export function createRecordTransfer(onImported, getRecords) {
             <div class="record-transfer-toolbar">
                 <button class="paper-button" type="button" data-record-transfer-all>全选筛选结果</button>
                 <button class="paper-button" type="button" data-record-transfer-clear>取消选择</button>
-                <button class="paper-button" type="button" data-record-transfer-changes>选择待备份变更</button>
+                <button class="paper-button" type="button" data-record-transfer-changes>选择待备份记录</button>
                 <span data-record-transfer-count role="status" aria-live="polite"></span>
             </div>
             <ul class="record-transfer-list" data-record-transfer-list aria-label="选择旅行记录"></ul>
@@ -140,9 +140,10 @@ export function createRecordTransfer(onImported, getRecords) {
             url.searchParams.set('selection', result.selection);
             const date = new Date().toLocaleDateString('sv-SE');
             const download = await downloadWithProgress(url, `travel-diary-records-${date}.zip`, progress);
+            progress.remove();
             const remembered = await confirmBackupSaved(download, capability);
             status(download.cancelled ? '已取消导出。' : download.handedOff ? '所选记录备份已交给浏览器下载，请查看下载列表。' : `已导出 ${paths.length} 条记录及其媒体文件。`);
-            if (remembered) status(`已导出 ${paths.length} 条记录，并更新待备份状态。`);
+            if (remembered) status(`已导出 ${paths.length} 条记录，并标记为已备份。`);
         } catch (failure) { progress.fail(failure); throw failure; }
     }
 
@@ -259,8 +260,8 @@ export function createRecordTransfer(onImported, getRecords) {
                 }
                 render();
                 dialog.querySelector('[data-record-transfer-note]').textContent = `已选择 ${selected.size} 条新增或有变化的记录（含正文、信息和媒体内容）。`
-                    + (result.backup.confirmedAt ? `比较基准：${new Date(result.backup.confirmedAt).toLocaleString()} 已确认保存的备份。` : '尚无已确认保存的备份，首次选择全部记录。')
-                    + '下载后确认文件已保存，才会更新备份状态。';
+                    + (result.backup.confirmedAt ? `最近确认备份：${new Date(result.backup.confirmedAt).toLocaleString()}。` : '尚未确认保存过备份，已选择全部记录。')
+                    + '导出后确认 ZIP 已保存，才会将本次导出的记录标记为已备份。';
                 if (!dialog.open) dialog.showModal();
             }
             return capability;

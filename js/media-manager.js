@@ -2,7 +2,7 @@ import { escapeHtml, getMediaFileUrl } from './utils.js';
 import { createPasswordGate } from './record-password.js?v=20261103-record-management-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
 import { confirmFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
-import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
+import { enhanceCustomSelects } from './custom-select.js?v=20261103-clear-media-ui-v1';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -16,15 +16,17 @@ export function createMediaManager() {
     dialog.className = 'record-transfer media-manager entry-sheet';
     dialog.setAttribute('aria-labelledby', 'mediaManagerTitle');
     dialog.innerHTML = `<div class="record-transfer-card">
-        <header class="media-manager-heading"><div><h2 id="mediaManagerTitle">媒体整理</h2><p>检查图片与视频，整理未使用的文件。</p></div><button class="paper-button" type="button" data-media-close>关闭</button></header>
+        <header class="media-manager-heading"><div><h2 id="mediaManagerTitle">媒体整理</h2><p>查看文件的使用情况，整理不再需要的图片和视频。</p></div><button class="paper-button" type="button" data-media-close>关闭</button></header>
         <p class="media-manager-status" data-media-summary role="status" aria-live="polite"></p>
         <dl class="media-space-summary" data-media-space hidden></dl>
-        <section class="media-files-section" aria-labelledby="mediaFilesTitle"><div class="media-section-heading"><h3 id="mediaFilesTitle">文件检查</h3><button class="paper-button" type="button" data-media-refresh>重新检查</button></div>
-        <div class="media-filter-row"><label for="mediaFilterButton" class="field-label">文件分类</label><select id="mediaFilter" data-custom-select data-media-filter aria-label="文件分类"><option value="unused">未使用</option><option value="missing">已缺失</option><option value="shared">多篇共用</option><option value="all">全部文件</option></select></div>
+        <div class="media-manager-navigation"><div class="media-manager-views" role="group" aria-label="媒体整理视图"><button id="mediaFilesTitle" class="media-view-button" type="button" data-media-view="files" aria-pressed="true" aria-controls="mediaFilesPanel">文件检查</button><button id="mediaTrashTitle" class="media-view-button" type="button" data-media-view="trash" aria-pressed="false" aria-controls="mediaTrashPanel">回收区 <span data-media-trash-count>0</span></button></div><button class="media-text-button" type="button" data-media-refresh>重新检查</button></div>
+        <section id="mediaFilesPanel" class="media-files-section" aria-labelledby="mediaFilesTitle">
+        <div class="media-filter-row"><label for="mediaFilterButton" class="field-label">查看</label><select id="mediaFilter" data-custom-select data-media-filter aria-label="文件分类"><option value="unused">未被笔记使用</option><option value="missing">笔记中的缺失文件</option><option value="shared">多篇笔记共用</option><option value="all">全部现有文件</option></select></div>
         <p class="media-filter-hint" data-media-hint></p>
+        <div class="media-selection-tools" data-media-select-tools><button class="media-text-button" type="button" data-media-all>全选可清理文件</button><button class="media-text-button" type="button" data-media-clear disabled>取消选择</button></div>
         <ul class="record-transfer-list" data-media-list></ul>
-        <div class="media-selection" data-media-selection><div class="media-selection-tools"><button class="paper-button" type="button" data-media-all>全选未使用文件</button><button class="paper-button" type="button" data-media-clear disabled>取消选择</button></div><p data-media-count role="status"></p><button class="paper-button" type="button" data-media-trash disabled>移入回收区</button></div></section>
-        <section class="media-trash" aria-labelledby="mediaTrashTitle"><div class="media-section-heading"><h3 id="mediaTrashTitle">回收区</h3><span data-media-trash-size></span></div><p>移入后可恢复，永久删除才会释放空间。</p><ul data-media-batches></ul></section>
+        <div class="media-selection" data-media-selection><p data-media-count role="status"></p><button class="paper-button" type="button" data-media-trash disabled>移入回收区</button><p class="media-selection-note">移入后仍占用空间，可在回收区恢复或永久删除。</p></div></section>
+        <section id="mediaTrashPanel" class="media-trash" aria-labelledby="mediaTrashTitle" hidden><p>恢复会把文件放回原处。永久删除才会释放空间，删除后无法找回。</p><p class="media-trash-summary" data-media-trash-size></p><ul data-media-batches></ul></section>
         <p data-media-error role="alert"></p></div>`;
     document.body.append(dialog);
     enhanceCustomSelects(dialog);
@@ -32,6 +34,12 @@ export function createMediaManager() {
     let capability;
     let trigger;
     let busy = false;
+    function showView(view) {
+        dialog.querySelectorAll('[data-media-view]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.mediaView === view)));
+        dialog.querySelector('#mediaFilesPanel').hidden = view !== 'files';
+        dialog.querySelector('#mediaTrashPanel').hidden = view !== 'trash';
+        enhanceCustomSelects(dialog);
+    }
     const selected = new Set();
     const error = message => { dialog.querySelector('[data-media-error]').textContent = message; };
     const owners = file => file.records.map(record => `<a href="#entry?id=${encodeURIComponent(record.record_id)}" data-media-record>${escapeHtml(record.date)} ${escapeHtml(record.locality)}</a>`).join('、');
@@ -45,12 +53,17 @@ export function createMediaManager() {
 
     function render() {
         selected.clear();
-        dialog.querySelector('[data-media-summary]').textContent = `检查完成 · ${report.files.length} 个文件 · ${report.missing.length} 个缺失 · ${report.files.filter(file => file.records.length > 1).length} 个多篇共用`;
+        dialog.querySelector('[data-media-summary]').textContent = `已检查 ${report.files.length} 个现有文件${report.missing.length ? ` · 笔记中有 ${report.missing.length} 个文件找不到` : ' · 笔记引用的文件均存在'}`;
         const space = dialog.querySelector('[data-media-space]');
         space.hidden = false;
-        space.innerHTML = [['媒体占用', report.totalBytes], ['未使用文件', report.unusedBytes], ['回收区占用', report.trashBytes]].map(([label, bytes]) => `<div><dt>${label}</dt><dd>${sizeLabel(bytes)}</dd></div>`).join('');
+        space.innerHTML = [['文件占用（不含回收区）', report.totalBytes], ['回收区占用', report.trashBytes]].map(([label, bytes]) => `<div><dt>${label}</dt><dd>${sizeLabel(bytes)}</dd></div>`).join('');
+        const counts = { unused: report.files.filter(file => !file.records.length).length, missing: report.missing.length, shared: report.files.filter(file => file.records.length > 1).length, all: report.files.length };
+        const labels = { unused: '未被笔记使用', missing: '笔记中的缺失文件', shared: '多篇笔记共用', all: '全部现有文件' };
+        for (const option of dialog.querySelector('[data-media-filter]').options) option.textContent = `${labels[option.value]}（${counts[option.value]}）`;
         renderFiles();
-        dialog.querySelector('[data-media-trash-size]').textContent = `${report.trash.length} 批 · ${sizeLabel(report.trashBytes)}`;
+        const trashCount = report.trash.reduce((sum, batch) => sum + batch.files.length, 0);
+        dialog.querySelector('[data-media-trash-count]').textContent = trashCount;
+        dialog.querySelector('[data-media-trash-size]').textContent = `共 ${trashCount} 个文件 · ${sizeLabel(report.trashBytes)}`;
         dialog.querySelector('[data-media-batches]').innerHTML = report.trash.length ? report.trash.map(batch => `<li><p class="media-batch-title">${escapeHtml(new Date(batch.createdAt).toLocaleString())}<small>${batch.files.length} 个文件 · ${sizeLabel(batch.files.reduce((sum, file) => sum + file.size, 0))}</small></p>
             <details><summary>查看文件</summary><ul>${batch.files.map(file => `<li>${escapeHtml(file.path)} · ${sizeLabel(file.size)}</li>`).join('')}</ul></details>
             <div class="media-batch-actions"><button class="paper-button" type="button" data-media-restore="${batch.id}">恢复</button>
@@ -62,10 +75,10 @@ export function createMediaManager() {
     function renderFiles() {
         const filter = dialog.querySelector('[data-media-filter]').value;
         dialog.querySelector('[data-media-hint]').textContent = {
-            unused: '未被笔记使用的文件。可打开确认内容，再移入回收区。',
+            unused: `共 ${sizeLabel(report.unusedBytes)}。没有笔记使用这些文件，请先点击文件名查看，再决定是否清理。`,
             missing: '笔记引用了这些文件，但文件已不存在。请从备份恢复，或修改对应笔记。',
-            shared: '这些文件被多篇笔记共用，不能在此清理。',
-            all: '查看全部图片与视频，仅未使用的文件可选中清理。'
+            shared: '这些文件仍被多篇笔记使用，不能清理。点击下方笔记可查看使用位置。',
+            all: '已被笔记使用的文件仅供查看；未被笔记使用的文件可以勾选清理。'
         }[filter];
         const files = filter === 'missing' ? report.missing : report.files.filter(file => filter === 'all' || (filter === 'shared' ? file.records.length > 1 : !file.records.length));
         dialog.querySelector('[data-media-list]').innerHTML = files.length ? files.map(file => {
@@ -73,8 +86,10 @@ export function createMediaManager() {
             return `<li><div class="media-health-file">${!file.records.length ? `<label><input type="checkbox" data-media-path value="${escapeHtml(file.path)}"${selected.has(file.path) ? ' checked' : ''}><span class="sr-only">选择 ${escapeHtml(file.path)}</span></label>` : ''}
                 <div><span class="media-health-name">${filter === 'missing' || !url ? escapeHtml(file.path.split('/').at(-1)) : `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(file.path.split('/').at(-1))}</a>`}</span><small class="media-health-path">${escapeHtml(file.path)}</small>
                 <small>${filter === 'missing' ? '文件缺失' : sizeLabel(file.size)} · ${file.records.length ? owners(file) : '未被笔记使用'}</small></div></div></li>`;
-        }).join('') : `<li class="media-empty">${filter === 'unused' ? '没有未使用的文件，无需清理。' : filter === 'missing' ? '没有缺失文件。' : filter === 'shared' ? '没有多篇共用的文件。' : '还没有图片或视频。'}</li>`;
-        dialog.querySelector('[data-media-selection]').hidden = !['all', 'unused'].includes(filter);
+        }).join('') : `<li class="media-empty">${filter === 'unused' ? '没有未被笔记使用的文件，无需清理。' : filter === 'missing' ? '没有缺失文件。' : filter === 'shared' ? '没有多篇共用的文件。' : '还没有图片或视频。'}</li>`;
+        const canSelect = ['all', 'unused'].includes(filter) && report.files.some(file => !file.records.length);
+        dialog.querySelector('[data-media-selection]').hidden = !canSelect;
+        dialog.querySelector('[data-media-select-tools]').hidden = !canSelect;
         count();
     }
 
@@ -93,6 +108,10 @@ export function createMediaManager() {
             if (!response.ok || !Array.isArray(result.files)) throw new Error(result.error || '文件检查失败，请重试。');
             report = result;
             render();
+            if (payload?.action === 'trash') {
+                showView('trash');
+                requestAnimationFrame(() => dialog.querySelector('[data-media-view="trash"]').focus());
+            }
         } catch (failure) {
             error(failure.message);
             dialog.querySelector('[data-media-summary]').textContent = '操作未完成，请重新检查后再试。';
@@ -101,6 +120,7 @@ export function createMediaManager() {
             dialog.querySelectorAll('button, input, select').forEach(element => { element.disabled = false; });
             if (report) count();
             else dialog.querySelector('[data-media-trash]').disabled = true;
+            enhanceCustomSelects(dialog);
         }
     }
 
@@ -112,7 +132,7 @@ export function createMediaManager() {
     dialog.addEventListener('keydown', event => event.stopPropagation());
     dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
     dialog.addEventListener('change', event => {
-        if (event.target.matches('[data-media-filter]') && report) renderFiles();
+        if (event.target.matches('[data-media-filter]') && report) { selected.clear(); renderFiles(); }
         if (event.target.matches('[data-media-path]')) {
             if (event.target.checked) selected.add(event.target.value); else selected.delete(event.target.value);
             count();
@@ -120,6 +140,8 @@ export function createMediaManager() {
     });
     dialog.addEventListener('click', async event => {
         if (busy) return;
+        const view = event.target.closest('[data-media-view]');
+        if (view) { selected.clear(); if (report) renderFiles(); showView(view.dataset.mediaView); }
         if (event.target.closest('[data-media-close], [data-media-record]')) close();
         if (event.target.closest('[data-media-refresh]')) await request();
         if (!report) return;
@@ -150,9 +172,10 @@ export function createMediaManager() {
         selected.clear();
         dialog.querySelector('[data-media-space]').hidden = true;
         dialog.querySelector('[data-media-selection]').hidden = true;
+        dialog.querySelector('[data-media-select-tools]').hidden = true;
         for (const selector of ['[data-media-list]', '[data-media-batches]', '[data-media-count]', '[data-media-trash-size]', '[data-media-hint]']) dialog.querySelector(selector).textContent = '';
         dialog.showModal();
-        enhanceCustomSelects(dialog);
+        showView('files');
         await request();
     }, { title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，整理媒体文件。', staticMessage: '静态页面不提供媒体整理，请使用本机服务。' });
 }

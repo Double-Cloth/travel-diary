@@ -1,8 +1,8 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261103-record-management-v1';
-import { createRecordEditor } from './record-editor.js?v=20261103-record-management-v1';
+import { createRecordEditor } from './record-editor.js?v=20261103-clear-media-ui-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261103-record-management-v1';
-import { createDataTransfer } from './data-transfer.js?v=20261103-record-management-v1';
-import { createMediaManager } from './media-manager.js?v=20261103-catalog-slider-v1';
+import { createDataTransfer } from './data-transfer.js?v=20261103-clear-media-ui-v1';
+import { createMediaManager } from './media-manager.js?v=20261103-clear-media-ui-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
@@ -13,7 +13,7 @@ import { createOperationProgress, downloadWithProgress, saveBlobDownload } from 
 import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=20261103-media-stats-v1';
 import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js';
 import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=20261102-native-preview-v1';
-import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
+import { enhanceCustomSelects } from './custom-select.js?v=20261103-clear-media-ui-v1';
 import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
 import {
     formatLocationText,

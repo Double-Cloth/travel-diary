@@ -2,9 +2,9 @@ import { createPasswordGate } from './record-password.js?v=20261103-record-manag
 import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=20261103-record-management-v1';
+import { createRecordTransfer } from './record-transfer.js?v=20261103-clear-media-ui-v1';
 import { verifyBackupPassword } from './backup-password.js?v=20261103-media-controls-v3';
-import { confirmBackupSaved } from './backup-state.js?v=20261103-record-management-v1';
+import { confirmBackupSaved } from './backup-state.js?v=20261103-clear-media-ui-v1';
 import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261103-record-management-v1';
 
 function setStatus(message) {
@@ -93,11 +93,12 @@ export function createDataTransfer(onImported, getRecords = () => []) {
         try {
             const capability = authenticatedCapability || await detectWriterCapability();
             const result = await downloadWithProgress(await getExportHref(capability), downloadName, progress);
+            progress.remove();
             const remembered = await confirmBackupSaved(result, capability);
             setStatus(result.cancelled ? '已取消导出。' : result.handedOff
                 ? '备份已交给浏览器下载，请在浏览器下载列表查看进度。'
                 : '全部数据备份已传输完成，请查看保存的文件。');
-            if (remembered) setStatus('全部数据备份已保存，并更新待备份状态。');
+            if (remembered) setStatus('全部数据备份已保存，所有导出的记录已标记为已备份。');
         } catch (error) {
             progress.fail(error);
             setStatus(`导出失败：${error.message}`);

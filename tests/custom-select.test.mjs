@@ -55,6 +55,7 @@ function createSelectFixture(t) {
     const label = element();
     select.id = 'testSelect';
     select.options = [{ value: 'all', textContent: '全部', selected: true }];
+    select.options[0].parentElement = select;
     select.selectedOptions = select.options;
     select.selectedIndex = 0;
     select.labels = [];
@@ -79,6 +80,23 @@ function createSelectFixture(t) {
     const menu = wrapper.querySelector('[data-custom-select-menu]');
     return { wrapper, trigger, menu, flush: () => { while (timers.length) timers.shift()(); } };
 }
+
+test('重复增强已有下拉框会刷新动态选项文字，不创建重复控件', t => {
+    const { wrapper, trigger } = createSelectFixture(t);
+    const select = wrapper.querySelector('select');
+    const childrenCount = wrapper.children.length;
+    select.options[0].textContent = '全部（3）';
+    customSelect.enhanceCustomSelect(select);
+    assert.equal(wrapper.querySelector('[data-custom-select-label]').textContent, '全部（3）');
+    assert.equal(wrapper.children.length, childrenCount);
+    assert.equal(wrapper.querySelector('[data-custom-select-trigger]'), trigger);
+    select.disabled = true;
+    customSelect.enhanceCustomSelect(select);
+    assert.equal(wrapper.querySelector('[data-custom-select-menu]').children[0].getAttribute('aria-disabled'), 'true');
+    select.disabled = false;
+    customSelect.enhanceCustomSelect(select);
+    assert.equal(wrapper.querySelector('[data-custom-select-menu]').children[0].getAttribute('aria-disabled'), 'false');
+});
 
 test('菜单内边距点击不激活外层标签，滚动条按下保留原生默认行为', t => {
     const { trigger, menu, flush } = createSelectFixture(t);
