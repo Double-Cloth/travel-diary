@@ -223,7 +223,7 @@ export function createDataTransfer(onImported, getRecords = () => []) {
         dialog.querySelector('[data-import-confirm]').textContent = file ? '确认导入' : '继续验证';
         dialog.querySelector('#dataImportConfirmDescription').textContent = file
             ? (hasBackupPassword
-                ? '导入后，网站的访问密码将恢复为备份时的密码。若与现在不同，下一步会请你输入。'
+                ? '导入后，网站访问密码将恢复为备份时的密码。若该密码与当前密码不一致，下一步将验证备份密码。'
                 : '这是不含密码设置的旧备份。导入后，此网站的访问密码保持不变。')
             : '导入会覆盖全部日记、照片、视频、头像和署名，无法撤销。建议先导出完整备份。';
         return new Promise(resolve => {
