@@ -15,6 +15,7 @@ function capabilityFrom(endpoint, result) {
         writeMode: result.writeMode || '',
         syncMediaFiles: result.syncMediaFiles === true,
         mediaOrder: result.mediaOrder === true,
+        partialRecords: result.partialRecords === true,
         authenticated: result.authenticated === true
     };
 }

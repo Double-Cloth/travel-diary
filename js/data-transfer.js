@@ -1,7 +1,8 @@
-import { createPasswordGate } from './record-password.js?v=20261013-danger-first-v1';
-import { detectWriterCapability } from './writer-capability.js?v=20261102-media-batch-v1';
+import { createPasswordGate } from './record-password.js?v=20261103-record-backup-v1';
+import { detectWriterCapability } from './writer-capability.js?v=20261103-record-backup-v1';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { readZipSource } from './zip-stream.mjs';
+import { createRecordTransfer } from './record-transfer.js?v=20261103-record-backup-v1';
 import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261101-progress-timing-v1';
 
 function setStatus(message) {
@@ -9,7 +10,9 @@ function setStatus(message) {
     if (output) output.textContent = message;
 }
 
-export function createDataTransfer(onImported) {
+export function createDataTransfer(onImported, getRecords = () => []) {
+    let recordTransfer;
+    const partialTransfer = () => recordTransfer ||= createRecordTransfer(onImported, getRecords);
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.zip,application/zip';
@@ -309,6 +312,7 @@ export function createDataTransfer(onImported) {
         try {
             // 文件核对仍属于导入确认流程，全部确认后才在 uploadArchive 中显示进度。
             const entries = await readZipSource(file);
+            if (entries.some(entry => entry.name === 'data/record-backup.json')) throw new Error('这是部分记录备份，请使用「导入部分记录」。');
             const hasBackupPassword = entries.some(entry => entry.name.toLowerCase() === '.secrets/auth.json');
             if (!await confirmImport(file, hasBackupPassword)) return;
             const token = writerToken(capability);
@@ -339,5 +343,6 @@ export function createDataTransfer(onImported) {
         }
     });
 
-    return { chooseImport, clearAll, exportAll, getExportHref, noteExportStarted };
+    return { chooseImport, clearAll, exportAll, getExportHref, noteExportStarted,
+        chooseRecordExport: () => partialTransfer().chooseExport(), chooseRecordImport: () => partialTransfer().chooseImport() };
 }

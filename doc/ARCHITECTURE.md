@@ -31,7 +31,7 @@
 | `record-password.js`、`writer-capability.js` | 同源能力探测、首次设密、登录与换密交互。 |
 | `record-delete-dialog.js`、`feedback-dialog.js`、`custom-select.js` | 删除确认、提示与原生选择框增强。 |
 | `profile-picture.js`、`profile-owner.js`、`profile-owner-dialog.js` | 头像处理、署名读取与资料编辑。 |
-| `data-transfer.js` | 网页完整备份导入、导出与清空交互。 |
+| `data-transfer.js`、`record-transfer.js`、`record-backup.mjs` | 完整备份与清空交互、部分记录选择界面及前后端共用的记录备份封装。 |
 | `operation-progress.js` | 共用进度提示、XHR 上传进度、流式下载与保存。 |
 | `server.js`、`record-store.js`、`auth.js`、`data-archive.js` | 静态服务、API、写入策略、认证、数据锁与恢复。 |
 | `scripts/` | 密码恢复、备份导出、调用本机浏览器批量生成媒体预览、字体生成、固定版本地点目录更新。 |
@@ -81,7 +81,7 @@ Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，不
 | `/api/travel-auth`、`/api/travel-auth/setup` | 登录、换密、首次本机设密。 |
 | `/api/travel-records` | 能力探测、创建、更新与删除。 |
 | `/api/travel-profile` | 头像与署名写入。 |
-| `/api/travel-data` | 完整备份导入导出与清空。 |
+| `/api/travel-data` | 完整备份导入导出与清空；`POST ?mode=select` 准备会话内部分导出选择，`GET ?selection=...` 下载，`POST ?mode=merge` 合并记录。 |
 
 前端通过同源相对 URL 探测能力。静态发布物的 `api/travel-records` 提供 `travel-diary-static-v1` 标记，只有明确标记才打开免密码只读编辑器；404、超时、403 和异常响应均中止操作。动态能力 GET 在未登录或会话失效时返回 `200`、`authenticated: false`、空 `methods` 和 `AUTH_REQUIRED`，不泄露 token；正常打开密码窗口不会产生 `401` 控制台报错，实际未授权写入仍返回 `401`。前端仍接受旧服务的 `401` 探测响应。
 
@@ -98,6 +98,8 @@ Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，不
 完整备份包含 `data/` 与有效 `.secrets/auth.json`。网页导入先确认覆盖风险，再强制验证当前密码、选择并核对备份，然后验证备份密码（不含认证配置的旧备份保留当前密码）；服务端在写入前校验备份密码，密码失败独立限速。导入先校验 ZIP 目录、范围、头信息、CRC32、路径、字段及正文，再暂存和替换；含认证文件时恢复备份密码，旧备份缺少时保留当前密码，成功后注销旧会话。网页与命令行导出以 ZIP64 流逐文件读取，网络或磁盘背压传递到读取端；导入使用磁盘字节源随机访问中央目录，正文逐篇校验，媒体边解包边校验。文本及中央目录各限制 16 MiB，文件数最多 50000，避免恶意清单占用大量内存。ZIP64 头部、扩展字段和数据描述符采用 [PKWARE ZIP 格式规范](https://pkware.cachefly.net/webdocs/casestudies/APPNOTE.TXT)。ZIP / ZIP64 只支持未压缩存储格式，拒绝分卷、加密和不一致目录。
 
 多个文件的操作不能保证断电时的跨文件事务。进程强制结束可能遗留上传临时文件、锁、正文或备份目录，恢复时须先停服务并成对核对数据和认证配置。保存成功但前端重读失败会单独提示，避免误认为没有写入。
+
+部分备份包含 `data/record-backup.json` 格式标识、筛选后的 `data/travel_data.json`、正文与去重媒体，不包含个人资料和认证配置。前端从完整备份导入时，使用 Blob 切片与分块 CRC 校验重新封装所选内容，保留认证配置用于备份密码验证。服务端仅在显式 `merge` 模式接受部分备份；按 `desc_md` 合并索引，仅安装所选记录引用的文件。未选记录共用的同路径媒体有不同内容时返回 409。合并结果与现有文件一起检查大小写及文件目录冲突，沿用数据锁和完整暂存目录切换事务，保留现有认证及会话。部分导出的选择保存在当前会话的有界 Map 中，最多保留最近 8 次，避免大量记录路径塞入 URL，并兼容大文件由浏览器原生下载接管。能力探测通过 `partialRecords` 声明支持，前端拒绝旧服务。
 
 ## 耗时操作进度
 

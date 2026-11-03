@@ -281,9 +281,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261103-media-stats-v1');
+    assert.equal(appVersion, '20261103-record-backup-v1');
     assert.ok(cssVersion);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20261103-media-drag-v1/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20261103-record-backup-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
 });
@@ -309,7 +309,7 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
 });
 
 test('静态页面免密码打开只读编辑器，动态环境必须先通过服务端口令验证', () => {
-    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20261102-media-batch-v1';/);
+    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20261103-record-backup-v1';/);
     assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability, true\)/);
     assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}, true\)/);
     assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}, true\)/);

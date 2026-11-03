@@ -12,7 +12,7 @@ import {
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=20261102-media-batch-v1';
 import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=20261102-media-batch-v1';
-import { detectWriterCapability } from './writer-capability.js?v=20261102-media-batch-v1';
+import { detectWriterCapability } from './writer-capability.js?v=20261103-record-backup-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
 import { confirmFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
@@ -81,6 +81,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let autocompletePointer = null;
     let suppressAutocompleteClick = false;
     let mediaDrag = null;
+    const mediaGroupObserver = new ResizeObserver(updateMediaGroupSlider);
     const userEditedAutofillFields = new Set();
     const autoFilledValues = new Map();
     const userEditedPaths = new Set();
@@ -362,7 +363,6 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                 <button class="paper-button" type="button" data-media-select-clear disabled>取消选择</button>
                             </div>
                             <div class="record-editor-media-operations" data-editor-media-operations hidden>
-                                <button class="paper-button media-file-drag" type="button" data-media-drag-group hidden aria-label="拖动所选文件组" title="上下拖动所选文件；也可用方向键调整">${mediaDragIcon()}<span>拖动所选</span></button>
                                 <button class="paper-button" type="button" data-media-batch="previous" disabled>前移所选</button>
                                 <button class="paper-button" type="button" data-media-batch="next" disabled>后移所选</button>
                                 <button class="paper-button media-file-remove" type="button" data-media-batch="remove" disabled>移除所选</button>
@@ -373,6 +373,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <div data-media-viewer-group>
                                 <ul class="record-editor-existing-media media-file-list" data-editor-existing-media="photo" aria-label="图片文件操作"></ul>
                                 <ul class="record-editor-existing-media media-file-list" data-editor-existing-media="video" aria-label="视频文件操作"></ul>
+                                <button class="paper-button media-file-drag" type="button" data-media-drag-group hidden aria-label="拖动所选文件组" title="上下拖动所选文件；也可用方向键调整">${mediaDragIcon()}<span>拖动所选</span></button>
                             </div>
                         </div>
                         <div class="record-editor-media-group record-editor-removed-group" data-editor-removed-group hidden>
@@ -427,6 +428,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                     <p class="record-editor-note">草稿仅保留在本页，刷新或离开前请保存或导出。</p>
                 </footer>
             </form>`;
+        mediaGroupObserver.disconnect();
+        mediaGroupObserver.observe(dialog.querySelector('[data-media-viewer-group]'));
         saved = false;
         dirty = false;
         uploads = [];
@@ -621,6 +624,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const groupDrag = dialog.querySelector('[data-media-drag-group]');
         groupDrag.hidden = selectedMedia.size < 2;
         groupDrag.disabled = saved;
+        dialog.querySelector('[data-media-viewer-group]').classList.toggle('has-media-group-drag', !groupDrag.hidden);
+        dialog.querySelectorAll('[data-media-drag]').forEach(handle => {
+            handle.hidden = !groupDrag.hidden && selectedMedia.has(handle.closest('[data-media-key]').dataset.mediaKey);
+        });
+        groupDrag.querySelector('span').textContent = `拖动 ${selectedMedia.size} 项`;
+        updateMediaGroupSlider();
         dialog.querySelectorAll('[data-media-batch]').forEach(button => {
             const action = button.dataset.mediaBatch;
             button.hidden = !selectedMedia.size;
@@ -631,6 +640,17 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                     && !selectedMedia.has(ordered[index + (action === 'previous' ? -1 : 1)].key));
             }));
         });
+    }
+
+    function updateMediaGroupSlider() {
+        const handle = dialog.querySelector('[data-media-drag-group]');
+        if (handle.hidden) return;
+        const group = handle.parentElement;
+        const rows = [...group.querySelectorAll('[data-media-key]')].filter(row => selectedMedia.has(row.dataset.mediaKey));
+        if (!rows.length) return;
+        const top = rows[0].getBoundingClientRect().top - group.getBoundingClientRect().top;
+        handle.style.top = `${top}px`;
+        handle.style.height = `${Math.max(44, rows.at(-1).getBoundingClientRect().bottom - rows[0].getBoundingClientRect().top)}px`;
     }
 
     function updateMediaDragTarget() {
@@ -1295,6 +1315,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const handle = event.target.closest('[data-media-drag], [data-media-drag-group]');
         if (handle && !handle.disabled && !saved && !busy && !readingPhotos && event.button === 0 && event.isPrimary) {
             event.preventDefault();
+            window.getSelection()?.removeAllRanges();
+            dialog.classList.add('is-media-dragging');
             const key = handle.closest('[data-media-key]')?.dataset.mediaKey;
             const keys = !key || selectedMedia.has(key) ? new Set(selectedMedia) : new Set([key]);
             mediaDrag = { id: event.pointerId, x: event.clientX, y: event.clientY, startY: event.clientY,
@@ -1314,6 +1336,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             return;
         }
         if (event.target.closest('[data-format]')) event.preventDefault();
+    });
+    dialog.addEventListener('selectstart', event => {
+        if (mediaDrag || event.target.closest?.('.media-file-drag')) event.preventDefault();
+    });
+    dialog.addEventListener('contextmenu', event => {
+        if (mediaDrag || event.target.closest?.('.media-file-drag')) event.preventDefault();
     });
     dialog.addEventListener('pointermove', event => {
         if (mediaDrag && event.pointerId === mediaDrag.id) {

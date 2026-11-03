@@ -1,8 +1,8 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
-import { createRecordEditor } from './record-editor.js?v=20261103-media-drag-v1';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261102-media-batch-v1';
-import { createDataTransfer } from './data-transfer.js?v=20261102-media-batch-v1';
-import { detectWriterCapability } from './writer-capability.js?v=20261102-media-batch-v1';
+import { createRecordEditor } from './record-editor.js?v=20261103-record-backup-v1';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261103-record-backup-v1';
+import { createDataTransfer } from './data-transfer.js?v=20261103-record-backup-v1';
+import { detectWriterCapability } from './writer-capability.js?v=20261103-record-backup-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
 import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20261101-progress-timing-v1';
@@ -180,7 +180,7 @@ async function initApp() {
         profileOwnerName = await loadOwnerName(getRefreshKey());
         await refreshTravelModel(getRefreshKey());
         syncRouteFromHash({ initial: true });
-    });
+    }, getRecords);
     const requestDataExportAuthorization = createPasswordGate(
         capability => dataTransfer.exportAll(`travel-diary-data-${getTodayDate()}.zip`, capability),
         {
@@ -1044,7 +1044,10 @@ function renderPreface() {
             <div class="preface-tool-actions">
                 <button class="paper-button" type="button" data-action="export-all-data">导出全部数据</button>
                 <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
+                <button class="paper-button" type="button" data-action="export-records">导出部分记录</button>
+                <button class="paper-button" type="button" data-action="import-records">导入部分记录</button>
             </div>
+            <p>增量备份可勾选部分日记及其媒体；合并导入会保留未选中的记录。</p>
             <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
         </section>
 
@@ -3882,6 +3885,16 @@ function handleDocumentClick(event) {
     if (event.target.closest('[data-action="retry-load"]')) {
         event.preventDefault();
         window.location.reload();
+        return;
+    }
+    if (event.target.closest('[data-action="export-records"]')) {
+        event.preventDefault();
+        dataTransfer.chooseRecordExport();
+        return;
+    }
+    if (event.target.closest('[data-action="import-records"]')) {
+        event.preventDefault();
+        dataTransfer.chooseRecordImport();
         return;
     }
     if (event.target.closest('[data-action="export-all-data"]')) {

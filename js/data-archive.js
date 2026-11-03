@@ -77,15 +77,29 @@ async function collectFiles(directory, prefix = 'data') {
     return entries;
 }
 
-async function exportDataArchive(root) {
+async function exportDataArchive(root, selectedPaths = null) {
     const release = await acquireDataLock(root);
     let handedOff = false;
     try {
         const dataDir = path.join(root, 'data');
         const stat = await fs.lstat(dataDir);
         if (stat.isSymbolicLink() || !stat.isDirectory()) throw failure(403, 'data 必须是项目内的普通目录。');
-        const entries = await collectFiles(dataDir);
+        let entries = await collectFiles(dataDir);
         if (!entries.length) throw failure(400, 'data 目录为空，无法导出。');
+        if (selectedPaths !== null) {
+            const { readBackupRecords, selectBackupRecords, recordBackupEntries } = await import('./record-backup.mjs');
+            try {
+                const records = selectBackupRecords(await readBackupRecords(entries), selectedPaths);
+                entries = recordBackupEntries(entries, records);
+                await validateImportedRecords(entries);
+            } catch (error) { throw failure(error.status || 400, error.message); }
+            const { createZipStream, zipStreamSize } = await import('./zip-stream.mjs');
+            const size = zipStreamSize(entries);
+            const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs');
+            if (size > MAXIMUM_ARCHIVE_BYTES) throw failure(413, '部分记录备份不能超过 100 GiB。');
+            handedOff = true;
+            return { stream: createZipStream(entries), size, release };
+        }
         const secretsDir = path.join(root, '.secrets');
         await fs.mkdir(secretsDir, { recursive: true });
         const secretsDirStat = await fs.lstat(secretsDir);
@@ -218,6 +232,45 @@ async function validateCurrentAuth(root, options = {}) {
     });
 }
 
+async function mergeRecordEntries(root, incoming) {
+    const { readBackupRecords, recordFilePaths } = await import('./record-backup.mjs');
+    const { sourceOf } = await import('./zip-stream.mjs');
+    const current = await collectFiles(path.join(root, 'data'));
+    const records = await readBackupRecords(current);
+    const selected = await readBackupRecords(incoming);
+    if (!selected.length) throw failure(400, '备份中没有可导入的记录。');
+    const selectedPaths = new Set(selected.map(record => record.desc_md));
+    const untouched = records.filter(record => !selectedPaths.has(record.desc_md));
+    const protectedFiles = recordFilePaths(untouched);
+    const replacedFiles = recordFilePaths(records.filter(record => selectedPaths.has(record.desc_md)));
+    const allowed = recordFilePaths(selected);
+    const entries = new Map(current.map(entry => [entry.name, entry]));
+    for (const entry of incoming) {
+        if (!allowed.has(entry.name)) continue;
+        const previous = entries.get(entry.name);
+        if (previous && (protectedFiles.has(entry.name) || !replacedFiles.has(entry.name))) {
+            const { createHash } = require('node:crypto');
+            const digest = async data => {
+                const hash = createHash('sha256');
+                for await (const chunk of sourceOf(data).chunks()) hash.update(chunk);
+                return hash.digest('hex');
+            };
+            if (await digest(previous.data) !== await digest(entry.data)) {
+                const reason = protectedFiles.has(entry.name) ? '被未选中的记录共用' : '与已有独立文件重名';
+                throw failure(409, `文件 ${entry.name} ${reason}且内容不同，请先调整文件名再导入。`);
+            }
+        }
+        entries.set(entry.name, entry);
+    }
+    const replacements = new Map(selected.map(record => [record.desc_md, record]));
+    const merged = records.map(record => replacements.get(record.desc_md) || record);
+    const existing = new Set(records.map(record => record.desc_md));
+    merged.push(...selected.filter(record => !existing.has(record.desc_md)));
+    entries.set('data/travel_data.json', { name: 'data/travel_data.json', data: Buffer.from(JSON.stringify(merged, null, 2) + '\n') });
+    return { entries: [...entries.values()], addedRecords: selected.filter(record => !existing.has(record.desc_md)).length,
+        updatedRecords: selected.filter(record => existing.has(record.desc_md)).length };
+}
+
 async function importDataArchive(root, archive, options = {}) {
     const release = await acquireDataLock(root);
     const id = randomBytes(16).toString('hex');
@@ -242,7 +295,14 @@ async function importDataArchive(root, archive, options = {}) {
         if (authEntries.length > 1 || (authEntries.length === 1 && authEntries[0].name !== AUTH_RELATIVE_PATH)) {
             throw failure(400, `备份中的认证配置路径无效，应为 ${AUTH_RELATIVE_PATH}。`);
         }
-        const authEntry = authEntries[0] || null;
+        let authEntry = authEntries[0] || null;
+        const { RECORD_BACKUP_PATH, RECORD_BACKUP_FORMAT } = await import('./record-backup.mjs');
+        const marker = entries.find(entry => entry.name === RECORD_BACKUP_PATH);
+        if (marker) {
+            const metadata = parseJsonFile(await readSourceText(marker.data), RECORD_BACKUP_PATH);
+            if (metadata.format !== RECORD_BACKUP_FORMAT) throw failure(400, '部分记录备份的格式无效。');
+            if (!options.mergeRecords) throw failure(400, '这是部分记录备份，请使用「导入部分记录」，避免覆盖全部数据。');
+        }
         // 兼容旧备份中的明文密码文件，但不再静默丢弃当前版本导出的认证配置。
         entries = entries.filter(entry => entry.name !== 'data/password.json');
         if (!entries.length || entries.some(entry => !safeArchivePath(entry.name))) {
@@ -280,6 +340,26 @@ async function importDataArchive(root, archive, options = {}) {
             }
         } else {
             await validateCurrentAuth(root, options);
+        }
+        let mergeResult;
+        if (options.mergeRecords) {
+            mergeResult = await mergeRecordEntries(root, entries);
+            entries = mergeResult.entries;
+            authEntry = null;
+            // 合并后的完整目录同样要检查跨平台路径冲突，避免覆盖未选中的文件。
+            const paths = new Map();
+            for (const entry of entries) {
+                const parts = entry.name.split('/');
+                for (let length = 1; length <= parts.length; length += 1) {
+                    const name = parts.slice(0, length).join('/');
+                    const key = name.toLowerCase();
+                    const isFile = length === parts.length;
+                    const previous = paths.get(key);
+                    if (previous && (previous.name !== name || previous.isFile || isFile)) throw failure(409, '导入文件与当前数据存在大小写或文件目录路径冲突。');
+                    paths.set(key, { name, isFile });
+                }
+            }
+            validation = await validateImportedRecords(entries);
         }
         const stageSecrets = path.join(stageRoot, '.secrets');
         const currentSecrets = path.join(root, '.secrets');
@@ -338,7 +418,8 @@ async function importDataArchive(root, archive, options = {}) {
         movedSecrets = false;
         await fs.rm(backupData, { recursive: true, force: true }).catch(() => {});
         await fs.rm(backupSecrets, { recursive: true, force: true }).catch(() => {});
-        return { files: entries.length, authPreserved: !authEntry, ...validation };
+        return { files: entries.length, authPreserved: !authEntry, ...validation,
+            ...(mergeResult ? { merged: true, addedRecords: mergeResult.addedRecords, updatedRecords: mergeResult.updatedRecords } : {}) };
     } finally {
         if (movedData) await fs.rename(backupData, currentData).catch(() => {});
         await fs.rm(stageRoot, { recursive: true, force: true }).catch(() => {});

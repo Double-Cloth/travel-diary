@@ -1257,13 +1257,19 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-file-actions button,
 .media-file-restore { display: grid; place-items: center; flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 8px 10px; border: 1px solid transparent; border-radius: 4px; color: var(--ink-soft); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
 .media-file-actions svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.record-editor .media-file-drag { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; cursor: grab; touch-action: none; }
+.record-editor .media-file-drag { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.record-editor .media-file-drag * { -webkit-user-select: none; user-select: none; pointer-events: none; }
+.record-editor [data-media-viewer-group] { position: relative; }
+.record-editor .has-media-group-drag { padding-right: 56px; }
+.record-editor [data-media-drag-group] { position: absolute; right: 0; width: 44px; flex-direction: column; padding: 12px 6px; border-color: var(--hairline); background: var(--paper-100); }
+.record-editor [data-media-drag-group] span { writing-mode: vertical-rl; font-size: 13px; }
 .record-editor .media-file-drag svg { flex-shrink: 0; width: 20px; height: 20px; fill: currentColor; stroke: none; }
 .record-editor .media-file-drag[hidden] { display: none; }
 .record-editor .media-file-drag:active:not(:disabled),
 .record-editor.is-media-dragging,
 .record-editor.is-media-dragging * { cursor: grabbing; }
-.record-editor.is-media-dragging { user-select: none; }
+.record-editor.is-media-dragging,
+.record-editor.is-media-dragging * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .record-editor .media-file-list > li.is-media-drag-source { background: var(--paper-100); }
 .record-editor .media-file-list > li.is-media-drag-source > * { opacity: 0.5; }
 .record-editor-existing-media > li.is-drop-before,
@@ -1273,6 +1279,22 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .record-editor-existing-media > li.is-drop-before::before { top: 0; }
 .record-editor-existing-media > li.is-drop-after::after { bottom: 0; }
 .media-drag-badge { position: fixed; z-index: 2; padding: 7px 12px; border: 1px solid var(--hairline); border-radius: 4px; color: var(--paper-50); background: var(--stamp); font-size: 13px; pointer-events: none; }
+.record-transfer.entry-sheet { width: min(680px, calc(100vw - 24px)); max-height: calc(100dvh - 32px); margin: auto; padding: 0; overflow-y: auto; }
+.record-transfer-card { padding: clamp(20px, 5vw, 36px); }
+.record-transfer-card h2 { margin: 0 0 12px; font-size: 26px; }
+.record-transfer-card p { color: var(--ink-soft); font-size: 14px; line-height: 1.8; }
+.record-transfer-card input[type="search"] { width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--hairline); border-radius: 4px; color: var(--ink); background: var(--paper-50); font: inherit; font-size: 16px; }
+.record-transfer-toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.record-transfer-toolbar span { color: var(--ink-soft); font-size: 13px; }
+.record-transfer-list { max-height: 42dvh; overflow-y: auto; overscroll-behavior: contain; list-style: none; margin: 0 0 20px; padding: 0; }
+.record-transfer-list li { border-bottom: 1px solid var(--hairline); }
+.record-transfer-list label { display: flex; align-items: center; gap: 12px; min-height: 60px; padding: 10px 4px; cursor: pointer; }
+.record-transfer-list input { flex: 0 0 20px; width: 20px; height: 20px; margin: 0; accent-color: var(--stamp); }
+.record-transfer-list label > span { display: grid; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
+.record-transfer-list strong { color: var(--ink); font-size: 16px; }
+.record-transfer-list small { color: var(--ink-soft); font-size: 12px; line-height: 1.6; }
+.record-transfer [data-record-transfer-error] { color: var(--stamp); }
+.record-transfer :focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
 .media-file-actions .media-file-remove { margin-left: 8px; color: var(--stamp); }
 .media-file-actions button:hover:not(:disabled),
 .media-file-restore:hover:not(:disabled) { border-color: var(--hairline); background: var(--paper-50); }
@@ -1300,6 +1322,7 @@ dialog.feedback-dialog.entry-sheet {
 .record-password::backdrop,
 .data-import-confirm::backdrop,
 .data-import-success::backdrop,
+.record-transfer::backdrop,
 .record-delete-dialog::backdrop,
 .profile-owner-dialog::backdrop,
 .feedback-dialog::backdrop { background: rgba(17, 9, 4, 0.72); backdrop-filter: blur(5px); }
@@ -1684,7 +1707,6 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
     .record-editor-media-selection > span { order: 1; margin-left: auto; white-space: nowrap; }
     .record-editor-media-selection button { width: auto; padding: 8px 4px; border-color: transparent; background: transparent; box-shadow: none; font-size: 13px; white-space: nowrap; text-decoration: underline; text-underline-offset: 4px; }
     .record-editor-media-operations { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; padding-top: 8px; border-top: 1px solid var(--line); }
-    .record-editor-media-operations [data-media-drag-group] { grid-column: 1 / -1; }
     .record-editor-media-operations button { width: 100%; min-width: 0; padding: 8px 4px; font-size: 13px; }
     .record-editor-media-operations .media-file-remove { margin-left: 4px; width: calc(100% - 4px); border-color: rgba(145, 66, 44, 0.45); }
     .record-editor-media-operations button:only-child { grid-column: 1 / -1; }

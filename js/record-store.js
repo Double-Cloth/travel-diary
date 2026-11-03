@@ -1073,12 +1073,12 @@ function createRecordApi(root, options = {}) {
         }
         if (requestPath === '/api/travel-records' && req.method === 'GET') {
             if (!session) {
-                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, code: 'AUTH_REQUIRED' });
+                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, code: 'AUTH_REQUIRED' });
                 return;
             }
             send(200, {
                 service: 'travel-diary-writer-v1', authenticated: true, token: session.token,
-                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true
+                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true
             });
             return;
         }
@@ -1094,14 +1094,31 @@ function createRecordApi(root, options = {}) {
             }
             let importAttemptReserved = false;
             try {
+                if (req.method === 'POST' && requestUrl.searchParams.get('mode') === 'select') {
+                    if (!hasMediaType(req, 'application/json')) throw failure(415, '记录选择必须使用 application/json。');
+                    const payload = await readJsonBody(req, 4 * 1024 * 1024);
+                    const paths = payload?.paths;
+                    const { selectBackupRecords } = await import('./record-backup.mjs');
+                    try { selectBackupRecords(Array.isArray(paths) ? paths.map(desc_md => ({ desc_md })) : null, paths); }
+                    catch (error) { throw failure(400, error.message); }
+                    session.recordExports ||= new Map();
+                    if (session.recordExports.size >= 8) session.recordExports.delete(session.recordExports.keys().next().value);
+                    const selection = randomBytes(16).toString('hex');
+                    session.recordExports.set(selection, paths);
+                    send(200, { selection });
+                    return;
+                }
                 if (req.method === 'GET' || req.method === 'HEAD') {
-                    const archive = await exportDataArchive(root);
+                    const selection = requestUrl.searchParams.get('selection');
+                    const paths = selection === null ? null : session.recordExports?.get(selection);
+                    if (paths === undefined) throw failure(400, '记录选择已失效，请重新选择后导出。');
+                    const archive = await exportDataArchive(root, paths);
                     try {
                         const today = new Date().toISOString().slice(0, 10);
                         res.writeHead(200, {
                             'Content-Type': 'application/zip',
                             'Content-Length': archive.size,
-                            'Content-Disposition': `attachment; filename="travel-diary-data-${today}.zip"`,
+                            'Content-Disposition': `attachment; filename="travel-diary-${paths ? 'records' : 'data'}-${today}.zip"`,
                             'Cache-Control': 'no-store',
                             'X-Content-Type-Options': 'nosniff'
                         });
@@ -1131,10 +1148,11 @@ function createRecordApi(root, options = {}) {
                         result = await importDataArchive(root, archive.source, {
                             requireProductionAuth: writeMode === 'remote',
                             backupPassword: req.headers['x-travel-backup-password'],
+                            mergeRecords: requestUrl.searchParams.get('mode') === 'merge',
                             authorize: () => verifyUploadSession(req, host)
                         });
                     } finally { await archive.cleanup(); }
-                    sessions.clear();
+                    if (!result.merged) sessions.clear();
                     finishLoginAttempt('data-import', 'success');
                     importAttemptReserved = false;
                     send(200, { imported: true, ...result });
