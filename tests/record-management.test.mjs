@@ -283,6 +283,11 @@ test('行程路由可往返序列化、按时间阅读、导出整趟，并保�
     const result = app.renderTripTest(records, route.params);
     assert.match(result.left, /本次行程时间线/);
     assert.match(result.left, /导出本次行程/);
+    assert.match(result.left, /行程 ID：long-trip/);
+    for (const article of result.right.split('<article class="trip-record"').slice(1)) {
+        assert.ok(article.indexOf('打开这篇日记') < article.indexOf('trip-record-meta'), '打开按钮位于每篇日记顶部');
+        assert.equal((article.match(/打开这篇日记/g) || []).length, 1);
+    }
     assert.ok(result.right.indexOf('first正文') < result.right.indexOf('second正文'));
     const model = app.deriveTravelModel(records);
     assert.equal(model.recordsById.get('2026-11-03-second').record_id, recordIdentity(second));

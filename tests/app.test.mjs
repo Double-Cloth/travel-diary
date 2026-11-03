@@ -9,7 +9,7 @@ export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteConten
     renderWithPageTurn, renderWithBookCover, clearPageTurn, waitForPageTurnAssets, cloneTurningPage, cloneTransitionContent, createTransitionMediaImage, observePhotoSleeveMedia, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
-    restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute,
+    restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute, getRememberedLedgerView, rememberLedgerView, getTripRoutePlaces,
     getInitialPhotoScale, getPhotoViewerBounds, constrainPhotoViewerTransform, getPhotoViewerBackgroundColor, updatePhotoViewerBackground, toggleViewerFullscreen, syncViewerFullscreenButton };
 export function stubSearchNavigation(route) {
     const originals = { navigateTo, activeRoute };
@@ -67,7 +67,7 @@ export function stubReadingRoutes() {
     const originals = { renderLedger, renderCover, renderEntryRoute, renderEntryPhotosRoute,
         renderWithPageTurn, clearPageTurn, updateChapterTabs, restoreFocus,
         restoreReadingScrollPosition, travelModel, activeRoute, renderedPageHash, lastReadingHash,
-        shell: refs.shell };
+        shell: refs.shell, lastLedgerView };
     const calls = [];
     const turns = [];
     let deferred = false;
@@ -90,7 +90,7 @@ export function stubReadingRoutes() {
     travelModel = { recordsById: new Map([['a', { id: 'a' }], ['b', { id: 'b' }]]) };
     activeRoute = null;
     renderedPageHash = '';
-    lastReadingHash = '#ledger';
+    lastReadingHash = '#ledger?view=notes';
     return {
         calls,
         turns,
@@ -102,7 +102,7 @@ export function stubReadingRoutes() {
             ({ renderLedger, renderCover, renderEntryRoute, renderEntryPhotosRoute,
                 renderWithPageTurn, clearPageTurn, updateChapterTabs, restoreFocus,
                 restoreReadingScrollPosition, travelModel, activeRoute, renderedPageHash,
-                lastReadingHash } = originals);
+                lastReadingHash, lastLedgerView } = originals);
             refs.shell = originals.shell;
         }
     };
@@ -111,6 +111,11 @@ export function stubSpine(spine) {
     const previous = refs.spine;
     refs.spine = spine;
     return () => { refs.spine = previous; };
+}
+export function stubRightPage(page) {
+    const previous = refs.rightPage;
+    refs.rightPage = page;
+    return () => { refs.rightPage = previous; };
 }
 export function setTestState(values) {
     if (values.shell) refs.shell = values.shell;
@@ -307,36 +312,71 @@ test('跳到内容直接聚焦正文，不改变章节路由', t => {
     assert.deepEqual(calls, ['prevent', 'focus', 'scroll']);
 });
 
-test('行程时间线定位在手机上避开吸顶导航，桌面仅滚动正文并保留焦点', t => {
+test('行程时间线平滑定位，手机避开吸顶导航，减少动态效果时直接定位', t => {
     const previous = { document: globalThis.document, window: globalThis.window };
     t.after(() => Object.assign(globalThis, previous));
     const calls = [];
     let mobile = true;
+    let reduced = false;
     const article = {
-        scrollIntoView: options => calls.push(['scroll', options]),
-        getBoundingClientRect: () => ({ top: 20 }),
+        getBoundingClientRect: () => ({ top: 600 }),
         focus: options => calls.push(['focus', options])
     };
     globalThis.document = { getElementById: id => id === 'trip-record-note-2' ? article : null };
     globalThis.window = {
-        matchMedia: () => ({ matches: mobile }),
-        scrollBy: options => calls.push(['compensate', options])
+        matchMedia: query => ({ matches: query.includes('reduced-motion') ? reduced : mobile }),
+        scrollY: 200,
+        scrollTo: options => calls.push(['window', options])
     };
     t.after(app.stubSpine({ getBoundingClientRect: () => ({ bottom: 112 }) }));
+    t.after(app.stubRightPage({ scrollTop: 100, getBoundingClientRect: () => ({ top: 80 }), scrollTo: options => calls.push(['page', options]) }));
     const event = {
         preventDefault() {},
         target: { closest: selector => selector === '[data-trip-record]' ? { dataset: { tripRecord: 'note-2' } } : null }
     };
     app.handleDocumentClick(event);
     assert.deepEqual(calls, [
-        ['scroll', { behavior: 'instant', block: 'start' }],
-        ['compensate', { top: -112, behavior: 'instant' }],
+        ['window', { top: 668, behavior: 'smooth' }],
         ['focus', { preventScroll: true }]
     ]);
     calls.length = 0;
     mobile = false;
     app.handleDocumentClick(event);
-    assert.deepEqual(calls.map(([kind]) => kind), ['scroll', 'focus']);
+    assert.deepEqual(calls, [['page', { top: 596, behavior: 'smooth' }], ['focus', { preventScroll: true }]]);
+    calls.length = 0;
+    reduced = true;
+    app.handleDocumentClick(event);
+    assert.equal(calls[0][1].behavior, 'instant');
+});
+
+test('目录记住分类，明确链接和历史记录覆盖偏好，存储不可用时保留会话状态', t => {
+    const previous = { window: globalThis.window, document: globalThis.document };
+    const scenario = app.stubReadingRoutes();
+    const storage = new Map();
+    globalThis.window = { matchMedia: () => ({ matches: false }), localStorage: { getItem: key => storage.get(key), setItem: (key, value) => storage.set(key, value) } };
+    globalThis.document = { body: { dataset: {} } };
+    t.after(() => { scenario.restore(); Object.assign(globalThis, previous); });
+    scenario.render(app.parseRoute('#ledger?view=trips'), { animate: false });
+    assert.equal(app.parseRoute('#ledger').params.view, 'trips');
+    assert.equal(storage.get('travel-diary-ledger-view'), 'trips');
+    const notes = app.parseRoute('#ledger?view=notes');
+    assert.equal(app.serializeRoute(notes), '#ledger?view=notes');
+    assert.equal(app.parseRoute('#ledger?view=trips').params.view, 'trips');
+    scenario.render(notes, { animate: false });
+    assert.equal(app.parseRoute('#ledger').params.view, 'notes');
+    Object.defineProperty(window, 'localStorage', { get() { throw new Error('存储不可用'); } });
+    app.rememberLedgerView('trips');
+    assert.equal(app.getRememberedLedgerView(), 'trips');
+    assert.equal(app.parseRoute('#ledger?view=invalid').params.view, 'trips');
+});
+
+test('路线保留起终点和重访，超过三个途经点时收起中间站', () => {
+    const route = places => app.getTripRoutePlaces(places.map(locality => ({ locality })));
+    assert.deepEqual(route(['甲', '甲', '乙']), ['甲', '乙']);
+    assert.deepEqual(route(['甲', '乙', '甲']), ['甲', '乙', '甲']);
+    assert.deepEqual(route(['甲', '乙', '丙', '甲']), ['甲', '...', '甲']);
+    assert.deepEqual(route([]), []);
+    assert.deepEqual(app.getTripRoutePlaces([{ adminArea: '浙江省' }, { country: '日本' }]), ['浙江省', '日本']);
 });
 
 test('夹层与媒体面板的 Tab 焦点循环跳过禁用和隐藏控件', t => {

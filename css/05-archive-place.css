@@ -380,6 +380,7 @@
 .trip-heading { padding: 28px 0 24px; border-bottom: 3px double var(--hairline); }
 .trip-heading h1 { margin: 0 0 14px; color: var(--ink); font-size: clamp(32px, 3vw, 44px); line-height: 1.35; }
 .trip-date-range { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 0; color: var(--ink-soft); font: 12px/1.8 var(--font-code); font-variant-numeric: tabular-nums; }
+.trip-id { margin: 6px 0 0; color: var(--ink-soft); font: 11px/1.8 var(--font-code); overflow-wrap: anywhere; }
 .trip-route { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 20px 0 0; font-size: 21px; line-height: 1.7; }
 .trip-route svg,
 .trip-stop-arrow { flex: 0 0 auto; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; color: var(--ink-soft); }
@@ -410,6 +411,7 @@
 .trip-record-meta time { font-family: var(--font-code); font-variant-numeric: tabular-nums; }
 .trip-record-heading h2 { margin: 14px 0 12px; color: var(--ink); font-size: 30px; font-weight: 500; line-height: 1.45; }
 .trip-record-heading .location-chip { font-size: 13px; line-height: 1.8; }
-.trip-record-footer { display: flex; justify-content: flex-end; margin-top: 24px; }
+.trip-record-toolbar { display: flex; justify-content: flex-end; margin-bottom: 14px; }
+.trip-record-toolbar .paper-button { width: auto; }
 .trip-record:focus-visible { outline: 1px dashed var(--brass-300); outline-offset: 6px; }
 .trip-stamp[href] { text-decoration: none; }

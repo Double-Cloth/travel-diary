@@ -1122,7 +1122,7 @@ body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padd
     .trip-record-heading { margin-bottom: 24px; }
     .trip-record-heading h2 { font-size: 28px; }
     .trip-reading .markdown-content { font-size: 17px; line-height: 1.95; }
-    .trip-record-footer .paper-button { min-height: 44px; }
+    .trip-record-toolbar .paper-button { min-height: 44px; }
 }
 @media (prefers-reduced-motion: reduce) {
     .trip-timeline-link { transition: none; }

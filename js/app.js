@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=2.1.3';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.3';
-import { createRecordEditor } from './record-editor.js?v=2.1.3';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.3';
-import { createDataTransfer } from './data-transfer.js?v=2.1.3';
-import { createMediaManager } from './media-manager.js?v=2.1.3';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.3';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.3';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.3';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.3';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.3';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.3';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.3';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.3';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.3';
-import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.3';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.3';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.3';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.4';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.4';
+import { createRecordEditor } from './record-editor.js?v=2.1.4';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.4';
+import { createDataTransfer } from './data-transfer.js?v=2.1.4';
+import { createMediaManager } from './media-manager.js?v=2.1.4';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.4';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.4';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.4';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.4';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.4';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.4';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.4';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.4';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.4';
+import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.4';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.4';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.4';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.3';
+} from './location.mjs?v=2.1.4';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,9 +30,10 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.3';
+} from './photo-viewer-transform.mjs?v=2.1.4';
 
 const DEFAULT_LEDGER_SORT = 'desc';
+const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
 const LEDGER_SORT_OPTIONS = new Set(['desc', 'asc', 'location', 'area', 'title']);
 const LEDGER_FILTER_DEFAULTS = {
     year: [],
@@ -78,6 +79,7 @@ let openMediaManager;
 let openRecycleManager;
 let travelModel = null;
 let activeRoute = null;
+let lastLedgerView = 'notes';
 let pageTurnTimer = null;
 let pageTurnCleanup = null;
 let pageTurnInterrupt = null;
@@ -433,7 +435,7 @@ function parseRoute(hash = window.location.hash) {
                     media: normalizeMedia(params.getAll('media')),
                     note: normalizeNote(params.getAll('note')),
                     q: (params.get('q') || '').trim(),
-                    view: params.get('view') === 'trips' ? 'trips' : 'notes',
+                    view: ['notes', 'trips'].includes(params.get('view')) ? params.get('view') : getRememberedLedgerView(),
                     sort: normalizeLedgerSort(params.get('sort'))
                 },
                 valid: true
@@ -507,7 +509,7 @@ function serializeRoute(route) {
                 appendLedgerFilterParams(params, 'media', ledgerParams.media);
                 appendLedgerFilterParams(params, 'note', ledgerParams.note);
                 if (ledgerParams.q) params.set('q', ledgerParams.q);
-                if (ledgerParams.view === 'trips') params.set('view', 'trips');
+                params.set('view', ledgerParams.view);
                 if (ledgerParams.sort !== DEFAULT_LEDGER_SORT) params.set('sort', ledgerParams.sort);
             }
             return `#ledger${params.toString() ? `?${params}` : ''}`;
@@ -588,6 +590,7 @@ function renderRoute(route, options = {}) {
         && serializeRoute(route) === closedBookReadingContext?.hash
         ? closedBookReadingContext : null;
     activeRoute = route;
+    if (route.name === 'ledger') rememberLedgerView(route.params.view);
 
     if (shouldRestoreReadingScroll && renderedPageHash === serializeRoute(route)) {
         clearPageTurn();
@@ -1751,6 +1754,12 @@ function renderDetailPageTurns(navigation, kind) {
     }).join('');
 }
 
+function getTripRoutePlaces(records) {
+    const places = records.map(record => record.locality || record.adminArea || record.country)
+        .filter((place, index, all) => place && place !== all[index - 1]);
+    return places.length > 3 ? [places[0], '...', places.at(-1)] : places;
+}
+
 function renderTrip(params = {}) {
     if (!params.id) {
         renderLedger({ view: 'trips' });
@@ -1763,24 +1772,27 @@ function renderTrip(params = {}) {
         groups.get(key).push(record);
     }
     const records = groups.get(params.id);
+    const returnHash = serializeRoute({ name: 'ledger', params: { view: getRememberedLedgerView() } });
     if (!records) {
-        setPages('<div class="trip-overview"><a class="ribbon-back" href="#ledger?view=trips">返回日记目录 · 按行程</a><div class="trip-heading"><h1>没有找到这次行程</h1><p>行程可能已修改或删除，请从日记目录重新选择。</p></div></div>',
+        setPages(`<div class="trip-overview"><a class="ribbon-back" href="${returnHash}">返回日记目录</a><div class="trip-heading"><h1>没有找到这次行程</h1><p>行程可能已修改或删除，请从日记目录重新选择。</p></div></div>`,
             '<div class="empty-note">选择其他行程，继续阅读旅行记录。</div>', 'dossier-page trip-detail-page');
         return;
     }
     const snapshot = buildRecordSetSnapshot(records);
     const first = records[0];
     const last = records.at(-1);
-    const places = [...new Set(records.map(record => record.locality || record.adminArea || record.country))];
+    const places = getTripRoutePlaces(records);
+    const tripId = first.tripId || first.trip_id || params.id;
     setPages(`
         <div class="trip-overview" aria-labelledby="tripTitle">
             <header class="entry-book-toolbar trip-toolbar">
-                <a class="ribbon-back" href="#ledger?view=trips">返回日记目录</a>
+                <a class="ribbon-back" href="${returnHash}">返回日记目录</a>
                 <button class="paper-button" type="button" data-action="export-trip" data-trip-key="${escapeHtml(params.id)}">导出本次行程</button>
             </header>
             <div class="trip-heading">
                 <h1 id="tripTitle">行程 ${escapeHtml(first.tripGroupLabel)}</h1>
                 <p class="trip-date-range"><time datetime="${escapeHtml(first.date)}">${escapeHtml(first.date)}</time>${first.date !== last.date ? `<span>至</span><time datetime="${escapeHtml(last.date)}">${escapeHtml(last.date)}</time>` : ''}</p>
+                <p class="trip-id">行程 ID：${escapeHtml(tripId)}</p>
                 <p class="trip-route" aria-label="沿途目的地">${places.map(place => `<span>${escapeHtml(place)}</span>`).join('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"/></svg>')}</p>
             </div>
             <dl class="trip-summary" aria-label="本次行程概览">
@@ -1805,13 +1817,13 @@ function renderTrip(params = {}) {
             ${records.map((record, index) => `
                 <article class="trip-record" id="trip-record-${escapeHtml(record.id)}" aria-labelledby="trip-record-title-${escapeHtml(record.id)}" tabindex="-1">
                     <header class="trip-record-heading">
+                        <div class="trip-record-toolbar"><a class="paper-button" href="${serializeRoute({ name: 'entry', params: { id: record.id } })}">打开这篇日记</a></div>
                         <div class="trip-record-meta"><span>第 ${index + 1} 篇 / 共 ${records.length} 篇</span><time datetime="${escapeHtml(record.date)}">${escapeHtml(record.date)}</time></div>
                         <h2 id="trip-record-title-${escapeHtml(record.id)}">${escapeHtml(record.title)}</h2>
                         <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(getLocationText(record))}</a>
                     </header>
                     <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
                     ${getRecordMedia(record).length ? renderPhotoSleeve(record, { previewRows: ENTRY_PHOTO_PREVIEW_ROWS, showViewAll: true }) : ''}
-                    <footer class="trip-record-footer"><a class="paper-button" href="${serializeRoute({ name: 'entry', params: { id: record.id } })}">打开这篇日记</a></footer>
                 </article>`).join('')}
         </div>`, 'dossier-page trip-detail-page');
     requestAnimationFrame(() => queuePhotoSleevePreviewSync());
@@ -4063,14 +4075,19 @@ function handleDocumentClick(event) {
     if (tripRecord) {
         event.preventDefault();
         const article = document.getElementById(`trip-record-${tripRecord.dataset.tripRecord}`);
-        article?.scrollIntoView({ behavior: 'instant', block: 'start' });
-        if (article && isMobileLayout()) {
+        if (!article) return;
+        const behavior = prefersReducedMotion() ? 'instant' : 'smooth';
+        if (isMobileLayout()) {
             // 连续纸面的定位需避开吸顶导航，保留完整的篇目标题。
             const headerBottom = refs.spine?.getBoundingClientRect().bottom || 0;
-            const offset = article.getBoundingClientRect().top - headerBottom - 20;
-            if (offset < 0) window.scrollBy({ top: offset, behavior: 'instant' });
+            window.scrollTo({ top: window.scrollY + article.getBoundingClientRect().top - headerBottom - 20, behavior });
+        } else if (refs.rightPage) {
+            refs.rightPage.scrollTo({
+                top: refs.rightPage.scrollTop + article.getBoundingClientRect().top - refs.rightPage.getBoundingClientRect().top - 24,
+                behavior
+            });
         }
-        article?.focus({ preventScroll: true });
+        article.focus({ preventScroll: true });
         return;
     }
     if (event.target.closest('[data-action="import-records"]')) {
@@ -5013,7 +5030,7 @@ function renderLedgerTripEntry(record) {
     const records = record.tripRecords;
     const first = records[0];
     const last = records.at(-1);
-    const places = [...new Set(records.map(item => item.locality))].join(' → ');
+    const places = getTripRoutePlaces(records).join(' → ');
     const snapshot = buildRecordSetSnapshot(records);
     return `<a class="ledger-entry ledger-trip-entry" href="${serializeRoute({ name: 'trip', params: { id: record.tripKey } })}" aria-label="打开行程 ${escapeHtml(record.tripGroupLabel)}：${escapeHtml(places)}">
         ${renderRecordPaperclip()}
@@ -5274,6 +5291,25 @@ function hasActiveLedgerFilter(params) {
 function yearToggleButton(label, value, activeYears) {
     const active = isLedgerFilterValueSelected(activeYears, value);
     return `<button class="year-bookmark${active ? ' year-bookmark-active' : ''}" id="ledger-year-${escapeHtml(value)}" type="button" data-ledger-toggle="year" data-value="${escapeHtml(value)}" aria-pressed="${active ? 'true' : 'false'}">${escapeHtml(label)}</button>`;
+}
+
+function getRememberedLedgerView() {
+    try {
+        const saved = window.localStorage?.getItem(LEDGER_VIEW_STORAGE_KEY);
+        if (saved === 'notes' || saved === 'trips') return saved;
+    } catch {
+        // 存储不可用时仍在本次浏览中保留分类。
+    }
+    return lastLedgerView;
+}
+
+function rememberLedgerView(view) {
+    lastLedgerView = view === 'trips' ? 'trips' : 'notes';
+    try {
+        window.localStorage?.setItem(LEDGER_VIEW_STORAGE_KEY, lastLedgerView);
+    } catch {
+        // 浏览器限制存储不影响目录切换。
+    }
 }
 
 function normalizeLedgerParams(params = {}) {
