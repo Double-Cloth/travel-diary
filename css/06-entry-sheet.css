@@ -1298,7 +1298,11 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .record-transfer :focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
 .record-transfer [hidden] { display: none !important; }
 
-.record-transfer-import.entry-sheet { width: min(880px, calc(100vw - 24px)); }
+.record-transfer-import.entry-sheet { width: min(1040px, calc(100vw - 24px)); }
+.record-transfer-import .record-transfer-card { display: flex; flex-direction: column; max-height: calc(100dvh - 34px); }
+.record-transfer-import .record-transfer-card > * { flex-shrink: 0; }
+.record-transfer-import .record-transfer-list { flex-shrink: 1; min-height: 120px; max-height: 60dvh; }
+.record-transfer-import [data-record-transfer-error]:empty { display: none; }
 .record-diff { margin: 0 0 16px 32px; color: var(--ink); font-size: 14px; overflow-wrap: anywhere; }
 .record-diff > summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; min-height: 44px; cursor: pointer; color: var(--stamp); list-style: none; -webkit-tap-highlight-color: rgba(145, 66, 44, 0.12); }
 .record-diff > summary::before { content: ''; width: 7px; height: 7px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); transition: transform 160ms ease-out; }
