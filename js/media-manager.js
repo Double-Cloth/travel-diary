@@ -56,6 +56,7 @@ export function createMediaManager() {
             <div class="media-batch-actions"><button class="paper-button" type="button" data-media-restore="${batch.id}">恢复</button>
             <button class="paper-button sheet-delete-button" type="button" data-media-purge="${batch.id}">永久删除</button></div></li>`).join('') : '<li class="media-empty">回收区为空。</li>';
         count();
+        enhanceCustomSelects(dialog);
     }
 
     function renderFiles() {
@@ -151,6 +152,7 @@ export function createMediaManager() {
         dialog.querySelector('[data-media-selection]').hidden = true;
         for (const selector of ['[data-media-list]', '[data-media-batches]', '[data-media-count]', '[data-media-trash-size]', '[data-media-hint]']) dialog.querySelector(selector).textContent = '';
         dialog.showModal();
+        enhanceCustomSelects(dialog);
         await request();
     }, { title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，整理媒体文件。', staticMessage: '静态页面不提供媒体整理，请使用本机服务。' });
 }

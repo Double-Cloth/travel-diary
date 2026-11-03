@@ -2,7 +2,7 @@ import { loadTravelData, loadTravelRecords } from './data.js?v=20261103-record-m
 import { createRecordEditor } from './record-editor.js?v=20261103-record-management-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261103-record-management-v1';
 import { createDataTransfer } from './data-transfer.js?v=20261103-record-management-v1';
-import { createMediaManager } from './media-manager.js?v=20261103-catalog-media-ui-v1';
+import { createMediaManager } from './media-manager.js?v=20261103-catalog-slider-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
@@ -1099,6 +1099,7 @@ function renderRecordPaperclip() {
 
 function renderLedger(params = {}, options = {}) {
     const ledgerParams = normalizeLedgerParams(params);
+    const previousView = refs.leftPage?.querySelector('.ledger-view-switch')?.dataset.view;
     const yearBookmarksScrollLeft = refs.leftPage?.querySelector('.year-bookmarks')?.scrollLeft || 0;
     const filtered = getLedgerRecords(ledgerParams);
     const trips = ledgerParams.view === 'trips' ? getLedgerTrips(filtered) : [];
@@ -1114,10 +1115,11 @@ function renderLedger(params = {}, options = {}) {
                 <h1>出发，到新的爱与喧闹中去！</h1>
             </header>
             <section class="ledger-catalog-tools" aria-label="查找与浏览日记">
-                <div class="index-segment-group ledger-view-switch" role="group" aria-label="目录查看方式">
-                    ${[['notes', '按笔记'], ['trips', '按行程']].map(([view, label]) => `<button class="index-segment${ledgerParams.view === view ? ' index-segment-active' : ''}" id="ledger-view-${view}" type="button" data-ledger-view="${view}" aria-pressed="${ledgerParams.view === view}">${label}</button>`).join('')}
-                </div>
                 ${renderLedgerControls(ledgerParams, 'ledgerSearch')}
+                <div class="ledger-view-switch" data-view="${ledgerParams.view}" role="group" aria-label="目录查看方式">
+                    <span class="ledger-view-thumb" aria-hidden="true"></span>
+                    ${[['notes', '按笔记'], ['trips', '按行程']].map(([view, label]) => `<button class="ledger-view-option" id="ledger-view-${view}" type="button" data-ledger-view="${view}" aria-pressed="${ledgerParams.view === view}">${label}</button>`).join('')}
+                </div>
                 <div class="ledger-browse-row">
                     <nav class="ledger-year-nav" aria-label="按年份浏览日记">
                         <span class="ledger-year-label">按年份</span>
@@ -1141,6 +1143,13 @@ function renderLedger(params = {}, options = {}) {
         preserveRightScroll: options.preserveRightScroll,
         keepContextPanelOpen: options.keepContextPanelOpen
     });
+
+    if (previousView && previousView !== ledgerParams.view && !prefersReducedMotion()) {
+        refs.leftPage.querySelector('.ledger-view-thumb')?.animate([
+            { transform: `translateX(${previousView === 'trips' ? '100%' : '0'})` },
+            { transform: `translateX(${ledgerParams.view === 'trips' ? '100%' : '0'})` }
+        ], { duration: 240, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+    }
 
     if (yearBookmarksScrollLeft) {
         const yearBookmarks = refs.leftPage?.querySelector('.year-bookmarks');
