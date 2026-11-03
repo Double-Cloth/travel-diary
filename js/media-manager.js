@@ -2,6 +2,7 @@ import { escapeHtml, getMediaFileUrl } from './utils.js';
 import { createPasswordGate } from './record-password.js?v=20261103-record-management-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
 import { confirmFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
+import { createMediaFileLink } from './media-file-link.js?v=20261102-native-preview-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20261103-clear-media-ui-v1';
 
 function sizeLabel(bytes) {
@@ -24,9 +25,9 @@ export function createMediaManager() {
         <div class="media-filter-row"><label for="mediaFilterButton" class="field-label">查看</label><select id="mediaFilter" data-custom-select data-media-filter aria-label="文件分类"><option value="unused">未被笔记使用</option><option value="missing">笔记中的缺失文件</option><option value="shared">多篇笔记共用</option><option value="all">全部现有文件</option></select></div>
         <p class="media-filter-hint" data-media-hint></p>
         <div class="media-selection-tools" data-media-select-tools><button class="media-text-button" type="button" data-media-all>全选可清理文件</button><button class="media-text-button" type="button" data-media-clear disabled>取消选择</button></div>
-        <ul class="record-transfer-list" data-media-list></ul>
+        <ul class="record-transfer-list media-file-list" data-media-list data-media-viewer-group></ul>
         <div class="media-selection" data-media-selection><p data-media-count role="status"></p><button class="paper-button" type="button" data-media-trash disabled>移入回收区</button><p class="media-selection-note">移入后仍占用空间，可在回收区恢复或永久删除。</p></div></section>
-        <section id="mediaTrashPanel" class="media-trash" aria-labelledby="mediaTrashTitle" hidden><p>恢复会把文件放回原处。永久删除才会释放空间，删除后无法找回。</p><p class="media-trash-summary" data-media-trash-size></p><ul data-media-batches></ul></section>
+        <section id="mediaTrashPanel" class="media-trash" aria-labelledby="mediaTrashTitle" hidden><p>这里暂存手动清理的未使用文件，仍占用空间。可以恢复到原位置；永久删除后才释放空间，且无法找回。</p><p class="media-trash-summary" data-media-trash-size></p><ul data-media-batches></ul></section>
         <p data-media-error role="alert"></p></div>`;
     document.body.append(dialog);
     enhanceCustomSelects(dialog);
@@ -75,18 +76,40 @@ export function createMediaManager() {
     function renderFiles() {
         const filter = dialog.querySelector('[data-media-filter]').value;
         dialog.querySelector('[data-media-hint]').textContent = {
-            unused: `共 ${sizeLabel(report.unusedBytes)}。没有笔记使用这些文件，请先点击文件名查看，再决定是否清理。`,
+            unused: `共 ${sizeLabel(report.unusedBytes)}。没有笔记使用这些文件，请先点击缩略图或文件名查看，再决定是否清理。`,
             missing: '笔记引用了这些文件，但文件已不存在。请从备份恢复，或修改对应笔记。',
             shared: '这些文件仍被多篇笔记使用，不能清理。点击下方笔记可查看使用位置。',
             all: '已被笔记使用的文件仅供查看；未被笔记使用的文件可以勾选清理。'
         }[filter];
         const files = filter === 'missing' ? report.missing : report.files.filter(file => filter === 'all' || (filter === 'shared' ? file.records.length > 1 : !file.records.length));
-        dialog.querySelector('[data-media-list]').innerHTML = files.length ? files.map(file => {
-            const url = getMediaFileUrl(file.path);
-            return `<li><div class="media-health-file">${!file.records.length ? `<label><input type="checkbox" data-media-path value="${escapeHtml(file.path)}"${selected.has(file.path) ? ' checked' : ''}><span class="sr-only">选择 ${escapeHtml(file.path)}</span></label>` : ''}
-                <div><span class="media-health-name">${filter === 'missing' || !url ? escapeHtml(file.path.split('/').at(-1)) : `<a href="${escapeHtml(url)}" target="_blank" rel="noopener">${escapeHtml(file.path.split('/').at(-1))}</a>`}</span><small class="media-health-path">${escapeHtml(file.path)}</small>
-                <small>${filter === 'missing' ? '文件缺失' : sizeLabel(file.size)} · ${file.records.length ? owners(file) : '未被笔记使用'}</small></div></div></li>`;
-        }).join('') : `<li class="media-empty">${filter === 'unused' ? '没有未被笔记使用的文件，无需清理。' : filter === 'missing' ? '没有缺失文件。' : filter === 'shared' ? '没有多篇共用的文件。' : '还没有图片或视频。'}</li>`;
+        let mediaIndex = 0;
+        const rows = files.map(file => {
+            const row = document.createElement('li');
+            row.className = 'media-health-file';
+            const selection = document.createElement(file.records.length ? 'span' : 'label');
+            if (!file.records.length) selection.innerHTML = `<input type="checkbox" data-media-path value="${escapeHtml(file.path)}"${selected.has(file.path) ? ' checked' : ''}><span class="sr-only">选择 ${escapeHtml(file.path)}</span>`;
+            const content = document.createElement('div');
+            const missing = filter === 'missing';
+            const url = missing ? '' : getMediaFileUrl(file.path);
+            const link = createMediaFileLink({
+                path: file.path, src: url, name: file.path.split('/').at(-1),
+                kind: file.path.startsWith('data/videos/') ? 'video' : 'image', index: mediaIndex,
+                detail: missing ? `${file.path} · 文件缺失` : `${file.path} · ${sizeLabel(file.size)}`
+            });
+            if (url) mediaIndex++;
+            else {
+                link.querySelector('.media-file-detail').textContent = `${file.path} · ${missing ? '文件缺失' : '路径无效'}`;
+                link.querySelector('.media-file-thumbnail > span').textContent = missing ? '文件缺失' : '无法预览';
+            }
+            const references = document.createElement('small');
+            references.innerHTML = file.records.length ? owners(file) : '未被笔记使用';
+            content.append(link, references);
+            row.append(selection, content);
+            return row;
+        });
+        const list = dialog.querySelector('[data-media-list]');
+        list.replaceChildren(...rows);
+        if (!files.length) list.innerHTML = `<li class="media-empty">${filter === 'unused' ? '没有未被笔记使用的文件，无需清理。' : filter === 'missing' ? '没有缺失文件。' : filter === 'shared' ? '没有多篇共用的文件。' : '还没有图片或视频。'}</li>`;
         const canSelect = ['all', 'unused'].includes(filter) && report.files.some(file => !file.records.length);
         dialog.querySelector('[data-media-selection]').hidden = !canSelect;
         dialog.querySelector('[data-media-select-tools]').hidden = !canSelect;

@@ -1329,16 +1329,14 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-manager .custom-select-menu { min-width: 100%; }
 .media-manager .media-filter-hint { margin: 10px 0 4px; font-size: 13px; }
 .media-manager .record-transfer-list { max-height: 32dvh; margin-bottom: 0; }
-.media-health-file { display: flex; gap: 12px; align-items: center; padding: 14px 0; }
+.media-manager .media-file-list > .media-health-file { grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; }
 .media-health-file > div { min-width: 0; overflow-wrap: anywhere; }
 .media-health-file small { display: block; margin-top: 5px; }
-.media-health-name { font-size: 15px; font-weight: 700; }
-.media-health-path { overflow-wrap: anywhere; }
 .media-selection { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 12px; padding-top: 16px; }
 .media-selection-tools { display: flex; flex-wrap: wrap; gap: 20px; }
 .media-selection > p { margin: 0; font-variant-numeric: tabular-nums; }
 .media-manager .media-selection-note { width: 100%; font-size: 12px; }
-.media-manager a { color: var(--stamp); text-underline-offset: 3px; }
+.media-manager [data-media-record] { color: var(--stamp); text-underline-offset: 3px; }
 .media-manager [data-media-error] { color: var(--stamp); }
 .media-manager [data-media-error]:empty { display: none; }
 .media-trash { padding-top: 14px; }
