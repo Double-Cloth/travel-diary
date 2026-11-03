@@ -283,7 +283,7 @@ test('行程路由可往返序列化、按时间阅读、导出整趟，并保�
     const result = app.renderTripTest(records, route.params);
     assert.match(result.left, /本次行程时间线/);
     assert.match(result.left, /导出本次行程/);
-    assert.match(result.left, /行程 ID：long-trip/);
+    assert.match(result.left, /行程 ID：<\/span><span class="trip-id-value">long-trip<\/span>/);
     for (const article of result.right.split('<article class="trip-record"').slice(1)) {
         assert.ok(article.indexOf('打开这篇日记') < article.indexOf('trip-record-meta'), '打开按钮位于每篇日记顶部');
         assert.equal((article.match(/打开这篇日记/g) || []).length, 1);
