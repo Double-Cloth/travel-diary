@@ -1095,7 +1095,6 @@ function renderPreface() {
                     </button>
                 </div>
             </div>
-            <p class="preface-tool-note">回收站不包含在备份中；导入替换前的数据会先留在回收站。</p>
             <p class="archive-data-status preface-transfer-status" data-data-transfer-status role="status" aria-live="polite"></p>
         </section>
 
