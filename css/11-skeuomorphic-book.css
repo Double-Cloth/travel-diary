@@ -1123,7 +1123,7 @@ body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padd
     .trip-record-heading h2 { font-size: 28px; }
     .trip-reading .markdown-content { font-size: 17px; line-height: 1.95; }
     .trip-record-toolbar .paper-button { min-height: 44px; }
-    .trip-index-back { display: flex; align-items: center; gap: 6px; width: fit-content; min-height: 44px; margin-top: 8px; padding: 4px 0; border: 0; background: transparent; color: var(--stamp); font: 12px/1.8 var(--font-serif); text-decoration: none; text-underline-offset: .25em; cursor: pointer; touch-action: manipulation; }
+    .trip-index-back { display: flex; align-items: center; gap: 6px; width: fit-content; min-height: 44px; margin-top: 8px; padding: 4px 0; border: 0; background: transparent; color: var(--stamp); font: 17px/1.95 var(--font-serif); text-decoration: none; text-underline-offset: .25em; cursor: pointer; touch-action: manipulation; }
     .trip-index-back svg { width: 14px; height: 14px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
     .trip-index-back:is(:hover, :focus-visible) { color: var(--ink); text-decoration: underline; }
     .trip-index-back:active { color: var(--stamp); }
