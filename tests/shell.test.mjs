@@ -281,7 +281,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261103-recycle-bin-v1');
+    assert.equal(appVersion, '20261103-toolbox-v1');
     assert.ok(cssVersion);
     assert.match(appJs, /\.\/record-editor\.js\?v=20261103-recycle-bin-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20261103-clear-media-ui-v1/);
@@ -431,7 +431,7 @@ test('Markdown 源码高亮层与输入层使用相同字形和滚动槽', () =>
 });
 
 test('全部数据导出通过认证 API 流式下载并反馈进度', () => {
-    assert.match(appJs, /<button class="paper-button" type="button" data-action="export-all-data"/);
+    assert.match(appJs, /<button[^>]*type="button"[^>]*data-action="export-all-data"/);
     assert.match(appJs, /const requestDataExportAuthorization = createPasswordGate/);
     assert.match(appJs, /dataTransfer\.exportAll\(`travel-diary-data-\$\{getTodayDate\(\)\}\.zip`, capability\)/);
     assert.match(appJs, /data-action="export-all-data"[^}]+event\.preventDefault\(\);[^}]+openDataExport\(\)/s);
@@ -722,7 +722,7 @@ test('扉页署名像头像一样验证后修改并随完整备份导出', () =>
     assert.match(appJs, /profileOwnerName = ownerName;/);
     assert.match(appJs, /class="preface-owner-plaque" type="button" data-action="edit-owner-name"/);
     assert.match(appJs, /<strong>\$\{escapeHtml\(profileOwnerName\)\}<\/strong>/);
-    assert.match(appJs, /data-action="edit-owner-name">修改扉页署名<\/button>/);
+    assert.match(appJs, /data-action="edit-owner-name">修改署名<\/button>/);
     assert.match(appJs, /const nextName = await ownerNameDialog\.open\(profileOwnerName\);/);
     assert.match(appJs, /profileOwnerName = await saveOwnerName\(nextName, capability\);/);
     assert.match(appJs, /function refreshProfileOwnerName\(\)/);

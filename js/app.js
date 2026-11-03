@@ -1049,60 +1049,92 @@ function renderPreface() {
                 </dl>
             </section>
 
-            ${renderMobileContextToggle('打开日记工具箱', '新增、备份与安全管理')}
+            ${renderMobileContextToggle('打开日记工具箱', '写日记、备份、整理与设置')}
         </article>
     `, `
         ${renderContextPanelHeading('扉页', '日记工具箱')}
 
         <section class="preface-tool-section" aria-labelledby="prefaceWritingTitle">
-            <h3 id="prefaceWritingTitle">日记维护</h3>
-            <p>更改扉页中的个人头像与署名，或继续写下一段旅程。</p>
-            <div class="preface-tool-actions">
-                <button class="paper-button" type="button" data-action="upload-profile-picture">更换个人头像</button>
-                <button class="paper-button" type="button" data-action="edit-owner-name">修改扉页署名</button>
-                <button class="paper-button" type="button" data-action="add-record">新增旅行日记</button>
+            <h3 id="prefaceWritingTitle">写作与资料</h3>
+            <div class="preface-writing-row">
+                <p>把新的见闻，写进下一篇日记。</p>
+                <button class="paper-button preface-write-button" type="button" data-action="add-record">新增旅行日记</button>
+            </div>
+            <div class="preface-profile-tools" aria-label="扉页个人资料">
+                <span>扉页资料</span>
+                <button class="preface-text-action" type="button" data-action="upload-profile-picture">更换头像</button>
+                <button class="preface-text-action" type="button" data-action="edit-owner-name">修改署名</button>
             </div>
         </section>
 
-        <section class="preface-tool-section archive-data-transfer" aria-labelledby="prefaceDataTitle">
-            <h3 id="prefaceDataTitle">数据备份</h3>
-            <p>完整导出或导入旅行记录、媒体文件和认证配置。</p>
-            <div class="preface-tool-actions">
-                <button class="paper-button" type="button" data-action="export-all-data">导出全部数据</button>
-                <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
-                <button class="paper-button" type="button" data-action="export-records">导出部分记录</button>
-                <button class="paper-button" type="button" data-action="import-records">导入部分记录</button>
+        <section class="preface-tool-section" aria-labelledby="prefaceDataTitle">
+            <h3 id="prefaceDataTitle">备份与恢复</h3>
+            <div class="preface-backup-group" role="group" aria-labelledby="prefaceExportTitle">
+                <h4 id="prefaceExportTitle">导出 · 保存备份到本机</h4>
+                <div class="preface-tool-choices">
+                    <button class="preface-tool-command" type="button" data-action="export-records">
+                        <span class="preface-command-title">导出部分记录</span>
+                        <span class="preface-command-description">选择日记及其附件，适合增量备份。</span>
+                    </button>
+                    <button class="preface-tool-command" type="button" data-action="export-all-data">
+                        <span class="preface-command-title">导出全部数据</span>
+                        <span class="preface-command-description">备份全部日记、附件、个人资料和密码配置。</span>
+                    </button>
+                </div>
             </div>
-            <p>增量备份可勾选部分日记及其媒体；合并导入会保留未选中的记录。</p>
-            <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
+            <div class="preface-backup-group" role="group" aria-labelledby="prefaceImportTitle">
+                <h4 id="prefaceImportTitle">导入 · 使用已有备份</h4>
+                <div class="preface-tool-choices">
+                    <button class="preface-tool-command" type="button" data-action="import-records">
+                        <span class="preface-command-title">导入部分记录<span class="preface-command-kind">合并</span></span>
+                        <span class="preface-command-description">所选日记采用备份内容，其他日记、资料和密码不变。</span>
+                    </button>
+                    <button class="preface-tool-command" type="button" data-action="import-all-data">
+                        <span class="preface-command-title">导入全部数据<span class="preface-command-kind">替换</span></span>
+                        <span class="preface-command-description">用完整备份替换当前数据，密码也恢复为备份时的密码。</span>
+                    </button>
+                </div>
+            </div>
+            <p class="preface-tool-note">回收站不包含在备份中；导入替换前的数据会先留在回收站。</p>
+            <p class="archive-data-status preface-transfer-status" data-data-transfer-status role="status" aria-live="polite"></p>
         </section>
 
         <section class="preface-tool-section" aria-labelledby="prefaceOrganizeTitle">
-            <h3 id="prefaceOrganizeTitle">内容整理</h3>
-            <p>检查媒体使用情况，或恢复已删除的内容。</p>
-            <div class="preface-tool-actions">
-                <button class="paper-button" type="button" data-action="media-health">媒体整理</button>
-                <button class="paper-button" type="button" data-action="recycle-bin">回收站</button>
+            <h3 id="prefaceOrganizeTitle">媒体与回收</h3>
+            <div class="preface-tool-choices">
+                <button class="preface-tool-command" type="button" data-action="media-health">
+                    <span class="preface-command-title">媒体整理</span>
+                    <span class="preface-command-description">检查缺失文件，整理未被日记使用的图片和视频。</span>
+                </button>
+                <button class="preface-tool-command" type="button" data-action="recycle-bin">
+                    <span class="preface-command-title">回收站</span>
+                    <span class="preface-command-description">恢复已删除或替换的内容，永久删除后释放空间。</span>
+                </button>
             </div>
         </section>
 
-        <section class="preface-tool-section archive-access-security" aria-labelledby="prefaceSecurityTitle">
-            <h3 id="prefaceSecurityTitle">访问安全</h3>
-            <p>验证当前密码后设置新的 6 位数字密码。</p>
-            <button class="paper-button" type="button" data-action="change-password">修改访问密码</button>
-            <button class="password-reset-help" type="button" data-action="password-reset-help" aria-haspopup="dialog" aria-label="忘记密码？查看重置方法">
-                <span>忘记密码</span>
-                <svg class="password-reset-help-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                    <circle cx="8" cy="8" r="6.25"/>
-                    <path d="M6.5 6a1.5 1.5 0 0 1 3 .15c0 1.1-1.5 1.25-1.5 2.35M8 10.75h.01"/>
-                </svg>
-            </button>
-        </section>
-
-        <section class="preface-tool-section archive-danger-zone" aria-labelledby="prefaceDangerTitle">
-            <h3 id="prefaceDangerTitle">危险操作</h3>
-            <p>清空日记与个人资料，原数据会保存在回收站。</p>
-            <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
+        <section class="preface-tool-section" aria-labelledby="prefaceSecurityTitle">
+            <h3 id="prefaceSecurityTitle">密码与重置</h3>
+            <div class="preface-security-row">
+                <button class="preface-tool-command" type="button" data-action="change-password">
+                    <span class="preface-command-title">修改访问密码</span>
+                    <span class="preface-command-description">验证现用密码，设置新的 6 位数字密码。</span>
+                </button>
+                <button class="password-reset-help" type="button" data-action="password-reset-help" aria-haspopup="dialog" aria-label="忘记密码？查看重置方法">
+                    <span>忘记密码？</span>
+                    <svg class="password-reset-help-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                        <circle cx="8" cy="8" r="6.25"/>
+                        <path d="M6.5 6a1.5 1.5 0 0 1 3 .15c0 1.1-1.5 1.25-1.5 2.35M8 10.75h.01"/>
+                    </svg>
+                </button>
+            </div>
+            <details class="preface-reset-tools archive-danger-zone">
+                <summary>清空日记与资料</summary>
+                <div class="preface-reset-content">
+                    <p>清空全部日记、附件、头像和署名，访问密码保留。原数据会存入回收站。</p>
+                    <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
+                </div>
+            </details>
         </section>
     `, 'dossier-page context-panel preface-tools-panel');
 }
