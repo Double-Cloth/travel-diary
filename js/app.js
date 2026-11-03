@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=20261103-operation-consistency-v1';
-import { loadTravelData, loadTravelRecords } from './data.js?v=20261103-record-management-v1';
-import { createRecordEditor } from './record-editor.js?v=20261103-operation-consistency-v1';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261103-operation-consistency-v1';
-import { createDataTransfer } from './data-transfer.js?v=20261103-unified-diff-v1';
-import { createMediaManager } from './media-manager.js?v=20261103-operation-consistency-v1';
-import { detectWriterCapability } from './writer-capability.js?v=20261103-operation-consistency-v1';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20261103-recycle-bin-v1';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=20261103-operation-consistency-v1';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20261103-operation-consistency-v1';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=20260930-review-v1';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=20260930-review-v1';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=20261103-operation-consistency-v1';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=20261103-media-stats-v1';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js';
-import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=20261102-native-preview-v1';
-import { enhanceCustomSelects } from './custom-select.js?v=20261103-clear-media-ui-v1';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.0';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.0';
+import { createRecordEditor } from './record-editor.js?v=2.1.0';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.0';
+import { createDataTransfer } from './data-transfer.js?v=2.1.0';
+import { createMediaManager } from './media-manager.js?v=2.1.0';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.0';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.0';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.0';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.0';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.0';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.0';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.0';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.0';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.0';
+import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.0';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.0';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.0';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs';
+} from './location.mjs?v=2.1.0';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,7 +30,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=20261016-media-shadow-v1';
+} from './photo-viewer-transform.mjs?v=2.1.0';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_SORT_OPTIONS = new Set(['desc', 'asc', 'location', 'area', 'title']);
@@ -3434,6 +3434,8 @@ function renderWithBookCover(renderFn, mode) {
     const animations = [];
     let finishTimer = null;
     const shellWasInert = refs.shell.inert;
+    // 动画期间会隐藏封面并锁定书本，先释放内部焦点，落页后再聚焦目标页面。
+    if (refs.shell.contains?.(document.activeElement)) document.activeElement?.blur();
     refs.shell.inert = true;
     pageTurnCleanup = () => {
         if (finished) return;

@@ -1,36 +1,34 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js';
-import { createPasswordGate } from './record-password.js?v=20261103-operation-consistency-v1';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=20261103-operation-consistency-v1';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261103-operation-consistency-v1';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.0';
+import { createPasswordGate } from './record-password.js?v=2.1.0';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.0';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.0';
 import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=20261103-media-controls-v3';
-import { verifyBackupPassword } from './backup-password.js?v=20261103-media-controls-v3';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs';
-import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=20261103-unified-diff-v1';
-import { recordIdentity } from './record-identity.mjs';
-import { createContentPreviewScope, markdownPreview } from './content-preview.js?v=20261103-content-preview-v1';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.0';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.0';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.0';
+import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=2.1.0';
+import { recordIdentity } from './record-identity.mjs?v=2.1.0';
+import { createContentPreviewScope, markdownPreview } from './content-preview.js?v=2.1.0';
 
 export function createRecordTransfer(onImported, getRecords) {
     const dialog = document.createElement('dialog');
-    dialog.className = 'record-transfer entry-sheet';
+    dialog.className = 'record-transfer management-dialog entry-sheet';
     dialog.setAttribute('aria-labelledby', 'recordTransferTitle');
     dialog.innerHTML = `
         <div class="record-transfer-card">
-            <h2 id="recordTransferTitle"></h2>
-            <p data-record-transfer-note></p>
+            <header class="management-heading"><div><h2 id="recordTransferTitle"></h2><p data-record-transfer-note></p></div><button class="paper-button management-secondary" type="button" data-record-transfer-cancel>关闭</button></header>
             <label class="field-label" for="recordTransferSearch">搜索日期、地点或文件名</label>
-            <input id="recordTransferSearch" type="search" autocomplete="off" placeholder="筛选要备份的日记">
+            <div class="management-search"><input id="recordTransferSearch" type="search" autocomplete="off" placeholder="筛选要备份的日记"><button class="media-text-button" type="button" data-record-transfer-reset hidden>清除搜索</button></div>
             <div class="record-transfer-toolbar">
-                <button class="paper-button" type="button" data-record-transfer-all>全选筛选结果</button>
-                <button class="paper-button" type="button" data-record-transfer-clear>取消选择</button>
-                <button class="paper-button" type="button" data-record-transfer-changes>选中新增和修改的记录</button>
-                <span data-record-transfer-count role="status" aria-live="polite"></span>
+                <button class="media-text-button" type="button" data-record-transfer-all>全选筛选结果</button>
+                <button class="media-text-button" type="button" data-record-transfer-clear>清空全部选择</button>
+                <button class="media-text-button" type="button" data-record-transfer-changes>选中新增和修改的记录</button>
             </div>
             <ul class="record-transfer-list" data-record-transfer-list aria-label="选择旅行记录"></ul>
-            <p data-record-transfer-empty hidden>没有匹配的记录。</p>
+            <p class="management-empty" data-record-transfer-empty role="status" hidden></p>
             <p data-record-transfer-error role="alert"></p>
-            <div class="data-import-confirm-actions">
-                <button class="paper-button" type="button" data-record-transfer-cancel>取消</button>
+            <div class="management-footer">
+                <p data-record-transfer-count role="status" aria-live="polite"></p>
                 <button class="paper-button" type="button" data-record-transfer-submit disabled></button>
             </div>
         </div>`;
@@ -55,7 +53,7 @@ export function createRecordTransfer(onImported, getRecords) {
         const output = document.querySelector('[data-data-transfer-status]');
         if (output) output.textContent = message;
     };
-    const restoreFocus = () => { if (trigger?.isConnected) trigger.focus(); };
+    const restoreFocus = () => { if (trigger?.isConnected) trigger.focus(); else document.getElementById('journalStage')?.focus(); };
     const close = () => { dialog.close(); previews.dispose(); restoreFocus(); };
     const error = message => { dialog.querySelector('[data-record-transfer-error]').textContent = message; };
     function startImportProgress() {
@@ -91,6 +89,8 @@ export function createRecordTransfer(onImported, getRecords) {
                 ${mode === 'import' ? renderDifference(record, comparison) : ''}</li>`;
         }).join('');
         dialog.querySelector('[data-record-transfer-empty]').hidden = filtered.length > 0;
+        dialog.querySelector('[data-record-transfer-list]').hidden = !filtered.length;
+        dialog.querySelector('[data-record-transfer-empty]').textContent = records.length ? '没有匹配的日记，清除搜索后可查看全部记录。' : mode === 'export' ? '还没有可导出的日记，新增日记后再来备份。' : '备份中没有可导入的日记，请重新选择备份。';
         dialog.querySelectorAll('input').forEach(control => { if (busy) control.disabled = true; });
         updateSelection();
     }
@@ -150,10 +150,14 @@ export function createRecordTransfer(onImported, getRecords) {
     }, true);
 
     function updateSelection() {
-        dialog.querySelector('[data-record-transfer-count]').textContent = `已选 ${selected.size} / ${records.length} 条`;
+        const filtered = filteredRecords();
+        const hidden = selected.size - filtered.filter(record => selected.has(record.desc_md)).length;
+        dialog.querySelector('[data-record-transfer-count]').textContent = `显示 ${filtered.length} / ${records.length} 篇 · 已选 ${selected.size} 篇${hidden ? `（含筛选外 ${hidden} 篇）` : ''}`;
+        dialog.querySelector('[data-record-transfer-reset]').hidden = !dialog.querySelector('input[type="search"]').value;
         dialog.querySelector('[data-record-transfer-submit]').disabled = busy || selected.size === 0;
         dialog.querySelector('[data-record-transfer-clear]').disabled = busy || selected.size === 0;
-        dialog.querySelector('[data-record-transfer-all]').disabled = busy || !filteredRecords().some(record => mode !== 'import' || comparisons.get(record.desc_md)?.status !== 'conflict');
+        dialog.querySelector('[data-record-transfer-all]').disabled = busy || !filtered.some(record => !selected.has(record.desc_md) && (mode !== 'import' || comparisons.get(record.desc_md)?.status !== 'conflict'));
+        dialog.querySelector('[data-record-transfer-changes]').disabled = busy || !records.length;
     }
 
     function open(nextMode, nextRecords) {
@@ -370,6 +374,7 @@ export function createRecordTransfer(onImported, getRecords) {
     dialog.addEventListener('click', event => {
         if (busy) return;
         if (event.target.closest('[data-record-transfer-cancel]')) { importAuthorization = undefined; close(); }
+        if (event.target.closest('[data-record-transfer-reset]')) { dialog.querySelector('input[type="search"]').value = ''; render(); dialog.querySelector('input[type="search"]').focus(); }
         if (event.target.closest('[data-record-transfer-all]')) { filteredRecords().filter(record => mode !== 'import' || comparisons.get(record.desc_md)?.status !== 'conflict').forEach(record => selected.add(record.desc_md)); render(); }
         if (event.target.closest('[data-record-transfer-clear]')) { selected.clear(); render(); }
         if (event.target.closest('[data-record-transfer-changes]')) {

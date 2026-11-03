@@ -19,6 +19,9 @@ node js/server.js --help
 # 运行全部测试
 npm test
 
+# 更新 package.json 的版本后，同步全部浏览器模块与样式的缓存版本
+npm run assets:version
+
 # 手动生成全部媒体缩略图（复用已安装的 Edge 或 Chrome）
 npm run media:previews
 

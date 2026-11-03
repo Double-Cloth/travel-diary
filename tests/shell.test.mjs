@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 
 const indexHtml = await readFile(new URL('../index.html', import.meta.url), 'utf8');
+const packageVersion = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')).version;
 const appJs = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 const customSelectJs = await readFile(new URL('../js/custom-select.js', import.meta.url), 'utf8');
 const dataTransferJs = await readFile(new URL('../js/data-transfer.js', import.meta.url), 'utf8');
@@ -281,11 +282,12 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261103-unified-diff-v1');
+    assert.equal(appVersion, packageVersion);
     assert.ok(cssVersion);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20261103-operation-consistency-v1/);
-    assert.match(appJs, /\.\/custom-select\.js\?v=20261103-clear-media-ui-v1/);
-    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20261103-clear-media-ui-v1/);
+    assert.equal(cssVersion, packageVersion);
+    assert.match(appJs, /\.\/record-editor\.js\?v=[^']+/);
+    assert.match(appJs, /\.\/custom-select\.js\?v=[^']+/);
+    assert.match(recordEditorJs, /\.\/custom-select\.js\?v=[^']+/);
 });
 
 test('自定义下拉框初始方向和打开后的箭头都随弹出方向变化', () => {
@@ -303,13 +305,13 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
     assert.match(journalCss, /\.custom-select\.is-open\.is-open-upward \.custom-select-chevron\s*\{\s*transform: translateY\(-65%\) rotate\(45deg\);\s*\}/);
     assert.match(journalCss, /.custom-select\.is-open-upward \.custom-select-menu\s*\{\s*inset: auto 0 calc\(100% \+ 8px\);\s*\}/);
     assert.match(appJs, /class="index-filter-field\$\{visuallyHiddenLabel \? ' index-sort-field' : ''\}"/);
-    assert.match(journalEntryCss, /08-custom-select\.css\?v=20261016-scrollbars-v1/);
+    assert.match(journalEntryCss, /08-custom-select\.css\?v=[^']+/);
     assert.doesNotMatch(journalCss, /\.index-sort-field \.custom-select-chevron\s*\{/);
     assert.doesNotMatch(journalCss, /\.index-filter-section:last-child\s*\{\s*padding-bottom:/);
 });
 
 test('静态页面免密码打开只读编辑器，动态环境必须先通过服务端口令验证', () => {
-    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20261103-operation-consistency-v1';/);
+    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=[^']+';/);
     assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability, true\)/);
     assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}, true\)/);
     assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}, true\)/);
@@ -365,7 +367,7 @@ test('切换记录先确认丢弃未保存内容，再验证密码，确认时�
 });
 
 test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () => {
-    assert.match(recordEditorJs, /import \{ confirmFeedback \} from '\.\/feedback-dialog\.js\?v=20261103-operation-consistency-v1';/);
+    assert.match(recordEditorJs, /import \{ confirmFeedback \} from '\.\/feedback-dialog\.js\?v=[^']+';/);
     assert.match(recordEditorJs, /data-editor-clear>清空编辑器/);
     assert.match(recordEditorJs, /confirmFeedback\('当前编辑器中的表单、正文和待保存图片、视频都会被清除/);
     assert.match(recordEditorJs, /releasePhotoPreviews\(\);\s*uploads = \[\];/);
@@ -379,12 +381,12 @@ test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () =>
 });
 
 test('运行时提示全部使用站内反馈弹窗而不是浏览器 alert', () => {
-    assert.match(appJs, /import \{ confirmFeedback, showFeedback \} from '\.\/feedback-dialog\.js\?v=20261103-operation-consistency-v1';/);
+    assert.match(appJs, /import \{ confirmFeedback, showFeedback \} from '\.\/feedback-dialog\.js\?v=[^']+';/);
     assert.match(appJs, /\.catch\(error => showFeedback\(error\.message\)\)/);
     assert.match(appJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据导出。'/);
     assert.match(dataTransferJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据导入。'/);
     assert.doesNotMatch(dataTransferJs, /onStatic: \(\) => setStatus/);
-    assert.match(recordPasswordJs, /import \{ showFeedback \} from '\.\/feedback-dialog\.js';/);
+    assert.match(recordPasswordJs, /import \{ showFeedback \} from '\.\/feedback-dialog\.js\?v=[^']+';/);
     assert.match(recordPasswordJs, /void showFeedback\(error\?\.message \|\| copy\.actionError/);
     assert.match(feedbackDialogJs, /dialog\.showModal\(\)/);
     assert.match(feedbackDialogJs, /data-feedback-confirm/);
@@ -542,7 +544,7 @@ test('日记详情作为书内页渲染且返回时恢复路线档案滚动位�
 });
 
 test('每篇日记按最早行程起显示编号但不暴露 trip_id', () => {
-    assert.match(appJs, /import \{ buildItineraryGroups, countDistinctVisits, getVisitKey \} from '\.\/visits\.mjs';/);
+    assert.match(appJs, /import \{ buildItineraryGroups, countDistinctVisits, getVisitKey \} from '\.\/visits\.mjs\?v=[^']+';/);
     assert.match(appJs, /const itineraryGroups = buildItineraryGroups\(enhancedAsc\);/);
     assert.match(appJs, /tripRecordCount: tripGroup\?\.count \|\| 0,[\s\S]*tripGroupLabel: tripGroup\?\.label \|\| ''/);
     assert.match(appJs, /function renderTripGroupHint\(record\)[\s\S]*if \(!label\)[\s\S]*const variant = Math\.max\(0,[\s\S]*class="trip-stamp trip-variant-\$\{variant\}"[\s\S]*>行程 \$\{escapeHtml\(label\)\}<\/a>/);
@@ -715,8 +717,8 @@ test('点击头像先验证密码，再选择常见图片并写入服务更新�
 });
 
 test('扉页署名像头像一样验证后修改并随完整备份导出', () => {
-    assert.match(appJs, /import \{ DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName \} from '\.\/profile-owner\.js\?v=20260930-review-v1';/);
-    assert.match(appJs, /import \{ createOwnerNameDialog \} from '\.\/profile-owner-dialog\.js\?v=20260930-review-v1';/);
+    assert.match(appJs, /import \{ DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName \} from '\.\/profile-owner\.js\?v=[^']+';/);
+    assert.match(appJs, /import \{ createOwnerNameDialog \} from '\.\/profile-owner-dialog\.js\?v=[^']+';/);
     assert.match(appJs, /let profileOwnerName = DEFAULT_OWNER_NAME;/);
     assert.match(appJs, /const \[ownerName, hydratedRecords\] = await Promise\.all\([\s\S]*loadOwnerName\(\)/);
     assert.match(appJs, /profileOwnerName = ownerName;/);

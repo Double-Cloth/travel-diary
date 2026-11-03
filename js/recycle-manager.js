@@ -1,9 +1,9 @@
-import { escapeHtml } from './utils.js';
-import { createPasswordGate } from './record-password.js?v=20261103-operation-consistency-v1';
-import { detectWriterCapability } from './writer-capability.js?v=20261103-operation-consistency-v1';
-import { confirmFeedback } from './feedback-dialog.js?v=20261103-operation-consistency-v1';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=20261103-content-preview-v1';
-import { enhanceCustomSelects } from './custom-select.js?v=20261103-clear-media-ui-v1';
+import { escapeHtml } from './utils.js?v=2.1.0';
+import { createPasswordGate } from './record-password.js?v=2.1.0';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.0';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.0';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.0';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.0';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -14,10 +14,11 @@ function sizeLabel(bytes) {
 
 export function createRecycleManager(onRestored) {
     const dialog = document.createElement('dialog');
-    dialog.className = 'record-transfer recycle-manager entry-sheet';
+    dialog.className = 'record-transfer recycle-manager management-dialog entry-sheet';
     dialog.setAttribute('aria-labelledby', 'recycleManagerTitle');
     dialog.innerHTML = `<div class="record-transfer-card">
-        <header class="media-manager-heading"><div><h2 id="recycleManagerTitle">回收站</h2><p>删除的内容和替换前的版本保留在这里，可预览或恢复。永久删除后无法找回。</p></div><button class="paper-button" type="button" data-recycle-close>关闭</button></header>
+        <header class="management-heading"><div><h2 id="recycleManagerTitle">回收站</h2><p>删除的内容和替换前的版本保留在这里，可预览或恢复。永久删除后无法找回。</p></div><button class="paper-button management-secondary" type="button" data-recycle-close>关闭</button></header>
+        <label class="field-label" for="recycleSearch">搜索标题、类型、日记地点或文件路径</label><div class="management-search"><input id="recycleSearch" type="search" autocomplete="off" data-recycle-search placeholder="查找要恢复的内容"><button class="media-text-button" type="button" data-recycle-reset hidden>清除搜索</button></div>
         <div class="recycle-toolbar"><p data-recycle-status></p><div class="recycle-toolbar-actions"><button class="paper-button" type="button" data-recycle-refresh>刷新</button><button class="paper-button recycle-purge" type="button" data-recycle-clear disabled>清空回收站</button></div></div>
         <p class="recycle-notice" data-recycle-notice role="status" aria-live="polite"></p><p data-recycle-error role="alert"></p><ul class="recycle-list" data-recycle-list></ul></div>`;
     document.body.append(dialog);
@@ -29,27 +30,37 @@ export function createRecycleManager(onRestored) {
     let previews = createContentPreviewScope();
     const error = message => { dialog.querySelector('[data-recycle-error]').textContent = message; };
     const notice = message => { dialog.querySelector('[data-recycle-notice]').textContent = message; };
+    const types = { record: '日记', files: '文件', version: '旧版本', snapshot: '整站数据' };
+    function filteredItems() {
+        const query = dialog.querySelector('[data-recycle-search]').value.trim().toLowerCase();
+        return (report?.items || []).filter(item => [item.title, types[item.kind], new Date(item.createdAt).toLocaleString(),
+            ...item.files.map(file => file.path), ...(item.records.length ? item.records : item.mediaReferences || []).flatMap(record => [record.date, record.country, record.admin_area, record.locality])]
+            .some(value => String(value || '').toLowerCase().includes(query)));
+    }
     function syncControls() {
         dialog.setAttribute('aria-busy', String(busy));
         dialog.querySelectorAll('[data-recycle-close], [data-recycle-refresh]').forEach(button => { button.disabled = busy; });
+        dialog.querySelectorAll('[data-recycle-search], [data-recycle-reset]').forEach(control => { control.disabled = busy; });
         const clear = dialog.querySelector('[data-recycle-clear]');
         clear.disabled = busy || stale || !clearSupported || !report?.items.length;
         clear.title = clearSupported ? '' : '重启日记服务后可用';
         dialog.querySelectorAll('[data-recycle-restore], [data-recycle-purge], .recycle-target select, .recycle-target button').forEach(control => { control.disabled = busy || stale; });
+        enhanceCustomSelects(dialog);
     }
     function render() {
         previews.dispose();
         previews = createContentPreviewScope();
-        dialog.querySelector('[data-recycle-status]').textContent = `${report.items.length} 个回收项目 · ${sizeLabel(report.totalBytes)}`;
-        const types = { record: '日记', files: '文件', version: '旧版本', snapshot: '整站数据' };
-        dialog.querySelector('[data-recycle-list]').innerHTML = report.items.length ? report.items.map(item => `<li>
+        const items = filteredItems();
+        dialog.querySelector('[data-recycle-status]').textContent = `显示 ${items.length} / ${report.items.length} 个回收项目 · 共 ${sizeLabel(report.totalBytes)}`;
+        dialog.querySelector('[data-recycle-reset]').hidden = !dialog.querySelector('[data-recycle-search]').value;
+        dialog.querySelector('[data-recycle-list]').innerHTML = items.length ? items.map(item => `<li>
             <div class="recycle-item-heading"><span class="recycle-kind">${types[item.kind] || '文件'}</span><time>${escapeHtml(new Date(item.createdAt).toLocaleString())}</time></div>
             <h3>${escapeHtml(item.title)}</h3><p>${item.records.length ? `${item.records.length} 篇日记 · ` : ''}${item.files.length} 个文件 · ${sizeLabel(item.files.reduce((sum, file) => sum + file.size, 0))}</p>
             ${item.kind === 'snapshot' ? '<p class="recycle-restore-note">恢复会替换全部日记和个人资料；当前数据会先存入回收站，访问密码保持不变。</p>' : item.kind === 'version' ? '<p class="recycle-restore-note">恢复到原位置；被替换的当前文件也会存入回收站。</p>' : ''}
             ${(item.records.length ? item.records : item.mediaReferences || []).map(record => `<p class="recycle-record-info">${escapeHtml([record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · '))}</p>`).join('')}
             <details class="recycle-contents" data-recycle-contents="${item.id}"><summary>查看内容与附件 <small>${item.files.length} 个文件</small></summary><ul class="media-file-list content-preview-list" data-recycle-files data-media-viewer-group></ul></details>
             ${item.kind === 'files' && !item.mediaReferences?.length && item.files.some(file => mediaKind(file.path)) ? `<div class="recycle-target"><label class="field-label" for="recycleTarget-${item.id}">恢复到</label><select id="recycleTarget-${item.id}" data-custom-select data-recycle-target="${item.id}"><option value="">${item.title === '编辑日记时移除的媒体' ? '请选择原日记' : '仅恢复文件'}</option>${(report.currentRecords || []).map(record => `<option value="${escapeHtml(record.desc_md)}">${escapeHtml([record.date, record.locality].filter(Boolean).join(' · '))}</option>`).join('')}</select><p class="recycle-restore-note">选择日记后，同时补回附件列表；其他日记信息保持不变。</p></div>` : item.mediaReferences?.length ? '<p class="recycle-restore-note">恢复文件并补回原日记的附件列表，保留之后修改的内容。</p>' : ''}
-            <div class="recycle-item-actions"><button class="paper-button recycle-purge" type="button" data-recycle-purge="${item.id}">永久删除</button><button class="paper-button" type="button" data-recycle-restore="${item.id}">恢复${item.kind === 'snapshot' ? '全部数据' : item.kind === 'version' ? '此版本' : item.kind === 'record' ? '日记' : '文件'}</button></div></li>`).join('') : '<li class="media-empty">回收站为空。删除的内容会显示在这里。</li>';
+            <div class="recycle-item-actions"><button class="paper-button recycle-purge" type="button" data-recycle-purge="${item.id}">永久删除</button><button class="paper-button" type="button" data-recycle-restore="${item.id}">恢复${item.kind === 'snapshot' ? '全部数据' : item.kind === 'version' ? '此版本' : item.kind === 'record' ? '日记' : '文件'}</button></div></li>`).join('') : `<li class="media-empty">${report.items.length ? '没有匹配的回收项目，清除搜索后可查看全部内容。' : '回收站为空。删除的内容会显示在这里。'}</li>`;
         enhanceCustomSelects(dialog);
         syncControls();
     }
@@ -68,6 +79,7 @@ export function createRecycleManager(onRestored) {
             url.searchParams.set('path', file.path);
             try { row.append(await scope.file({ name: file.path, url: url.href, detail: `${file.path} · ${sizeLabel(file.size)}`, index: list.querySelectorAll('[data-action="open-media-viewer"]').length })); }
             catch (failure) { row.textContent = `${file.path}：${failure.message}`; }
+            if (scope !== previews || !details.isConnected || !dialog.open) return;
             list.append(row);
         }
     }, true);
@@ -86,7 +98,9 @@ export function createRecycleManager(onRestored) {
                 credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(120000),
                 ...(payload ? { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': capability.token }, body: JSON.stringify({ ...payload, revision: report.revision }) } : {})
             });
-            const result = await response.json();
+            let result;
+            try { result = await response.json(); }
+            catch { throw new Error('回收站返回了无法识别的结果，请刷新后重试。'); }
             if (!response.ok || !Array.isArray(result.items)) throw new Error(result.error || '无法读取回收站，请刷新后重试。');
             report = result;
             stale = false;
@@ -98,7 +112,7 @@ export function createRecycleManager(onRestored) {
             }
         } catch (failure) {
             stale = true;
-            error(failure.message);
+            error(failure.name === 'TimeoutError' ? '读取回收站超时，请刷新后重试。' : failure instanceof TypeError ? '无法连接日记服务，请检查网络后刷新回收站。' : failure.message);
             notice('操作未完成。刷新回收站后可继续操作。');
         } finally {
             busy = false;
@@ -115,10 +129,14 @@ export function createRecycleManager(onRestored) {
     }
     dialog.addEventListener('keydown', event => event.stopPropagation());
     dialog.addEventListener('cancel', event => { event.preventDefault(); close(); });
+    dialog.addEventListener('input', event => {
+        if (event.target.matches('[data-recycle-search]') && report && !busy) render();
+    });
     dialog.addEventListener('click', async event => {
         if (busy) return;
         if (event.target.closest('[data-recycle-close]')) { close(); return; }
         if (event.target.closest('[data-recycle-refresh]')) { await request(); return; }
+        if (event.target.closest('[data-recycle-reset]')) { dialog.querySelector('[data-recycle-search]').value = ''; render(); dialog.querySelector('[data-recycle-search]').focus(); return; }
         if (event.target.closest('[data-recycle-clear]')) {
             if (stale || !report?.items.length) return;
             busy = true;
@@ -158,6 +176,8 @@ export function createRecycleManager(onRestored) {
         trigger = document.activeElement;
         report = undefined;
         stale = true;
+        dialog.querySelector('[data-recycle-search]').value = '';
+        dialog.querySelector('[data-recycle-reset]').hidden = true;
         dialog.querySelector('[data-recycle-status]').textContent = '';
         dialog.querySelector('[data-recycle-list]').replaceChildren();
         dialog.showModal();

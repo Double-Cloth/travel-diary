@@ -1046,6 +1046,14 @@ test('封面沿书脊翻转，合书落稳后提交且中断不重复渲染', t 
     let mobile = false;
     globalThis.window = { matchMedia: query => ({ matches: query.includes('reduced-motion') ? reduced : mobile }) };
     globalThis.document = { createElement: createNode, body: createNode() };
+    globalThis.document.activeElement = closedBookCover;
+    shell.contains = node => node === closedBookCover;
+    closedBookCover.blur = () => { globalThis.document.activeElement = null; };
+    const setCoverAttribute = closedBookCover.setAttribute;
+    closedBookCover.setAttribute = function (name, value) {
+        if (name === 'aria-hidden') assert.notEqual(globalThis.document.activeElement, this, '隐藏封面前必须释放焦点');
+        setCoverAttribute.call(this, name, value);
+    };
     globalThis.getComputedStyle = () => ({ background: '#eee' });
     globalThis.requestAnimationFrame = callback => { frames.push(callback); return frames.length; };
     globalThis.cancelAnimationFrame = () => {};

@@ -1,5 +1,5 @@
-import { showFeedback } from './feedback-dialog.js';
-import { authenticateWriter, changeWriterPassword, initializeWriterPassword, probeWriterService } from './writer-capability.js?v=20261103-operation-consistency-v1';
+import { showFeedback } from './feedback-dialog.js?v=2.1.0';
+import { authenticateWriter, changeWriterPassword, initializeWriterPassword, probeWriterService } from './writer-capability.js?v=2.1.0';
 
 const PASSWORD_LENGTH = 6;
 let passwordGateSequence = 0;
