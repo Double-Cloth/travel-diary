@@ -1295,6 +1295,32 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .record-transfer-list small { color: var(--ink-soft); font-size: 12px; line-height: 1.6; }
 .record-transfer [data-record-transfer-error] { color: var(--stamp); }
 .record-transfer :focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+.record-transfer [hidden] { display: none !important; }
+
+.record-diff { margin: 8px 0 12px 30px; font-size: 14px; overflow-wrap: anywhere; }
+.record-diff summary { cursor: pointer; padding: 8px 0; color: var(--stamp); }
+.record-diff dl { margin: 12px 0; }
+.record-diff dt { font-weight: 700; margin-top: 12px; }
+.record-diff dd { margin: 4px 0 0; line-height: 1.8; }
+.record-diff-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.record-diff-columns h3 { font-size: 15px; }
+.record-diff pre { margin: 0; max-height: 300px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.8; padding: 12px; border: 1px solid var(--line); }
+.media-health-file { display: flex; gap: 10px; align-items: start; padding: 12px 0; }
+.media-health-file > div { min-width: 0; overflow-wrap: anywhere; }
+.media-health-file small { display: block; margin-top: 5px; }
+.media-manager a { color: var(--stamp); text-underline-offset: 3px; }
+.media-manager select { max-width: 100%; min-height: 44px; padding: 6px 10px; color: var(--ink); background: var(--paper-50); border: 1px solid var(--line); font: inherit; }
+.media-manager [data-media-error] { color: var(--stamp); }
+.media-trash { margin-top: 32px; border-top: 1px solid var(--line); padding-top: 16px; }
+.media-trash > ul { padding-left: 20px; }
+.media-trash li { overflow-wrap: anywhere; margin-bottom: 12px; }
+.media-trash details { margin: 8px 0 12px; }
+.media-manager .record-transfer-list label { padding: 0; }
+@media (max-width: 760px) {
+    .record-diff { margin-left: 0; }
+    .record-diff-columns { grid-template-columns: 1fr; }
+    .record-transfer-toolbar .paper-button { min-height: 44px; }
+}
 .media-file-actions .media-file-remove { margin-right: 8px; color: var(--stamp); }
 .media-file-actions button:hover:not(:disabled),
 .record-editor .media-file-drag:hover:not(:disabled),

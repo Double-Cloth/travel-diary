@@ -1,3 +1,4 @@
+import { identifyRecords } from '../js/record-identity.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -46,7 +47,7 @@ test('无行政区和无媒体的最小记录可从备份恢复，异常可选�
     const result = await importDataArchive(root, makeArchive(record));
     assert.equal(result.authPreserved, true);
     assert.equal(result.missingMediaReferences, 0);
-    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), identifyRecords([record]));
     for (const fields of [{ admin_area: [] }, { photos: 'lake.png' }, { photo_folder: 1 }]) {
         await assert.rejects(importDataArchive(root, makeArchive({ ...record, ...fields })), /字段无效|列表无效/);
     }
@@ -86,7 +87,7 @@ test('完整 ZIP 包含 data 与认证配置，并可恢复访问密码', async 
     await fs.writeFile(path.join(root, 'data/travel_data.json'), '[]');
     const result = await importDataArchive(root, archive, { requireProductionAuth: true, backupPassword: AUTH_PASSWORD });
     assert.deepEqual(result, { files: 5, authPreserved: false, missingMediaReferences: 0 });
-    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), identifyRecords([record]));
     assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, record.photos[0])), Buffer.from([1, 2, 3]));
     assert.deepEqual(await fs.readFile(path.join(root, record.video_folder, record.videos[0])), Buffer.from([4, 5, 6]));
     assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
@@ -214,7 +215,7 @@ test('导入保留缺少图片或视频附件的旅行记录并报告缺失引�
     const result = await importDataArchive(root, archive);
 
     assert.deepEqual(result, { files: 2, authPreserved: true, missingMediaReferences: 2 });
-    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), identifyRecords([record]));
 });
 
 test('导入仍拒绝不安全的媒体文件名', async t => {
@@ -253,7 +254,7 @@ test('备份导入与记录保存使用相同日期校验，支持低年份与�
             { name: record.desc_md, data: '# 测试\n' }
         ]);
         await importDataArchive(root, archive);
-        assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
+        assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), identifyRecords([record]));
     }
 });
 

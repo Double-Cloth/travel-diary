@@ -281,9 +281,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261103-media-controls-v3');
+    assert.equal(appVersion, '20261103-record-management-v1');
     assert.ok(cssVersion);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20261103-media-controls-v3/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20261103-record-management-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
 });
@@ -309,7 +309,7 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
 });
 
 test('静态页面免密码打开只读编辑器，动态环境必须先通过服务端口令验证', () => {
-    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20261103-media-controls-v3';/);
+    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20261103-record-management-v1';/);
     assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability, true\)/);
     assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}, true\)/);
     assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}, true\)/);
@@ -440,7 +440,7 @@ test('全部数据导出通过认证 API 流式下载并反馈进度', () => {
     assert.match(dataTransferJs, /api\/travel-data/);
     assert.match(dataTransferJs, /detectWriterCapability\(\)/);
     assert.doesNotMatch(dataTransferJs, /new URL\('travel-diary-data\.zip'/);
-    assert.match(dataTransferJs, /downloadWithProgress\(await getExportHref\(authenticatedCapability\), downloadName, progress\)/);
+    assert.match(dataTransferJs, /downloadWithProgress\(await getExportHref\(capability\), downloadName, progress\)/);
     assert.doesNotMatch(dataTransferJs, /createObjectURL|new Blob|\.exportAll\(/);
     assert.doesNotMatch(dataTransferJs, /window\.location\.hostname|isLocalWriterHost/);
 });
@@ -449,7 +449,7 @@ test('全部数据导入使用站内确认对话框而不是浏览器 confirm', 
     assert.doesNotMatch(dataTransferJs, /window\.confirm|\bconfirm\(/);
     assert.match(dataTransferJs, /dialog\.className = 'data-import-confirm entry-sheet'/);
     assert.match(dataTransferJs, /dialog\.showModal\(\)/);
-    assert.match(dataTransferJs, /网站的访问密码将恢复为备份时的密码/);
+    assert.match(dataTransferJs, /网站访问密码将恢复为备份时的密码/);
     assert.match(dataTransferJs, /data-import-cancel/);
     assert.match(dataTransferJs, /data-import-confirm/);
     assert.match(dataTransferJs, /await confirmImport\(file, hasBackupPassword\)/);
@@ -545,7 +545,7 @@ test('每篇日记按最早行程起显示编号但不暴露 trip_id', () => {
     assert.match(appJs, /import \{ buildItineraryGroups, countDistinctVisits, getVisitKey \} from '\.\/visits\.mjs';/);
     assert.match(appJs, /const itineraryGroups = buildItineraryGroups\(enhancedAsc\);/);
     assert.match(appJs, /tripRecordCount: tripGroup\?\.count \|\| 0,[\s\S]*tripGroupLabel: tripGroup\?\.label \|\| ''/);
-    assert.match(appJs, /function renderTripGroupHint\(record\)[\s\S]*if \(!label\)[\s\S]*const variant = Math\.max\(0,[\s\S]*class="trip-stamp trip-variant-\$\{variant\}"[\s\S]*>行程 \$\{escapeHtml\(label\)\}<\/span>/);
+    assert.match(appJs, /function renderTripGroupHint\(record\)[\s\S]*if \(!label\)[\s\S]*const variant = Math\.max\(0,[\s\S]*class="trip-stamp trip-variant-\$\{variant\}"[\s\S]*>行程 \$\{escapeHtml\(label\)\}<\/a>/);
     assert.match(appJs, /class="entry-book-location"[\s\S]*renderTripGroupHint\(record\)/);
     assert.match(appJs, /class="entry-tags"[\s\S]*renderTripGroupHint\(record\)/);
     assert.doesNotMatch(appJs, /escapeHtml\(record\.(?:trip_id|tripId)\)/);

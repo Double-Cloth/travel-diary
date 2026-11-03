@@ -373,3 +373,18 @@
     margin-top: 4px;
 }
 
+.trip-directory { margin-top: 32px; }
+.trip-directory-link { display: grid; gap: 6px; padding: 16px 0; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
+.trip-directory-link small { color: var(--ink-soft); line-height: 1.7; }
+.trip-directory-link:hover, .trip-directory-link.is-current { color: var(--stamp); }
+.trip-timeline { margin-top: 32px; }
+.trip-timeline ol { padding-left: 22px; }
+.trip-timeline-link { display: grid; gap: 6px; width: 100%; padding: 12px 0; background: none; border: 0; text-align: left; color: var(--ink); cursor: pointer; font: inherit; }
+.trip-timeline-link:hover { color: var(--stamp); }
+.trip-timeline-link time, .trip-timeline-link span { font-size: 14px; color: var(--ink-soft); }
+.trip-record { padding: 0 0 32px; margin-bottom: 32px; border-bottom: 1px solid var(--line); scroll-margin-top: 16px; overflow-wrap: anywhere; }
+.trip-record h2 { margin: 12px 0; }
+.trip-record > time, .trip-record > p { color: var(--ink-soft); line-height: 1.8; }
+.trip-record .entry-body { line-height: 1.9; }
+.trip-record .paper-button { margin-top: 16px; }
+.trip-stamp[href] { text-decoration: none; }

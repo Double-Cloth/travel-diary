@@ -1,3 +1,4 @@
+import { identifyRecords } from '../js/record-identity.mjs';
 import { after, before, test } from 'node:test';
 import assert from 'node:assert/strict';
 import http from 'node:http';
@@ -71,7 +72,7 @@ test('登录会话与写入令牌共同保护导入，成功后失效全部旧�
     });
     assert.equal(imported.status, 200);
     assert.equal((await imported.json()).imported, true);
-    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), [record]);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')), identifyRecords([record]));
     const capability = await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } });
     assert.equal(capability.status, 200);
     const capabilityBody = await capability.json();

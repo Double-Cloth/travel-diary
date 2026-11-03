@@ -109,6 +109,9 @@ async function exportDataArchive(root, selectedPaths = null) {
             throw failure(503, '认证配置无效，请先运行 npm run auth:set 创建新的访问密码。', error.code);
         }
         entries.push({ name: AUTH_RELATIVE_PATH, data: authData });
+        const recordsWithIds = await require('./record-inventory.js').readRecords(root);
+        entries = entries.map(entry => entry.name === 'data/travel_data.json'
+            ? { ...entry, data: Buffer.from(JSON.stringify(recordsWithIds, null, 2) + '\n') } : entry);
         if (selectedPaths !== null) {
             const { readBackupRecords, selectBackupRecords, recordBackupEntries } = await import('./record-backup.mjs');
             try {
@@ -121,8 +124,11 @@ async function exportDataArchive(root, selectedPaths = null) {
         const size = zipStreamSize(entries);
         const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs?v=20261009-stream-files-v2');
         if (size > MAXIMUM_ARCHIVE_BYTES) throw failure(413, '备份不能超过 100 GiB。');
+        const { describeRecords } = await import('./record-diff.mjs');
+        const { readBackupRecords } = await import('./record-backup.mjs');
+        const snapshot = await describeRecords(await readBackupRecords(entries), entries);
         handedOff = true;
-        return { stream: createZipStream(entries), size, release };
+        return { stream: createZipStream(entries), size, release, snapshot: snapshot.fingerprints };
     } finally {
         if (!handedOff) await release();
     }
@@ -139,12 +145,18 @@ async function validateImportedRecords(entries) {
     if (!Array.isArray(records)) throw failure(400, '备份中的旅行索引必须是数组。');
     if (records.length > 10000) throw failure(400, '备份中的旅行记录不能超过 10000 条。');
     const markdownPaths = new Set();
+    const recordIds = new Set();
     let missingMediaReferences = 0;
     for (const [indexValue, record] of records.entries()) {
         const recordNumber = indexValue + 1;
         if (!record || typeof record !== 'object' || Array.isArray(record)) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项必须是对象。`);
         }
+        const { validRecordIdentity, recordIdentity } = await import('./record-identity.mjs');
+        if (!validRecordIdentity(recordIdentity(record)) || recordIds.has(recordIdentity(record))) {
+            throw failure(400, '备份中的记录固定标识无效或重复。');
+        }
+        recordIds.add(recordIdentity(record));
         const date = validateTextField(record, recordNumber, 'date', { required: true });
         if (!isValidDateString(date)) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项 date 必须是有效的 YYYY-MM-DD 日期。`);
@@ -231,9 +243,35 @@ async function mergeRecordEntries(root, incoming) {
     const { sourceOf } = await import('./zip-stream.mjs');
     const current = await collectFiles(path.join(root, 'data'));
     const records = await readBackupRecords(current);
+    const { matchRecord, recordIdentity } = await import('./record-identity.mjs');
     const selected = await readBackupRecords(incoming);
     if (!selected.length) throw failure(400, '备份中没有可导入的记录。');
-    const selectedPaths = new Set(selected.map(record => record.desc_md));
+    const matches = new Map();
+    for (const record of selected) {
+        let previous;
+        try { previous = matchRecord(record, records); }
+        catch (error) { throw failure(409, error.message); }
+        if (previous && [...matches.values()].includes(previous)) throw failure(409, '多条备份记录指向同一篇日记，无法合并。');
+        matches.set(record, previous);
+    }
+    const planEntry = incoming.find(entry => entry.name === 'data/record-merge.json');
+    if (planEntry) {
+        const { readSourceText } = await import('./zip-stream.mjs');
+        const plan = parseJsonFile(await readSourceText(sourceOf(planEntry.data)), planEntry.name);
+        if (!plan || typeof plan !== 'object' || Array.isArray(plan) || Object.keys(plan).length !== selected.length
+            || Object.values(plan).some(value => value !== null && (typeof value !== 'string' || !/^[a-f0-9]{64}$/.test(value)))) {
+            throw failure(400, '记录差异预览清单无效，请重新选择备份。');
+        }
+        const current = await require('./record-inventory.js').inventory(root);
+        for (const record of selected) {
+            const previous = matches.get(record);
+            const actual = previous ? current.fingerprints[recordIdentity(previous)] : null;
+            if (!Object.hasOwn(plan, record.desc_md) || plan[record.desc_md] !== actual) {
+                throw failure(409, '预览后当前记录已变化，请重新选择备份并核对差异。');
+            }
+        }
+    }
+    const selectedPaths = new Set([...matches.values()].filter(Boolean).map(record => record.desc_md));
     const untouched = records.filter(record => !selectedPaths.has(record.desc_md));
     const protectedFiles = recordFilePaths(untouched);
     const replacedFiles = recordFilePaths(records.filter(record => selectedPaths.has(record.desc_md)));
@@ -256,13 +294,18 @@ async function mergeRecordEntries(root, incoming) {
         }
         entries.set(entry.name, entry);
     }
-    const replacements = new Map(selected.map(record => [record.desc_md, record]));
+    const replacements = new Map(selected.map(record => [matches.get(record)?.desc_md || record.desc_md,
+        { ...record, record_id: recordIdentity(matches.get(record) || record) }]));
     const merged = records.map(record => replacements.get(record.desc_md) || record);
-    const existing = new Set(records.map(record => record.desc_md));
-    merged.push(...selected.filter(record => !existing.has(record.desc_md)));
+    merged.push(...selected.filter(record => !matches.get(record)).map(record => replacements.get(record.desc_md)));
+    // 路径变动后移除旧正文；旧媒体仍保留，交由媒体体检显式清理。
+    for (const record of selected) {
+        const previous = matches.get(record);
+        if (previous && previous.desc_md !== record.desc_md && !protectedFiles.has(previous.desc_md)) entries.delete(previous.desc_md);
+    }
     entries.set('data/travel_data.json', { name: 'data/travel_data.json', data: Buffer.from(JSON.stringify(merged, null, 2) + '\n') });
-    return { entries: [...entries.values()], addedRecords: selected.filter(record => !existing.has(record.desc_md)).length,
-        updatedRecords: selected.filter(record => existing.has(record.desc_md)).length };
+    return { entries: [...entries.values()], addedRecords: selected.filter(record => !matches.get(record)).length,
+        updatedRecords: selected.filter(record => matches.get(record)).length };
 }
 
 async function importDataArchive(root, archive, options = {}) {
@@ -355,6 +398,11 @@ async function importDataArchive(root, archive, options = {}) {
             }
             validation = await validateImportedRecords(entries);
         }
+        // 所有恢复都保存固定标识，旧备份也能在后续改名后识别为同一记录。
+        const indexEntry = entries.find(entry => entry.name === 'data/travel_data.json');
+        const { identifyRecords } = await import('./record-identity.mjs');
+        indexEntry.data = Buffer.from(JSON.stringify(identifyRecords(parseJsonFile(indexEntry.data, indexEntry.name)), null, 2) + '\n');
+        entries = entries.filter(entry => entry.name !== 'data/record-merge.json');
         const stageSecrets = path.join(stageRoot, '.secrets');
         const currentSecrets = path.join(root, '.secrets');
         const backupSecrets = path.join(root, `.travel-secrets-backup-${id}`);

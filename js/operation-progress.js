@@ -179,14 +179,21 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
             throw new Error(result?.error || `下载失败（HTTP ${response.status}）。`);
         }
         const total = response.headers.get('Content-Encoding') ? 0 : Number(response.headers.get('Content-Length')) || 0;
+        const backupReceipt = response.headers.get('X-Travel-Backup-Receipt');
         async function handOff() {
             if (reader) await reader.cancel();
             else await response.body?.cancel();
             signal.throwIfAborted();
-            startNativeDownload(url, name);
+            let nativeHref = url;
+            if (backupReceipt) {
+                const nativeUrl = new URL(url, window.location.href);
+                nativeUrl.searchParams.set('backupReceipt', backupReceipt);
+                nativeHref = nativeUrl.href;
+            }
+            startNativeDownload(nativeHref, name);
             progress.remove();
             // 浏览器接管后，网页无法观测其落盘进度，不能宣称已下载完成。
-            return { handedOff: true };
+            return { handedOff: true, ...(backupReceipt ? { backupReceipt } : {}) };
         }
         if (!writable && total > MEMORY_DOWNLOAD_LIMIT) return await handOff();
         if (!response.body?.getReader) throw new Error('当前浏览器不支持流式下载，请使用较新的浏览器。');
@@ -212,7 +219,7 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
         if (writable) { await writable.close(); writable = null; }
         else saveBlobDownload(new Blob(parts, { type: response.headers.get('Content-Type') || 'application/octet-stream' }), name);
         progress.complete(writable === null ? '文件已保存。' : '文件已传输完成，已交给浏览器保存。');
-        return { handedOff: false };
+        return { handedOff: false, ...(backupReceipt ? { backupReceipt } : {}) };
     } catch (error) {
         try { await reader?.cancel(); } catch { /* 保留原始错误。 */ }
         try { await writable?.abort(); } catch { /* 保留原始错误。 */ }

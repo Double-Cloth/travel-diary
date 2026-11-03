@@ -1,5 +1,6 @@
 import { buildFallbackTitle, escapeHtml } from './utils.js';
 import { isValidDateString } from './analytics.mjs';
+import { recordIdentity, validRecordIdentity } from './record-identity.mjs';
 import {
     configureCountryCatalog,
     getLocationSearchValues,
@@ -51,8 +52,10 @@ export async function loadTravelData(cacheKey = '') {
         if (record.desc_md != null && typeof record.desc_md !== 'string') {
             throw new Error(`旅行记录第 ${index + 1} 项的 desc_md 必须是字符串。`);
         }
+        if (record.record_id != null && !validRecordIdentity(record.record_id)) throw new Error(`旅行记录第 ${index + 1} 项的固定标识无效。`);
         return normalizeTravelLocation({
             ...record,
+            record_id: recordIdentity(record),
             sourceRecord: { ...record },
             photo_folder: typeof record.photo_folder === 'string' ? record.photo_folder.trim() : '',
             photos: Array.isArray(record.photos)

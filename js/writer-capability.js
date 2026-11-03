@@ -16,6 +16,7 @@ function capabilityFrom(endpoint, result) {
         syncMediaFiles: result.syncMediaFiles === true,
         mediaOrder: result.mediaOrder === true,
         partialRecords: result.partialRecords === true,
+        recordManagement: result.recordManagement === true,
         authenticated: result.authenticated === true
     };
 }

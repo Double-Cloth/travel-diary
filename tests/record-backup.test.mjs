@@ -1,3 +1,4 @@
+import { identifyRecords } from '../js/record-identity.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
@@ -63,7 +64,7 @@ test('部分导出包含勾选记录、去重媒体和密码配置，拒绝过�
     const entries = await readZipSource(bytes);
     assert.deepEqual(entries.map(entry => entry.name).sort(), [RECORD_BACKUP_PATH, 'data/travel_data.json', first.desc_md,
         'data/photos/trip/lake.png', 'data/videos/trip/walk.mp4', '.secrets/auth.json'].sort());
-    assert.deepEqual(await readBackupRecords(entries), [first]);
+    assert.deepEqual(await readBackupRecords(entries), identifyRecords([first]));
     const both = await readZipSource(await exported(root, [second.desc_md, first.desc_md]));
     assert.equal(both.filter(entry => entry.name === 'data/photos/trip/lake.png').length, 1);
     for (const paths of [[], [first.desc_md, first.desc_md], ['missing']]) await assert.rejects(exported(root, paths));
@@ -83,7 +84,7 @@ test('选择列表与导出索引按日期倒序排列，同日保持原顺序�
     assert.deepEqual(sortBackupRecords([{ desc_md: 'missing' }, older]), [older, { desc_md: 'missing' }]);
     const root = await fixture(t, records);
     const entries = await readZipSource(await exported(root, records.map(item => item.desc_md)));
-    assert.deepEqual(await readBackupRecords(entries), [first, second, older]);
+    assert.deepEqual(await readBackupRecords(entries), identifyRecords([first, second, older]));
 });
 
 test('增量合并更新所选并新增记录，保留其他日记、个人资料、密码和未引用文件，重试不重复', async t => {
@@ -99,7 +100,7 @@ test('增量合并更新所选并新增记录，保留其他日记、个人资�
         const records = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
         assert.equal(records.length, 3);
         assert.equal(records[0].trip_id, 'updated');
-        assert.deepEqual(records[1], second);
+        assert.deepEqual(records[1], identifyRecords([second])[0]);
         assert.equal(await fs.readFile(path.join(root, second.desc_md), 'utf8'), '# second\n正文');
         assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '当前署名');
         assert.equal(await fs.readFile(path.join(root, 'data/photos/orphan.png'), 'utf8'), '未引用文件');
@@ -172,7 +173,7 @@ test('API 选择绑定当前会话，导入仍需令牌及当前密码，合并�
     assert.ok(Number(head.headers.get('content-length')) > 0);
     const exported = await fetch(`${base}/api/travel-data?selection=${selection}`, { headers });
     const archive = new Uint8Array(await exported.arrayBuffer());
-    assert.deepEqual(await readBackupRecords(await readZipSource(archive)), [first]);
+    assert.deepEqual(await readBackupRecords(await readZipSource(archive)), identifyRecords([first]));
     const other = await login();
     assert.equal((await fetch(`${base}/api/travel-data?selection=${selection}`, { headers: other })).status, 400);
     const upload = extra => fetch(`${base}/api/travel-data?mode=merge`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/zip', ...extra }, body: archive });

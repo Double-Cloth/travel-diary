@@ -555,7 +555,11 @@ async function saveRecord(root, payload) {
         const records = JSON.parse(previous);
         if (!Array.isArray(records)) throw failure(409, '旅行索引不是数组，请先修复 data/travel_data.json。');
         const existing = records.find(item => item.desc_md === record.desc_md);
-        if (existing && JSON.stringify(existing) !== JSON.stringify(record)) {
+        const { recordIdentity } = await import('./record-identity.mjs');
+        record.record_id = existing ? recordIdentity(existing) : `r-${createHash('sha256').update(`${payload.requestId}\0${record.desc_md}`).digest('hex').slice(0, 32)}`;
+        if (records.some(item => item !== existing && recordIdentity(item) === record.record_id)) throw failure(409, '记录固定标识已存在，请重新创建草稿。');
+        const { canonical } = await import('./record-diff.mjs');
+        if (existing && canonical({ ...existing, record_id: recordIdentity(existing) }) !== canonical(record)) {
             throw failure(409, '这份草稿已保存，但内容不同。请重新打开新增窗口创建另一条记录。');
         }
         const diaryDir = await checkedDirectory(root, ['data', 'travel-diary', record.date.slice(0, 4)], true);
@@ -652,7 +656,8 @@ async function updateRecord(root, payload) {
             'locality_type', 'trip_id', 'desc_md', 'photo_folder', 'photos', 'video_folder', 'videos'
         ]);
         const preserved = Object.fromEntries(Object.entries(existing).filter(([key]) => !recordFields.has(key)));
-        const updatedRecord = { ...preserved, ...record };
+        const { recordIdentity } = await import('./record-identity.mjs');
+        const updatedRecord = { ...preserved, ...record, record_id: recordIdentity(existing) };
         oldDiaryFile = await resolveMarkdownFile(root, payload.originalDescMd);
         newDiaryFile = await resolveMarkdownFile(root, record.desc_md, true);
         await checkedFile(oldDiaryFile);
@@ -1073,12 +1078,12 @@ function createRecordApi(root, options = {}) {
         }
         if (requestPath === '/api/travel-records' && req.method === 'GET') {
             if (!session) {
-                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, code: 'AUTH_REQUIRED' });
+                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, recordManagement: true, code: 'AUTH_REQUIRED' });
                 return;
             }
             send(200, {
                 service: 'travel-diary-writer-v1', authenticated: true, token: session.token,
-                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true
+                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, recordManagement: true
             });
             return;
         }
@@ -1094,6 +1099,33 @@ function createRecordApi(root, options = {}) {
             }
             let importAttemptReserved = false;
             try {
+                const mode = requestUrl.searchParams.get('mode');
+                if (req.method === 'GET' && ['inventory', 'media-health'].includes(mode)) {
+                    const release = await acquireDataLock(root);
+                    try {
+                        if (mode === 'media-health') send(200, await require('./media-health.js').scanMedia(root));
+                        else {
+                            const { inventory, readBackupState } = require('./record-inventory.js');
+                            send(200, { ...await inventory(root), backup: await readBackupState(root) });
+                        }
+                    } finally { await release(); }
+                    return;
+                }
+                if (req.method === 'POST' && ['media-health', 'backup-complete'].includes(mode)) {
+                    if (!hasMediaType(req, 'application/json')) throw failure(415, '此操作必须使用 application/json。');
+                    const payload = await readJsonBody(req, 4 * 1024 * 1024);
+                    if (mode === 'media-health') send(200, await require('./media-health.js').manageMedia(root, payload));
+                    else {
+                        const receipt = session.backupReceipts?.get(payload?.receipt);
+                        if (!receipt?.complete) throw failure(409, '备份尚未传输完成，未更新备份状态。');
+                        const release = await acquireDataLock(root);
+                        try { await require('./record-inventory.js').rememberBackup(root, receipt.snapshot); }
+                        finally { await release(); }
+                        session.backupReceipts.delete(payload.receipt);
+                        send(200, { remembered: true });
+                    }
+                    return;
+                }
                 if (req.method === 'POST' && requestUrl.searchParams.get('mode') === 'select') {
                     if (!hasMediaType(req, 'application/json')) throw failure(415, '记录选择必须使用 application/json。');
                     const payload = await readJsonBody(req, 4 * 1024 * 1024);
@@ -1114,16 +1146,26 @@ function createRecordApi(root, options = {}) {
                     if (paths === undefined) throw failure(400, '记录选择已失效，请重新选择后导出。');
                     const archive = await exportDataArchive(root, paths);
                     try {
+                        session.backupReceipts ||= new Map();
+                        const requestedReceipt = requestUrl.searchParams.get('backupReceipt');
+                        const receipt = session.backupReceipts.has(requestedReceipt) ? requestedReceipt : randomBytes(16).toString('hex');
+                        if (session.backupReceipts.size >= 8 && !session.backupReceipts.has(receipt)) session.backupReceipts.delete(session.backupReceipts.keys().next().value);
+                        const receiptState = { snapshot: archive.snapshot, complete: false };
+                        if (req.method !== 'HEAD') session.backupReceipts.set(receipt, receiptState);
                         const today = new Date().toISOString().slice(0, 10);
                         res.writeHead(200, {
                             'Content-Type': 'application/zip',
                             'Content-Length': archive.size,
                             'Content-Disposition': `attachment; filename="travel-diary-${paths ? 'records' : 'data'}-${today}.zip"`,
                             'Cache-Control': 'no-store',
-                            'X-Content-Type-Options': 'nosniff'
+                            'X-Content-Type-Options': 'nosniff',
+                            'X-Travel-Backup-Receipt': receipt
                         });
                         if (req.method === 'HEAD') res.end();
-                        else await pipeline(Readable.from(archive.stream), res);
+                        else {
+                            await pipeline(Readable.from(archive.stream), res);
+                            receiptState.complete = true;
+                        }
                     } finally { await archive.release(); }
                     return;
                 }
