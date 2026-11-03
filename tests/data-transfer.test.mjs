@@ -253,7 +253,7 @@ test('清空全部数据使用认证令牌并在服务端成功后刷新页面�
     assert.equal(output.textContent, '');
 });
 
-test('新备份先确认覆盖风险，再验证当前密码、核对文件和验证备份密码；错误可重试，取消后可重新导入', async t => {
+test('完整导入仅在备份密码不同时追加询问，密码错误不上传；可重试、取消和重新导入', async t => {
     const nodes = [];
     const output = { textContent: '', focus() {} };
     function node() {
@@ -284,7 +284,15 @@ test('新备份先确认覆盖风险，再验证当前密码、核对文件和�
     let probes = 0;
     let selections = 0;
     let refreshed = 0;
-    globalThis.fetch = async (_, options) => {
+    let backupPassword = '590247';
+    globalThis.fetch = async (url, options) => {
+        if (String(url).includes('mode=verify-backup')) {
+            assert.equal(options.headers['X-Travel-Current-Password'], AUTH_PASSWORD);
+            assert.equal(JSON.parse(options.body).auth.algorithm, 'scrypt');
+            const valid = options.headers['X-Travel-Backup-Password'] === backupPassword;
+            return { ok: valid, status: valid ? 200 : 403, json: async () => valid
+                ? { verified: true } : { error: '备份密码不正确。', code: 'BACKUP_PASSWORD_INVALID' } };
+        }
         if (options?.headers?.['Content-Type'] !== 'application/zip') {
             probes += 1;
             return { ok: true, json: async () => ({ service: 'travel-diary-writer-v1', authenticated: true, token: 'test', methods: ['POST', 'PUT', 'DELETE'] }) };
@@ -293,7 +301,7 @@ test('新备份先确认覆盖风险，再验证当前密码、核对文件和�
         const activeProgress = nodes.filter(item => item.className?.includes('operation-progress') && !item.removed);
         assert.equal(activeProgress.length, 1, '上传开始后才显示唯一进度');
         assert.equal(options.headers['X-Travel-Current-Password'], AUTH_PASSWORD);
-        const valid = options.headers['X-Travel-Backup-Password'] === '590247';
+        const valid = options.headers['X-Travel-Backup-Password'] === backupPassword;
         return { ok: valid, json: async () => valid ? { imported: true, authPreserved: false } : { error: '备份密码不正确。' } };
     };
     const transfer = createDataTransfer(async () => { refreshed += 1; });
@@ -358,10 +366,19 @@ test('新备份先确认覆盖风险，再验证当前密码、核对文件和�
     await waitForDialog(backupGate);
     backupGate.events.cancel({ preventDefault() {} });
     await second.pending;
-    assert.equal(uploads, 2);
+    assert.equal(uploads, 1);
     assert.equal(output.textContent, '备份导入已取消。');
     const third = await begin();
     confirmation.events.cancel({ preventDefault() {} });
     await third.pending;
+    assert.equal(uploads, 1);
+
+    nodes.filter(item => item.className?.includes('operation-progress')).forEach(item => item.remove());
+    backupPassword = AUTH_PASSWORD;
+    const same = await begin();
+    confirmation.events.click({ target: { closest: selector => selector === '[data-import-confirm]' } });
+    await same.pending;
+    assert.equal(backupGate.open, false, '同密码不弹出第二个密码窗口');
     assert.equal(uploads, 2);
+    assert.equal(refreshed, 2);
 });

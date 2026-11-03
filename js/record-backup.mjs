@@ -3,6 +3,10 @@ import { readSourceText, sourceOf } from './zip-stream.mjs';
 export const RECORD_BACKUP_PATH = 'data/record-backup.json';
 export const RECORD_BACKUP_FORMAT = 'travel-diary-records-v1';
 
+export function sortBackupRecords(records) {
+    return [...records].sort((left, right) => String(right.date || '').localeCompare(String(left.date || '')));
+}
+
 export function recordFilePaths(records) {
     return new Set(records.flatMap(record => [record.desc_md,
         ...(record.photos || []).map(name => `${record.photo_folder}/${name}`),
@@ -17,7 +21,7 @@ export function selectBackupRecords(records, paths) {
     const selected = new Set(paths);
     const result = records.filter(record => selected.has(record.desc_md));
     if (result.length !== paths.length) throw new Error('所选记录已变化或不存在，请重新选择。');
-    return result;
+    return sortBackupRecords(result);
 }
 
 export async function readBackupRecords(entries) {

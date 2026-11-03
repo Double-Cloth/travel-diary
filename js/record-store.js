@@ -6,7 +6,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const { randomBytes, timingSafeEqual } = require('crypto');
 const { acquireDataLock, clearTravelData, exportDataArchive, importDataArchive } = require('./data-archive.js');
-const { initializeAuthConfig, readAuthConfig, replaceAuthConfig, verifyPassword } = require('./auth.js');
+const { initializeAuthConfig, readAuthConfig, replaceAuthConfig, validateAuthConfig, verifyPassword } = require('./auth.js');
 
 const LOGIN_FAILURE_WINDOW = 15 * 60 * 1000;
 const MAXIMUM_LOGIN_FAILURES = 5;
@@ -1127,9 +1127,13 @@ function createRecordApi(root, options = {}) {
                     } finally { await archive.release(); }
                     return;
                 }
-                if (req.method === 'POST' && hasMediaType(req, 'application/zip')) {
+                const passwordCheck = requestUrl.searchParams.get('mode') === 'verify-backup';
+                if (req.method === 'POST' && passwordCheck && !hasMediaType(req, 'application/json')) {
+                    throw failure(415, '备份密码预校验必须使用 application/json。');
+                }
+                if (req.method === 'POST' && (passwordCheck || hasMediaType(req, 'application/zip'))) {
                     const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs?v=20261009-stream-files-v2');
-                    declaredBodyLength(req, MAXIMUM_ARCHIVE_BYTES);
+                    declaredBodyLength(req, passwordCheck ? MAXIMUM_LOGIN_BYTES : MAXIMUM_ARCHIVE_BYTES);
                     // 导入失败独立限速，避免重新登录清除备份密码的失败计数。
                     const state = failureState('data-import');
                     if (state.count + state.active >= MAXIMUM_LOGIN_FAILURES) {
@@ -1141,6 +1145,21 @@ function createRecordApi(root, options = {}) {
                     importAttemptReserved = true;
                     if (!await verifyPassword(authConfig, req.headers['x-travel-current-password'])) {
                         throw failure(403, '当前密码不正确，请重新开始导入并验证当前密码。', 'CURRENT_PASSWORD_INVALID');
+                    }
+                    if (passwordCheck) {
+                        const payload = await readJsonBody(req, MAXIMUM_LOGIN_BYTES);
+                        let backupConfig;
+                        try { backupConfig = validateAuthConfig(payload?.auth, { requireProduction: writeMode === 'remote' }); }
+                        catch (error) { throw failure(400, '备份中的认证配置无效。', error.code); }
+                        if (!await verifyPassword(backupConfig, req.headers['x-travel-backup-password'])) {
+                            throw failure(403, '备份密码与当前密码不同，请输入导出这份备份时使用的访问密码。', 'BACKUP_PASSWORD_INVALID');
+                        }
+                        await verifyUploadSession(req, host);
+                        // 预校验的配置由客户端提供，成功不能清除真正导入的失败计数。
+                        finishLoginAttempt('data-import', 'error');
+                        importAttemptReserved = false;
+                        send(200, { verified: true });
+                        return;
                     }
                     const archive = await receiveArchive(root, req, MAXIMUM_ARCHIVE_BYTES);
                     let result;

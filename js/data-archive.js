@@ -86,20 +86,6 @@ async function exportDataArchive(root, selectedPaths = null) {
         if (stat.isSymbolicLink() || !stat.isDirectory()) throw failure(403, 'data 必须是项目内的普通目录。');
         let entries = await collectFiles(dataDir);
         if (!entries.length) throw failure(400, 'data 目录为空，无法导出。');
-        if (selectedPaths !== null) {
-            const { readBackupRecords, selectBackupRecords, recordBackupEntries } = await import('./record-backup.mjs');
-            try {
-                const records = selectBackupRecords(await readBackupRecords(entries), selectedPaths);
-                entries = recordBackupEntries(entries, records);
-                await validateImportedRecords(entries);
-            } catch (error) { throw failure(error.status || 400, error.message); }
-            const { createZipStream, zipStreamSize } = await import('./zip-stream.mjs');
-            const size = zipStreamSize(entries);
-            const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs');
-            if (size > MAXIMUM_ARCHIVE_BYTES) throw failure(413, '部分记录备份不能超过 100 GiB。');
-            handedOff = true;
-            return { stream: createZipStream(entries), size, release };
-        }
         const secretsDir = path.join(root, '.secrets');
         await fs.mkdir(secretsDir, { recursive: true });
         const secretsDirStat = await fs.lstat(secretsDir);
@@ -123,10 +109,18 @@ async function exportDataArchive(root, selectedPaths = null) {
             throw failure(503, '认证配置无效，请先运行 npm run auth:set 创建新的访问密码。', error.code);
         }
         entries.push({ name: AUTH_RELATIVE_PATH, data: authData });
+        if (selectedPaths !== null) {
+            const { readBackupRecords, selectBackupRecords, recordBackupEntries } = await import('./record-backup.mjs');
+            try {
+                const records = selectBackupRecords(await readBackupRecords(entries), selectedPaths);
+                entries = recordBackupEntries(entries, records, { includeAuth: true });
+                await validateImportedRecords(entries);
+            } catch (error) { throw failure(error.status || 400, error.message); }
+        }
         const { createZipStream, zipStreamSize } = await import('./zip-stream.mjs');
         const size = zipStreamSize(entries);
         const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs?v=20261009-stream-files-v2');
-        if (size > MAXIMUM_ARCHIVE_BYTES) throw failure(413, '完整备份不能超过 100 GiB。');
+        if (size > MAXIMUM_ARCHIVE_BYTES) throw failure(413, '备份不能超过 100 GiB。');
         handedOff = true;
         return { stream: createZipStream(entries), size, release };
     } finally {

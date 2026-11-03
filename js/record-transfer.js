@@ -1,9 +1,10 @@
 import { escapeHtml } from './utils.js';
-import { createPasswordGate } from './record-password.js?v=20261103-record-backup-v1';
-import { detectWriterCapability } from './writer-capability.js?v=20261103-record-backup-v1';
+import { createPasswordGate } from './record-password.js?v=20261103-backup-auth-v2';
+import { detectWriterCapability } from './writer-capability.js?v=20261103-backup-auth-v2';
 import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261101-progress-timing-v1';
 import { readZipSource, createZipBlob } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries } from './record-backup.mjs';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=20261103-backup-auth-v2';
+import { verifyBackupPassword } from './backup-password.js?v=20261103-backup-auth-v2';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs';
 
 export function createRecordTransfer(onImported, getRecords) {
@@ -77,12 +78,12 @@ export function createRecordTransfer(onImported, getRecords) {
 
     function open(nextMode, nextRecords) {
         mode = nextMode;
-        records = nextRecords;
+        records = sortBackupRecords(nextRecords);
         selected.clear();
         dialog.querySelector('input[type="search"]').value = '';
         dialog.querySelector('#recordTransferTitle').textContent = mode === 'export' ? '导出部分记录' : '导入部分记录';
         dialog.querySelector('[data-record-transfer-note]').textContent = mode === 'export'
-            ? '勾选要备份的日记，包含正文及其引用的图片、视频。可搜索后全选筛选结果。'
+            ? '日记按日期由近到远排列。备份包含正文、图片和视频，导入时会验证导出时的访问密码。'
             : '勾选要合并的日记。同正文路径的记录将被更新，其余新增；未选记录、头像、署名和当前密码均保留。更新无法撤销，建议先备份。';
         dialog.querySelector('[data-record-transfer-submit]').textContent = mode === 'export' ? '导出所选记录' : '确认合并所选记录';
         error('');
@@ -117,7 +118,7 @@ export function createRecordTransfer(onImported, getRecords) {
         } catch (failure) { progress.fail(failure); throw failure; }
     }
 
-    async function upload(file, capability, currentPassword, backupPassword = '') {
+    async function upload(file, capability, currentPassword, backupPassword = currentPassword) {
         const progress = createOperationProgress('导入部分记录');
         try {
             const url = new URL('api/travel-data?mode=merge', window.location.href);
@@ -130,7 +131,7 @@ export function createRecordTransfer(onImported, getRecords) {
                 progress.phase('正在校验并合并所选记录…');
             });
             const result = await response.json();
-            if (!response.ok || !result.imported || !result.merged) throw new Error(result.error || '部分记录导入失败，请检查服务器版本。');
+            if (!response.ok || !result.imported || !result.merged) throw Object.assign(new Error(result.error || '部分记录导入失败，请检查服务器版本。'), { code: result.code });
             progress.phase('记录已合并，正在刷新页面…');
             let refreshFailed = false;
             try { await onImported(); } catch { refreshFailed = true; }
@@ -147,10 +148,34 @@ export function createRecordTransfer(onImported, getRecords) {
         }
     }
 
-    const requestBackupPassword = createPasswordGate(() => {}, {
-        title: '验证备份密码', description: '输入这份备份的访问密码。合并后保留当前访问密码。',
+    async function importRecords(context, capability, currentPassword, backupPassword = currentPassword) {
+        const chosen = selectBackupRecords(context.records, context.paths);
+        const progress = createOperationProgress('整理所选记录');
+        let file;
+        try {
+            file = await createZipBlob(recordBackupEntries(context.entries, chosen, { includeAuth: true }), (loaded, total) => {
+                progress.signal.throwIfAborted();
+                progress.update(loaded, total, '正在整理正文及媒体文件…');
+            });
+            progress.signal.throwIfAborted();
+            progress.remove();
+        } catch (failure) {
+            progress.fail(failure);
+            if (progress.signal.aborted) { status('已取消导入。'); return null; }
+            throw failure;
+        }
+        if (file.size > MAXIMUM_ARCHIVE_BYTES) throw new Error('所选记录 ZIP 不能超过 100 GiB。');
+        return upload(file, capability, currentPassword, backupPassword);
+    }
+
+    const requestBackupPassword = createPasswordGate((result, context) => context.resolve(result), {
+        title: '验证备份密码', description: '备份密码与当前密码不同。请输入备份的访问密码；合并后保留当前密码。',
         verifying: '正在验证备份并合并记录…',
-        verifyPassword: (password, context) => upload(context.file, context.capability, context.currentPassword, password)
+        verifyPassword: async (password, context) => {
+            await verifyBackupPassword(context.entries, context.capability, context.currentPassword, password);
+            return importRecords(context, context.capability, context.currentPassword, password);
+        },
+        onCancel: context => { status('已取消导入。'); context?.resolve(null); }
     });
     const authorize = createPasswordGate(async (capability, context, currentPassword) => {
         if (busy) return;
@@ -159,29 +184,20 @@ export function createRecordTransfer(onImported, getRecords) {
             capability = await requireService();
             if (context.mode === 'export') await exportRecords(context.paths);
             else {
-                const chosen = selectBackupRecords(context.records, context.paths);
-                const progress = createOperationProgress('整理所选记录');
-                let file;
                 try {
-                    file = await createZipBlob(recordBackupEntries(context.entries, chosen, { includeAuth: true }), (loaded, total) => {
-                        progress.signal.throwIfAborted();
-                        progress.update(loaded, total, '正在整理正文及媒体文件…');
-                    });
-                    progress.signal.throwIfAborted();
-                    progress.remove();
+                    await verifyBackupPassword(context.entries, capability, currentPassword);
                 } catch (failure) {
-                    progress.fail(failure);
-                    if (progress.signal.aborted) { status('已取消导入。'); return; }
-                    throw failure;
+                    if (failure.code !== 'BACKUP_PASSWORD_INVALID') throw failure;
+                    await new Promise((resolve, reject) => {
+                        void requestBackupPassword({ ...context, capability, currentPassword, resolve }).catch(reject);
+                    });
+                    return;
                 }
-                if (file.size > MAXIMUM_ARCHIVE_BYTES) throw new Error('所选记录 ZIP 不能超过 100 GiB。');
-                if (context.entries.some(entry => entry.name === '.secrets/auth.json')) {
-                    await requestBackupPassword({ file, capability, currentPassword });
-                } else await upload(file, capability, currentPassword);
+                await importRecords(context, capability, currentPassword);
             }
         } finally { busy = false; }
     }, {
-        title: '部分记录备份验证', description: '输入当前的 6 位数字密码后继续。',
+        title: '部分记录备份验证', description: '输入当前的 6 位数字密码；导入备份与当前密码相同时无需重复输入。',
         staticMessage: '当前站点为静态只读页面，不提供部分记录导入导出。'
     });
 

@@ -1257,12 +1257,11 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-file-actions button,
 .media-file-restore { display: grid; place-items: center; flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 8px 10px; border: 1px solid transparent; border-radius: 4px; color: var(--ink-soft); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }
 .media-file-actions svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
-.record-editor .media-file-drag { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 44px; min-height: 44px; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+.record-editor .media-file-drag { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-soft); background: transparent; font: inherit; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .record-editor .media-file-drag * { -webkit-user-select: none; user-select: none; pointer-events: none; }
 .record-editor [data-media-viewer-group] { position: relative; }
 .record-editor .has-media-group-drag { padding-right: 56px; }
-.record-editor [data-media-drag-group] { position: absolute; right: 0; width: 44px; flex-direction: column; padding: 12px 6px; border-color: var(--hairline); background: var(--paper-100); }
-.record-editor [data-media-drag-group] span { writing-mode: vertical-rl; font-size: 13px; }
+.record-editor [data-media-drag-group] { position: absolute; right: 0; width: 44px; }
 .record-editor .media-file-drag svg { flex-shrink: 0; width: 20px; height: 20px; fill: currentColor; stroke: none; }
 .record-editor .media-file-drag[hidden] { display: none; }
 .record-editor .media-file-drag:active:not(:disabled),
@@ -1297,13 +1296,17 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .record-transfer :focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
 .media-file-actions .media-file-remove { margin-left: 8px; color: var(--stamp); }
 .media-file-actions button:hover:not(:disabled),
+.record-editor .media-file-drag:hover:not(:disabled),
 .media-file-restore:hover:not(:disabled) { border-color: var(--hairline); background: var(--paper-50); }
 .media-file-actions button:active:not(:disabled),
+.record-editor .media-file-drag:active:not(:disabled),
 .media-file-restore:active:not(:disabled) { background: var(--paper-100); }
 .media-file-actions button:disabled,
+.record-editor .media-file-drag:disabled,
 .media-file-restore:disabled { opacity: 0.35; cursor: default; }
 .media-file-link:focus-visible,
 .media-file-actions button:focus-visible,
+.record-editor .media-file-drag:focus-visible,
 .media-file-restore:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
 .media-file-restore { color: var(--green); border-color: var(--hairline); }
 

@@ -5,14 +5,15 @@ import os from 'node:os';
 import path from 'node:path';
 import http from 'node:http';
 import { createRequire } from 'node:module';
-import { installAuth, AUTH_PASSWORD } from './helpers/auth.mjs';
+import { installAuth, AUTH_CONFIG, AUTH_PASSWORD, login } from './helpers/auth.mjs';
 import { listenOnFetchSafePort } from './helpers/http.mjs';
 import { readZipSource, createZipBlob } from '../js/zip-stream.mjs';
-import { recordBackupEntries, readBackupRecords, selectBackupRecords, RECORD_BACKUP_PATH } from '../js/record-backup.mjs';
+import { recordBackupEntries, readBackupRecords, selectBackupRecords, sortBackupRecords, RECORD_BACKUP_PATH } from '../js/record-backup.mjs';
 
 const require = createRequire(import.meta.url);
 const { exportDataArchive, importDataArchive } = require('../js/data-archive.js');
 const { createHandler } = require('../js/server.js');
+const { createAuthConfig } = require('../js/auth.js');
 const record = name => ({ date: '2026-11-03', country: '中国', country_code: 'CN', locality: name,
     desc_md: `data/travel-diary/2026/2026-11-03-${name}.md`, photo_folder: 'data/photos/trip', photos: ['lake.png'],
     video_folder: 'data/videos/trip', videos: ['walk.mp4'] });
@@ -56,17 +57,33 @@ async function selectedArchive(records, extra = []) {
     return new Uint8Array(await (await createZipBlob([...recordBackupEntries(entries, records), ...extra])).arrayBuffer());
 }
 
-test('部分导出仅包含勾选记录的索引、正文和去重媒体，拒绝过期及空选择', async t => {
+test('部分导出包含勾选记录、去重媒体和密码配置，拒绝过期及空选择', async t => {
     const root = await fixture(t);
     const bytes = await exported(root, [first.desc_md]);
     const entries = await readZipSource(bytes);
     assert.deepEqual(entries.map(entry => entry.name).sort(), [RECORD_BACKUP_PATH, 'data/travel_data.json', first.desc_md,
-        'data/photos/trip/lake.png', 'data/videos/trip/walk.mp4'].sort());
+        'data/photos/trip/lake.png', 'data/videos/trip/walk.mp4', '.secrets/auth.json'].sort());
     assert.deepEqual(await readBackupRecords(entries), [first]);
     const both = await readZipSource(await exported(root, [second.desc_md, first.desc_md]));
     assert.equal(both.filter(entry => entry.name === 'data/photos/trip/lake.png').length, 1);
     for (const paths of [[], [first.desc_md, first.desc_md], ['missing']]) await assert.rejects(exported(root, paths));
     await assert.rejects(importDataArchive(root, bytes), /导入部分记录/);
+    await assert.rejects(importDataArchive(root, bytes, { mergeRecords: true }), /备份密码不正确/);
+    const originalAuth = await fs.readFile(path.join(root, '.secrets/auth.json'));
+    const result = await importDataArchive(root, bytes, { mergeRecords: true, backupPassword: AUTH_PASSWORD });
+    assert.equal(result.authPreserved, true);
+    assert.deepEqual(await fs.readFile(path.join(root, '.secrets/auth.json')), originalAuth);
+});
+
+test('选择列表与导出索引按日期倒序排列，同日保持原顺序且不修改原始列表', async t => {
+    const older = { ...record('older'), date: '2025-01-02', desc_md: 'data/travel-diary/2025/2025-01-02-older.md' };
+    const records = [older, first, second];
+    assert.deepEqual(sortBackupRecords(records), [first, second, older]);
+    assert.deepEqual(records, [older, first, second]);
+    assert.deepEqual(sortBackupRecords([{ desc_md: 'missing' }, older]), [older, { desc_md: 'missing' }]);
+    const root = await fixture(t, records);
+    const entries = await readZipSource(await exported(root, records.map(item => item.desc_md)));
+    assert.deepEqual(await readBackupRecords(entries), [first, second, older]);
 });
 
 test('增量合并更新所选并新增记录，保留其他日记、个人资料、密码和未引用文件，重试不重复', async t => {
@@ -160,8 +177,66 @@ test('API 选择绑定当前会话，导入仍需令牌及当前密码，合并�
     assert.equal((await fetch(`${base}/api/travel-data?selection=${selection}`, { headers: other })).status, 400);
     const upload = extra => fetch(`${base}/api/travel-data?mode=merge`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/zip', ...extra }, body: archive });
     assert.equal((await upload({})).status, 403);
-    const response = await upload({ 'X-Travel-Current-Password': AUTH_PASSWORD });
+    assert.equal((await upload({ 'X-Travel-Current-Password': AUTH_PASSWORD })).status, 403);
+    const response = await upload({ 'X-Travel-Current-Password': AUTH_PASSWORD, 'X-Travel-Backup-Password': AUTH_PASSWORD });
     assert.equal(response.status, 200);
     assert.equal((await response.json()).merged, true);
     assert.equal((await (await fetch(`${base}/api/travel-records`, { headers })).json()).authenticated, true);
+});
+
+test('密码预校验要求会话、令牌及当前密码，不修改数据，正式导入仍独立验证备份密码', async t => {
+    const root = await fixture(t);
+    const server = http.createServer(createHandler(root));
+    const base = await listenOnFetchSafePort(server);
+    t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
+    const { cookie, token } = await login(base);
+    const headers = { Cookie: cookie, Origin: base, 'X-Travel-Token': token, 'Content-Type': 'application/json',
+        'X-Travel-Current-Password': AUTH_PASSWORD, 'X-Travel-Backup-Password': AUTH_PASSWORD };
+    const verify = (extra = {}, auth = AUTH_CONFIG) => fetch(`${base}/api/travel-data?mode=verify-backup`, {
+        method: 'POST', headers: { ...headers, ...extra }, body: JSON.stringify({ auth })
+    });
+    const before = await fs.readFile(path.join(root, 'data/travel_data.json'));
+    assert.equal((await verify({ Cookie: '' })).status, 401);
+    assert.equal((await verify({ 'X-Travel-Token': '' })).status, 403);
+    assert.equal((await verify({ 'X-Travel-Current-Password': '000000' })).status, 403);
+    assert.equal((await verify({}, { ...AUTH_CONFIG, cost: { N: 2 ** 22, r: 8, p: 1 } })).status, 400);
+    assert.deepEqual(await (await verify()).json(), { verified: true });
+    const differentConfig = await createAuthConfig('590247');
+    const mismatch = await verify({}, differentConfig);
+    assert.equal(mismatch.status, 403);
+    assert.equal((await mismatch.json()).code, 'BACKUP_PASSWORD_INVALID');
+    assert.equal((await verify({ 'X-Travel-Backup-Password': '590247' }, differentConfig)).status, 200);
+    assert.deepEqual(await fs.readFile(path.join(root, 'data/travel_data.json')), before);
+    const archive = await exported(root, [first.desc_md]);
+    const upload = backupPassword => fetch(`${base}/api/travel-data?mode=merge`, { method: 'POST', headers: {
+        ...headers, 'Content-Type': 'application/zip', 'X-Travel-Backup-Password': backupPassword
+    }, body: archive });
+    assert.equal((await upload('590247')).status, 403, '预校验成功不能代替 ZIP 内认证校验');
+    assert.deepEqual(await fs.readFile(path.join(root, 'data/travel_data.json')), before);
+    assert.equal((await upload(AUTH_PASSWORD)).status, 200);
+});
+
+test('预校验与正式导入共享失败限速，重新登录或提供自选正确配置不能重置计数', async t => {
+    const root = await fixture(t);
+    const server = http.createServer(createHandler(root));
+    const base = await listenOnFetchSafePort(server);
+    t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
+    let session = await login(base);
+    const verify = password => fetch(`${base}/api/travel-data?mode=verify-backup`, { method: 'POST', headers: {
+        Cookie: session.cookie, Origin: base, 'X-Travel-Token': session.token, 'Content-Type': 'application/json',
+        'X-Travel-Current-Password': AUTH_PASSWORD, 'X-Travel-Backup-Password': password
+    }, body: JSON.stringify({ auth: AUTH_CONFIG }) });
+    for (let attempt = 0; attempt < 5; attempt++) {
+        assert.equal((await verify(AUTH_PASSWORD)).status, 200);
+        assert.equal((await verify('000000')).status, 403);
+        session = await login(base);
+    }
+    const limited = await verify(AUTH_PASSWORD);
+    assert.equal(limited.status, 429);
+    assert.ok(Number(limited.headers.get('retry-after')) > 0);
+    const upload = await fetch(`${base}/api/travel-data?mode=merge`, { method: 'POST', headers: {
+        Cookie: session.cookie, Origin: base, 'X-Travel-Token': session.token, 'Content-Type': 'application/zip',
+        'X-Travel-Current-Password': AUTH_PASSWORD, 'X-Travel-Backup-Password': AUTH_PASSWORD
+    }, body: await exported(root, [first.desc_md]) });
+    assert.equal(upload.status, 429);
 });

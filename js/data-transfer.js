@@ -1,8 +1,9 @@
-import { createPasswordGate } from './record-password.js?v=20261103-record-backup-v1';
-import { detectWriterCapability } from './writer-capability.js?v=20261103-record-backup-v1';
+import { createPasswordGate } from './record-password.js?v=20261103-backup-auth-v2';
+import { detectWriterCapability } from './writer-capability.js?v=20261103-backup-auth-v2';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=20261103-record-backup-v1';
+import { createRecordTransfer } from './record-transfer.js?v=20261103-backup-auth-v2';
+import { verifyBackupPassword } from './backup-password.js?v=20261103-backup-auth-v2';
 import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261101-progress-timing-v1';
 
 function setStatus(message) {
@@ -157,9 +158,12 @@ export function createDataTransfer(onImported, getRecords = () => []) {
 
     const requestBackupAuthorization = createPasswordGate((result, context) => context.resolve(result), {
         title: '验证备份密码',
-        description: '输入备份的 6 位数字访问密码。验证成功后将覆盖当前数据，并恢复备份密码。',
+        description: '备份密码与当前密码不同。输入备份的 6 位数字访问密码，验证后恢复数据及备份密码。',
         verifying: '正在验证备份密码并导入，请勿关闭页面…',
-        verifyPassword: (password, context) => uploadArchive(context.file, context.token, context.currentPassword, password),
+        verifyPassword: async (password, context) => {
+            await verifyBackupPassword(context.entries, { token: context.token }, context.currentPassword, password);
+            return uploadArchive(context.file, context.token, context.currentPassword, password);
+        },
         onCancel: context => context?.resolve(null)
     });
 
@@ -216,14 +220,12 @@ export function createDataTransfer(onImported, getRecords = () => []) {
         dialog.querySelector('#dataImportConfirmTitle').textContent = file ? '核对所选备份' : '替换当前旅行数据？';
         dialog.querySelector('[data-import-file-summary]').hidden = !file;
         dialog.querySelector('[data-import-file-name]').textContent = file?.name || '';
-        dialog.querySelector('[data-import-confirm]').textContent = file
-            ? (hasBackupPassword ? '验证备份密码' : '确认导入')
-            : '继续验证';
+        dialog.querySelector('[data-import-confirm]').textContent = file ? '确认导入' : '继续验证';
         dialog.querySelector('#dataImportConfirmDescription').textContent = file
             ? (hasBackupPassword
-                ? '继续后还需验证备份密码，成功后访问密码也会恢复为备份密码。'
+                ? '将先用刚输入的当前密码验证备份，密码不同时才另行询问。导入后访问密码也会恢复为备份密码。'
                 : '备份不含认证配置，无法验证备份密码，导入后保留当前密码。')
-            : '导入会覆盖全部日记、照片、视频、头像和署名，无法撤销。建议先导出完整备份。继续后需验证当前密码并选择备份；备份含认证配置时还需验证备份密码，导入后访问密码会恢复为备份密码。';
+            : '导入会覆盖全部日记、照片、视频、头像和署名，无法撤销。建议先导出完整备份。继续后需验证当前密码并选择备份；密码相同时只输入一次，不同时另行验证备份密码，导入后访问密码会恢复为备份密码。';
         return new Promise(resolve => {
             confirmationResolver = resolve;
             dialog.showModal();
@@ -231,7 +233,7 @@ export function createDataTransfer(onImported, getRecords = () => []) {
         });
     }
 
-    async function uploadArchive(file, token, currentPassword, backupPassword = '') {
+    async function uploadArchive(file, token, currentPassword, backupPassword = currentPassword) {
         importUploadProgress?.remove();
         const progress = importUploadProgress = createOperationProgress('导入全部数据');
         const headers = {
@@ -253,7 +255,7 @@ export function createDataTransfer(onImported, getRecords = () => []) {
             let result;
             try { result = await response.json(); }
             catch { throw new Error('全部数据导入返回了无法识别的结果。'); }
-            if (!response.ok || !result.imported) throw new Error(result.error || '全部数据导入失败。');
+            if (!response.ok || !result.imported) throw Object.assign(new Error(result.error || '全部数据导入失败。'), { code: result.code });
             progress.complete('备份已校验并导入。');
             return result;
         } catch (error) {
@@ -316,11 +318,20 @@ export function createDataTransfer(onImported, getRecords = () => []) {
             const hasBackupPassword = entries.some(entry => entry.name.toLowerCase() === '.secrets/auth.json');
             if (!await confirmImport(file, hasBackupPassword)) return;
             const token = writerToken(capability);
-            const result = hasBackupPassword
-                ? await new Promise((resolve, reject) => {
-                    void requestBackupAuthorization({ file, token, currentPassword, resolve }).catch(reject);
-                })
-                : await uploadArchive(file, token, currentPassword);
+            let result;
+            let needsBackupPassword = false;
+            if (hasBackupPassword) {
+                try { await verifyBackupPassword(entries, { token }, currentPassword); }
+                catch (error) {
+                    if (error.code !== 'BACKUP_PASSWORD_INVALID') throw error;
+                    needsBackupPassword = true;
+                }
+            }
+            if (needsBackupPassword) {
+                result = await new Promise((resolve, reject) => {
+                    void requestBackupAuthorization({ file, entries, token, currentPassword, resolve }).catch(reject);
+                });
+            } else result = await uploadArchive(file, token, currentPassword);
             if (!result) { setStatus('备份导入已取消。'); return; }
             importUploadProgress?.remove();
             const refreshProgress = createOperationProgress('刷新旅行档案');

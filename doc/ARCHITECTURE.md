@@ -31,7 +31,7 @@
 | `record-password.js`、`writer-capability.js` | 同源能力探测、首次设密、登录与换密交互。 |
 | `record-delete-dialog.js`、`feedback-dialog.js`、`custom-select.js` | 删除确认、提示与原生选择框增强。 |
 | `profile-picture.js`、`profile-owner.js`、`profile-owner-dialog.js` | 头像处理、署名读取与资料编辑。 |
-| `data-transfer.js`、`record-transfer.js`、`record-backup.mjs` | 完整备份与清空交互、部分记录选择界面及前后端共用的记录备份封装。 |
+| `data-transfer.js`、`record-transfer.js`、`record-backup.mjs`、`backup-password.js` | 完整备份与清空交互、部分记录选择界面、前后端共用的记录备份封装及上传前密码预校验。 |
 | `operation-progress.js` | 共用进度提示、XHR 上传进度、流式下载与保存。 |
 | `server.js`、`record-store.js`、`auth.js`、`data-archive.js` | 静态服务、API、写入策略、认证、数据锁与恢复。 |
 | `scripts/` | 密码恢复、备份导出、调用本机浏览器批量生成媒体预览、字体生成、固定版本地点目录更新。 |
@@ -81,7 +81,7 @@ Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，不
 | `/api/travel-auth`、`/api/travel-auth/setup` | 登录、换密、首次本机设密。 |
 | `/api/travel-records` | 能力探测、创建、更新与删除。 |
 | `/api/travel-profile` | 头像与署名写入。 |
-| `/api/travel-data` | 完整备份导入导出与清空；`POST ?mode=select` 准备会话内部分导出选择，`GET ?selection=...` 下载，`POST ?mode=merge` 合并记录。 |
+| `/api/travel-data` | 完整备份导入导出与清空；`POST ?mode=select` 准备会话内部分导出选择，`GET ?selection=...` 下载，`POST ?mode=merge` 合并记录；`POST ?mode=verify-backup` 用不超过 4 KiB 的认证配置预校验当前和备份密码。 |
 
 前端通过同源相对 URL 探测能力。静态发布物的 `api/travel-records` 提供 `travel-diary-static-v1` 标记，只有明确标记才打开免密码只读编辑器；404、超时、403 和异常响应均中止操作。动态能力 GET 在未登录或会话失效时返回 `200`、`authenticated: false`、空 `methods` 和 `AUTH_REQUIRED`，不泄露 token；正常打开密码窗口不会产生 `401` 控制台报错，实际未授权写入仍返回 `401`。前端仍接受旧服务的 `401` 探测响应。
 
@@ -99,7 +99,9 @@ Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，不
 
 多个文件的操作不能保证断电时的跨文件事务。进程强制结束可能遗留上传临时文件、锁、正文或备份目录，恢复时须先停服务并成对核对数据和认证配置。保存成功但前端重读失败会单独提示，避免误认为没有写入。
 
-部分备份包含 `data/record-backup.json` 格式标识、筛选后的 `data/travel_data.json`、正文与去重媒体，不包含个人资料和认证配置。前端从完整备份导入时，使用 Blob 切片与分块 CRC 校验重新封装所选内容，保留认证配置用于备份密码验证。服务端仅在显式 `merge` 模式接受部分备份；按 `desc_md` 合并索引，仅安装所选记录引用的文件。未选记录共用的同路径媒体有不同内容时返回 409。合并结果与现有文件一起检查大小写及文件目录冲突，沿用数据锁和完整暂存目录切换事务，保留现有认证及会话。部分导出的选择保存在当前会话的有界 Map 中，最多保留最近 8 次，避免大量记录路径塞入 URL，并兼容大文件由浏览器原生下载接管。能力探测通过 `partialRecords` 声明支持，前端拒绝旧服务。
+部分备份包含 `data/record-backup.json` 格式标识、按日期倒序筛选的 `data/travel_data.json`、正文、去重媒体和 `.secrets/auth.json`，不包含个人资料。前端从完整或部分备份导入时，使用 Blob 切片与分块 CRC 校验重新封装所选内容，保留认证配置用于备份密码验证。完整和部分导入共用 `backup-password.js`：先验证当前密码，再通过有会话和令牌保护的预校验接口尝试同一密码，仅在 `BACKUP_PASSWORD_INVALID` 时追加询问备份密码；全部验证后才整理、上传大文件。预校验与正式导入共用独立失败限速，客户端提供的配置即使校验成功也不清除失败计数，正式导入仍验证 ZIP 内的认证配置，防止预校验成为绕过入口。旧备份不含认证配置时保留兼容行为。
+
+服务端仅在显式 `merge` 模式接受部分备份；按 `desc_md` 合并索引，仅安装所选记录引用的文件。未选记录共用的同路径媒体有不同内容时返回 409。合并结果与现有文件一起检查大小写及文件目录冲突，沿用数据锁和完整暂存目录切换事务，保留现有认证及会话。部分导出的选择保存在当前会话的有界 Map 中，最多保留最近 8 次，避免大量记录路径塞入 URL，并兼容大文件由浏览器原生下载接管。能力探测通过 `partialRecords` 声明支持，前端拒绝旧服务。
 
 ## 耗时操作进度
 

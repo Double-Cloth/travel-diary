@@ -12,7 +12,7 @@ import {
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=20261102-media-batch-v1';
 import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=20261102-media-batch-v1';
-import { detectWriterCapability } from './writer-capability.js?v=20261103-record-backup-v1';
+import { detectWriterCapability } from './writer-capability.js?v=20261103-backup-auth-v2';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
 import { confirmFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
@@ -373,7 +373,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <div data-media-viewer-group>
                                 <ul class="record-editor-existing-media media-file-list" data-editor-existing-media="photo" aria-label="图片文件操作"></ul>
                                 <ul class="record-editor-existing-media media-file-list" data-editor-existing-media="video" aria-label="视频文件操作"></ul>
-                                <button class="paper-button media-file-drag" type="button" data-media-drag-group hidden aria-label="拖动所选文件组" title="上下拖动所选文件；也可用方向键调整">${mediaDragIcon()}<span>拖动所选</span></button>
+                                <button class="media-file-drag" type="button" data-media-drag-group hidden aria-label="拖动所选文件组" title="上下拖动所选文件；也可用方向键调整">${mediaDragIcon()}</button>
                             </div>
                         </div>
                         <div class="record-editor-media-group record-editor-removed-group" data-editor-removed-group hidden>
@@ -628,7 +628,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         dialog.querySelectorAll('[data-media-drag]').forEach(handle => {
             handle.hidden = !groupDrag.hidden && selectedMedia.has(handle.closest('[data-media-key]').dataset.mediaKey);
         });
-        groupDrag.querySelector('span').textContent = `拖动 ${selectedMedia.size} 项`;
+        groupDrag.setAttribute('aria-label', `拖动所选 ${selectedMedia.size} 项排序`);
         updateMediaGroupSlider();
         dialog.querySelectorAll('[data-media-batch]').forEach(button => {
             const action = button.dataset.mediaBatch;
