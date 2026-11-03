@@ -1346,7 +1346,8 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .content-record-list strong { color: var(--ink); font-size: 15px; }
 .content-record-list small { color: var(--ink-soft); font-size: 12px; }
 .content-file-body > pre { max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 13px; padding: 12px; margin: 0; background: rgba(142, 102, 52, 0.06); }
-.recycle-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 20px; border-bottom: 1px solid var(--hairline); }
+.recycle-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 12px; margin-top: 20px; border-bottom: 1px solid var(--hairline); }
+.recycle-toolbar-actions { display: flex; flex-wrap: wrap; gap: 12px; margin-left: auto; }
 .recycle-toolbar p { margin: 8px 0; font-variant-numeric: tabular-nums; }
 .recycle-list { list-style: none; padding: 0; margin: 0; }
 .recycle-list > li { padding: 22px 0; border-bottom: 1px solid var(--hairline); overflow-wrap: anywhere; }

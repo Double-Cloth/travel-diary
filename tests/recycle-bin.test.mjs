@@ -250,6 +250,57 @@ test('旧版本恢复前保存当前文件，可连续撤回且不影响其他�
     assert.equal(await fs.readFile(path.join(root, other.desc_md), 'utf8'), '# 另一篇');
 });
 
+test('清空回收站删除所有类型项目，保留当前数据、密码及其他缓存，空站可重复清空', async t => {
+    const root = await fixture(t);
+    const current = await fs.readFile(path.join(root, 'data/travel_data.json'));
+    const auth = await fs.readFile(path.join(root, '.secrets/auth.json'));
+    await write(root, '.cache/backup-state.json', 'backup-state');
+    for (const kind of ['files', 'record', 'version', 'snapshot']) {
+        await captureRecycle(root, { kind, title: kind, records: kind === 'record' ? [note] : [], files: [{ path: note.desc_md }] });
+    }
+    const report = await readRecycleBin(root);
+    assert.equal(report.items.length, 4);
+    const cleared = await manageRecycleBin(root, { action: 'clear', revision: report.revision });
+    assert.deepEqual(cleared.items, []);
+    assert.equal(cleared.totalBytes, 0);
+    assert.deepEqual(await fs.readdir(path.join(root, '.cache/recycle-bin')), []);
+    assert.deepEqual(await fs.readFile(path.join(root, 'data/travel_data.json')), current);
+    assert.deepEqual(await fs.readFile(path.join(root, '.secrets/auth.json')), auth);
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 标题\n\n原正文');
+    assert.equal(await fs.readFile(path.join(root, 'data/photos/trip/shared.png'), 'utf8'), 'shared');
+    assert.equal(await fs.readFile(path.join(root, '.cache/backup-state.json'), 'utf8'), 'backup-state');
+    assert.deepEqual((await manageRecycleBin(root, { action: 'clear', revision: cleared.revision })).items, []);
+    await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
+});
+
+test('清空前校验全部依赖与版本，受保护项目或新增项目不会被误删', async t => {
+    const root = await fixture(t);
+    await captureRecycle(root, { title: '可删除', files: [{ path: note.desc_md }] });
+    const stale = (await readRecycleBin(root)).revision;
+    await captureRecycle(root, { title: '被引用', files: [{ path: 'data/photos/trip/unique.png' }] });
+    await assert.rejects(manageRecycleBin(root, { action: 'clear', revision: stale }), /已变化/);
+    await fs.unlink(path.join(root, 'data/photos/trip/unique.png'));
+    const report = await readRecycleBin(root);
+    await assert.rejects(manageRecycleBin(root, { action: 'clear', revision: report.revision }), /请先恢复/);
+    assert.equal((await readRecycleBin(root)).items.length, 2);
+    for (const item of report.items) for (const file of item.files) await fs.stat(path.join(root, '.cache/recycle-bin', item.id, file.path));
+    await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
+});
+
+test('清空 API 要求登录和写入令牌，成功返回空回收站', async t => {
+    const root = await fixture(t);
+    await captureRecycle(root, { title: '旧文件', files: [{ path: note.desc_md }] });
+    const { base, headers } = await api(t, root);
+    const endpoint = `${base}/api/travel-data?mode=recycle-bin`;
+    const body = JSON.stringify({ action: 'clear', revision: (await readRecycleBin(root)).revision });
+    assert.equal((await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })).status, 401);
+    assert.equal((await fetch(endpoint, { method: 'POST', headers: { ...headers, 'X-Travel-Token': '' }, body })).status, 403);
+    assert.equal((await readRecycleBin(root)).items.length, 1);
+    const response = await fetch(endpoint, { method: 'POST', headers, body });
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).items, []);
+});
+
 test('恢复冲突、过期版本及回收路径链接均被拒绝，不会覆盖站外文件', async t => {
     const root = await fixture(t);
     const id = await captureRecycle(root, { kind: 'record', title: '重复日记', records: [note], files: [{ path: note.desc_md }] });

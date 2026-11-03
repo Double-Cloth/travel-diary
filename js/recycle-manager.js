@@ -18,7 +18,7 @@ export function createRecycleManager(onRestored) {
     dialog.setAttribute('aria-labelledby', 'recycleManagerTitle');
     dialog.innerHTML = `<div class="record-transfer-card">
         <header class="media-manager-heading"><div><h2 id="recycleManagerTitle">回收站</h2><p>删除的日记、文件和替换前的数据都保留在这里。永久删除后才释放空间。</p></div><button class="paper-button" type="button" data-recycle-close>关闭</button></header>
-        <div class="recycle-toolbar"><p data-recycle-status role="status" aria-live="polite"></p><button class="media-text-button" type="button" data-recycle-refresh>刷新</button></div>
+        <div class="recycle-toolbar"><p data-recycle-status role="status" aria-live="polite"></p><div class="recycle-toolbar-actions"><button class="media-text-button" type="button" data-recycle-refresh>刷新</button><button class="media-text-button recycle-purge" type="button" data-recycle-clear disabled>清空回收站</button></div></div>
         <ul class="recycle-list" data-recycle-list></ul><p data-recycle-error role="alert"></p></div>`;
     document.body.append(dialog);
     let report;
@@ -85,6 +85,7 @@ export function createRecycleManager(onRestored) {
         } finally {
             busy = false;
             dialog.querySelectorAll('button').forEach(button => { button.disabled = false; });
+            dialog.querySelector('[data-recycle-clear]').disabled = !report?.items.length;
             if (payload) dialog.querySelector('[data-recycle-refresh]').focus();
         }
     }
@@ -101,6 +102,16 @@ export function createRecycleManager(onRestored) {
         if (busy) return;
         if (event.target.closest('[data-recycle-close]')) { close(); return; }
         if (event.target.closest('[data-recycle-refresh]')) { await request(); return; }
+        if (event.target.closest('[data-recycle-clear]')) {
+            if (!report?.items.length) return;
+            busy = true;
+            try {
+                if (await confirmFeedback(`将永久删除全部 ${report.items.length} 个回收项目，释放 ${sizeLabel(report.totalBytes)} 空间。清空后无法恢复。`, { title: '清空回收站？', confirmLabel: '永久清空' })) {
+                    await request({ action: 'clear' });
+                }
+            } finally { busy = false; }
+            return;
+        }
         const button = event.target.closest('[data-recycle-restore], [data-recycle-purge]');
         if (!button || !report) return;
         const purge = Boolean(button.dataset.recyclePurge);

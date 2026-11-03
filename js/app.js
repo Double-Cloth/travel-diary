@@ -1,4 +1,4 @@
-import { createRecycleManager } from './recycle-manager.js?v=20261103-content-preview-v1';
+import { createRecycleManager } from './recycle-manager.js?v=20261103-recycle-clear-v1';
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261103-record-management-v1';
 import { createRecordEditor } from './record-editor.js?v=20261103-recycle-bin-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261103-record-management-v1';

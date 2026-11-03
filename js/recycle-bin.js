@@ -266,21 +266,28 @@ async function manageRecycleBin(root, payload) {
     try {
         const report = await readRecycleBin(root);
         if (payload?.revision !== report.revision) throw failure('回收站已变化，请刷新后重试。');
+        if (payload.action === 'clear' || payload.action === 'purge') {
+            const items = payload.action === 'clear' ? report.items : report.items.filter(item => item.id === payload.id);
+            const { recordFilePaths } = await import('./record-backup.mjs');
+            const referenced = recordFilePaths(await readRecords(root));
+            // 先检查全部项目，避免清空到一半才发现仍被日记依赖的文件。
+            for (const item of items) for (const file of item.files) {
+                if (!referenced.has(file.path)) continue;
+                try { await ordinaryPath(root, file.path); }
+                catch (error) { if (error.code === 'ENOENT') throw failure('回收站文件现在被记录引用，请先恢复，未永久删除。'); throw error; }
+            }
+            if (payload.action === 'clear') {
+                for (const item of items) await discardRecycle(root, item.id);
+                return readRecycleBin(root);
+            }
+        }
         const item = report.items.find(item => item.id === payload.id);
         if (!item) throw failure('这个回收项目已不存在，请刷新。');
         if (payload.action === 'restore') {
             if (item.kind === 'snapshot') await restoreSnapshot(root, item);
             else if (item.kind === 'version') await restoreVersion(root, item);
             else await restoreFiles(root, item, payload.targetDescMd);
-        } else if (payload.action === 'purge') {
-            const { recordFilePaths } = await import('./record-backup.mjs');
-            const referenced = recordFilePaths(await readRecords(root));
-            for (const file of item.files) {
-                if (!referenced.has(file.path)) continue;
-                try { await ordinaryPath(root, file.path); }
-                catch (error) { if (error.code === 'ENOENT') throw failure('回收站文件现在被记录引用，请先恢复，未永久删除。'); throw error; }
-            }
-        } else throw failure('不支持这项回收站操作。');
+        } else if (payload.action !== 'purge') throw failure('不支持这项回收站操作。');
         await discardRecycle(root, item.id);
         return readRecycleBin(root);
     } finally { await release(); }
