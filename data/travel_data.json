@@ -11,7 +11,8 @@
     "photo_folder": "data/photos/yuxi",
     "photos": [
       "img_20240708_122737.jpg"
-    ]
+    ],
+    "record_id": "legacy:data/travel-diary/2024/2024-07-08-yuxi.md"
   },
   {
     "date": "2024-07-28",
@@ -24,7 +25,8 @@
     "desc_md": "data/travel-diary/2024/2024-07-28-chuxiong.md",
     "photo_folder": "data/photos/chuxiong",
     "photos": [],
-    "video_folder": "data/videos/chuxiong"
+    "video_folder": "data/videos/chuxiong",
+    "record_id": "legacy:data/travel-diary/2024/2024-07-28-chuxiong.md"
   },
   {
     "date": "2024-08-12",
@@ -37,7 +39,8 @@
     "desc_md": "data/travel-diary/2024/2024-08-12-shanghai.md",
     "photo_folder": "data/photos/shanghai",
     "photos": [],
-    "video_folder": "data/videos/shanghai"
+    "video_folder": "data/videos/shanghai",
+    "record_id": "legacy:data/travel-diary/2024/2024-08-12-shanghai.md"
   },
   {
     "date": "2024-10-04",
@@ -49,7 +52,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2024/2024-10-04-kunming.md",
     "photo_folder": "data/photos/kunming",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2024/2024-10-04-kunming.md"
   },
   {
     "date": "2024-10-18",
@@ -61,7 +65,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2024/2024-10-18-beijing.md",
     "photo_folder": "data/photos/beijing",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2024/2024-10-18-beijing.md"
   },
   {
     "date": "2024-11-02",
@@ -74,7 +79,8 @@
     "trip_id": "2024-11-jiangsu",
     "desc_md": "data/travel-diary/2024/2024-11-02-nanjing.md",
     "photo_folder": "data/photos/nanjing",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2024/2024-11-02-nanjing.md"
   },
   {
     "date": "2024-11-03",
@@ -87,7 +93,8 @@
     "trip_id": "2024-11-jiangsu",
     "desc_md": "data/travel-diary/2024/2024-11-03-suzhou.md",
     "photo_folder": "data/photos/suzhou",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2024/2024-11-03-suzhou.md"
   },
   {
     "date": "2025-01-31",
@@ -99,7 +106,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2025/2025-01-31-chengdu.md",
     "photo_folder": "data/photos/chengdu",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-01-31-chengdu.md"
   },
   {
     "date": "2025-04-03",
@@ -111,7 +119,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2025/2025-04-03-nanchang.md",
     "photo_folder": "data/photos/nanchang",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-04-03-nanchang.md"
   },
   {
     "date": "2025-05-02",
@@ -123,7 +132,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2025/2025-05-02-luoyang.md",
     "photo_folder": "data/photos/luoyang",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-05-02-luoyang.md"
   },
   {
     "date": "2025-07-06",
@@ -135,7 +145,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2025/2025-07-06-zhangjiajie.md",
     "photo_folder": "data/photos/zhangjiajie",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-07-06-zhangjiajie.md"
   },
   {
     "date": "2025-07-11",
@@ -147,7 +158,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2025/2025-07-11-changsha.md",
     "photo_folder": "data/photos/changsha",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-07-11-changsha.md"
   },
   {
     "date": "2025-07-17",
@@ -159,7 +171,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2025/2025-07-17-hangzhou.md",
     "photo_folder": "data/photos/hangzhou",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-07-17-hangzhou.md"
   },
   {
     "date": "2025-08-08",
@@ -171,7 +184,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2025/2025-08-08-dali.md",
     "photo_folder": "data/photos/dali",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-08-08-dali.md"
   },
   {
     "date": "2025-08-27",
@@ -184,7 +198,8 @@
     "trip_id": "2025-08-central-yunnan",
     "desc_md": "data/travel-diary/2025/2025-08-27-yuxi.md",
     "photo_folder": "data/photos/yuxi",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-08-27-yuxi.md"
   },
   {
     "date": "2025-08-29",
@@ -197,7 +212,8 @@
     "trip_id": "2025-08-central-yunnan",
     "desc_md": "data/travel-diary/2025/2025-08-29-jianshui.md",
     "photo_folder": "data/photos/jianshui",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-08-29-jianshui.md"
   },
   {
     "date": "2025-09-10",
@@ -209,7 +225,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2025/2025-09-10-pingxiang.md",
     "photo_folder": "data/photos/pingxiang",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-09-10-pingxiang.md"
   },
   {
     "date": "2025-09-30",
@@ -221,7 +238,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2025/2025-09-30-beijing.md",
     "photo_folder": "data/photos/beijing",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-09-30-beijing.md"
   },
   {
     "date": "2025-10-04",
@@ -234,7 +252,8 @@
     "trip_id": "2025-10-inner-mongolia",
     "desc_md": "data/travel-diary/2025/2025-10-04-baotou.md",
     "photo_folder": "data/photos/baotou",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-10-04-baotou.md"
   },
   {
     "date": "2025-10-05",
@@ -247,7 +266,8 @@
     "trip_id": "2025-10-inner-mongolia",
     "desc_md": "data/travel-diary/2025/2025-10-05-hohhot.md",
     "photo_folder": "data/photos/hohhot",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-10-05-hohhot.md"
   },
   {
     "date": "2025-10-06",
@@ -260,7 +280,8 @@
     "trip_id": "2025-10-inner-mongolia",
     "desc_md": "data/travel-diary/2025/2025-10-06-ulanchab.md",
     "photo_folder": "data/photos/ulanchab",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-10-06-ulanchab.md"
   },
   {
     "date": "2025-11-01",
@@ -272,7 +293,8 @@
     "locality_type": "山脉",
     "desc_md": "data/travel-diary/2025/2025-11-01-huangshan.md",
     "photo_folder": "data/photos/huangshan",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-11-01-huangshan.md"
   },
   {
     "date": "2025-11-07",
@@ -284,7 +306,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2025/2025-11-07-shanghai.md",
     "photo_folder": "data/photos/shanghai",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2025/2025-11-07-shanghai.md"
   },
   {
     "date": "2026-02-18",
@@ -296,7 +319,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2026/2026-02-18-wuhan.md",
     "photo_folder": "data/photos/wuhan",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-02-18-wuhan.md"
   },
   {
     "date": "2026-03-14",
@@ -309,7 +333,8 @@
     "trip_id": "2026-03-zhejiang",
     "desc_md": "data/travel-diary/2026/2026-03-14-wenzhou.md",
     "photo_folder": "data/photos/wenzhou",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-03-14-wenzhou.md"
   },
   {
     "date": "2026-03-15",
@@ -322,7 +347,8 @@
     "trip_id": "2026-03-zhejiang",
     "desc_md": "data/travel-diary/2026/2026-03-15-ningbo.md",
     "photo_folder": "data/photos/ningbo",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-03-15-ningbo.md"
   },
   {
     "date": "2026-04-04",
@@ -334,7 +360,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2026/2026-04-04-datong.md",
     "photo_folder": "data/photos/datong",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-04-04-datong.md"
   },
   {
     "date": "2026-05-01",
@@ -347,7 +374,8 @@
     "trip_id": "2026-05-zhengzhou-songshan",
     "desc_md": "data/travel-diary/2026/2026-05-01-zhengzhou.md",
     "photo_folder": "data/photos/zhengzhou",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-05-01-zhengzhou.md"
   },
   {
     "date": "2026-05-03",
@@ -360,7 +388,8 @@
     "trip_id": "2026-05-zhengzhou-songshan",
     "desc_md": "data/travel-diary/2026/2026-05-03-songshan.md",
     "photo_folder": "data/photos/songshan",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-05-03-songshan.md"
   },
   {
     "date": "2026-05-22",
@@ -373,7 +402,8 @@
     "trip_id": "2026-05-xian-huashan",
     "desc_md": "data/travel-diary/2026/2026-05-22-xian.md",
     "photo_folder": "data/photos/xian",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-05-22-xian.md"
   },
   {
     "date": "2026-05-23",
@@ -386,7 +416,8 @@
     "trip_id": "2026-05-xian-huashan",
     "desc_md": "data/travel-diary/2026/2026-05-23-huashan.md",
     "photo_folder": "data/photos/huashan",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-05-23-huashan.md"
   },
   {
     "date": "2026-06-21",
@@ -398,7 +429,8 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2026/2026-06-21-suzhou.md",
     "photo_folder": "data/photos/suzhou",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-06-21-suzhou.md"
   },
   {
     "date": "2026-07-02",
@@ -411,7 +443,8 @@
     "trip_id": "2026-07-jinan-taishan",
     "desc_md": "data/travel-diary/2026/2026-07-02-jinan.md",
     "photo_folder": "data/photos/jinan",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-07-02-jinan.md"
   },
   {
     "date": "2026-07-04",
@@ -424,7 +457,8 @@
     "trip_id": "2026-07-jinan-taishan",
     "desc_md": "data/travel-diary/2026/2026-07-04-taishan.md",
     "photo_folder": "data/photos/taishan",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-07-04-taishan.md"
   },
   {
     "date": "2026-07-21",
@@ -436,7 +470,8 @@
     "trip_id": "2026-07-malaysia",
     "desc_md": "data/travel-diary/2026/2026-07-21-kuala-lumpur.md",
     "photo_folder": "data/photos/kuala-lumpur",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-07-21-kuala-lumpur.md"
   },
   {
     "date": "2026-07-22",
@@ -448,7 +483,8 @@
     "trip_id": "2026-07-malaysia",
     "desc_md": "data/travel-diary/2026/2026-07-22-melaka.md",
     "photo_folder": "data/photos/melaka",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-07-22-melaka.md"
   },
   {
     "date": "2026-07-30",
@@ -461,7 +497,8 @@
     "trip_id": "2026-07-jingdezhen-jiujiang",
     "desc_md": "data/travel-diary/2026/2026-07-30-jingdezhen.md",
     "photo_folder": "data/photos/jingdezhen",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-07-30-jingdezhen.md"
   },
   {
     "date": "2026-07-31",
@@ -474,7 +511,8 @@
     "trip_id": "2026-07-jingdezhen-jiujiang",
     "desc_md": "data/travel-diary/2026/2026-07-31-jiujiang.md",
     "photo_folder": "data/photos/jiujiang",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-07-31-jiujiang.md"
   },
   {
     "date": "2026-08-28",
@@ -487,7 +525,8 @@
     "trip_id": "2026-08-28-chongqing",
     "desc_md": "data/travel-diary/2026/2026-08-28-chongqing.md",
     "photo_folder": "data/photos/chongqing",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-08-28-chongqing.md"
   },
   {
     "date": "2026-09-07",
@@ -500,7 +539,8 @@
     "trip_id": "2026-09-07-hengyang",
     "desc_md": "data/travel-diary/2026/2026-09-07-hengyang.md",
     "photo_folder": "data/photos/hengyang",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-09-07-hengyang.md"
   },
   {
     "date": "2026-10-04",
@@ -513,7 +553,8 @@
     "trip_id": "2026-10-04-guoqing",
     "desc_md": "data/travel-diary/2026/2026-10-04-xinxiang.md",
     "photo_folder": "data/photos/xinxiang",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-10-04-xinxiang.md"
   },
   {
     "date": "2026-10-06",
@@ -526,7 +567,8 @@
     "trip_id": "2026-10-04-guoqing",
     "desc_md": "data/travel-diary/2026/2026-10-06-hangzhou.md",
     "photo_folder": "data/photos/hangzhou",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-10-06-hangzhou.md"
   },
   {
     "date": "2026-10-23",
@@ -539,7 +581,8 @@
     "trip_id": "2026-10-23-tengri",
     "desc_md": "data/travel-diary/2026/2026-10-23-yinchuan.md",
     "photo_folder": "data/photos/yinchuan",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-10-23-yinchuan.md"
   },
   {
     "date": "2026-10-25",
@@ -552,7 +595,8 @@
     "trip_id": "2026-10-23-tengri",
     "desc_md": "data/travel-diary/2026/2026-10-25-alashan.md",
     "photo_folder": "data/photos/alashan",
-    "photos": []
+    "photos": [],
+    "record_id": "legacy:data/travel-diary/2026/2026-10-25-alashan.md"
   },
   {
     "date": "2024-07-10",
@@ -576,7 +620,8 @@
       "mvimg_20240710_100832.jpg",
       "img_20240710_100419.jpg",
       "img_20240710_100442.jpg"
-    ]
+    ],
+    "record_id": "legacy:data/travel-diary/2024/2024-07-10-kunming.md"
   },
   {
     "date": "2024-07-18",
@@ -599,6 +644,7 @@
       "img_20240718_204759.jpg",
       "img_20240718_160051.jpg",
       "img_20240718_160109.jpg"
-    ]
+    ],
+    "record_id": "legacy:data/travel-diary/2024/2024-07-18-kunming.md"
   }
 ]

@@ -67,7 +67,7 @@ export function createRecordTransfer(onImported, getRecords) {
         dialog.querySelector('[data-record-transfer-list]').innerHTML = filtered.map(record => {
             const comparison = comparisons.get(record.desc_md);
             const unavailable = mode === 'import' && comparison?.status === 'conflict';
-            const labels = { added: '新增记录', same: '内容相同，可选择，导入时自动跳过', changed: '内容不同，勾选后采用备份', conflict: '路径冲突，无法导入' };
+            const labels = { added: '新增记录', same: '内容相同，导入时自动跳过', changed: '内容不同，勾选后采用备份', conflict: '路径冲突，无法导入' };
             return `<li><label><input type="checkbox" value="${escapeHtml(record.desc_md)}"${selected.has(record.desc_md) ? ' checked' : ''}${unavailable ? ' disabled' : ''}>
                 <span><strong>${escapeHtml(record.descTitle || comparison?.markdown?.match(/^#\s+(.+)$/m)?.[1] || record.locality || record.desc_md)}</strong>
                 <small>${escapeHtml([record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · '))}${mode === 'import' ? ` · ${labels[comparison?.status] || ''}` : ''}</small></span></label>
