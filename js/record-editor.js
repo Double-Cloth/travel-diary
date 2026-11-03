@@ -1,6 +1,6 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.12';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.12';
-import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.12';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.13';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.13';
+import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.13';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
     MAXIMUM_MEDIA_BATCH_BYTES,
@@ -8,17 +8,17 @@ import {
     MAXIMUM_VIDEO_FILE_BYTES,
     mediaBytes,
     readUploads
-} from './photo-uploads.mjs?v=2.1.12';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.12';
-import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.12';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.12';
-import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.12';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.12';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.12';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.12';
+} from './photo-uploads.mjs?v=2.1.13';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.13';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.13';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.13';
+import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.13';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.13';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.13';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.13';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
-import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.12';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.12';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.13';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.13';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -347,15 +347,17 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <div class="record-editor-media-heading">
                             <h3 id="${editorId('PhotosTitle')}"><span>03</span> 图片与视频</h3>
                             <span data-editor-media-count></span>
-                            <button class="paper-button" type="button" data-media-sort-time title="图片、视频分别按元数据时间从早到晚排序；没有时间的文件放在最后，按文件名排序">按拍摄时间排序</button>
                         </div>
                         <p class="record-editor-media-intro">点击缩略图或文件名预览，抓住六点手柄上下拖动排序。勾选多项可整组拖动或移除，更改保存后生效。</p>
-                        <div class="record-editor-upload-zone" data-editor-drop>
-                            <button class="paper-button" type="button" data-editor-upload>添加图片或视频</button>
-                            <p>或将文件拖到这里</p>
-                            <button type="button" class="record-editor-upload-help" data-editor-upload-help aria-expanded="false" aria-controls="${editorId('UploadLimits')}">支持格式与大小</button>
-                            <small id="${editorId('UploadLimits')}" class="record-editor-upload-limits" data-editor-upload-limits hidden>图片：JPEG / PNG / GIF / WebP，单张最大 ${MAXIMUM_IMAGE_FILE_BYTES / 1024 / 1024} MiB · 视频：MP4 / M4V / MOV / WebM / Ogg，单个最大 ${MAXIMUM_VIDEO_FILE_BYTES / 1024 / 1024} MiB · 本次新媒体合计最大 ${MAXIMUM_MEDIA_BATCH_BYTES / 1024 / 1024} MiB</small>
-                            <input type="file" data-editor-photos accept=".mp4,.m4v,.mov,.webm,.ogv,.ogg,image/jpeg,image/png,image/gif,image/webp,video/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
+                        <div class="record-editor-media-tools">
+                            <div class="record-editor-upload-zone" data-editor-drop>
+                                <button class="paper-button" type="button" data-editor-upload>添加图片或视频</button>
+                                <p>或将文件拖到这里</p>
+                                <button type="button" class="record-editor-upload-help" data-editor-upload-help aria-expanded="false" aria-controls="${editorId('UploadLimits')}">支持格式与大小</button>
+                                <small id="${editorId('UploadLimits')}" class="record-editor-upload-limits" data-editor-upload-limits hidden>图片：JPEG / PNG / GIF / WebP，单张最大 ${MAXIMUM_IMAGE_FILE_BYTES / 1024 / 1024} MiB · 视频：MP4 / M4V / MOV / WebM / Ogg，单个最大 ${MAXIMUM_VIDEO_FILE_BYTES / 1024 / 1024} MiB · 本次新媒体合计最大 ${MAXIMUM_MEDIA_BATCH_BYTES / 1024 / 1024} MiB</small>
+                                <input type="file" data-editor-photos accept=".mp4,.m4v,.mov,.webm,.ogv,.ogg,image/jpeg,image/png,image/gif,image/webp,video/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
+                            </div>
+                            <button class="paper-button" type="button" data-media-sort-time title="图片、视频分别按元数据时间从早到晚排序；没有时间的文件放在最后，按文件名排序">按拍摄时间排序</button>
                         </div>
                         <div data-editor-media-empty class="record-editor-media-empty">暂无图片或视频，可从上方添加。</div>
                         <div class="record-editor-media-batch" data-editor-media-batch role="group" aria-label="批量文件操作" hidden>

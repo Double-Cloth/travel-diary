@@ -1203,7 +1203,8 @@ dialog.record-editor.is-body-fullscreen { --editor-page-inset: 28px; inset: 0; w
 .record-editor-media-heading { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
 .record-editor-media-heading h3 { margin: 0; font-size: 19px; }
 .record-editor-media-heading > span { color: var(--ink-soft); font-size: 13px; font-variant-numeric: tabular-nums; }
-.record-editor-media-heading > button { width: auto; min-height: 44px; margin-left: auto; }
+.record-editor-media-tools { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px 16px; }
+.record-editor-media-tools > button { width: auto; min-height: 44px; }
 .record-editor-media-intro { margin: 8px 0 18px; color: var(--ink-soft); font-size: 13px; line-height: 1.7; }
 .record-editor label.record-editor-media-sync { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; }
 .record-editor .record-editor-media-sync input[type="checkbox"] { flex: 0 0 18px; width: 18px; height: 18px; min-height: 18px; margin: 0; padding: 0; accent-color: var(--stamp); }
@@ -1878,6 +1879,8 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
 }
 
 @media (max-width: 760px) {
+    .record-editor-media-tools { grid-template-columns: minmax(0, 1fr); }
+    .record-editor-media-tools > button { width: 100%; }
     .record-editor-media-batch { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
     .record-editor-media-selection { flex-wrap: nowrap; gap: 8px; }
     .record-editor-media-selection > span { order: 1; margin-left: auto; white-space: nowrap; }
