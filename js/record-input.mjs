@@ -1,6 +1,6 @@
-import { isValidDateString } from './analytics.mjs?v=2.1.9';
-import { readUploads, storedMediaNames } from './photo-uploads.mjs?v=2.1.9';
-import { isSafeAsciiFileName, pinyinSlug } from './slug.mjs?v=2.1.9';
+import { isValidDateString } from './analytics.mjs?v=2.1.10';
+import { readUploads, storedMediaNames } from './photo-uploads.mjs?v=2.1.10';
+import { isSafeAsciiFileName, pinyinSlug } from './slug.mjs?v=2.1.10';
 
 export const DRAFT_FORMAT = 'travel-diary-draft-v4';
 export const RECORD_FIELDS = ['date', 'country_code', 'country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'title', 'body', 'desc_md', 'photo_folder', 'photos', 'video_folder', 'videos'];
