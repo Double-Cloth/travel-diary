@@ -520,24 +520,27 @@ body[data-route='preface'] .paper-page {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 4px 20px;
+    gap: 8px 12px;
     color: #69513a;
     font-size: 12px;
 }
 
 .preface-text-action {
     min-height: 40px;
-    padding: 5px 0;
+    padding: 7px 12px;
+    border: 1px solid #9c7a4c80;
+    border-radius: 2px;
     color: var(--ink);
-    background: transparent;
+    background: #f2dfb780;
     font: inherit;
+    font-size: 14px;
+    font-weight: 600;
     cursor: pointer;
-    text-decoration: underline;
-    text-decoration-color: #9c7a4c80;
-    text-underline-offset: 5px;
+    transition: background-color .18s ease, color .18s ease;
 }
 
-.preface-text-action:hover { color: var(--stamp); }
+.preface-text-action:hover { color: var(--stamp); border-color: var(--brass-300); background-color: var(--paper-100); }
+.preface-text-action:active { background-color: var(--paper-200); }
 
 .preface-backup-group { display: grid; gap: 6px; }
 .preface-backup-group + .preface-backup-group { margin-top: 4px; }
@@ -608,8 +611,8 @@ body[data-route='preface'] .paper-page {
     overflow-wrap: anywhere;
 }
 
-.preface-tool-command:hover { color: var(--stamp); border-color: var(--brass-300); background-color: var(--paper-50); }
-.preface-tool-command:active { background-color: var(--paper-100); }
+.preface-tool-command:hover { color: var(--stamp); border-color: var(--brass-300); background-color: var(--paper-100); }
+.preface-tool-command:active { background-color: var(--paper-200); }
 .preface-tool-command:disabled { opacity: .55; cursor: wait; }
 .preface-tool-command:focus-visible,
 .preface-text-action:focus-visible,

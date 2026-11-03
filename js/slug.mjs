@@ -1,4 +1,4 @@
-import './vendor/pinyin-pro.mjs?v=2.1.1';
+import './vendor/pinyin-pro.mjs?v=2.1.2';
 
 const RESERVED_NAMES = /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i;
 const PLACE_SUFFIX = /(?:特别行政区|维吾尔自治区|壮族自治区|回族自治区|自治区|自治州|自治县|市辖区|行政区|地区|新区|林区|矿区|省|市|州|盟|县|区|旗)$/u;
