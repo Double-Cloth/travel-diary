@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=2.1.2';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.2';
-import { createRecordEditor } from './record-editor.js?v=2.1.2';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.2';
-import { createDataTransfer } from './data-transfer.js?v=2.1.2';
-import { createMediaManager } from './media-manager.js?v=2.1.2';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.2';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.2';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.2';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.2';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.2';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.2';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.2';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.2';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.2';
-import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.2';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.2';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.2';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.3';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.3';
+import { createRecordEditor } from './record-editor.js?v=2.1.3';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.3';
+import { createDataTransfer } from './data-transfer.js?v=2.1.3';
+import { createMediaManager } from './media-manager.js?v=2.1.3';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.3';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.3';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.3';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.3';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.3';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.3';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.3';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.3';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.3';
+import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.3';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.3';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.3';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.2';
+} from './location.mjs?v=2.1.3';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,7 +30,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.2';
+} from './photo-viewer-transform.mjs?v=2.1.3';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_SORT_OPTIONS = new Set(['desc', 'asc', 'location', 'area', 'title']);
@@ -1764,21 +1764,56 @@ function renderTrip(params = {}) {
     }
     const records = groups.get(params.id);
     if (!records) {
-        setPages('<div class="place-page"><a class="ribbon-back" href="#ledger?view=trips">返回日记目录 · 按行程</a><h1>没有找到这次行程</h1><p>行程可能已修改或删除，请从日记目录重新选择。</p></div>',
+        setPages('<div class="trip-overview"><a class="ribbon-back" href="#ledger?view=trips">返回日记目录 · 按行程</a><div class="trip-heading"><h1>没有找到这次行程</h1><p>行程可能已修改或删除，请从日记目录重新选择。</p></div></div>',
             '<div class="empty-note">选择其他行程，继续阅读旅行记录。</div>', 'dossier-page trip-detail-page');
         return;
     }
     const snapshot = buildRecordSetSnapshot(records);
-    setPages(`<div class="place-page"><a class="ribbon-back" href="#ledger?view=trips">返回日记目录 · 按行程</a><h1>行程 ${escapeHtml(records[0].tripGroupLabel)}</h1>
-        <p>${escapeHtml(records[0].date)}${records.length > 1 ? ` 至 ${escapeHtml(records.at(-1).date)}` : ''}</p>
-        <p>${records.length} 篇日记 · ${snapshot.localityCount} 个目的地 · ${snapshot.photoCount} 张图片 · ${snapshot.videoCount} 段视频</p>
-        <button class="paper-button" type="button" data-action="export-trip" data-trip-key="${escapeHtml(params.id)}">导出本次行程</button>
-        <nav class="trip-timeline" aria-label="本次行程时间线"><h2>沿途日记</h2><ol>${records.map(record => `<li><button class="trip-timeline-link" type="button" data-trip-record="${escapeHtml(record.id)}"><time>${escapeHtml(record.date)}</time><strong>${escapeHtml(record.title)}</strong><span>${escapeHtml(getLocationText(record))}</span></button></li>`).join('')}</ol></nav>
-        </div>`, `<div class="trip-reading">${records.map(record => `<article class="trip-record" id="trip-record-${escapeHtml(record.id)}" tabindex="-1">
-            <time>${escapeHtml(record.date)}</time><h2>${escapeHtml(record.title)}</h2><p>${escapeHtml(getLocationText(record))}</p>
-            <div class="entry-body">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
-            ${getRecordMedia(record).length ? renderPhotoSleeve(record, { previewRows: ENTRY_PHOTO_PREVIEW_ROWS, showViewAll: true }) : ''}
-            <a class="paper-button" href="${serializeRoute({ name: 'entry', params: { id: record.id } })}">打开这篇日记</a></article>`).join('')}</div>`, 'dossier-page trip-detail-page');
+    const first = records[0];
+    const last = records.at(-1);
+    const places = [...new Set(records.map(record => record.locality || record.adminArea || record.country))];
+    setPages(`
+        <div class="trip-overview" aria-labelledby="tripTitle">
+            <header class="entry-book-toolbar trip-toolbar">
+                <a class="ribbon-back" href="#ledger?view=trips">返回日记目录</a>
+                <button class="paper-button" type="button" data-action="export-trip" data-trip-key="${escapeHtml(params.id)}">导出本次行程</button>
+            </header>
+            <div class="trip-heading">
+                <h1 id="tripTitle">行程 ${escapeHtml(first.tripGroupLabel)}</h1>
+                <p class="trip-date-range"><time datetime="${escapeHtml(first.date)}">${escapeHtml(first.date)}</time>${first.date !== last.date ? `<span>至</span><time datetime="${escapeHtml(last.date)}">${escapeHtml(last.date)}</time>` : ''}</p>
+                <p class="trip-route" aria-label="沿途目的地">${places.map(place => `<span>${escapeHtml(place)}</span>`).join('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"/></svg>')}</p>
+            </div>
+            <dl class="trip-summary" aria-label="本次行程概览">
+                <div><dt>日记</dt><dd>${records.length} 篇</dd></div>
+                <div><dt>目的地</dt><dd>${snapshot.localityCount} 个</dd></div>
+                <div><dt>图片</dt><dd>${snapshot.photoCount} 张</dd></div>
+                <div><dt>视频</dt><dd>${snapshot.videoCount} 段</dd></div>
+            </dl>
+            <nav class="trip-timeline" aria-label="本次行程时间线">
+                <h2>沿途日记</h2>
+                <p class="trip-timeline-hint">点击篇目，跳转到对应日记。</p>
+                <ol>${records.map((record, index) => `
+                    <li><button class="trip-timeline-link" type="button" data-trip-record="${escapeHtml(record.id)}" aria-controls="trip-record-${escapeHtml(record.id)}">
+                        <span class="trip-stop-number" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>
+                        <span class="trip-stop-note"><time datetime="${escapeHtml(record.date)}">${escapeHtml(record.date)}</time><strong>${escapeHtml(record.title)}</strong><span>${escapeHtml(getLocationText(record))}</span></span>
+                        <svg class="trip-stop-arrow" viewBox="0 0 16 16" aria-hidden="true"><path d="m6 3 5 5-5 5"/></svg>
+                    </button></li>`).join('')}</ol>
+            </nav>
+        </div>`, `
+        <div class="trip-reading">
+            <header class="entry-running-head"><span>沿途日记</span><span>共 ${records.length} 篇</span></header>
+            ${records.map((record, index) => `
+                <article class="trip-record" id="trip-record-${escapeHtml(record.id)}" aria-labelledby="trip-record-title-${escapeHtml(record.id)}" tabindex="-1">
+                    <header class="trip-record-heading">
+                        <div class="trip-record-meta"><span>第 ${index + 1} 篇 / 共 ${records.length} 篇</span><time datetime="${escapeHtml(record.date)}">${escapeHtml(record.date)}</time></div>
+                        <h2 id="trip-record-title-${escapeHtml(record.id)}">${escapeHtml(record.title)}</h2>
+                        <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(getLocationText(record))}</a>
+                    </header>
+                    <div class="markdown-content">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
+                    ${getRecordMedia(record).length ? renderPhotoSleeve(record, { previewRows: ENTRY_PHOTO_PREVIEW_ROWS, showViewAll: true }) : ''}
+                    <footer class="trip-record-footer"><a class="paper-button" href="${serializeRoute({ name: 'entry', params: { id: record.id } })}">打开这篇日记</a></footer>
+                </article>`).join('')}
+        </div>`, 'dossier-page trip-detail-page');
     requestAnimationFrame(() => queuePhotoSleevePreviewSync());
 }
 
@@ -3598,7 +3633,7 @@ function cloneTurningPage(page) {
 
 // 章节顺序与书签一致；地点和附件属于向内阅读，返回所属章节时反向翻页。
 function getTurnDirection(previous, next) {
-    const order = { cover: 0, preface: 1, ledger: 2, archive: 3, place: 4, entry: 5, photos: 6 };
+    const order = { cover: 0, preface: 1, ledger: 2, archive: 3, place: 4, trip: 5, entry: 6, photos: 7 };
     return (order[next?.name] ?? 0) < (order[previous?.name] ?? 0) ? 'back' : 'forward';
 }
 
@@ -4029,6 +4064,12 @@ function handleDocumentClick(event) {
         event.preventDefault();
         const article = document.getElementById(`trip-record-${tripRecord.dataset.tripRecord}`);
         article?.scrollIntoView({ behavior: 'instant', block: 'start' });
+        if (article && isMobileLayout()) {
+            // 连续纸面的定位需避开吸顶导航，保留完整的篇目标题。
+            const headerBottom = refs.spine?.getBoundingClientRect().bottom || 0;
+            const offset = article.getBoundingClientRect().top - headerBottom - 20;
+            if (offset < 0) window.scrollBy({ top: offset, behavior: 'instant' });
+        }
         article?.focus({ preventScroll: true });
         return;
     }
@@ -4978,11 +5019,11 @@ function renderLedgerTripEntry(record) {
         ${renderRecordPaperclip()}
         <time datetime="${escapeHtml(record.date)}" class="entry-date-chip"><strong>${escapeHtml(record.date.slice(8, 10))}</strong><span>${escapeHtml(record.date.slice(0, 7))}</span></time>
         <div class="entry-note"><h3>${escapeHtml(places)}</h3><span class="entry-location">${escapeHtml(first.date)}${first.date !== last.date ? ` 至 ${escapeHtml(last.date)}` : ''}</span>
-            <div class="entry-tags"><span class="location-chip">行程 ${escapeHtml(record.tripGroupLabel)}</span><span class="ledger-trip-summary">${records.length} 篇笔记 · ${snapshot.photoCount} 张图片 · ${snapshot.videoCount} 段视频</span></div>
+            <div class="entry-tags"><span class="ledger-trip-summary">${records.length} 篇笔记 · ${snapshot.photoCount} 张图片 · ${snapshot.videoCount} 段视频</span>${renderTripGroupHint(record, { linked: false })}</div>
         </div></a>`;
 }
 
-function renderTripGroupHint(record) {
+function renderTripGroupHint(record, { linked = true } = {}) {
     const count = Number(record.tripRecordCount) || 0;
     const label = String(record.tripGroupLabel || '');
     if (!label) {
@@ -4990,6 +5031,10 @@ function renderTripGroupHint(record) {
     }
 
     const variant = Math.max(0, (Number.parseInt(label, 10) || 1) - 1) % 8;
+
+    if (!linked) {
+        return `<span class="trip-stamp trip-variant-${variant}">行程 ${escapeHtml(label)}</span>`;
+    }
 
     return `
         <a class="trip-stamp trip-variant-${variant}" href="${serializeRoute({ name: 'trip', params: { id: getVisitKey(record) } })}" aria-label="行程 ${escapeHtml(label)}，本次行程共有 ${count} 篇日记，打开行程" title="查看本次行程">行程 ${escapeHtml(label)}</a>

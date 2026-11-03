@@ -373,14 +373,43 @@
     margin-top: 4px;
 }
 
+.trip-overview,
+.trip-reading { min-width: 0; overflow-wrap: anywhere; }
+.trip-toolbar { flex-wrap: wrap; gap: 12px; }
+.trip-toolbar .ribbon-back { margin-bottom: 0; }
+.trip-heading { padding: 28px 0 24px; border-bottom: 3px double var(--hairline); }
+.trip-heading h1 { margin: 0 0 14px; color: var(--ink); font-size: clamp(32px, 3vw, 44px); line-height: 1.35; }
+.trip-date-range { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; margin: 0; color: var(--ink-soft); font: 12px/1.8 var(--font-code); font-variant-numeric: tabular-nums; }
+.trip-route { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 20px 0 0; font-size: 21px; line-height: 1.7; }
+.trip-route svg,
+.trip-stop-arrow { flex: 0 0 auto; width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; color: var(--ink-soft); }
+.trip-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 24px; margin: 0; padding: 22px 0; border-bottom: 1px solid var(--line); }
+.trip-summary div { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; }
+.trip-summary dt { color: var(--ink-soft); font-size: 14px; }
+.trip-summary dd { margin: 0; color: var(--ink); font-size: 16px; font-variant-numeric: tabular-nums; }
 .trip-timeline { margin-top: 32px; }
-.trip-timeline ol { padding-left: 22px; }
-.trip-timeline-link { display: grid; gap: 6px; width: 100%; padding: 12px 0; background: none; border: 0; text-align: left; color: var(--ink); cursor: pointer; font: inherit; }
-.trip-timeline-link:hover { color: var(--stamp); }
-.trip-timeline-link time, .trip-timeline-link span { font-size: 14px; color: var(--ink-soft); }
-.trip-record { padding: 0 0 32px; margin-bottom: 32px; border-bottom: 1px solid var(--line); scroll-margin-top: 16px; overflow-wrap: anywhere; }
-.trip-record h2 { margin: 12px 0; }
-.trip-record > time, .trip-record > p { color: var(--ink-soft); line-height: 1.8; }
-.trip-record .entry-body { line-height: 1.9; }
-.trip-record .paper-button { margin-top: 16px; }
+.trip-timeline h2 { margin: 0 0 8px; color: var(--ink); font-size: 23px; font-weight: 500; line-height: 1.5; }
+.trip-timeline-hint { margin: 0 0 20px; color: var(--ink-soft); font-size: 13px; line-height: 1.8; }
+.trip-timeline ol { margin: 0; padding: 0; list-style: none; }
+.trip-timeline li { position: relative; }
+.trip-timeline li:not(:last-child)::before { content: ''; position: absolute; top: 38px; bottom: -18px; left: 17px; border-left: 1px solid var(--hairline); pointer-events: none; }
+.trip-timeline-link { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) 16px; align-items: start; gap: 14px; width: 100%; padding: 14px 0 24px; border: 0; border-radius: 3px; background: transparent; text-align: left; color: var(--ink); cursor: pointer; font: inherit; transition: background 180ms ease-out; }
+.trip-stop-number { display: grid; place-items: center; width: 36px; height: 36px; border: 1px solid var(--hairline); border-radius: 50%; color: var(--ink-soft); background: var(--paper-50); font: 12px/1 var(--font-code); }
+.trip-stop-note { display: grid; min-width: 0; gap: 5px; }
+.trip-stop-note time { color: var(--ink-soft); font: 11px/1.8 var(--font-code); font-variant-numeric: tabular-nums; }
+.trip-stop-note strong { font-size: 20px; font-weight: 500; line-height: 1.5; }
+.trip-stop-note > span { color: var(--ink-soft); font-size: 13px; line-height: 1.8; }
+.trip-stop-arrow { align-self: center; }
+.trip-timeline-link:is(:hover, :focus-visible) { background: rgba(255, 248, 228, .5); }
+.trip-timeline-link:is(:hover, :focus-visible) .trip-stop-note strong { color: var(--stamp); }
+.trip-timeline-link:active .trip-stop-number { border-color: var(--stamp); color: var(--stamp); }
+.trip-record { padding: 0 0 36px; margin-bottom: 36px; border-bottom: 3px double var(--hairline); scroll-margin-top: 24px; }
+.trip-record:last-child { padding-bottom: 0; margin-bottom: 0; border-bottom: 0; }
+.trip-record-heading { margin-bottom: 28px; }
+.trip-record-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 6px 16px; color: var(--ink-soft); font-size: 12px; line-height: 1.8; }
+.trip-record-meta time { font-family: var(--font-code); font-variant-numeric: tabular-nums; }
+.trip-record-heading h2 { margin: 14px 0 12px; color: var(--ink); font-size: 30px; font-weight: 500; line-height: 1.45; }
+.trip-record-heading .location-chip { font-size: 13px; line-height: 1.8; }
+.trip-record-footer { display: flex; justify-content: flex-end; margin-top: 24px; }
+.trip-record:focus-visible { outline: 1px dashed var(--brass-300); outline-offset: 6px; }
 .trip-stamp[href] { text-decoration: none; }

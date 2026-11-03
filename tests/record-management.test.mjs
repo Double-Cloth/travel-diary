@@ -267,7 +267,7 @@ test('行程路由可往返序列化、按时间阅读、导出整趟，并保�
     globalThis.requestAnimationFrame = () => {};
     t.after(() => { if (originalFrame) globalThis.requestAnimationFrame = originalFrame; else delete globalThis.requestAnimationFrame; });
     const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
-        export { parseRoute, serializeRoute, deriveTravelModel, canonicalizeLocationRoute };
+        export { parseRoute, serializeRoute, deriveTravelModel, canonicalizeLocationRoute, renderLedgerTripEntry, renderTripGroupHint };
         export function renderTripTest(records, params) {
             let result; travelModel = deriveTravelModel(records);
             setPages = (left, right) => { result = { left, right }; };
@@ -291,6 +291,15 @@ test('行程路由可往返序列化、按时间阅读、导出整趟，并保�
     const matchingTrips = app.ledgerTripsTest(records, { q: 'first', view: 'trips' });
     assert.equal(matchingTrips.length, 1);
     assert.equal(matchingTrips[0].tripRecords.length, 2, '筛选命中一篇时仍展示完整行程');
+    const tripEntry = app.renderLedgerTripEntry(matchingTrips[0]);
+    const noteStamp = app.renderTripGroupHint(matchingTrips[0]);
+    assert.equal((tripEntry.match(/<a\b/g) || []).length, 1, '行程整行链接内不嵌套书签链接');
+    assert.match(tripEntry, /<span class="trip-stamp trip-variant-\d">行程 \d+<\/span>/);
+    assert.equal(tripEntry.match(/trip-variant-\d/)[0], noteStamp.match(/trip-variant-\d/)[0], '两种目录视图使用同一行程颜色');
+    for (const record of model.records) {
+        assert.ok(result.left.includes(`aria-controls="trip-record-${record.id}"`));
+        assert.ok(result.right.includes(`id="trip-record-${record.id}"`));
+    }
     assert.equal(app.ledgerTripsTest(records, {}).length, 1, '同一行程只展示一次');
     const empty = app.renderTripTest([], {});
     assert.match(empty.left, /目录查看方式/);

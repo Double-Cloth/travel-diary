@@ -107,6 +107,11 @@ export function stubReadingRoutes() {
         }
     };
 }
+export function stubSpine(spine) {
+    const previous = refs.spine;
+    refs.spine = spine;
+    return () => { refs.spine = previous; };
+}
 export function setTestState(values) {
     if (values.shell) refs.shell = values.shell;
     if (values.closedBookCover) refs.closedBookCover = values.closedBookCover;
@@ -300,6 +305,38 @@ test('跳到内容直接聚焦正文，不改变章节路由', t => {
         target: { closest: selector => selector === '.skip-link' ? {} : null }
     });
     assert.deepEqual(calls, ['prevent', 'focus', 'scroll']);
+});
+
+test('行程时间线定位在手机上避开吸顶导航，桌面仅滚动正文并保留焦点', t => {
+    const previous = { document: globalThis.document, window: globalThis.window };
+    t.after(() => Object.assign(globalThis, previous));
+    const calls = [];
+    let mobile = true;
+    const article = {
+        scrollIntoView: options => calls.push(['scroll', options]),
+        getBoundingClientRect: () => ({ top: 20 }),
+        focus: options => calls.push(['focus', options])
+    };
+    globalThis.document = { getElementById: id => id === 'trip-record-note-2' ? article : null };
+    globalThis.window = {
+        matchMedia: () => ({ matches: mobile }),
+        scrollBy: options => calls.push(['compensate', options])
+    };
+    t.after(app.stubSpine({ getBoundingClientRect: () => ({ bottom: 112 }) }));
+    const event = {
+        preventDefault() {},
+        target: { closest: selector => selector === '[data-trip-record]' ? { dataset: { tripRecord: 'note-2' } } : null }
+    };
+    app.handleDocumentClick(event);
+    assert.deepEqual(calls, [
+        ['scroll', { behavior: 'instant', block: 'start' }],
+        ['compensate', { top: -112, behavior: 'instant' }],
+        ['focus', { preventScroll: true }]
+    ]);
+    calls.length = 0;
+    mobile = false;
+    app.handleDocumentClick(event);
+    assert.deepEqual(calls.map(([kind]) => kind), ['scroll', 'focus']);
 });
 
 test('夹层与媒体面板的 Tab 焦点循环跳过禁用和隐藏控件', t => {
@@ -1008,6 +1045,8 @@ test('翻页方向与书签顺序及返回按钮一致', () => {
         ['cover', 'ledger', 'forward'], ['ledger', 'archive', 'forward'],
         ['archive', 'ledger', 'back'], ['ledger', 'cover', 'back'],
         ['archive', 'place', 'forward'], ['place', 'archive', 'back'],
+        ['ledger', 'trip', 'forward'], ['trip', 'ledger', 'back'],
+        ['entry', 'trip', 'back'], ['trip', 'entry', 'forward'],
         ['entry', 'photos', 'forward'], ['photos', 'entry', 'back']
     ]) assert.equal(app.getTurnDirection({ name: from }, { name: to }), direction);
 });

@@ -547,7 +547,7 @@ test('每篇日记按最早行程起显示编号但不暴露 trip_id', () => {
     assert.match(appJs, /import \{ buildItineraryGroups, countDistinctVisits, getVisitKey \} from '\.\/visits\.mjs\?v=[^']+';/);
     assert.match(appJs, /const itineraryGroups = buildItineraryGroups\(enhancedAsc\);/);
     assert.match(appJs, /tripRecordCount: tripGroup\?\.count \|\| 0,[\s\S]*tripGroupLabel: tripGroup\?\.label \|\| ''/);
-    assert.match(appJs, /function renderTripGroupHint\(record\)[\s\S]*if \(!label\)[\s\S]*const variant = Math\.max\(0,[\s\S]*class="trip-stamp trip-variant-\$\{variant\}"[\s\S]*>行程 \$\{escapeHtml\(label\)\}<\/a>/);
+    assert.match(appJs, /function renderTripGroupHint\(record,[\s\S]*if \(!label\)[\s\S]*const variant = Math\.max\(0,[\s\S]*class="trip-stamp trip-variant-\$\{variant\}"[\s\S]*>行程 \$\{escapeHtml\(label\)\}<\/a>/);
     assert.match(appJs, /class="entry-book-location"[\s\S]*renderTripGroupHint\(record\)/);
     assert.match(appJs, /class="entry-tags"[\s\S]*renderTripGroupHint\(record\)/);
     assert.doesNotMatch(appJs, /escapeHtml\(record\.(?:trip_id|tripId)\)/);

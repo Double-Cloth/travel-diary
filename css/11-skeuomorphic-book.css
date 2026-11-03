@@ -1084,6 +1084,50 @@ body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padd
 .entry-book-media .photo-sleeve { margin-top: 0; }
 .entry-book-article .markdown-content img { border: 6px solid #fff8e7; box-shadow: 0 3px 9px #5f432c24; }
 
+/* 行程沿用日记的左右页分工，右页连续阅读多篇正文。 */
+.paper-page-right.trip-detail-page { display: block; }
+.trip-reading .markdown-content { color: #3c3025; font-size: 18px; line-height: 2.05; }
+.trip-reading .markdown-content p { margin: 0 0 1.4em; }
+.trip-reading .markdown-content p:last-child { margin-bottom: 0; }
+.trip-reading .markdown-content :is(h2, h3) { margin: 1.6em 0 .65em; line-height: 1.5; }
+.trip-reading .markdown-content img { max-width: 100%; height: auto; border: 6px solid #fff8e7; box-shadow: 0 3px 9px #5f432c24; }
+.trip-reading .markdown-content :is(ul, ol) { padding-left: 1.5em; }
+.trip-reading .markdown-content blockquote { margin: 1.4em 0; padding: 0 0 0 16px; border-left: 1px solid var(--hairline); color: var(--ink-soft); }
+.trip-reading .markdown-content pre { max-width: 100%; overflow-x: auto; }
+.trip-reading .markdown-content a { text-decoration: underline; text-underline-offset: .2em; }
+.trip-reading .entry-running-head { margin-bottom: 28px; }
+.trip-toolbar { justify-content: space-between; align-items: center; }
+.trip-toolbar .paper-button { width: auto; min-height: 40px; }
+.ledger-trip-entry .entry-tags { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+.ledger-trip-entry .trip-stamp { justify-self: end; margin-left: 0; }
+
+@media (min-width: 761px) {
+    body[data-route='trip'] .paper-page-left,
+    .paper-page-right.trip-detail-page { padding-top: 48px; }
+}
+@media (max-width: 760px) {
+    body[data-route='trip'] .paper-page-left { min-height: 0; padding-bottom: 24px; }
+    .paper-page-right.trip-detail-page { min-height: 0; padding-top: 24px; }
+    .trip-toolbar { margin-bottom: 0; }
+    .trip-toolbar :is(.ribbon-back, .paper-button) { min-height: 44px; font-size: 12px; }
+    .trip-heading { padding: 24px 0 20px; }
+    .trip-heading h1 { font-size: 34px; }
+    .trip-route { margin-top: 16px; font-size: 20px; }
+    .trip-summary { gap: 12px 20px; padding: 20px 0; }
+    .trip-timeline { margin-top: 24px; }
+    .trip-timeline-link { gap: 12px; padding-bottom: 20px; }
+    .trip-stop-note strong { font-size: 19px; }
+    .trip-reading .entry-running-head { margin-bottom: 24px; }
+    .trip-record { padding-bottom: 28px; margin-bottom: 28px; scroll-margin-top: 20px; }
+    .trip-record-heading { margin-bottom: 24px; }
+    .trip-record-heading h2 { font-size: 28px; }
+    .trip-reading .markdown-content { font-size: 17px; line-height: 1.95; }
+    .trip-record-footer .paper-button { min-height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .trip-timeline-link { transition: none; }
+}
+
 @media (min-width: 761px) {
     /* 右侧为实体书签保留更宽书桌空间，避免中等桌面宽度下被视口裁切。 */
     .journal-shell { --book-height: min(820px, calc(100dvh - 100px)); padding: 28px 100px 28px 78px; }
