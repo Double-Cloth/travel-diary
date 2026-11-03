@@ -164,6 +164,7 @@
     }
 
     /* 详情页在窄屏按阅读顺序排列：顶部摘要、正文或相关记录、相邻项导航。 */
+    body[data-route="trip"] .page-spread,
     body[data-route="entry"] .page-spread,
     body[data-route="place"] .page-spread,
     body[data-route="photos"] .page-spread {
@@ -184,6 +185,7 @@
     }
 
     /* 主信息与辅助信息共用同一张纸面，避免背景、边框和阴影在中段重新起页。 */
+    body[data-route="trip"] .paper-page,
     body[data-route="entry"] .paper-page,
     body[data-route="place"] .paper-page,
     body[data-route="photos"] .paper-page {

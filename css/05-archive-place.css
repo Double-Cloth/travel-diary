@@ -418,4 +418,5 @@
 .trip-record-toolbar { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 16px; }
 .trip-record-toolbar .paper-button { grid-column: 2; grid-row: 1; width: auto; white-space: nowrap; }
 .trip-record:focus-visible { outline: 1px dashed var(--brass-300); outline-offset: 6px; }
+.trip-index-back { display: none; }
 .trip-stamp[href] { text-decoration: none; }
