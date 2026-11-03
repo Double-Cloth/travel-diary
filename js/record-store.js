@@ -1041,7 +1041,7 @@ function createRecordApi(root, options = {}) {
                 if (!await verifyPassword(authConfig, password)) {
                     finishLoginAttempt(failureKey, 'failure');
                     attemptReserved = false;
-                    send(401, { error: '访问口令不正确。', code: 'AUTH_INVALID' });
+                    send(401, { error: '访问密码不正确。', code: 'AUTH_INVALID' });
                     return;
                 }
                 finishLoginAttempt(failureKey, 'success');
@@ -1084,7 +1084,7 @@ function createRecordApi(root, options = {}) {
         }
         if (requestPath === '/api/travel-data') {
             if (!session) {
-                send(401, { error: '登录会话已失效，请重新输入访问口令。', code: 'AUTH_REQUIRED' });
+                send(401, { error: '登录会话已失效，请重新输入访问密码。', code: 'AUTH_REQUIRED' });
                 return;
             }
             if (req.method !== 'GET' && req.method !== 'HEAD'
@@ -1144,7 +1144,7 @@ function createRecordApi(root, options = {}) {
                     failures.set('data-import', { ...state, active: state.active + 1 });
                     importAttemptReserved = true;
                     if (!await verifyPassword(authConfig, req.headers['x-travel-current-password'])) {
-                        throw failure(403, '当前密码不正确，请重新开始导入并验证当前密码。', 'CURRENT_PASSWORD_INVALID');
+                        throw failure(403, '此网站的访问密码不正确，请重新开始导入。', 'CURRENT_PASSWORD_INVALID');
                     }
                     if (passwordCheck) {
                         const payload = await readJsonBody(req, MAXIMUM_LOGIN_BYTES);
@@ -1152,7 +1152,7 @@ function createRecordApi(root, options = {}) {
                         try { backupConfig = validateAuthConfig(payload?.auth, { requireProduction: writeMode === 'remote' }); }
                         catch (error) { throw failure(400, '备份中的认证配置无效。', error.code); }
                         if (!await verifyPassword(backupConfig, req.headers['x-travel-backup-password'])) {
-                            throw failure(403, '备份密码与当前密码不同，请输入导出这份备份时使用的访问密码。', 'BACKUP_PASSWORD_INVALID');
+                            throw failure(403, '密码不正确，请输入导出这份备份时使用的访问密码。', 'BACKUP_PASSWORD_INVALID');
                         }
                         await verifyUploadSession(req, host);
                         // 预校验的配置由客户端提供，成功不能清除真正导入的失败计数。
@@ -1205,7 +1205,7 @@ function createRecordApi(root, options = {}) {
                 return;
             }
             if (!session) {
-                send(401, { error: '登录会话已失效，请重新输入访问口令。', code: 'AUTH_REQUIRED' });
+                send(401, { error: '登录会话已失效，请重新输入访问密码。', code: 'AUTH_REQUIRED' });
                 return;
             }
             if (!equalCredential(req.headers['x-travel-token'], session.token)) {
@@ -1232,7 +1232,7 @@ function createRecordApi(root, options = {}) {
             return;
         }
         if (!session) {
-            send(401, { error: '登录会话已失效，请重新输入访问口令。', code: 'AUTH_REQUIRED' });
+            send(401, { error: '登录会话已失效，请重新输入访问密码。', code: 'AUTH_REQUIRED' });
             return;
         }
         if (!equalCredential(req.headers['x-travel-token'], session.token)) {

@@ -1,9 +1,9 @@
-import { createPasswordGate } from './record-password.js?v=20261103-backup-auth-v2';
-import { detectWriterCapability } from './writer-capability.js?v=20261103-backup-auth-v2';
+import { createPasswordGate } from './record-password.js?v=20261103-media-controls-v3';
+import { detectWriterCapability } from './writer-capability.js?v=20261103-media-controls-v3';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=20261103-backup-auth-v2';
-import { verifyBackupPassword } from './backup-password.js?v=20261103-backup-auth-v2';
+import { createRecordTransfer } from './record-transfer.js?v=20261103-media-controls-v3';
+import { verifyBackupPassword } from './backup-password.js?v=20261103-media-controls-v3';
 import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261101-progress-timing-v1';
 
 function setStatus(message) {
@@ -72,12 +72,12 @@ export function createDataTransfer(onImported, getRecords = () => []) {
 
     async function getExportHref(authenticatedCapability = null) {
         const capability = authenticatedCapability || await detectWriterCapability();
-        if (!capability.authenticated || !capability.token) throw new Error('登录会话已失效，请重新输入访问口令。');
+        if (!capability.authenticated || !capability.token) throw new Error('登录会话已失效，请重新输入访问密码。');
         return new URL('api/travel-data', window.location.href).href;
     }
 
     function writerToken(capability) {
-        if (!capability?.authenticated || !capability.token) throw new Error('登录会话已失效，请重新输入访问口令。');
+        if (!capability?.authenticated || !capability.token) throw new Error('登录会话已失效，请重新输入访问密码。');
         return capability.token;
     }
 
@@ -148,8 +148,8 @@ export function createDataTransfer(onImported, getRecords = () => []) {
     }
 
     const requestImportAuthorization = createPasswordGate(chooseImportWithAuthorization, {
-        title: '导入数据验证',
-        description: '验证当前的 6 位数字密码后选择备份。',
+        title: '验证访问密码',
+        description: '请输入此网站现在使用的 6 位数字访问密码，然后选择备份。',
         verifying: '正在验证并选择备份…',
         actionError: '无法开始导入，请重试。',
         staticMessage: '当前站点为静态只读页面，不提供全部数据导入。',
@@ -157,9 +157,9 @@ export function createDataTransfer(onImported, getRecords = () => []) {
     });
 
     const requestBackupAuthorization = createPasswordGate((result, context) => context.resolve(result), {
-        title: '验证备份密码',
-        description: '备份密码与当前密码不同。输入备份的 6 位数字访问密码，验证后恢复数据及备份密码。',
-        verifying: '正在验证备份密码并导入，请勿关闭页面…',
+        title: '输入备份时的密码',
+        description: '请输入导出这份备份时使用的 6 位数字访问密码。导入后，网站将使用这个密码。',
+        verifying: '正在验证密码并导入，请勿关闭页面…',
         verifyPassword: async (password, context) => {
             await verifyBackupPassword(context.entries, { token: context.token }, context.currentPassword, password);
             return uploadArchive(context.file, context.token, context.currentPassword, password);
@@ -202,7 +202,7 @@ export function createDataTransfer(onImported, getRecords = () => []) {
             ? `全部旅行数据已更新；备份中有 ${missing} 个图片或视频引用缺少对应文件，相关日记已保留，并会在页面中标明不可用媒体。`
             : '全部旅行数据已更新。';
         if (typeof result?.authPreserved !== 'boolean') return summary;
-        return `${summary}${result.authPreserved ? '访问密码保持不变' : '访问密码已恢复为备份中的密码'}，旧登录会话已注销。`;
+        return `${summary}${result.authPreserved ? '此网站的访问密码保持不变' : '此网站的访问密码已恢复为备份时的密码'}，请重新登录。`;
     }
 
     function finishConfirmation(confirmed) {
@@ -223,9 +223,9 @@ export function createDataTransfer(onImported, getRecords = () => []) {
         dialog.querySelector('[data-import-confirm]').textContent = file ? '确认导入' : '继续验证';
         dialog.querySelector('#dataImportConfirmDescription').textContent = file
             ? (hasBackupPassword
-                ? '备份密码与当前密码不同时需验证备份密码。导入后访问密码恢复为备份密码。'
-                : '备份不含认证配置，无法验证备份密码，导入后保留当前密码。')
-            : '导入会覆盖全部日记、照片、视频、头像和署名，无法撤销。建议先导出完整备份。继续后需验证当前密码并选择备份；密码相同时只输入一次，不同时另行验证备份密码，导入后访问密码会恢复为备份密码。';
+                ? '导入后，网站的访问密码将恢复为备份时的密码。若与现在不同，下一步会请你输入。'
+                : '这是不含密码设置的旧备份。导入后，此网站的访问密码保持不变。')
+            : '导入会覆盖全部日记、照片、视频、头像和署名，无法撤销。建议先导出完整备份。';
         return new Promise(resolve => {
             confirmationResolver = resolve;
             dialog.showModal();

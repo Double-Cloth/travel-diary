@@ -12,7 +12,7 @@ import {
 import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=20261102-media-batch-v1';
 import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=20260913-editor-location-autofill-v1';
 import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=20261102-media-batch-v1';
-import { detectWriterCapability } from './writer-capability.js?v=20261103-backup-auth-v2';
+import { detectWriterCapability } from './writer-capability.js?v=20261103-media-controls-v3';
 import { enhanceCustomSelects } from './custom-select.js?v=20261018-select-scroll-focus-v1';
 import { confirmFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
@@ -586,10 +586,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 actions.className = 'media-file-actions';
                 const label = escapeHtml(item.name);
                 actions.innerHTML = `
-                    <button type="button" class="media-file-drag" data-media-drag aria-label="拖动 ${label} 排序" title="上下拖动排序；也可用方向键调整"${saved || items.length < 2 ? ' disabled' : ''}>${mediaDragIcon()}</button>
+                    <button type="button" class="media-file-remove" data-media-action="remove" aria-label="移除 ${label}"${saved ? ' disabled' : ''}>移除</button>
                     <button type="button" data-media-action="previous" aria-label="前移 ${label}" title="前移"${saved || index === 0 ? ' disabled' : ''}>${mediaOrderIcon(-1)}</button>
                     <button type="button" data-media-action="next" aria-label="后移 ${label}" title="后移"${saved || index === items.length - 1 ? ' disabled' : ''}>${mediaOrderIcon(1)}</button>
-                    <button type="button" class="media-file-remove" data-media-action="remove" aria-label="移除 ${label}"${saved ? ' disabled' : ''}>移除</button>`;
+                    <button type="button" class="media-file-drag" data-media-drag aria-label="拖动 ${label} 排序" title="上下拖动排序；也可用方向键调整"${saved || items.length < 2 ? ' disabled' : ''}>${mediaDragIcon()}</button>`;
                 return row;
             });
             list.replaceChildren(...rows);
@@ -624,10 +624,6 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const groupDrag = dialog.querySelector('[data-media-drag-group]');
         groupDrag.hidden = selectedMedia.size < 2;
         groupDrag.disabled = saved;
-        dialog.querySelector('[data-media-viewer-group]').classList.toggle('has-media-group-drag', !groupDrag.hidden);
-        dialog.querySelectorAll('[data-media-drag]').forEach(handle => {
-            handle.hidden = !groupDrag.hidden && selectedMedia.has(handle.closest('[data-media-key]').dataset.mediaKey);
-        });
         groupDrag.setAttribute('aria-label', `拖动所选 ${selectedMedia.size} 项排序`);
         updateMediaGroupSlider();
         dialog.querySelectorAll('[data-media-batch]').forEach(button => {
@@ -644,6 +640,13 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
 
     function updateMediaGroupSlider() {
         const handle = dialog.querySelector('[data-media-drag-group]');
+        const allRows = [...handle.parentElement.querySelectorAll('[data-media-key]')];
+        const first = allRows.findIndex(row => selectedMedia.has(row.dataset.mediaKey));
+        const last = allRows.findLastIndex(row => selectedMedia.has(row.dataset.mediaKey));
+        // 大滑块覆盖的行不再显示小手柄，避免非连续多选时控件重叠。
+        allRows.forEach((row, index) => {
+            row.querySelector('[data-media-drag]').hidden = !handle.hidden && index >= first && index <= last;
+        });
         if (handle.hidden) return;
         const group = handle.parentElement;
         const rows = [...group.querySelectorAll('[data-media-key]')].filter(row => selectedMedia.has(row.dataset.mediaKey));

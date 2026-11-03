@@ -326,7 +326,7 @@ test('完整导入仅在备份密码不同时追加询问，密码错误不上�
         await waitForDialog(confirmation);
         assert.equal(confirmation.querySelector('#dataImportConfirmTitle').textContent, '核对所选备份');
         assert.equal(confirmation.querySelector('[data-import-file-summary]').hidden, false);
-        assert.match(confirmation.querySelector('#dataImportConfirmDescription').textContent, /访问密码.*恢复为备份密码/);
+        assert.match(confirmation.querySelector('#dataImportConfirmDescription').textContent, /访问密码.*恢复为备份时的密码/);
         assert.equal(backupGate.open, false);
         assert.equal(nodes.filter(item => item.className?.includes('operation-progress')).length, progressCount, '风险确认、当前密码与文件核对阶段不创建进度');
         return { pending };
@@ -358,7 +358,7 @@ test('完整导入仅在备份密码不同时追加询问，密码错误不上�
     await first.pending;
     assert.equal(refreshed, 1);
     assert.equal(success.open, true);
-    assert.match(success.querySelector('#dataImportSuccessDescription').textContent, /访问密码已恢复为备份中的密码/);
+    assert.match(success.querySelector('#dataImportSuccessDescription').textContent, /访问密码已恢复为备份时的密码/);
     success.close();
 
     const second = await begin();

@@ -1,10 +1,10 @@
 import { escapeHtml } from './utils.js';
-import { createPasswordGate } from './record-password.js?v=20261103-backup-auth-v2';
-import { detectWriterCapability } from './writer-capability.js?v=20261103-backup-auth-v2';
+import { createPasswordGate } from './record-password.js?v=20261103-media-controls-v3';
+import { detectWriterCapability } from './writer-capability.js?v=20261103-media-controls-v3';
 import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261101-progress-timing-v1';
 import { readZipSource, createZipBlob } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=20261103-backup-auth-v2';
-import { verifyBackupPassword } from './backup-password.js?v=20261103-backup-auth-v2';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=20261103-media-controls-v3';
+import { verifyBackupPassword } from './backup-password.js?v=20261103-media-controls-v3';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs';
 
 export function createRecordTransfer(onImported, getRecords) {
@@ -84,7 +84,7 @@ export function createRecordTransfer(onImported, getRecords) {
         dialog.querySelector('#recordTransferTitle').textContent = mode === 'export' ? '导出部分记录' : '导入部分记录';
         dialog.querySelector('[data-record-transfer-note]').textContent = mode === 'export'
             ? '日记按日期由近到远排列。备份包含正文、图片和视频，导入时会验证导出时的访问密码。'
-            : '勾选要合并的日记。同正文路径的记录将被更新，其余新增；未选记录、头像、署名和当前密码均保留。更新无法撤销，建议先备份。';
+            : '勾选要合并的日记。同正文路径的记录将被更新，其余新增。未选记录、头像和署名均保留，此网站的访问密码保持不变。更新无法撤销，建议先备份。';
         dialog.querySelector('[data-record-transfer-submit]').textContent = mode === 'export' ? '导出所选记录' : '确认合并所选记录';
         error('');
         render();
@@ -169,7 +169,7 @@ export function createRecordTransfer(onImported, getRecords) {
     }
 
     const requestBackupPassword = createPasswordGate((result, context) => context.resolve(result), {
-        title: '验证备份密码', description: '备份密码与当前密码不同。请输入备份的访问密码；合并后保留当前密码。',
+        title: '输入备份时的密码', description: '请输入导出这份备份时使用的 6 位数字访问密码。合并后，此网站的访问密码保持不变。',
         verifying: '正在验证备份并合并记录…',
         verifyPassword: async (password, context) => {
             await verifyBackupPassword(context.entries, context.capability, context.currentPassword, password);
@@ -197,7 +197,7 @@ export function createRecordTransfer(onImported, getRecords) {
             }
         } finally { busy = false; }
     }, {
-        title: '部分记录备份验证', description: '输入当前的 6 位数字密码；导入备份密码与当前密码不同时需验证备份密码。',
+        title: '验证访问密码', description: '请输入此网站现在使用的 6 位数字访问密码。',
         staticMessage: '当前站点为静态只读页面，不提供部分记录导入导出。'
     });
 

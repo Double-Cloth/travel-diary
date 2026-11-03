@@ -330,7 +330,7 @@ async function importDataArchive(root, archive, options = {}) {
                 throw failure(400, `备份中的 ${AUTH_RELATIVE_PATH} 无效。`, error.code);
             }
             if (!await verifyPassword(backupConfig, options.backupPassword)) {
-                throw failure(403, '备份密码不正确，请输入导出这份备份时使用的访问密码。', 'BACKUP_PASSWORD_INVALID');
+                throw failure(403, '密码不正确，请输入导出这份备份时使用的访问密码。', 'BACKUP_PASSWORD_INVALID');
             }
         } else {
             await validateCurrentAuth(root, options);

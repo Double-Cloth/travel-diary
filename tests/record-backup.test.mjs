@@ -68,7 +68,7 @@ test('部分导出包含勾选记录、去重媒体和密码配置，拒绝过�
     assert.equal(both.filter(entry => entry.name === 'data/photos/trip/lake.png').length, 1);
     for (const paths of [[], [first.desc_md, first.desc_md], ['missing']]) await assert.rejects(exported(root, paths));
     await assert.rejects(importDataArchive(root, bytes), /导入部分记录/);
-    await assert.rejects(importDataArchive(root, bytes, { mergeRecords: true }), /备份密码不正确/);
+    await assert.rejects(importDataArchive(root, bytes, { mergeRecords: true }), /请输入导出这份备份时使用的访问密码/);
     const originalAuth = await fs.readFile(path.join(root, '.secrets/auth.json'));
     const result = await importDataArchive(root, bytes, { mergeRecords: true, backupPassword: AUTH_PASSWORD });
     assert.equal(result.authPreserved, true);
@@ -142,7 +142,7 @@ test('从完整备份选择记录时只打包所需内容，并保留备份密�
     assert.equal(partial.some(entry => entry.name === '.secrets/auth.json'), true);
     assert.equal(partial.some(entry => entry.name === second.desc_md || entry.name.startsWith('data/profile/')), false);
     const archive = await createZipBlob(partial);
-    await assert.rejects(importDataArchive(root, archive, { mergeRecords: true, backupPassword: '000000' }), /备份密码不正确/);
+    await assert.rejects(importDataArchive(root, archive, { mergeRecords: true, backupPassword: '000000' }), /请输入导出这份备份时使用的访问密码/);
     const result = await importDataArchive(root, archive, { mergeRecords: true, backupPassword: AUTH_PASSWORD });
     assert.equal(result.authPreserved, true);
     assert.equal(result.updatedRecords, 1);

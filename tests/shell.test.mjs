@@ -281,9 +281,9 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261103-backup-auth-v2');
+    assert.equal(appVersion, '20261103-media-controls-v3');
     assert.ok(cssVersion);
-    assert.match(appJs, /\.\/record-editor\.js\?v=20261103-backup-auth-v2/);
+    assert.match(appJs, /\.\/record-editor\.js\?v=20261103-media-controls-v3/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
     assert.match(recordEditorJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
 });
@@ -309,7 +309,7 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
 });
 
 test('静态页面免密码打开只读编辑器，动态环境必须先通过服务端口令验证', () => {
-    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20261103-backup-auth-v2';/);
+    assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=20261103-media-controls-v3';/);
     assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability, true\)/);
     assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}, true\)/);
     assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}, true\)/);
@@ -449,7 +449,7 @@ test('全部数据导入使用站内确认对话框而不是浏览器 confirm', 
     assert.doesNotMatch(dataTransferJs, /window\.confirm|\bconfirm\(/);
     assert.match(dataTransferJs, /dialog\.className = 'data-import-confirm entry-sheet'/);
     assert.match(dataTransferJs, /dialog\.showModal\(\)/);
-    assert.match(dataTransferJs, /访问密码也会恢复为备份密码/);
+    assert.match(dataTransferJs, /网站的访问密码将恢复为备份时的密码/);
     assert.match(dataTransferJs, /data-import-cancel/);
     assert.match(dataTransferJs, /data-import-confirm/);
     assert.match(dataTransferJs, /await confirmImport\(file, hasBackupPassword\)/);
@@ -470,7 +470,7 @@ test('全部数据导入成功后使用站内结果弹窗而不是状态文字',
 });
 
 test('全部数据导入分别提交当前密码和备份密码，由服务端校验后恢复认证配置', () => {
-    assert.match(dataTransferJs, /验证备份密码/);
+    assert.match(dataTransferJs, /输入备份时的密码/);
     assert.match(dataTransferJs, /X-Travel-Current-Password/);
     assert.match(dataTransferJs, /X-Travel-Backup-Password/);
     assert.match(recordStoreJs, /receiveArchive\(root, req, MAXIMUM_ARCHIVE_BYTES\)/);
@@ -526,7 +526,7 @@ test('个人主页提供经二次确认和密码验证保护的全部数据清�
 
 test('全部数据导入先建立服务端会话并提交双重写入凭据', () => {
     assert.match(dataTransferJs, /createPasswordGate\(chooseImportWithAuthorization/);
-    assert.match(dataTransferJs, /验证当前的 6 位数字密码后选择备份/);
+    assert.match(dataTransferJs, /此网站现在使用的 6 位数字访问密码，然后选择备份/);
     assert.match(dataTransferJs, /X-Travel-Token/);
     assert.match(dataTransferJs, /credentials: 'same-origin'/);
     assert.match(recordStoreJs, /travel_session/);

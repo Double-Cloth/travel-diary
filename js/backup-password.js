@@ -13,6 +13,6 @@ export async function verifyBackupPassword(entries, capability, currentPassword,
     });
     const result = await response.json();
     if (!response.ok || !result.verified) throw Object.assign(new Error(response.status === 415
-        ? '当前服务尚不支持备份密码预校验，请重启服务器后再试。'
-        : result.error || '备份密码验证失败。'), { code: result.code });
+        ? '当前服务尚不支持导入前验证密码，请重启服务器后再试。'
+        : result.error || '无法验证备份时的密码，请重试。'), { code: result.code });
 }

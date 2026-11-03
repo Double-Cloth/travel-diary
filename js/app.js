@@ -1,8 +1,8 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261013-polish-v1';
-import { createRecordEditor } from './record-editor.js?v=20261103-backup-auth-v2';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261103-backup-auth-v2';
-import { createDataTransfer } from './data-transfer.js?v=20261103-backup-auth-v2';
-import { detectWriterCapability } from './writer-capability.js?v=20261103-backup-auth-v2';
+import { createRecordEditor } from './record-editor.js?v=20261103-media-controls-v3';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261103-media-controls-v3';
+import { createDataTransfer } from './data-transfer.js?v=20261103-media-controls-v3';
+import { detectWriterCapability } from './writer-capability.js?v=20261103-media-controls-v3';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
 import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=20261101-progress-timing-v1';
