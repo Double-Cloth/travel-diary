@@ -1088,7 +1088,8 @@ function createRecordApi(root, options = {}) {
             return;
         }
         if (requestPath === '/api/travel-data') {
-            if (!session) {
+            const publicInventory = req.method === 'GET' && requestUrl.searchParams.get('mode') === 'inventory';
+            if (!session && !publicInventory) {
                 send(401, { error: '登录会话已失效，请重新输入访问密码。', code: 'AUTH_REQUIRED' });
                 return;
             }
@@ -1165,6 +1166,8 @@ function createRecordApi(root, options = {}) {
                         else {
                             await pipeline(Readable.from(archive.stream), res);
                             receiptState.complete = true;
+                            // 仍持有导出数据锁，按此次快照更新状态；中断下载不会执行到这里。
+                            await require('./record-inventory.js').rememberBackup(root, archive.snapshot);
                         }
                     } finally { await archive.release(); }
                     return;

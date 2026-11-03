@@ -1,7 +1,7 @@
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261103-record-management-v1';
 import { createRecordEditor } from './record-editor.js?v=20261103-clear-media-ui-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261103-record-management-v1';
-import { createDataTransfer } from './data-transfer.js?v=20261103-clear-media-ui-v1';
+import { createDataTransfer } from './data-transfer.js?v=20261103-auto-backup-v1';
 import { createMediaManager } from './media-manager.js?v=20261103-clear-media-ui-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';

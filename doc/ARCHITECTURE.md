@@ -34,7 +34,7 @@
 | `profile-picture.js`、`profile-owner.js`、`profile-owner-dialog.js` | 头像处理、署名读取与资料编辑。 |
 | `data-transfer.js`、`record-transfer.js`、`record-backup.mjs`、`backup-password.js` | 完整备份与清空交互、部分记录选择界面、前后端共用的记录备份封装及上传前密码预校验。 |
 | `operation-progress.js` | 共用进度提示、XHR 上传进度、流式下载与保存。 |
-| `record-identity.mjs`、`record-diff.mjs`、`record-inventory.js`、`backup-state.js` | 固定身份、字段与文件内容比较、当前记录清单和经用户确认保存的备份基准。 |
+| `record-identity.mjs`、`record-diff.mjs`、`record-inventory.js` | 固定身份、字段与文件内容比较、当前记录清单和导出传输完成后自动更新的备份基准。 |
 | `media-health.js`、`media-manager.js` | 媒体引用体检、空间统计、未引用文件回收、恢复与永久清理。 |
 | `server.js`、`record-store.js`、`auth.js`、`data-archive.js` | 静态服务、API、写入策略、认证、数据锁与恢复。 |
 | `scripts/` | 密码恢复、备份导出、调用本机浏览器批量生成媒体预览、字体生成、固定版本地点目录更新。 |
@@ -124,8 +124,8 @@ Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，不
 
 新增记录的固定标识由草稿请求标识及初始正文路径派生；旧记录使用 `legacy:` 加原始正文路径，修改时保留。读取和导出可补齐身份但不写原索引，修改及完整或部分导入持久化身份。前端路由使用固定标识，并保留当前正文文件名生成的旧链接别名。
 
-`GET /api/travel-data?mode=inventory` 在数据锁内生成当前记录、文件大小与 CRC32、SHA-256 内容指纹和已确认备份状态。浏览器比较备份目录中的大小和 CRC32，读取所选记录的正文以展示差异；CRC32 用于变化提示，正式导入继续逐文件校验。合并 ZIP 中的 `data/record-merge.json` 携带预览时所选记录的当前指纹（新增为 null），服务端锁内复核，完成后不保存该临时清单。共享文件与独立同名文件的不同内容仍拒绝覆盖。
+`GET /api/travel-data?mode=inventory` 在数据锁内生成当前记录、文件大小与 CRC32、SHA-256 内容指纹和最近导出状态；此只读接口无需密码，导出与写入仍要求认证。浏览器比较备份目录中的大小和 CRC32，读取所选记录的正文以展示差异；CRC32 用于变化提示，正式导入继续逐文件校验。合并 ZIP 中的 `data/record-merge.json` 携带预览时所选记录的当前指纹（新增为 null），服务端锁内复核，完成后不保存该临时清单。共享文件与独立同名文件的不同内容仍拒绝覆盖。
 
-动态导出返回会话绑定的 `X-Travel-Backup-Receipt`，流传输成功后才允许 `POST ?mode=backup-complete` 确认。基准保存导出快照而非确认时重算的内容，未选记录的基准不变；失败、取消、HEAD 请求及未确认的下载不推进基准。原生下载回退复用回执参数；基准属于本机缓存，不属于可移植数据。
+动态导出返回会话绑定的 `X-Travel-Backup-Receipt`，流传输成功后，在释放数据锁前自动写入备份比较基准。基准保存导出快照而非完成时重算的内容，未选记录的基准不变；失败、中断和 HEAD 请求不推进基准。保留 `POST ?mode=backup-complete` 供旧页面兼容，并继续验证会话和回执。原生下载回退复用回执参数，传输完成后同样自动更新；基准属于本机缓存，不属于可移植数据。
 
 `GET /api/travel-data?mode=media-health` 扫描普通媒体文件与引用；`POST` 同模式使用 `trash`、`restore`、`purge` 操作。操作要求会话和令牌，在共用数据锁内核对体检版本，再执行未引用媒体回收、独占恢复及显式永久清理。回收区位于 `data/media-trash/<批次标识>/`，含原文件及恢复清单；路径逐层拒绝符号链接和 junction。损坏或缺失的回收清单停止清理并提示人工核对，不静默当作空目录。

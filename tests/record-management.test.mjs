@@ -208,21 +208,31 @@ test('回收文件被新增引用时禁止永久删除，回收清单损坏时�
     await assert.rejects(scanMedia(root), /清单缺失或损坏/);
 });
 
-test('备份基准只接受本会话已传输完成的回执，按导出快照记录而非确认时的内容', async t => {
+test('导出传输完成自动记录快照，无需确认，回执仍校验会话且不覆盖后续修改', async t => {
     const root = await fixture(t);
     const server = http.createServer(createHandler(root));
     const base = await listenOnFetchSafePort(server);
     t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
     const { token, cookie } = await login(base);
     const headers = { Cookie: cookie, Origin: base, 'X-Travel-Token': token, 'Content-Type': 'application/json' };
-    const getInventory = async () => (await fetch(`${base}/api/travel-data?mode=inventory`, { headers })).json();
+    const getInventory = async () => {
+        for (let attempt = 0; attempt < 20; attempt += 1) {
+            const response = await fetch(`${base}/api/travel-data?mode=inventory`, { headers });
+            if (response.status !== 409) return response.json();
+            await new Promise(resolve => setTimeout(resolve, 20));
+        }
+        assert.fail('导出后未能读取记录状态');
+    };
     const initial = await getInventory();
     assert.deepEqual(initial.backup.records, {});
     const select = await (await fetch(`${base}/api/travel-data?mode=select`, { method: 'POST', headers, body: JSON.stringify({ paths: [first.desc_md] }) })).json();
     const download = await fetch(`${base}/api/travel-data?selection=${select.selection}`, { headers });
     const receipt = download.headers.get('x-travel-backup-receipt');
     await download.arrayBuffer();
-    assert.deepEqual((await getInventory()).backup.records, {}, '仅下载不提前标记已备份');
+    assert.deepEqual((await getInventory()).backup.records, { [recordIdentity(first)]: initial.fingerprints[recordIdentity(first)] }, '传输完成自动标记，未导出记录不标记');
+    const publicInventory = await fetch(`${base}/api/travel-data?mode=inventory`);
+    assert.equal(publicInventory.status, 200, '只读选择无需密码');
+    assert.equal((await fetch(`${base}/api/travel-data`)).status, 401, '实际导出仍需验证');
     const acknowledge = (extra = {}, value = receipt) => fetch(`${base}/api/travel-data?mode=backup-complete`, { method: 'POST', headers: { ...headers, ...extra }, body: JSON.stringify({ receipt: value }) });
     assert.equal((await acknowledge({ Cookie: '' })).status, 401);
     assert.equal((await acknowledge({ 'X-Travel-Token': '' })).status, 403);
@@ -242,6 +252,7 @@ test('备份基准只接受本会话已传输完成的回执，按导出快照�
     assert.equal((await acknowledge({}, head.headers.get('x-travel-backup-receipt'))).status, 409);
     const complete = await fetch(`${base}/api/travel-data`, { headers });
     await complete.arrayBuffer();
+    await getInventory();
     assert.equal((await acknowledge({}, complete.headers.get('x-travel-backup-receipt'))).status, 200);
     const afterComplete = await getInventory();
     assert.deepEqual(afterComplete.backup.records, afterComplete.fingerprints, '完整导出为全部记录更新比较基准');
