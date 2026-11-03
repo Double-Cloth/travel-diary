@@ -1,14 +1,14 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.21';
-import { createPasswordGate } from './record-password.js?v=2.1.21';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.21';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.21';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.22';
+import { createPasswordGate } from './record-password.js?v=2.1.22';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.22';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.22';
 import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.21';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.21';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.21';
-import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=2.1.21';
-import { recordIdentity } from './record-identity.mjs?v=2.1.21';
-import { createContentPreviewScope, markdownPreview } from './content-preview.js?v=2.1.21';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.22';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.22';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.22';
+import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=2.1.22';
+import { recordIdentity } from './record-identity.mjs?v=2.1.22';
+import { createContentPreviewScope, markdownPreview } from './content-preview.js?v=2.1.22';
 
 export function createRecordTransfer(onImported, getRecords) {
     const dialog = document.createElement('dialog');

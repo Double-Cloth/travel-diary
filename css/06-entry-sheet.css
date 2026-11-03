@@ -1884,6 +1884,10 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
     .record-editor-grid { gap: 14px 10px; }
 }
 
+@media (min-width: 761px) {
+    .record-editor-media-selection > [data-media-selected-count] { order: 1; }
+}
+
 @media (max-width: 760px) {
     .record-editor-media-tools { grid-template-columns: minmax(0, 1fr); }
     .record-editor-media-tools > button { width: 100%; }
