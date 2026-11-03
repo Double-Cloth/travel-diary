@@ -2,7 +2,7 @@ import { createPasswordGate } from './record-password.js?v=20261103-record-manag
 import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=20261009-stream-files-v2';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=20261103-recycle-bin-v1';
+import { createRecordTransfer } from './record-transfer.js?v=20261103-content-preview-v1';
 import { verifyBackupPassword } from './backup-password.js?v=20261103-media-controls-v3';
 import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261103-record-management-v1';
 

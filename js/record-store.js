@@ -485,7 +485,19 @@ async function stageUnusedMedia(root, records, previous, recycle = true) {
                 staged.push({ file, backup });
             }
         }
-        if (recycle && staged.length) recycleId = await captureRecycle(root, { title: '编辑日记时移除的媒体', files: staged.map(({ file, backup }) => ({ path: path.relative(root, file).split(path.sep).join('/'), source: path.relative(root, backup).split(path.sep).join('/') })) });
+        if (recycle) {
+            const { matchRecord } = await import('./record-identity.mjs');
+            const { recordFilePaths } = await import('./record-backup.mjs');
+            const updated = matchRecord(previous, records);
+            const retained = updated ? recordFilePaths([updated]) : new Set();
+            const files = new Map(staged.map(({ file, backup }) => [path.relative(root, file).split(path.sep).join('/'), { path: path.relative(root, file).split(path.sep).join('/'), source: path.relative(root, backup).split(path.sep).join('/') }]));
+            for (const name of recordFilePaths([previous])) {
+                if (!/^data\/(photos|videos)\//.test(name) || retained.has(name) || files.has(name)) continue;
+                try { await require('./record-inventory.js').ordinaryPath(root, name); files.set(name, { path: name }); }
+                catch (error) { if (error.code !== 'ENOENT') throw error; }
+            }
+            if (files.size) recycleId = await captureRecycle(root, { title: '编辑日记时移除的媒体', mediaReferences: [previous], files: [...files.values()] });
+        }
         return { rollback, commit };
     } catch (error) {
         await rollback();
@@ -1100,12 +1112,12 @@ function createRecordApi(root, options = {}) {
         }
         if (requestPath === '/api/travel-records' && req.method === 'GET') {
             if (!session) {
-                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, recordManagement: true, recycleBin: true, code: 'AUTH_REQUIRED' });
+                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, recordManagement: true, recycleBin: true, recyclePreviews: true, code: 'AUTH_REQUIRED' });
                 return;
             }
             send(200, {
                 service: 'travel-diary-writer-v1', authenticated: true, token: session.token,
-                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, recordManagement: true, recycleBin: true
+                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, recordManagement: true, recycleBin: true, recyclePreviews: true
             });
             return;
         }
@@ -1123,6 +1135,24 @@ function createRecordApi(root, options = {}) {
             let importAttemptReserved = false;
             try {
                 const mode = requestUrl.searchParams.get('mode');
+                if (req.method === 'GET' && mode === 'recycle-file') {
+                    const name = requestUrl.searchParams.get('path');
+                    const file = await require('./recycle-bin.js').recycleFile(root, requestUrl.searchParams.get('id'), name);
+                    const types = { '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif', '.avif': 'image/avif', '.heic': 'image/heic', '.heif': 'image/heif', '.bmp': 'image/bmp', '.mp4': 'video/mp4', '.webm': 'video/webm', '.mov': 'video/quicktime', '.m4v': 'video/mp4', '.ogv': 'video/ogg', '.md': 'text/plain; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.json': 'text/plain; charset=utf-8' };
+                    const type = types[path.extname(name).toLowerCase()];
+                    if (!type) throw failure(415, '此文件不支持预览。');
+                    const handle = await fs.open(file, 'r');
+                    try {
+                        const stat = await handle.stat();
+                        const range = req.headers.range ? require('./server.js').parseByteRange(req.headers.range, stat.size) : null;
+                        if (req.headers.range && !range) { res.writeHead(416, { 'Content-Range': `bytes */${stat.size}` }); res.end(); return; }
+                        res.writeHead(range ? 206 : 200, { 'Content-Type': type, 'Content-Length': range ? range.end - range.start + 1 : stat.size,
+                            'Accept-Ranges': 'bytes', 'Cache-Control': 'private, no-store', 'X-Content-Type-Options': 'nosniff',
+                            'Content-Security-Policy': "default-src 'none'; sandbox", ...(range ? { 'Content-Range': `bytes ${range.start}-${range.end}/${stat.size}` } : {}) });
+                        await pipeline(handle.createReadStream({ autoClose: false, ...(range || {}) }), res);
+                    } finally { await handle.close(); }
+                    return;
+                }
                 if (req.method === 'GET' && ['inventory', 'media-health', 'recycle-bin'].includes(mode)) {
                     const release = await acquireDataLock(root);
                     try {

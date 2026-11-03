@@ -1,9 +1,9 @@
-import { createRecycleManager } from './recycle-manager.js?v=20261103-recycle-bin-v1';
+import { createRecycleManager } from './recycle-manager.js?v=20261103-content-preview-v1';
 import { loadTravelData, loadTravelRecords } from './data.js?v=20261103-record-management-v1';
 import { createRecordEditor } from './record-editor.js?v=20261103-recycle-bin-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261103-record-management-v1';
-import { createDataTransfer } from './data-transfer.js?v=20261103-recycle-bin-v1';
-import { createMediaManager } from './media-manager.js?v=20261103-recycle-bin-v1';
+import { createDataTransfer } from './data-transfer.js?v=20261103-content-preview-v1';
+import { createMediaManager } from './media-manager.js?v=20261103-content-preview-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20261103-recycle-bin-v1';
 import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';

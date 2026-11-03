@@ -1,7 +1,6 @@
 import { escapeHtml, getMediaFileUrl } from './utils.js';
 import { createPasswordGate } from './record-password.js?v=20261103-record-management-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
-import { confirmFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
 import { createMediaFileLink } from './media-file-link.js?v=20261102-native-preview-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20261103-clear-media-ui-v1';
 
@@ -152,18 +151,11 @@ export function createMediaManager() {
         if (event.target.closest('[data-media-all]')) { report.files.filter(file => !file.records.length).forEach(file => selected.add(file.path)); renderFiles(); count(); }
         if (event.target.closest('[data-media-clear]')) { selected.clear(); renderFiles(); count(); }
         let payload;
-        let message;
         if (event.target.closest('[data-media-trash]') && selected.size) {
             payload = { action: 'trash', paths: [...selected] };
-            message = `将 ${selected.size} 个未引用文件移入回收站？确认前可点击文件名检查内容。此操作可恢复，暂不释放磁盘空间。`;
         }
         if (payload) {
-            busy = true;
-            try {
-                if (await confirmFeedback(message, { title: '移入回收站？', confirmLabel: '移入回收站' })) {
-                    await request(payload);
-                }
-            } finally { busy = false; }
+            await request(payload);
         }
     });
     return createPasswordGate(async () => {

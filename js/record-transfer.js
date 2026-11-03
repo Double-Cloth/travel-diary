@@ -1,4 +1,4 @@
-import { escapeHtml } from './utils.js';
+import { escapeHtml, getMediaFileUrl } from './utils.js';
 import { createPasswordGate } from './record-password.js?v=20261103-record-management-v1';
 import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=20261103-record-management-v1';
 import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261103-record-management-v1';
@@ -6,8 +6,9 @@ import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-st
 import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=20261103-media-controls-v3';
 import { verifyBackupPassword } from './backup-password.js?v=20261103-media-controls-v3';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs';
-import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=20261103-recycle-bin-v1';
+import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=20261103-content-preview-v1';
 import { recordIdentity } from './record-identity.mjs';
+import { createContentPreviewScope, markdownPreview } from './content-preview.js?v=20261103-content-preview-v1';
 
 export function createRecordTransfer(onImported, getRecords) {
     const dialog = document.createElement('dialog');
@@ -48,12 +49,13 @@ export function createRecordTransfer(onImported, getRecords) {
     let busy = false;
     let comparisons = new Map();
     let importAuthorization;
+    let previews = createContentPreviewScope();
     const status = message => {
         const output = document.querySelector('[data-data-transfer-status]');
         if (output) output.textContent = message;
     };
     const restoreFocus = () => { if (trigger?.isConnected) trigger.focus(); };
-    const close = () => { dialog.close(); restoreFocus(); };
+    const close = () => { dialog.close(); previews.dispose(); restoreFocus(); };
     const error = message => { dialog.querySelector('[data-record-transfer-error]').textContent = message; };
 
     function filteredRecords() {
@@ -63,6 +65,8 @@ export function createRecordTransfer(onImported, getRecords) {
     }
 
     function render() {
+        previews.dispose();
+        previews = createContentPreviewScope();
         const filtered = filteredRecords();
         dialog.querySelector('[data-record-transfer-list]').innerHTML = filtered.map(record => {
             const comparison = comparisons.get(record.desc_md);
@@ -81,8 +85,8 @@ export function createRecordTransfer(onImported, getRecords) {
     function renderDifference(record, comparison) {
         if (!comparison) return '';
         if (comparison.status === 'conflict') return `<p role="status">${escapeHtml(comparison.message)}</p>`;
-        if (comparison.status !== 'changed') return '';
-        const previous = comparison.previous;
+        if (!['changed', 'added'].includes(comparison.status)) return '';
+        const previous = comparison.previous || {};
         const labels = { date: '日期', country: '国家 / 地区', country_code: '国家代码', admin_area: '行政区', admin_area_type: '行政区类型', locality: '目的地', locality_type: '目的地类型', trip_id: '行程', desc_md: '正文路径', photo_folder: '图片目录', photos: '图片列表', video_folder: '视频目录', videos: '视频列表' };
         const formatValue = (value, other) => {
             if (!Array.isArray(value)) return String(value ?? '').trim() || '未设置';
@@ -92,16 +96,39 @@ export function createRecordTransfer(onImported, getRecords) {
         };
         const blocks = comparison.markdownChanged ? changedTextBlocks(comparison.currentMarkdown, comparison.markdown) : [];
         const sections = [comparison.fields.length ? `${comparison.fields.length} 项信息` : '', blocks.length ? '正文' : '', comparison.media.length ? `${comparison.media.length} 个附件` : ''].filter(Boolean);
-        return `<details class="record-diff"><summary><span>查看差异</span><small>${escapeHtml(sections.join(' · '))}</small></summary>
+        const bodyPreview = text => `${markdownPreview(text)}<details class="content-preview-source"><summary>查看 Markdown 源文</summary><pre>${escapeHtml(text) || '<span class="record-diff-empty">无内容</span>'}</pre></details>`;
+        return `<details class="record-diff" data-diff-record="${escapeHtml(record.desc_md)}"><summary><span>${comparison.status === 'added' ? '预览新记录' : '查看差异'}</span><small>${escapeHtml(sections.join(' · '))}</small></summary>
             <div class="record-diff-body"><p class="record-diff-note">仅显示有变化的部分。勾选这篇日记后，将采用备份内容。</p>
             ${comparison.fields.length ? `<section class="record-diff-section"><h3>记录信息</h3><dl>${comparison.fields.map(key => `<div><dt>${escapeHtml(labels[key] || key)}</dt><dd><span class="record-diff-value record-diff-before"><small>当前</small>${escapeHtml(formatValue(previous[key], record[key]))}</span><span class="record-diff-value record-diff-after"><small>备份</small>${escapeHtml(formatValue(record[key], previous[key]))}</span></dd></div>`).join('')}</dl></section>` : ''}
-            ${blocks.length ? `<section class="record-diff-section"><h3>正文改动 <small>${blocks.length} 处</small></h3>${blocks.map(block => `<div class="record-diff-columns"><div class="record-diff-before"><h4>当前 <small>第 ${block.lineBefore} 行起</small></h4><pre>${escapeHtml(block.before) || '<span class="record-diff-empty">无内容</span>'}</pre></div><div class="record-diff-after"><h4>备份 <small>第 ${block.lineAfter} 行起</small></h4><pre>${escapeHtml(block.after) || '<span class="record-diff-empty">无内容</span>'}</pre></div></div>`).join('')}</section>` : ''}
-            ${comparison.media.length ? `<section class="record-diff-section"><h3>附件改动</h3><ul class="record-diff-media">${comparison.media.map(name => {
+            ${blocks.length ? `<section class="record-diff-section"><h3>正文改动 <small>${blocks.length} 处</small></h3>${blocks.map(block => `<div class="record-diff-columns"><div class="record-diff-before"><h4>当前 <small>第 ${block.lineBefore} 行起</small></h4>${bodyPreview(block.before)}</div><div class="record-diff-after"><h4>备份 <small>第 ${block.lineAfter} 行起</small></h4>${bodyPreview(block.after)}</div></div>`).join('')}</section>` : ''}
+            ${comparison.media.length ? `<section class="record-diff-section"><h3>附件改动</h3><ul class="record-diff-media">${comparison.media.map((name, index) => {
                 const action = !comparison.previousMediaPaths?.has(name) ? '新增' : !comparison.incomingMediaPaths?.has(name) ? '移除' : '内容变化';
-                return `<li><span>${action}</span><span>${escapeHtml(name)}</span></li>`;
+                return `<li><p class="record-diff-media-heading"><span>${action}</span> ${escapeHtml(name)}</p><div class="record-diff-columns"><div class="record-diff-before"><h4>当前</h4><div data-diff-media-before="${index}" data-media-viewer-group>${comparison.previousMediaPaths?.has(name) ? '正在准备预览…' : '<p class="record-diff-empty">无此附件</p>'}</div></div><div class="record-diff-after"><h4>备份</h4><div data-diff-media-after="${index}" data-media-viewer-group>${comparison.incomingMediaPaths?.has(name) ? '正在准备预览…' : '<p class="record-diff-empty">无此附件</p>'}</div></div></div></li>`;
             }).join('')}</ul></section>` : ''}</div>
         </details>`;
     }
+
+    dialog.addEventListener('toggle', async event => {
+        const details = event.target;
+        if (!details.matches('[data-diff-record]') || !details.open || details.dataset.loaded) return;
+        details.dataset.loaded = 'true';
+        const scope = previews;
+        const comparison = comparisons.get(details.dataset.diffRecord);
+        const files = new Map((entries || []).map(entry => [entry.name, entry.data]));
+        for (const [index, name] of (comparison?.media || []).entries()) {
+            for (const side of ['before', 'after']) {
+                const exists = (side === 'before' ? comparison.previousMediaPaths : comparison.incomingMediaPaths)?.has(name);
+                if (!exists) continue;
+                const container = details.querySelector(`[data-diff-media-${side}="${index}"]`);
+                try {
+                    if (side === 'after' && !files.has(name)) throw new Error('备份中缺少这个附件。');
+                    const preview = await scope.file({ name, ...(side === 'after' ? { source: files.get(name) } : { url: getMediaFileUrl(name) }), index: 0 });
+                    if (scope !== previews || !details.isConnected) return;
+                    container.replaceChildren(preview);
+                } catch (failure) { container.textContent = failure.message; }
+            }
+        }
+    }, true);
 
     function updateSelection() {
         dialog.querySelector('[data-record-transfer-count]').textContent = `已选 ${selected.size} / ${records.length} 条`;

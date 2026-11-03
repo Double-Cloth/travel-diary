@@ -47,11 +47,13 @@ export async function compareBackup(records, entries, current) {
         const oldMetadata = previous ? Object.fromEntries(Object.entries(previous).filter(([key]) => key !== 'record_id')) : {};
         const fields = [...new Set([...Object.keys(metadata), ...Object.keys(oldMetadata)])]
             .filter(key => canonical(metadata[key] ?? '') !== canonical(oldMetadata[key] ?? ''));
-        const media = [...new Set([...recordFilePaths([record]), ...(previous ? recordFilePaths([previous]) : [])])]
+        const previousMediaPaths = previous ? recordFilePaths([previous]) : new Set();
+        const incomingMediaPaths = recordFilePaths([record]);
+        const media = [...new Set([...incomingMediaPaths, ...previousMediaPaths])]
             .filter(name => name !== record.desc_md && name !== previous?.desc_md)
-            .filter(name => incoming.signatures[name] !== current.signatures[name]);
+            .filter(name => previousMediaPaths.has(name) !== incomingMediaPaths.has(name) || incoming.signatures[name] !== current.signatures[name]);
         comparisons.set(record.desc_md, { status, previous, expected, fields, media,
-            previousMediaPaths: previous ? recordFilePaths([previous]) : new Set(), incomingMediaPaths: recordFilePaths([record]),
+            previousMediaPaths, incomingMediaPaths,
             markdownChanged: !previous || incoming.signatures[record.desc_md] !== current.signatures[previous.desc_md],
             markdown: new TextDecoder('utf-8', { fatal: true }).decode(await readSourceText(sourceOf(files.get(record.desc_md)))) });
     }

@@ -75,6 +75,97 @@ test('保存时移除真实媒体先留存回收站，恢复不会覆盖冲突�
     await fs.unlink(path.join(root, item.files[0].path));
     await action(root, item.id);
     assert.equal(await fs.readFile(path.join(root, item.files[0].path), 'utf8'), 'unique');
+    const restored = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))).find(record => record.desc_md === note.desc_md);
+    assert.deepEqual(restored.photos, ['shared.png', 'unique.png']);
+});
+
+test('媒体恢复只合并附件引用，保留后续修改，重复引用不增加', async t => {
+    const root = await fixture(t);
+    const id = await captureRecycle(root, { title: '移除的附件', mediaReferences: [note], files: [{ path: 'data/photos/trip/unique.png' }] });
+    await fs.unlink(path.join(root, 'data/photos/trip/unique.png'));
+    await write(root, 'data/travel_data.json', JSON.stringify([{ ...note, locality: '后续目的地', photos: ['shared.png', 'later.png'], trip_id: 'later' }, other]));
+    await action(root, id);
+    const records = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
+    assert.equal(records[0].locality, '后续目的地');
+    assert.equal(records[0].trip_id, 'later');
+    assert.deepEqual(records[0].photos, ['shared.png', 'unique.png', 'later.png']);
+    const again = await captureRecycle(root, { title: '重复附件', mediaReferences: [note], files: [{ path: 'data/photos/trip/unique.png' }] });
+    await action(root, again);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')))[0].photos, records[0].photos);
+});
+
+test('移除共用图片也保留日记关联，恢复不影响其他日记', async t => {
+    const root = await fixture(t);
+    const { base, headers } = await api(t, root);
+    const response = await fetch(`${base}/api/travel-records`, { method: 'PUT', headers, body: JSON.stringify({ originalDescMd: note.desc_md, draft: { format: DRAFT_FORMAT, requestId: 'c'.repeat(32), uploads: [], input: { ...note, admin_area: '', admin_area_type: '', locality_type: '', trip_id: '', title: '标题', body: '原正文', photos: ['unique.png'], video_folder: '', videos: [] } } }) });
+    assert.equal(response.status, 200, await response.text());
+    const item = (await readRecycleBin(root)).items.find(item => item.title === '编辑日记时移除的媒体');
+    assert.deepEqual(item.files.map(file => file.path), ['data/photos/trip/shared.png']);
+    await action(root, item.id);
+    const records = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
+    assert.deepEqual(records[0].photos, note.photos);
+    assert.deepEqual(records[1].photos, other.photos);
+});
+
+test('恢复附件提交索引失败时撤回文件，关联日记缺失或目录冲突时保留回收项目', async t => {
+    const root = await fixture(t);
+    const name = 'data/photos/trip/unique.png';
+    const id = await captureRecycle(root, { title: '移除的附件', mediaReferences: [note], files: [{ path: name }] });
+    await fs.unlink(path.join(root, name));
+    const records = [{ ...note, photos: ['shared.png'] }, other];
+    await write(root, 'data/travel_data.json', JSON.stringify(records));
+    const rename = fs.rename;
+    const mocked = t.mock.method(fs, 'rename', async (source, target) => {
+        if (target === path.join(root, 'data/travel_data.json')) throw new Error('模拟引用提交失败');
+        return rename(source, target);
+    });
+    try { await assert.rejects(action(root, id), /引用提交失败/); }
+    finally { mocked.mock.restore(); }
+    await assert.rejects(fs.stat(path.join(root, name)), { code: 'ENOENT' });
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))), records);
+    await write(root, 'data/travel_data.json', JSON.stringify([{ ...records[0], photo_folder: 'data/photos/new' }, other]));
+    await assert.rejects(action(root, id), /目录已改变/);
+    await write(root, 'data/travel_data.json', JSON.stringify([other]));
+    await assert.rejects(action(root, id), /请先恢复日记/);
+    assert.equal((await readRecycleBin(root)).items[0].id, id);
+});
+
+test('旧媒体必须选择原日记，指定后同时恢复图片、视频引用，未引用媒体可只恢复文件', async t => {
+    const root = await fixture(t);
+    await write(root, 'data/videos/trip/old.mp4', 'video');
+    const id = await captureRecycle(root, { title: '编辑日记时移除的媒体', files: [{ path: 'data/photos/trip/unique.png' }, { path: 'data/videos/trip/old.mp4' }] });
+    await write(root, 'data/travel_data.json', JSON.stringify([{ ...note, photos: ['shared.png'] }, other]));
+    await assert.rejects(action(root, id), /选择恢复到哪篇日记/);
+    await manageRecycleBin(root, { id, action: 'restore', revision: (await readRecycleBin(root)).revision, targetDescMd: note.desc_md });
+    const restored = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')))[0];
+    assert.ok(restored.photos.includes('unique.png'));
+    assert.deepEqual(restored.videos, ['old.mp4']);
+    assert.equal(restored.video_folder, 'data/videos/trip');
+    const unused = await captureRecycle(root, { title: '清理的媒体', files: [{ path: 'data/videos/trip/old.mp4' }] });
+    const before = await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8');
+    await action(root, unused);
+    assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), before);
+});
+
+test('回收文件预览需登录，只读取清单内文件，支持视频范围读取并防止路径越界', async t => {
+    const root = await fixture(t);
+    const name = 'data/photos/trip/unique.png';
+    const id = await captureRecycle(root, { title: '图片', files: [{ path: name }] });
+    const { base, headers } = await api(t, root);
+    const url = `${base}/api/travel-data?mode=recycle-file&id=${id}&path=${encodeURIComponent(name)}`;
+    assert.equal((await fetch(url)).status, 401);
+    const response = await fetch(url, { headers });
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get('content-type'), 'image/png');
+    assert.match(response.headers.get('cache-control'), /no-store/);
+    assert.equal(await response.text(), 'unique');
+    const range = await fetch(url, { headers: { ...headers, Range: 'bytes=1-3' } });
+    assert.equal(range.status, 206);
+    assert.equal(range.headers.get('content-range'), 'bytes 1-3/6');
+    assert.equal(await range.text(), 'niq');
+    assert.equal((await fetch(url, { headers: { ...headers, Range: 'bytes=99-' } })).status, 416);
+    assert.equal((await fetch(`${url.replace(encodeURIComponent(name), encodeURIComponent('data/../.secrets/auth.json'))}`, { headers })).status, 409);
+    assert.equal((await fetch(`${url.replace(encodeURIComponent(name), encodeURIComponent(note.desc_md))}`, { headers })).status, 409);
 });
 
 test('删除提交失败时恢复正文和媒体，不遗留回收项目或数据锁', async t => {
@@ -191,6 +282,13 @@ test('相同正文不展示正文，仅元数据或附件变化仍能准确识�
     assert.equal(comparison.markdownChanged, false);
     assert.deepEqual(comparison.fields, ['trip_id']);
     assert.deepEqual(changedTextBlocks('# 相同正文', '# 相同正文'), []);
+});
+
+test('共用媒体的字节未变，单篇日记新增或移除引用仍列入附件差异', async () => {
+    const files = [{ name: note.desc_md, data: '# 日记' }, { name: other.desc_md, data: '# 另一篇' }, { name: 'data/photos/trip/shared.png', data: 'shared' }, { name: 'data/photos/trip/unique.png', data: 'unique' }];
+    const current = await describeRecords([note, other], files);
+    const comparisons = await compareBackup([{ ...note, photos: ['unique.png'] }, other], files, current);
+    assert.deepEqual(comparisons.get(note.desc_md).media, ['data/photos/trip/shared.png']);
 });
 
 test('正文比较仅输出改动块，支持新增、删除、分散修改与长正文', () => {
