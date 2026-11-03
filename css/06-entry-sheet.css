@@ -1322,6 +1322,17 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .record-diff-columns h4 { display: flex; flex-wrap: wrap; gap: 6px 12px; margin: 0; padding: 8px 12px; border-bottom: 1px solid var(--hairline); font-size: 12px; }
 .record-diff-columns h4 small { color: var(--ink-soft); font-weight: 400; }
 .record-diff pre { margin: 0; max-height: 280px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 13px; line-height: 1.8; padding: 12px; }
+.record-diff-legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 0 0 10px; font-size: 12px; }
+.record-diff-legend > span { padding: 2px 6px; }
+.record-diff-unified { min-width: 0; border: 1px solid var(--hairline); font-size: 13px; line-height: 1.8; }
+.record-diff-range { margin: 0; padding: 6px 10px; color: var(--ink-soft); background: rgba(91, 75, 53, 0.05); font-size: 12px; font-variant-numeric: tabular-nums; }
+.record-diff-hunk + .record-diff-hunk { border-top: 1px dashed var(--hairline); }
+.record-diff-line { display: grid; grid-template-columns: 4ch 4ch 2ch minmax(0, 1fr); padding: 3px 10px 3px 4px; }
+.record-diff-line-number { text-align: right; padding-right: 6px; font-size: 11px; font-variant-numeric: tabular-nums; user-select: none; }
+.record-diff-line-sign { text-align: center; user-select: none; }
+.record-diff-line code { min-width: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; tab-size: 4; }
+.record-diff-removed { color: #873d2c; background: rgba(170, 61, 43, 0.10); }
+.record-diff-added { color: #315d3b; background: rgba(61, 124, 69, 0.12); }
 .record-diff-empty { color: var(--ink-soft); font-size: 12px; }
 .record-diff-media { margin: 0; padding: 0; list-style: none; }
 .record-diff-media > li { padding: 14px 0; font-size: 12px; line-height: 1.7; }

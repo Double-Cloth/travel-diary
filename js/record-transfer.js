@@ -6,7 +6,7 @@ import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-st
 import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=20261103-media-controls-v3';
 import { verifyBackupPassword } from './backup-password.js?v=20261103-media-controls-v3';
 import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs';
-import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=20261103-content-preview-v1';
+import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=20261103-unified-diff-v1';
 import { recordIdentity } from './record-identity.mjs';
 import { createContentPreviewScope, markdownPreview } from './content-preview.js?v=20261103-content-preview-v1';
 
@@ -109,11 +109,17 @@ export function createRecordTransfer(onImported, getRecords) {
         };
         const blocks = comparison.markdownChanged ? changedTextBlocks(comparison.currentMarkdown, comparison.markdown) : [];
         const sections = [comparison.fields.length ? `${comparison.fields.length} 项信息` : '', blocks.length ? '正文' : '', comparison.media.length ? `${comparison.media.length} 个附件` : ''].filter(Boolean);
-        const bodyPreview = text => `${markdownPreview(text)}<details class="content-preview-source"><summary>查看 Markdown 源文</summary><pre>${escapeHtml(text) || '<span class="record-diff-empty">无内容</span>'}</pre></details>`;
+        const diffLines = (block, side) => {
+            const removed = side === 'before';
+            const count = removed ? block.countBefore : block.countAfter;
+            if (!count) return '';
+            const start = removed ? block.lineBefore : block.lineAfter;
+            return block[side].split('\n').map((line, index) => `<div class="record-diff-line record-diff-${removed ? 'removed' : 'added'}"><span class="record-diff-line-number">${removed ? start + index : ''}</span><span class="record-diff-line-number">${removed ? '' : start + index}</span><span class="record-diff-line-sign" aria-label="${removed ? '删除' : '新增'}">${removed ? '−' : '+'}</span><code>${escapeHtml(line) || '&#8203;'}</code></div>`).join('');
+        };
         return `<details class="record-diff" data-diff-record="${escapeHtml(record.desc_md)}"><summary><span>${comparison.status === 'added' ? '预览新记录' : '查看差异'}</span><small>${escapeHtml(sections.join(' · '))}</small></summary>
             <div class="record-diff-body"><p class="record-diff-note">仅显示有变化的部分。勾选这篇日记后，将采用备份内容。</p>
             ${comparison.fields.length ? `<section class="record-diff-section"><h3>记录信息</h3><dl>${comparison.fields.map(key => `<div><dt>${escapeHtml(labels[key] || key)}</dt><dd><span class="record-diff-value record-diff-before"><small>当前</small>${escapeHtml(formatValue(previous[key], record[key]))}</span><span class="record-diff-value record-diff-after"><small>备份</small>${escapeHtml(formatValue(record[key], previous[key]))}</span></dd></div>`).join('')}</dl></section>` : ''}
-            ${blocks.length ? `<section class="record-diff-section"><h3>正文改动 <small>${blocks.length} 处</small></h3>${blocks.map(block => `<div class="record-diff-columns"><div class="record-diff-before"><h4>当前 <small>第 ${block.lineBefore} 行起</small></h4>${bodyPreview(block.before)}</div><div class="record-diff-after"><h4>备份 <small>第 ${block.lineAfter} 行起</small></h4>${bodyPreview(block.after)}</div></div>`).join('')}</section>` : ''}
+            ${blocks.length ? `<section class="record-diff-section record-diff-text"><h3>正文改动 <small>${blocks.length} 处</small></h3><p class="record-diff-legend"><span class="record-diff-removed">− 删除</span><span class="record-diff-added">+ 新增</span></p><div class="record-diff-unified" role="group" aria-label="正文差异，左侧为当前行号，右侧为备份行号">${blocks.map(block => `<div class="record-diff-hunk"><p class="record-diff-range">@@ −${block.lineBefore - (block.countBefore ? 0 : 1)},${block.countBefore} +${block.lineAfter - (block.countAfter ? 0 : 1)},${block.countAfter} @@</p>${diffLines(block, 'before')}${diffLines(block, 'after')}</div>`).join('')}</div><details class="content-preview-source"><summary>预览导入后的正文</summary>${markdownPreview(comparison.markdown)}</details></section>` : ''}
             ${comparison.media.length ? `<section class="record-diff-section"><h3>附件改动</h3><ul class="record-diff-media">${comparison.media.map((name, index) => {
                 const action = !comparison.previousMediaPaths?.has(name) ? '新增' : !comparison.incomingMediaPaths?.has(name) ? '移除' : '内容变化';
                 return `<li><p class="record-diff-media-heading"><span>${action}</span> ${escapeHtml(name)}</p><div class="record-diff-columns"><div class="record-diff-before"><h4>当前</h4><div data-diff-media-before="${index}" data-media-viewer-group>${comparison.previousMediaPaths?.has(name) ? '正在准备预览…' : '<p class="record-diff-empty">无此附件</p>'}</div></div><div class="record-diff-after"><h4>备份</h4><div data-diff-media-after="${index}" data-media-viewer-group>${comparison.incomingMediaPaths?.has(name) ? '正在准备预览…' : '<p class="record-diff-empty">无此附件</p>'}</div></div></div></li>`;

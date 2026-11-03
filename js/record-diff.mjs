@@ -62,9 +62,11 @@ export async function compareBackup(records, entries, current) {
 
 // 以相同行为锚点对齐，仅返回改动块；比较工作量设上限，长正文不会阻塞界面。
 export function changedTextBlocks(before, after) {
+    before = String(before ?? '');
+    after = String(after ?? '');
     if (before === after) return [];
-    const left = String(before ?? '').split('\n');
-    const right = String(after ?? '').split('\n');
+    const left = before ? before.split('\n') : [];
+    const right = after ? after.split('\n') : [];
     const positions = new Map();
     right.forEach((line, index) => {
         if (!positions.has(line)) positions.set(line, []);
@@ -100,10 +102,10 @@ export function changedTextBlocks(before, after) {
             let endA = left.length;
             let endB = right.length;
             while (endA > a && endB > b && left[endA - 1] === right[endB - 1]) { endA--; endB--; }
-            blocks.push({ before: left.slice(a, endA).join('\n'), after: right.slice(b, endB).join('\n'), lineBefore: a + 1, lineAfter: b + 1 });
+            blocks.push({ before: left.slice(a, endA).join('\n'), after: right.slice(b, endB).join('\n'), lineBefore: a + 1, lineAfter: b + 1, countBefore: endA - a, countAfter: endB - b });
             break;
         }
-        blocks.push({ before: left.slice(startA, a).join('\n'), after: right.slice(startB, b).join('\n'), lineBefore: startA + 1, lineAfter: startB + 1 });
+        blocks.push({ before: left.slice(startA, a).join('\n'), after: right.slice(startB, b).join('\n'), lineBefore: startA + 1, lineAfter: startB + 1, countBefore: a - startA, countAfter: b - startB });
     }
     return blocks;
 }

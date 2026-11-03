@@ -345,10 +345,10 @@ test('共用媒体的字节未变，单篇日记新增或移除引用仍列入�
 
 test('正文比较仅输出改动块，支持新增、删除、分散修改与长正文', () => {
     assert.deepEqual(changedTextBlocks('开头\n旧段落\n中间\n旧结尾\n末尾', '开头\n新段落\n中间\n新结尾\n末尾'), [
-        { before: '旧段落', after: '新段落', lineBefore: 2, lineAfter: 2 }, { before: '旧结尾', after: '新结尾', lineBefore: 4, lineAfter: 4 }
+        { before: '旧段落', after: '新段落', lineBefore: 2, lineAfter: 2, countBefore: 1, countAfter: 1 }, { before: '旧结尾', after: '新结尾', lineBefore: 4, lineAfter: 4, countBefore: 1, countAfter: 1 }
     ]);
-    assert.deepEqual(changedTextBlocks('第一行\n末尾', '第一行\n新增\n末尾'), [{ before: '', after: '新增', lineBefore: 2, lineAfter: 2 }]);
-    assert.deepEqual(changedTextBlocks('第一行\n删除\n末尾', '第一行\n末尾'), [{ before: '删除', after: '', lineBefore: 2, lineAfter: 2 }]);
+    assert.deepEqual(changedTextBlocks('第一行\n末尾', '第一行\n新增\n末尾'), [{ before: '', after: '新增', lineBefore: 2, lineAfter: 2, countBefore: 0, countAfter: 1 }]);
+    assert.deepEqual(changedTextBlocks('第一行\n删除\n末尾', '第一行\n末尾'), [{ before: '删除', after: '', lineBefore: 2, lineAfter: 2, countBefore: 1, countAfter: 0 }]);
     const before = Array.from({ length: 20000 }, (_, i) => `行${i}`).join('\n');
     const blocks = changedTextBlocks(before, before.replace('行1234\n', '改动\n'));
     assert.equal(blocks.length, 1);
@@ -358,4 +358,25 @@ test('正文比较仅输出改动块，支持新增、删除、分散修改与�
     assert.equal(scattered.length, 2);
     assert.equal(scattered[0].after, inserted);
     assert.equal(scattered[1].before, '旧结尾');
+});
+
+test('单栏正文差异保留空行计数，空正文不产生虚假的删除或新增行', () => {
+    assert.deepEqual(changedTextBlocks('', '# 新日记'), [{ before: '', after: '# 新日记', lineBefore: 1, lineAfter: 1, countBefore: 0, countAfter: 1 }]);
+    assert.deepEqual(changedTextBlocks('# 旧日记', ''), [{ before: '# 旧日记', after: '', lineBefore: 1, lineAfter: 1, countBefore: 1, countAfter: 0 }]);
+    assert.deepEqual(changedTextBlocks('开头\n结尾', '开头\n\n结尾'), [{ before: '', after: '', lineBefore: 2, lineAfter: 2, countBefore: 0, countAfter: 1 }]);
+    const pairs = [
+        ['', '\n'], ['\n', ''], ['正文', '\n正文'], ['\n正文', '正文'],
+        ['正文', '正文\n'], ['正文\n', '正文'], ['开头\n\n结尾', '开头\n结尾'],
+        ['开头\n\n旧行\n结尾', '开头\n新行\n\n\n结尾']
+    ];
+    for (const [before, after] of pairs) {
+        const result = before ? before.split('\n') : [];
+        for (const block of changedTextBlocks(before, after).reverse()) {
+            const added = block.countAfter ? block.after.split('\n') : [];
+            assert.equal(added.length, block.countAfter);
+            assert.deepEqual(result.slice(block.lineBefore - 1, block.lineBefore - 1 + block.countBefore), block.countBefore ? block.before.split('\n') : []);
+            result.splice(block.lineBefore - 1, block.countBefore, ...added);
+        }
+        assert.deepEqual(result, after ? after.split('\n') : []);
+    }
 });
