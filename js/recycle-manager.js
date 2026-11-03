@@ -1,9 +1,9 @@
-import { escapeHtml } from './utils.js?v=2.1.7';
-import { createPasswordGate } from './record-password.js?v=2.1.7';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.7';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.7';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.7';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.7';
+import { escapeHtml } from './utils.js?v=2.1.8';
+import { createPasswordGate } from './record-password.js?v=2.1.8';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.8';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.8';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.8';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.8';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
