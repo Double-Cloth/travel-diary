@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=2.1.4';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.4';
-import { createRecordEditor } from './record-editor.js?v=2.1.4';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.4';
-import { createDataTransfer } from './data-transfer.js?v=2.1.4';
-import { createMediaManager } from './media-manager.js?v=2.1.4';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.4';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.4';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.4';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.4';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.4';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.4';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.4';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.4';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.4';
-import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.4';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.4';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.4';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.5';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.5';
+import { createRecordEditor } from './record-editor.js?v=2.1.5';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.5';
+import { createDataTransfer } from './data-transfer.js?v=2.1.5';
+import { createMediaManager } from './media-manager.js?v=2.1.5';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.5';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.5';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.5';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.5';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.5';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.5';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.5';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.5';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.5';
+import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.5';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.5';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.5';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.4';
+} from './location.mjs?v=2.1.5';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,7 +30,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.4';
+} from './photo-viewer-transform.mjs?v=2.1.5';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -1781,7 +1781,7 @@ function renderTrip(params = {}) {
     const snapshot = buildRecordSetSnapshot(records);
     const first = records[0];
     const last = records.at(-1);
-    const places = getTripRoutePlaces(records);
+    const places = [...new Set(records.map(record => record.locality || record.adminArea || record.country).filter(Boolean))];
     const tripId = first.tripId || first.trip_id || params.id;
     setPages(`
         <div class="trip-overview" aria-labelledby="tripTitle">
@@ -1791,9 +1791,11 @@ function renderTrip(params = {}) {
             </header>
             <div class="trip-heading">
                 <h1 id="tripTitle">行程 ${escapeHtml(first.tripGroupLabel)}</h1>
-                <p class="trip-date-range"><time datetime="${escapeHtml(first.date)}">${escapeHtml(first.date)}</time>${first.date !== last.date ? `<span>至</span><time datetime="${escapeHtml(last.date)}">${escapeHtml(last.date)}</time>` : ''}</p>
-                <p class="trip-id">行程 ID：${escapeHtml(tripId)}</p>
-                <p class="trip-route" aria-label="沿途目的地">${places.map(place => `<span>${escapeHtml(place)}</span>`).join('<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M2 8h11M9 4l4 4-4 4"/></svg>')}</p>
+                <div class="trip-identity">
+                    <p class="trip-date-range"><time datetime="${escapeHtml(first.date)}">${escapeHtml(first.date)}</time>${first.date !== last.date ? `<span>至</span><time datetime="${escapeHtml(last.date)}">${escapeHtml(last.date)}</time>` : ''}</p>
+                    <p class="trip-id">行程 ID：${escapeHtml(tripId)}</p>
+                </div>
+                <ul class="trip-destinations" aria-label="沿途目的地">${places.map(place => `<li>${escapeHtml(place)}</li>`).join('')}</ul>
             </div>
             <dl class="trip-summary" aria-label="本次行程概览">
                 <div><dt>日记</dt><dd>${records.length} 篇</dd></div>
@@ -1817,8 +1819,10 @@ function renderTrip(params = {}) {
             ${records.map((record, index) => `
                 <article class="trip-record" id="trip-record-${escapeHtml(record.id)}" aria-labelledby="trip-record-title-${escapeHtml(record.id)}" tabindex="-1">
                     <header class="trip-record-heading">
-                        <div class="trip-record-toolbar"><a class="paper-button" href="${serializeRoute({ name: 'entry', params: { id: record.id } })}">打开这篇日记</a></div>
-                        <div class="trip-record-meta"><span>第 ${index + 1} 篇 / 共 ${records.length} 篇</span><time datetime="${escapeHtml(record.date)}">${escapeHtml(record.date)}</time></div>
+                        <div class="trip-record-toolbar">
+                            <a class="paper-button" href="${serializeRoute({ name: 'entry', params: { id: record.id } })}">打开这篇日记</a>
+                            <div class="trip-record-meta"><span>第 ${index + 1} 篇 / 共 ${records.length} 篇</span><time datetime="${escapeHtml(record.date)}">${escapeHtml(record.date)}</time></div>
+                        </div>
                         <h2 id="trip-record-title-${escapeHtml(record.id)}">${escapeHtml(record.title)}</h2>
                         <a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(getLocationText(record))}</a>
                     </header>

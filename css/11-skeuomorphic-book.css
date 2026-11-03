@@ -1112,7 +1112,7 @@ body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padd
     .trip-toolbar :is(.ribbon-back, .paper-button) { min-height: 44px; font-size: 12px; }
     .trip-heading { padding: 24px 0 20px; }
     .trip-heading h1 { font-size: 34px; }
-    .trip-route { margin-top: 16px; font-size: 20px; }
+    .trip-destinations { margin-top: 16px; font-size: 20px; }
     .trip-summary { gap: 12px 20px; padding: 20px 0; }
     .trip-timeline { margin-top: 24px; }
     .trip-timeline-link { gap: 12px; padding-bottom: 20px; }
