@@ -1,6 +1,6 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.11';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.11';
-import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.11';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.12';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.12';
+import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.12';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
     MAXIMUM_MEDIA_BATCH_BYTES,
@@ -8,17 +8,17 @@ import {
     MAXIMUM_VIDEO_FILE_BYTES,
     mediaBytes,
     readUploads
-} from './photo-uploads.mjs?v=2.1.11';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.11';
-import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.11';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.11';
-import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.11';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.11';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.11';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.11';
+} from './photo-uploads.mjs?v=2.1.12';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.12';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.12';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.12';
+import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.12';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.12';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.12';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.12';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
-import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.11';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.11';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.12';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.12';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -347,6 +347,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <div class="record-editor-media-heading">
                             <h3 id="${editorId('PhotosTitle')}"><span>03</span> 图片与视频</h3>
                             <span data-editor-media-count></span>
+                            <button class="paper-button" type="button" data-media-sort-time title="图片、视频分别按元数据时间从早到晚排序；没有时间的文件放在最后，按文件名排序">按拍摄时间排序</button>
                         </div>
                         <p class="record-editor-media-intro">点击缩略图或文件名预览，抓住六点手柄上下拖动排序。勾选多项可整组拖动或移除，更改保存后生效。</p>
                         <div class="record-editor-upload-zone" data-editor-drop>
@@ -360,7 +361,6 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <div class="record-editor-media-batch" data-editor-media-batch role="group" aria-label="批量文件操作" hidden>
                             <div class="record-editor-media-selection">
                                 <span data-media-selected-count role="status" hidden>未选择文件</span>
-                                <button class="paper-button" type="button" data-media-sort-time title="图片、视频分别按元数据时间从早到晚排序；没有时间的文件放在最后，按文件名排序">按拍摄时间排序</button>
                                 <button class="paper-button" type="button" data-media-select-all>全选文件</button>
                                 <button class="paper-button" type="button" data-media-select-clear disabled>取消选择</button>
                             </div>
