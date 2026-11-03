@@ -1,5 +1,5 @@
-import { showFeedback } from './feedback-dialog.js?v=2.1.20';
-import { authenticateWriter, changeWriterPassword, initializeWriterPassword, probeWriterService } from './writer-capability.js?v=2.1.20';
+import { showFeedback } from './feedback-dialog.js?v=2.1.21';
+import { authenticateWriter, changeWriterPassword, initializeWriterPassword, probeWriterService } from './writer-capability.js?v=2.1.21';
 
 const PASSWORD_LENGTH = 6;
 let passwordGateSequence = 0;
@@ -248,7 +248,16 @@ export function createPasswordGate(onVerified, options = {}) {
         let setupRequired = false;
         try {
             if (typeof options.beforePrompt === 'function' && !await options.beforePrompt(context)) return;
-            if (!options.verifyPassword) await probeWriterService();
+            if (!options.verifyPassword) {
+                const capability = await probeWriterService();
+                if (capability.authenticated && capability.token) {
+                    try { await onVerified(capability, context); }
+                    catch (error) {
+                        void showFeedback(error?.message || copy.actionError, { label: '访问验证', title: '操作未完成' });
+                    }
+                    return;
+                }
+            }
         } catch (error) {
             if (error?.code === 'AUTH_SETUP_REQUIRED') {
                 setupRequired = true;

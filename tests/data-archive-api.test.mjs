@@ -108,7 +108,32 @@ test('新旧数据备份按内容恢复或保留认证配置', async () => {
     assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'), 'utf8')).hash, AUTH_CONFIG.hash);
 });
 
-test('导入分别校验当前密码和不同的备份密码，失败不覆盖，成功恢复备份密码', async () => {
+test('备份认证配置一致时复用会话预校验及导入，无需重传明文密码', async () => {
+    const { cookie, token } = await login(base);
+    const headers = { Cookie: cookie, Origin: base, 'X-Travel-Token': token };
+    const verify = await fetch(`${base}/api/travel-data?mode=verify-backup`, {
+        method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ auth: AUTH_CONFIG })
+    });
+    assert.equal(verify.status, 200);
+    assert.equal((await verify.json()).verified, true);
+    const archive = createZip([
+        { name: 'data/travel_data.json', data: '[]' },
+        { name: '.secrets/auth.json', data: JSON.stringify(AUTH_CONFIG) }
+    ]);
+    const noToken = await fetch(`${base}/api/travel-data`, {
+        method: 'POST', headers: { Cookie: cookie, Origin: base, 'Content-Type': 'application/zip' }, body: archive
+    });
+    assert.equal(noToken.status, 403);
+    const imported = await fetch(`${base}/api/travel-data`, {
+        method: 'POST', headers: { ...headers, 'Content-Type': 'application/zip' }, body: archive
+    });
+    assert.equal(imported.status, 200);
+    assert.equal((await imported.json()).imported, true);
+    assert.equal((await (await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } })).json()).authenticated, false);
+});
+
+test('导入复用当前会话但仍校验不同的备份密码，失败不覆盖，成功恢复备份密码', async () => {
     const backupPassword = '590247';
     const backupConfig = await createAuthConfig(backupPassword);
     const archive = createZip([
@@ -127,7 +152,7 @@ test('导入分别校验当前密码和不同的备份密码，失败不覆盖�
         }
     });
     for (const [currentPassword, password, code] of [
-        [undefined, backupPassword, 'CURRENT_PASSWORD_INVALID'],
+        [undefined, undefined, 'BACKUP_PASSWORD_INVALID'],
         ['829401', backupPassword, 'CURRENT_PASSWORD_INVALID'],
         [AUTH_PASSWORD, undefined, 'BACKUP_PASSWORD_INVALID'],
         [AUTH_PASSWORD, AUTH_PASSWORD, 'BACKUP_PASSWORD_INVALID']
@@ -139,7 +164,7 @@ test('导入分别校验当前密码和不同的备份密码，失败不覆盖�
         assert.deepEqual(await fs.readFile(path.join(root, '.secrets/auth.json')), originalAuth);
         assert.equal((await fs.readdir(root)).some(name => name.startsWith('.travel-')), false);
     }
-    const response = await importWith(AUTH_PASSWORD, backupPassword);
+    const response = await importWith(undefined, backupPassword);
     assert.equal(response.status, 200);
     assert.equal((await response.json()).authPreserved, false);
     assert.equal(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'))).hash, backupConfig.hash);

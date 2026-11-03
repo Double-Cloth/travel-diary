@@ -268,6 +268,16 @@ async function verifyPassword(config, password) {
     return timingSafeEqual(actual, expected) && candidate === password;
 }
 
+async function verifyBackupAccess(config, password, authenticatedConfig) {
+    const backup = validateAuthConfig(config);
+    // 仅省略密码时复用已认证的同一配置，显式输入的错误密码仍须拒绝。
+    if (password === undefined && authenticatedConfig) {
+        const current = validateAuthConfig(authenticatedConfig);
+        return backup.salt === current.salt && backup.hash === current.hash;
+    }
+    return verifyPassword(backup, password);
+}
+
 module.exports = {
     AUTH_RELATIVE_PATH,
     PASSWORD_MAX_LENGTH,
@@ -280,5 +290,6 @@ module.exports = {
     validateAuthConfig,
     validatePassword,
     verifyPassword,
+    verifyBackupAccess,
     writeAuthConfig
 };

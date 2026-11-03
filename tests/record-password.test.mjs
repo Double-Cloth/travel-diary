@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { createAuthConfig, replaceAuthConfig, validateAuthConfig, validatePassword, verifyPassword } = require('../js/auth.js');
+const { createAuthConfig, replaceAuthConfig, validateAuthConfig, validatePassword, verifyBackupAccess, verifyPassword } = require('../js/auth.js');
 const { writeAuthConfig } = require('../scripts/set-auth-password.js');
 
 test('六位数字密码使用带随机盐的 scrypt 哈希且不保存明文', async () => {
@@ -20,6 +20,17 @@ test('六位数字密码使用带随机盐的 scrypt 哈希且不保存明文', 
     assert.equal(await verifyPassword(first, password), true);
     assert.equal(await verifyPassword(first, `${password}!`), false);
     assert.equal(validateAuthConfig(first, { requireProduction: true }).productionReady, true);
+});
+
+test('备份只复用相同认证配置的有效授权，显式错误密码不能绕过验证', async () => {
+    const config = await createAuthConfig('483920');
+    const other = await createAuthConfig('590247');
+    assert.equal(await verifyBackupAccess(config, undefined, config), true);
+    assert.equal(await verifyBackupAccess(other, undefined, config), false);
+    assert.equal(await verifyBackupAccess(config, undefined), false);
+    assert.equal(await verifyBackupAccess(config, '590247', config), false);
+    assert.equal(await verifyBackupAccess(other, '590247', config), true);
+    assert.equal(await verifyBackupAccess({ ...config, salt: other.salt }, undefined, config), false);
 });
 
 test('换密工具可以原子替换已有配置', async t => {

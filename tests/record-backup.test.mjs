@@ -149,7 +149,7 @@ test('从完整备份选择记录时只打包所需内容，并保留备份密�
     assert.equal(result.updatedRecords, 1);
 });
 
-test('API 选择绑定当前会话，导入仍需令牌及当前密码，合并后会话保留', async t => {
+test('API 选择绑定当前会话，导入复用会话且仍需令牌，合并后会话保留', async t => {
     const root = await fixture(t);
     const server = http.createServer(createHandler(root));
     const base = await listenOnFetchSafePort(server);
@@ -177,15 +177,15 @@ test('API 选择绑定当前会话，导入仍需令牌及当前密码，合并�
     const other = await login();
     assert.equal((await fetch(`${base}/api/travel-data?selection=${selection}`, { headers: other })).status, 400);
     const upload = extra => fetch(`${base}/api/travel-data?mode=merge`, { method: 'POST', headers: { ...headers, 'Content-Type': 'application/zip', ...extra }, body: archive });
-    assert.equal((await upload({})).status, 403);
-    assert.equal((await upload({ 'X-Travel-Current-Password': AUTH_PASSWORD })).status, 403);
-    const response = await upload({ 'X-Travel-Current-Password': AUTH_PASSWORD, 'X-Travel-Backup-Password': AUTH_PASSWORD });
+    assert.equal((await upload({ 'X-Travel-Token': '' })).status, 403);
+    assert.equal((await upload({ 'X-Travel-Current-Password': '000000' })).status, 403);
+    const response = await upload({});
     assert.equal(response.status, 200);
     assert.equal((await response.json()).merged, true);
     assert.equal((await (await fetch(`${base}/api/travel-records`, { headers })).json()).authenticated, true);
 });
 
-test('密码预校验要求会话、令牌及当前密码，不修改数据，正式导入仍独立验证备份密码', async t => {
+test('密码预校验要求会话及令牌，不修改数据，正式导入仍独立验证备份密码', async t => {
     const root = await fixture(t);
     const server = http.createServer(createHandler(root));
     const base = await listenOnFetchSafePort(server);

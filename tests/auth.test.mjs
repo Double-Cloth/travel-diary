@@ -143,6 +143,7 @@ test('能力端点不再公开令牌，登录后签发受限 HttpOnly 会话', a
     const setCookie = authenticated.response.headers.get('set-cookie');
     assert.match(setCookie, /HttpOnly/);
     assert.match(setCookie, /SameSite=Strict/);
+    assert.doesNotMatch(setCookie, /Max-Age|Expires/i);
     assert.doesNotMatch(setCookie, /; Secure/);
     assert.equal(authenticated.token.length, 64);
 
@@ -156,6 +157,27 @@ test('能力端点不再公开令牌，登录后签发受限 HttpOnly 会话', a
     });
     assert.equal(logout.status, 200);
     await assertUnauthenticatedCapability(base, authenticated.cookie);
+});
+
+test('会话跨请求复用但不会续期，到期后必须重新登录', async t => {
+    const { base } = await fixture(t);
+    const started = Date.now();
+    let now = started;
+    t.mock.method(Date, 'now', () => now);
+    const authenticated = await login(base);
+    assert.equal(authenticated.result.expiresIn, 8 * 60 * 60);
+    const expiresAt = started + authenticated.result.expiresIn * 1000;
+    for (now of [started + 1000, expiresAt - 1]) {
+        const response = await fetch(`${base}/api/travel-records`, { headers: { Cookie: authenticated.cookie } });
+        const result = await response.json();
+        assert.equal(result.authenticated, true);
+        assert.equal(result.token, authenticated.token);
+    }
+    now = expiresAt;
+    await assertUnauthenticatedCapability(base, authenticated.cookie);
+    const renewed = await login(base);
+    assert.equal(renewed.response.status, 200);
+    assert.notEqual(renewed.token, authenticated.token);
 });
 
 test('正常未登录探测不产生 HTTP 错误，但匿名写入仍拒绝且不修改档案', async t => {

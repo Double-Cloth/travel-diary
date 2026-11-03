@@ -8,7 +8,8 @@ export async function verifyBackupPassword(entries, capability, currentPassword,
     const response = await fetch(new URL('api/travel-data?mode=verify-backup', window.location.href), {
         method: 'POST', credentials: 'same-origin', signal: AbortSignal.timeout(15000),
         headers: { 'Content-Type': 'application/json', 'X-Travel-Token': capability.token,
-            'X-Travel-Current-Password': currentPassword, 'X-Travel-Backup-Password': backupPassword },
+            ...(currentPassword === undefined ? {} : { 'X-Travel-Current-Password': currentPassword }),
+            ...(backupPassword === undefined ? {} : { 'X-Travel-Backup-Password': backupPassword }) },
         body: JSON.stringify({ auth: config })
     });
     const result = await response.json();

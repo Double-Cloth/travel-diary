@@ -98,6 +98,77 @@ test('自定义备份密码验证仍接收密码和导入上下文', async t => 
     assert.equal(dialog.open, false);
 });
 
+test('首次登录后跨入口复用会话，失效时重新验证，失败的操作不触发密码窗口', async t => {
+    const nodes = installDialogEnvironment(t);
+    let authenticated = false;
+    let logins = 0;
+    const calls = [];
+    globalThis.fetch = async (_endpoint, options) => {
+        if (options.method === 'POST') { authenticated = true; logins += 1; }
+        return { ok: true, status: 200, json: async () => ({
+            service: 'travel-diary-writer-v1', authenticated,
+            token: authenticated ? 'session-token' : undefined, methods: ['POST', 'PUT', 'DELETE']
+        }) };
+    };
+    const openFirst = createPasswordGate((...args) => { calls.push(args); });
+    const firstDialog = nodes.at(-1);
+    await openFirst('first');
+    assert.equal(firstDialog.open, true);
+    await enterPassword(firstDialog);
+    assert.equal(logins, 1);
+
+    const openOther = createPasswordGate((...args) => { calls.push(args); });
+    const otherDialog = nodes.at(-1);
+    await openOther('other');
+    assert.equal(otherDialog.open, false);
+    assert.equal(calls.at(-1)[0].token, 'session-token');
+    assert.equal(calls.at(-1)[1], 'other');
+    assert.equal(calls.at(-1)[2], undefined, '会话复用不缓存明文密码');
+    assert.equal(logins, 1);
+
+    const failing = createPasswordGate(() => { throw new Error('操作失败'); });
+    const failingDialog = nodes.at(-1);
+    await failing();
+    assert.equal(failingDialog.open, false);
+    assert.equal(logins, 1);
+
+    authenticated = false;
+    await openOther('expired');
+    assert.equal(otherDialog.open, true);
+    assert.equal(calls.length, 2);
+    await enterPassword(otherDialog);
+    assert.equal(logins, 2);
+    assert.equal(calls.at(-1)[1], 'expired');
+});
+
+test('复用会话仍先确认危险操作，且执行期间重复点击不会再次执行', async t => {
+    const nodes = installDialogEnvironment(t);
+    const events = [];
+    let confirmed = false;
+    let finish;
+    globalThis.fetch = async () => {
+        events.push('probe');
+        return { ok: true, status: 200, json: async () => ({
+            service: 'travel-diary-writer-v1', authenticated: true, token: 'session-token'
+        }) };
+    };
+    const open = createPasswordGate(async () => {
+        events.push('action');
+        await new Promise(resolve => { finish = resolve; });
+    }, { beforePrompt: () => { events.push('confirm'); return confirmed; } });
+    const dialog = nodes.at(-1);
+    await open();
+    assert.deepEqual(events, ['confirm']);
+    confirmed = true;
+    const pending = open();
+    await new Promise(resolve => setImmediate(resolve));
+    await open();
+    assert.deepEqual(events, ['confirm', 'confirm', 'probe', 'action']);
+    assert.equal(dialog.open, false);
+    finish();
+    await pending;
+});
+
 test('点击先确认风险，取消及重复点击不探测服务，确认后才验证密码并执行原操作', async t => {
     const nodes = installDialogEnvironment(t);
     const requests = [];

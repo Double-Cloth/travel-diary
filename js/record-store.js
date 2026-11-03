@@ -7,7 +7,7 @@ const { captureRecycle, discardRecycle } = require('./recycle-bin.js');
 const path = require('path');
 const { randomBytes, timingSafeEqual } = require('crypto');
 const { acquireDataLock, clearTravelData, exportDataArchive, importDataArchive } = require('./data-archive.js');
-const { initializeAuthConfig, readAuthConfig, replaceAuthConfig, validateAuthConfig, verifyPassword } = require('./auth.js');
+const { initializeAuthConfig, readAuthConfig, replaceAuthConfig, validateAuthConfig, verifyBackupAccess, verifyPassword } = require('./auth.js');
 
 const LOGIN_FAILURE_WINDOW = 15 * 60 * 1000;
 const MAXIMUM_LOGIN_FAILURES = 5;
@@ -864,8 +864,8 @@ function createRecordApi(root, options = {}) {
         else failures.set(key, next);
     }
 
-    function sessionCookie(id, secure, maxAge = SESSION_LIFETIME / 1000) {
-        return `travel_session=${id}; Path=/api; HttpOnly; SameSite=Strict; Max-Age=${maxAge}; Priority=High${secure ? '; Secure' : ''}`;
+    function sessionCookie(id, secure, maxAge) {
+        return `travel_session=${id}; Path=/api; HttpOnly; SameSite=Strict${maxAge === undefined ? '' : `; Max-Age=${maxAge}`}; Priority=High${secure ? '; Secure' : ''}`;
     }
 
     function storeSession(id, session) {
@@ -1242,7 +1242,8 @@ function createRecordApi(root, options = {}) {
                     }
                     failures.set('data-import', { ...state, active: state.active + 1 });
                     importAttemptReserved = true;
-                    if (!await verifyPassword(authConfig, req.headers['x-travel-current-password'])) {
+                    const currentPassword = req.headers['x-travel-current-password'];
+                    if (currentPassword !== undefined && !await verifyPassword(authConfig, currentPassword)) {
                         throw failure(403, '此网站的访问密码不正确，请重新开始导入。', 'CURRENT_PASSWORD_INVALID');
                     }
                     if (passwordCheck) {
@@ -1250,7 +1251,7 @@ function createRecordApi(root, options = {}) {
                         let backupConfig;
                         try { backupConfig = validateAuthConfig(payload?.auth, { requireProduction: writeMode === 'remote' }); }
                         catch (error) { throw failure(400, '备份中的认证配置无效。', error.code); }
-                        if (!await verifyPassword(backupConfig, req.headers['x-travel-backup-password'])) {
+                        if (!await verifyBackupAccess(backupConfig, req.headers['x-travel-backup-password'], authConfig)) {
                             throw failure(403, '密码不正确，请输入导出这份备份时使用的访问密码。', 'BACKUP_PASSWORD_INVALID');
                         }
                         await verifyUploadSession(req, host);
@@ -1266,6 +1267,7 @@ function createRecordApi(root, options = {}) {
                         result = await importDataArchive(root, archive.source, {
                             requireProductionAuth: writeMode === 'remote',
                             backupPassword: req.headers['x-travel-backup-password'],
+                            authenticatedAuthConfig: authConfig,
                             mergeRecords: requestUrl.searchParams.get('mode') === 'merge',
                             authorize: () => verifyUploadSession(req, host)
                         });

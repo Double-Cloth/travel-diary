@@ -2,7 +2,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const { randomBytes } = require('crypto');
 const { fileSource, writeSource } = require('./file-stream.js');
-const { AUTH_RELATIVE_PATH, validateAuthConfig, verifyPassword } = require('./auth.js');
+const { AUTH_RELATIVE_PATH, validateAuthConfig, verifyBackupAccess } = require('./auth.js');
 
 const DEFAULT_PROFILE_PICTURE = Buffer.from(
     'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=',
@@ -375,7 +375,7 @@ async function importDataArchive(root, archive, options = {}) {
                 if (error.status) throw error;
                 throw failure(400, `备份中的 ${AUTH_RELATIVE_PATH} 无效。`, error.code);
             }
-            if (!await verifyPassword(backupConfig, options.backupPassword)) {
+            if (!await verifyBackupAccess(backupConfig, options.backupPassword, options.authenticatedAuthConfig)) {
                 throw failure(403, '密码不正确，请输入导出这份备份时使用的访问密码。', 'BACKUP_PASSWORD_INVALID');
             }
         } else {

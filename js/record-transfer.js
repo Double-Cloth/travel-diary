@@ -1,14 +1,14 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.20';
-import { createPasswordGate } from './record-password.js?v=2.1.20';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.20';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.20';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.21';
+import { createPasswordGate } from './record-password.js?v=2.1.21';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.21';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.21';
 import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.20';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.20';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.20';
-import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=2.1.20';
-import { recordIdentity } from './record-identity.mjs?v=2.1.20';
-import { createContentPreviewScope, markdownPreview } from './content-preview.js?v=2.1.20';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.21';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.21';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.21';
+import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=2.1.21';
+import { recordIdentity } from './record-identity.mjs?v=2.1.21';
+import { createContentPreviewScope, markdownPreview } from './content-preview.js?v=2.1.21';
 
 export function createRecordTransfer(onImported, getRecords) {
     const dialog = document.createElement('dialog');
@@ -215,7 +215,8 @@ export function createRecordTransfer(onImported, getRecords) {
             const response = await uploadWithProgress(url, {
                 method: 'POST', credentials: 'same-origin', body: file, signal: progress.signal,
                 headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': capability.token,
-                    'X-Travel-Current-Password': currentPassword, 'X-Travel-Backup-Password': backupPassword }
+                    ...(currentPassword === undefined ? {} : { 'X-Travel-Current-Password': currentPassword }),
+                    ...(backupPassword === undefined ? {} : { 'X-Travel-Backup-Password': backupPassword }) }
             }, (loaded, total) => progress.update(loaded, total, '正在上传所选记录…'), () => {
                 progress.setCancelable(false);
                 progress.phase('正在校验并合并所选记录…');

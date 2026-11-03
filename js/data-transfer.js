@@ -1,10 +1,10 @@
-import { createPasswordGate } from './record-password.js?v=2.1.20';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.20';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.20';
+import { createPasswordGate } from './record-password.js?v=2.1.21';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.21';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.21';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=2.1.20';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.20';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.20';
+import { createRecordTransfer } from './record-transfer.js?v=2.1.21';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.21';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.21';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -241,8 +241,8 @@ export function createDataTransfer(onImported, getRecords = () => []) {
         const headers = {
             'Content-Type': 'application/zip',
             'X-Travel-Token': token,
-            'X-Travel-Current-Password': currentPassword,
-            'X-Travel-Backup-Password': backupPassword
+            ...(currentPassword === undefined ? {} : { 'X-Travel-Current-Password': currentPassword }),
+            ...(backupPassword === undefined ? {} : { 'X-Travel-Backup-Password': backupPassword })
         };
         try {
             setStatus('正在校验备份并导入数据…');
