@@ -197,7 +197,7 @@ export function createRecordTransfer(onImported, getRecords) {
             }
         } finally { busy = false; }
     }, {
-        title: '部分记录备份验证', description: '输入当前的 6 位数字密码；导入备份与当前密码相同时无需重复输入。',
+        title: '部分记录备份验证', description: '输入当前的 6 位数字密码；导入备份密码与当前密码不同时需验证备份密码。',
         staticMessage: '当前站点为静态只读页面，不提供部分记录导入导出。'
     });
 
