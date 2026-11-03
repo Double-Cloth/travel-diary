@@ -1,6 +1,6 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.10';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.10';
-import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.10';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.11';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.11';
+import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.11';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
     MAXIMUM_MEDIA_BATCH_BYTES,
@@ -8,16 +8,17 @@ import {
     MAXIMUM_VIDEO_FILE_BYTES,
     mediaBytes,
     readUploads
-} from './photo-uploads.mjs?v=2.1.10';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.10';
-import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.10';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.10';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.10';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.10';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.10';
+} from './photo-uploads.mjs?v=2.1.11';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.11';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.11';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.11';
+import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.11';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.11';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.11';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.11';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
-import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.10';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.10';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.11';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.11';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -359,6 +360,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <div class="record-editor-media-batch" data-editor-media-batch role="group" aria-label="批量文件操作" hidden>
                             <div class="record-editor-media-selection">
                                 <span data-media-selected-count role="status" hidden>未选择文件</span>
+                                <button class="paper-button" type="button" data-media-sort-time title="图片、视频分别按元数据时间从早到晚排序；没有时间的文件放在最后，按文件名排序">按拍摄时间排序</button>
                                 <button class="paper-button" type="button" data-media-select-all>全选文件</button>
                                 <button class="paper-button" type="button" data-media-select-clear disabled>取消选择</button>
                             </div>
@@ -608,6 +610,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             checkbox.closest('li').classList.toggle('is-selected', checkbox.checked);
         });
         dialog.querySelector('[data-editor-media-batch]').hidden = saved || !items.length;
+        dialog.querySelector('[data-media-sort-time]').disabled = saved || !['photo', 'video'].some(type => orderedMedia(type).length > 1);
         const allSelected = items.length > 0 && selectedMedia.size === items.length;
         const selectAll = dialog.querySelector('[data-media-select-all]');
         selectAll.textContent = items.every(item => item.type === 'photo') ? '全选图片'
@@ -734,6 +737,56 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const focus = drag.handle.matches('[data-media-drag-group]') ? drag.handle
             : [...dialog.querySelectorAll('[data-media-key]')].find(row => row.dataset.mediaKey === drag.key)?.querySelector('[data-media-drag]');
         focus?.focus({ preventScroll: true });
+    }
+
+    async function sortMediaTime() {
+        finishMediaDrag();
+        const items = ['photo', 'video'].flatMap(orderedMedia);
+        const times = new Map();
+        let unreadable = 0;
+        busy = true;
+        dialog.querySelector('form').inert = true;
+        startProgress('按拍摄时间排序', '正在读取媒体元数据…');
+        try {
+            for (const [index, item] of items.entries()) {
+                operationProgress.throwIfCancelled();
+                operationProgress.update(index, items.length, `正在读取：${item.name}`, 'files');
+                let time = null;
+                try {
+                    time = item.upload ? await readMediaTime(previewBlob(item.upload))
+                        : await fetchMediaTime(getMediaFileUrl(existingMediaPath(item.type, item.name)),
+                            AbortSignal.any([operationProgress.signal, AbortSignal.timeout(20000)]));
+                } catch {
+                    operationProgress.throwIfCancelled();
+                    unreadable++;
+                }
+                times.set(item.key, time);
+            }
+            operationProgress.throwIfCancelled();
+            for (const type of ['photo', 'video']) {
+                const ordered = orderedMedia(type);
+                const next = sortMediaByTime(ordered, times);
+                const active = new Set(ordered.map(item => item.key));
+                let index = 0;
+                // 保留待移除文件的槽位，恢复操作继续沿用现有顺序规则。
+                mediaOrder[type] = mediaOrder[type].map(key => active.has(key) ? next[index++].key : key);
+                syncExistingOrder(type);
+            }
+            dirty = true;
+            renderPhotos();
+            const timed = [...times.values()].filter(Number.isFinite).length;
+            const message = `已按拍摄时间从早到晚排序：${timed} 项有时间，${items.length - timed} 项无可用时间，放在最后按文件名排序。${unreadable ? `其中 ${unreadable} 项元数据无法读取。` : ''}保存后生效。`;
+            status(message);
+            dialog.querySelector('[data-editor-media-announcement]').textContent = message;
+            operationProgress.complete(message);
+        } catch (error) {
+            status(operationProgress.signal.aborted ? '排序已取消，文件顺序未更改。' : `排序失败，文件顺序未更改：${error.message}`);
+            operationProgress.fail(error);
+        } finally {
+            busy = false;
+            dialog.querySelector('form').inert = false;
+            dialog.querySelector('[data-media-sort-time]').focus({ preventScroll: true });
+        }
     }
 
     function operateMedia(keys, action) {
@@ -1418,6 +1471,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     dialog.addEventListener('click', async event => {
         if (event.target.closest('[data-editor-close]')) close();
         if (busy || readingPhotos) return;
+        if (event.target.closest('[data-media-sort-time]') && !saved) {
+            await sortMediaTime();
+            return;
+        }
         const uploadHelp = event.target.closest('[data-editor-upload-help]');
         if (uploadHelp) {
             const expanded = uploadHelp.getAttribute('aria-expanded') === 'true';

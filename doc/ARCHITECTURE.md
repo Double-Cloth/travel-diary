@@ -28,6 +28,7 @@
 | `data.js`、`utils.js` | 索引与正文加载、缓存、受限 Markdown 渲染、转义和格式化。 |
 | `location.mjs`、`analytics.mjs`、`visits.mjs` | 地点归一化、统计和行程去重的纯逻辑。 |
 | `record-editor.js`、`markdown-editor.js`、`record-suggestions.mjs` | 表单、正文双视图、地点补全和提交状态。 |
+| `media-time.mjs` | 按需读取图片 EXIF / XMP、视频创建日期，提供附件按时间和文件名排序；复用随机字节源，不读取整段大视频。 |
 | `record-input.mjs`、`photo-uploads.mjs`、`file-limits.mjs`、`slug.mjs` | 浏览器与 Node 共用的字段、媒体签名、文件大小限制、路径和拼音命名校验。 |
 | `draft-archive.mjs`、`zip-stream.mjs` | 草稿封装、旧 ZIP 兼容、ZIP64 随机读取与分块 CRC32 校验。 |
 | `file-stream.js` | Node 文件字节源、请求暂存及文件分块写入。 |
