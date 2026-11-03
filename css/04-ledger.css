@@ -7,6 +7,12 @@
     min-height: 100%;
 }
 
+.ledger-view-switch { margin: 20px 0 4px; }
+.ledger-view-switch .index-segment { min-height: 44px; }
+.ledger-view-hint { margin: 0 0 20px; color: var(--ink-soft); font-size: 13px; line-height: 1.8; }
+.ledger-trip-entry { color: var(--ink); text-decoration: none; }
+.ledger-trip-summary { color: var(--ink-soft); font-size: 12px; line-height: 1.8; }
+
 .ledger-controls {
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto;

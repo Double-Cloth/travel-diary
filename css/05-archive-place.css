@@ -373,10 +373,6 @@
     margin-top: 4px;
 }
 
-.trip-directory { margin-top: 32px; }
-.trip-directory-link { display: grid; gap: 6px; padding: 16px 0; border-bottom: 1px solid var(--line); color: var(--ink); text-decoration: none; overflow-wrap: anywhere; }
-.trip-directory-link small { color: var(--ink-soft); line-height: 1.7; }
-.trip-directory-link:hover, .trip-directory-link.is-current { color: var(--stamp); }
 .trip-timeline { margin-top: 32px; }
 .trip-timeline ol { padding-left: 22px; }
 .trip-timeline-link { display: grid; gap: 6px; width: 100%; padding: 12px 0; background: none; border: 0; text-align: left; color: var(--ink); cursor: pointer; font: inherit; }

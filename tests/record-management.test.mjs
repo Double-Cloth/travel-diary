@@ -256,11 +256,15 @@ test('行程路由可往返序列化、按时间阅读、导出整趟，并保�
     globalThis.requestAnimationFrame = () => {};
     t.after(() => { if (originalFrame) globalThis.requestAnimationFrame = originalFrame; else delete globalThis.requestAnimationFrame; });
     const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
-        export { parseRoute, serializeRoute, deriveTravelModel };
+        export { parseRoute, serializeRoute, deriveTravelModel, canonicalizeLocationRoute };
         export function renderTripTest(records, params) {
             let result; travelModel = deriveTravelModel(records);
             setPages = (left, right) => { result = { left, right }; };
             renderTrip(params); return result;
+        }
+        export function ledgerTripsTest(records, params) {
+            travelModel = deriveTravelModel(records.map(record => ({ ...record, searchText: record.locality })));
+            return getLedgerTrips(getLedgerRecords(params));
         }`);
     const route = { name: 'trip', params: { id: 'trip:long-trip' } };
     assert.deepEqual(app.parseRoute(app.serializeRoute(route)), { ...route, valid: true });
@@ -271,5 +275,15 @@ test('行程路由可往返序列化、按时间阅读、导出整趟，并保�
     assert.ok(result.right.indexOf('first正文') < result.right.indexOf('second正文'));
     const model = app.deriveTravelModel(records);
     assert.equal(model.recordsById.get('2026-11-03-second').record_id, recordIdentity(second));
-    assert.match(app.renderTripTest([], {}).right, /还没有旅行记录/);
+    const tripRoute = app.parseRoute('#ledger?view=trips&q=first&sort=asc');
+    assert.equal(app.serializeRoute(tripRoute), '#ledger?q=first&view=trips&sort=asc');
+    const matchingTrips = app.ledgerTripsTest(records, { q: 'first', view: 'trips' });
+    assert.equal(matchingTrips.length, 1);
+    assert.equal(matchingTrips[0].tripRecords.length, 2, '筛选命中一篇时仍展示完整行程');
+    assert.equal(app.ledgerTripsTest(records, {}).length, 1, '同一行程只展示一次');
+    const empty = app.renderTripTest([], {});
+    assert.match(empty.left, /目录查看方式/);
+    assert.match(empty.left, /data-ledger-view="trips" aria-pressed="true"/);
+    assert.match(empty.right, /全部行程 · 0 次/);
+    assert.equal(app.canonicalizeLocationRoute({ name: 'trip', params: {} }).params.view, 'trips');
 });

@@ -281,7 +281,7 @@ test('自定义下拉框在点击而非按下时选择，保留移动端滑动�
     const appVersion = indexHtml.match(/js\/app\.js\?v=([^"\s]+)/)?.[1];
     const cssVersion = indexHtml.match(/css\/journal\.css\?v=([^"\s]+)/)?.[1];
     assert.ok(appVersion);
-    assert.equal(appVersion, '20261103-record-management-v1');
+    assert.equal(appVersion, '20261103-catalog-media-ui-v1');
     assert.ok(cssVersion);
     assert.match(appJs, /\.\/record-editor\.js\?v=20261103-record-management-v1/);
     assert.match(appJs, /\.\/custom-select\.js\?v=20261018-select-scroll-focus-v1/);
@@ -608,7 +608,7 @@ test('日记目录左页将查找与年份组织为连续目录并保留真实�
     assert.match(appJs, /class="ledger-catalog-tools"[\s\S]*class="ledger-browse-row"[\s\S]*class="ledger-year-nav"/);
     assert.doesNotMatch(appJs, /class="result-count"/);
     assert.match(journalCss, /\.ledger-browse-row\s*\{[^}]*grid-template-columns: minmax\(0, 1fr\);/);
-    assert.match(appJs, /class="ledger-year-divider"[\s\S]*<h2>[\s\S]*<p>\$\{group\.records\.length\} 篇<\/p>/);
+    assert.match(appJs, /class="ledger-year-divider"[\s\S]*<h2>[\s\S]*<p>\$\{group\.records\.length\} \$\{unit\}<\/p>/);
     assert.match(appJs, /<h3>\$\{escapeHtml\(record\.title\)\}<\/h3>\s*<span class="entry-location">/);
     assert.match(journalCss, /\.ledger-page\s*{[^}]*min-height: max-content;[^}]*padding-bottom: 52px;/);
     assert.match(journalCss, /body\[data-route="ledger"\] \.paper-page-left::\-webkit-scrollbar-track\s*{[^}]*margin: 0;/);

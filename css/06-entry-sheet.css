@@ -1305,21 +1305,56 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .record-diff-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
 .record-diff-columns h3 { font-size: 15px; }
 .record-diff pre { margin: 0; max-height: 300px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; line-height: 1.8; padding: 12px; border: 1px solid var(--line); }
-.media-health-file { display: flex; gap: 10px; align-items: start; padding: 12px 0; }
+.media-manager.entry-sheet { width: min(760px, calc(100vw - 24px)); }
+.media-manager-heading { display: flex; align-items: start; justify-content: space-between; gap: 20px; }
+.media-manager-heading > div { min-width: 0; }
+.media-manager-heading h2 { margin-bottom: 6px; }
+.media-manager-heading p { margin: 0; }
+.media-manager-heading > button { flex-shrink: 0; }
+.media-manager .media-manager-status { margin: 20px 0 12px; font-size: 13px; }
+.media-space-summary { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; padding: 18px 0; margin: 0 0 24px; border-block: 1px solid var(--hairline); }
+.media-space-summary dt { color: var(--ink-soft); font-size: 12px; line-height: 1.6; }
+.media-space-summary dd { margin: 6px 0 0; font-size: 18px; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.media-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.media-section-heading h3 { margin: 0; font-size: 19px; }
+.media-section-heading > span { color: var(--ink-soft); font-size: 13px; }
+.media-filter-row { display: grid; grid-template-columns: auto minmax(0, 220px); justify-content: start; align-items: center; gap: 12px; margin-top: 16px; }
+.media-filter-row .field-label { margin: 0; }
+.media-manager .custom-select-menu { min-width: 100%; }
+.media-manager .media-filter-hint { margin: 10px 0 4px; font-size: 13px; }
+.media-manager .record-transfer-list { max-height: 32dvh; margin-bottom: 0; }
+.media-health-file { display: flex; gap: 12px; align-items: center; padding: 14px 0; }
 .media-health-file > div { min-width: 0; overflow-wrap: anywhere; }
 .media-health-file small { display: block; margin-top: 5px; }
+.media-health-name { font-size: 15px; font-weight: 700; }
+.media-health-path { overflow-wrap: anywhere; }
+.media-selection { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; }
+.media-selection-tools { display: flex; flex-wrap: wrap; gap: 8px; width: 100%; }
+.media-selection > p { margin: 0; font-variant-numeric: tabular-nums; }
 .media-manager a { color: var(--stamp); text-underline-offset: 3px; }
-.media-manager select { max-width: 100%; min-height: 44px; padding: 6px 10px; color: var(--ink); background: var(--paper-50); border: 1px solid var(--line); font: inherit; }
 .media-manager [data-media-error] { color: var(--stamp); }
-.media-trash { margin-top: 32px; border-top: 1px solid var(--line); padding-top: 16px; }
-.media-trash > ul { padding-left: 20px; }
-.media-trash li { overflow-wrap: anywhere; margin-bottom: 12px; }
-.media-trash details { margin: 8px 0 12px; }
-.media-manager .record-transfer-list label { padding: 0; }
+.media-manager [data-media-error]:empty { display: none; }
+.media-trash { margin-top: 28px; border-top: 1px solid var(--hairline); padding-top: 22px; }
+.media-trash > p { margin: 8px 0 12px; font-size: 13px; }
+.media-trash > ul { padding: 0; margin: 0; list-style: none; }
+.media-trash > ul > li { padding: 14px 0; border-bottom: 1px solid var(--hairline); }
+.media-trash li { overflow-wrap: anywhere; }
+.media-trash .media-batch-title { margin: 0; color: var(--ink); }
+.media-batch-title small { display: block; color: var(--ink-soft); }
+.media-trash details { margin: 8px 0 12px; font-size: 13px; line-height: 1.8; }
+.media-trash summary { cursor: pointer; padding: 6px 0; color: var(--stamp); }
+.media-batch-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.media-manager .media-empty { padding: 22px 0; color: var(--ink-soft); font-size: 14px; line-height: 1.8; }
+.media-manager .record-transfer-list label { min-width: 44px; min-height: 44px; justify-content: center; padding: 0; }
+.media-manager .paper-button { width: auto; min-width: 0; min-height: 44px; }
+.media-manager .custom-select-trigger { min-height: 44px; }
 @media (max-width: 760px) {
     .record-diff { margin-left: 0; }
     .record-diff-columns { grid-template-columns: 1fr; }
     .record-transfer-toolbar .paper-button { min-height: 44px; }
+    .media-space-summary { gap: 10px; }
+    .media-space-summary dd { font-size: 16px; }
+    .media-selection > [data-media-trash] { width: 100%; }
 }
 .media-file-actions .media-file-remove { margin-right: 8px; color: var(--stamp); }
 .media-file-actions button:hover:not(:disabled),

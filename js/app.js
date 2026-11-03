@@ -2,7 +2,7 @@ import { loadTravelData, loadTravelRecords } from './data.js?v=20261103-record-m
 import { createRecordEditor } from './record-editor.js?v=20261103-record-management-v1';
 import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=20261103-record-management-v1';
 import { createDataTransfer } from './data-transfer.js?v=20261103-record-management-v1';
-import { createMediaManager } from './media-manager.js?v=20261103-record-management-v1';
+import { createMediaManager } from './media-manager.js?v=20261103-catalog-media-ui-v1';
 import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
 import { createRecordDeleteDialog } from './record-delete-dialog.js?v=20260913-delete-feedback-v2';
 import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=20261102-native-preview-v1';
@@ -425,6 +425,7 @@ function parseRoute(hash = window.location.hash) {
                     media: normalizeMedia(params.getAll('media')),
                     note: normalizeNote(params.getAll('note')),
                     q: (params.get('q') || '').trim(),
+                    view: params.get('view') === 'trips' ? 'trips' : 'notes',
                     sort: normalizeLedgerSort(params.get('sort'))
                 },
                 valid: true
@@ -498,6 +499,7 @@ function serializeRoute(route) {
                 appendLedgerFilterParams(params, 'media', ledgerParams.media);
                 appendLedgerFilterParams(params, 'note', ledgerParams.note);
                 if (ledgerParams.q) params.set('q', ledgerParams.q);
+                if (ledgerParams.view === 'trips') params.set('view', 'trips');
                 if (ledgerParams.sort !== DEFAULT_LEDGER_SORT) params.set('sort', ledgerParams.sort);
             }
             return `#ledger${params.toString() ? `?${params}` : ''}`;
@@ -1062,8 +1064,7 @@ function renderPreface() {
                 <button class="paper-button" type="button" data-action="import-all-data">导入全部数据</button>
                 <button class="paper-button" type="button" data-action="export-records">导出部分记录</button>
                 <button class="paper-button" type="button" data-action="import-records">导入部分记录</button>
-                <button class="paper-button" type="button" data-action="media-health">媒体体检与空间管理</button>
-                <a class="paper-button" href="#trip">浏览行程</a>
+                <button class="paper-button" type="button" data-action="media-health">媒体整理</button>
             </div>
             <p>增量备份可勾选部分日记及其媒体；合并导入会保留未选中的记录。</p>
             <p class="archive-data-status" data-data-transfer-status role="status" aria-live="polite"></p>
@@ -1100,8 +1101,11 @@ function renderLedger(params = {}, options = {}) {
     const ledgerParams = normalizeLedgerParams(params);
     const yearBookmarksScrollLeft = refs.leftPage?.querySelector('.year-bookmarks')?.scrollLeft || 0;
     const filtered = getLedgerRecords(ledgerParams);
-    const resultLabel = createLedgerResultLabel(filtered.length, ledgerParams);
-    const snapshot = buildRecordSetSnapshot(filtered);
+    const trips = ledgerParams.view === 'trips' ? getLedgerTrips(filtered) : [];
+    const resultLabel = ledgerParams.view === 'trips'
+        ? `${hasActiveLedgerFilter(ledgerParams) ? '匹配行程' : '全部行程'} · ${trips.length} 次`
+        : createLedgerResultLabel(filtered.length, ledgerParams);
+    const snapshot = buildRecordSetSnapshot(ledgerParams.view === 'trips' ? trips.flatMap(trip => trip.tripRecords) : filtered);
 
     setPages(`
         <div class="ledger-page">
@@ -1110,6 +1114,9 @@ function renderLedger(params = {}, options = {}) {
                 <h1>出发，到新的爱与喧闹中去！</h1>
             </header>
             <section class="ledger-catalog-tools" aria-label="查找与浏览日记">
+                <div class="index-segment-group ledger-view-switch" role="group" aria-label="目录查看方式">
+                    ${[['notes', '按笔记'], ['trips', '按行程']].map(([view, label]) => `<button class="index-segment${ledgerParams.view === view ? ' index-segment-active' : ''}" id="ledger-view-${view}" type="button" data-ledger-view="${view}" aria-pressed="${ledgerParams.view === view}">${label}</button>`).join('')}
+                </div>
                 ${renderLedgerControls(ledgerParams, 'ledgerSearch')}
                 <div class="ledger-browse-row">
                     <nav class="ledger-year-nav" aria-label="按年份浏览日记">
@@ -1121,9 +1128,10 @@ function renderLedger(params = {}, options = {}) {
                     </nav>
                 </div>
             </section>
+            ${ledgerParams.view === 'trips' ? '<p class="ledger-view-hint">按笔记查找所属行程，点开后阅读完整行程。</p>' : ''}
             <div class="timeline-list" id="ledgerList">
                 ${filtered.length
-                    ? renderLedgerGroups(filtered, ledgerParams)
+                    ? (ledgerParams.view === 'trips' ? renderLedgerGroups(trips, ledgerParams, renderLedgerTripEntry, '次') : renderLedgerGroups(filtered, ledgerParams))
                     : (travelModel.records.length ? renderNoResultsState('ledger') : renderEmptyArchiveState())}
             </div>
         </div>
@@ -1687,30 +1695,29 @@ function renderDetailPageTurns(navigation, kind) {
 }
 
 function renderTrip(params = {}) {
+    if (!params.id) {
+        renderLedger({ view: 'trips' });
+        return;
+    }
     const groups = new Map();
     for (const record of [...travelModel.records].sort((a, b) => a.date.localeCompare(b.date))) {
         const key = getVisitKey(record);
         if (!groups.has(key)) groups.set(key, []);
         groups.get(key).push(record);
     }
-    const trips = [...groups].sort((a, b) => b[1].at(-1).date.localeCompare(a[1].at(-1).date));
-    const list = `<nav class="trip-directory" aria-label="全部行程"><h2>全部行程 · ${trips.length} 次</h2>${trips.map(([key, records]) => `<a class="trip-directory-link${key === params.id ? ' is-current' : ''}" href="${serializeRoute({ name: 'trip', params: { id: key } })}"${key === params.id ? ' aria-current="page"' : ''}>
-        <strong>行程 ${escapeHtml(records[0].tripGroupLabel)} · ${escapeHtml([...new Set(records.map(record => record.locality))].join(' → '))}</strong>
-        <small>${escapeHtml(records[0].date)}${records.length > 1 ? ` 至 ${escapeHtml(records.at(-1).date)}` : ''} · ${records.length} 篇日记</small></a>`).join('')}</nav>`;
     const records = groups.get(params.id);
     if (!records) {
-        setPages(`<div class="place-page"><a class="ribbon-back" href="#ledger">返回旅行路径</a><h1>${params.id ? '没有找到这次行程' : '旅行行程'}</h1>
-            <p>${params.id ? '行程可能已修改或删除，请从行程目录重新选择。' : '按一次旅行串起沿途的日记。选择行程可依次阅读，也可整趟导出备份。'}</p></div>`,
-        trips.length ? list : '<div class="empty-note">还没有旅行记录。新增日记后即可按行程阅读。</div>', 'dossier-page trip-detail-page');
+        setPages('<div class="place-page"><a class="ribbon-back" href="#ledger?view=trips">返回日记目录 · 按行程</a><h1>没有找到这次行程</h1><p>行程可能已修改或删除，请从日记目录重新选择。</p></div>',
+            '<div class="empty-note">选择其他行程，继续阅读旅行记录。</div>', 'dossier-page trip-detail-page');
         return;
     }
     const snapshot = buildRecordSetSnapshot(records);
-    setPages(`<div class="place-page"><a class="ribbon-back" href="#trip">返回全部行程</a><h1>行程 ${escapeHtml(records[0].tripGroupLabel)}</h1>
+    setPages(`<div class="place-page"><a class="ribbon-back" href="#ledger?view=trips">返回日记目录 · 按行程</a><h1>行程 ${escapeHtml(records[0].tripGroupLabel)}</h1>
         <p>${escapeHtml(records[0].date)}${records.length > 1 ? ` 至 ${escapeHtml(records.at(-1).date)}` : ''}</p>
         <p>${records.length} 篇日记 · ${snapshot.localityCount} 个目的地 · ${snapshot.photoCount} 张图片 · ${snapshot.videoCount} 段视频</p>
         <button class="paper-button" type="button" data-action="export-trip" data-trip-key="${escapeHtml(params.id)}">导出本次行程</button>
         <nav class="trip-timeline" aria-label="本次行程时间线"><h2>沿途日记</h2><ol>${records.map(record => `<li><button class="trip-timeline-link" type="button" data-trip-record="${escapeHtml(record.id)}"><time>${escapeHtml(record.date)}</time><strong>${escapeHtml(record.title)}</strong><span>${escapeHtml(getLocationText(record))}</span></button></li>`).join('')}</ol></nav>
-        ${list}</div>`, `<div class="trip-reading">${records.map(record => `<article class="trip-record" id="trip-record-${escapeHtml(record.id)}" tabindex="-1">
+        </div>`, `<div class="trip-reading">${records.map(record => `<article class="trip-record" id="trip-record-${escapeHtml(record.id)}" tabindex="-1">
             <time>${escapeHtml(record.date)}</time><h2>${escapeHtml(record.title)}</h2><p>${escapeHtml(getLocationText(record))}</p>
             <div class="entry-body">${record.descBodyHtml || '<p>这篇日记还没有正文。</p>'}</div>
             ${getRecordMedia(record).length ? renderPhotoSleeve(record, { previewRows: ENTRY_PHOTO_PREVIEW_ROWS, showViewAll: true }) : ''}
@@ -4160,6 +4167,13 @@ function handleDocumentClick(event) {
         return;
     }
 
+    const ledgerView = event.target.closest('[data-ledger-view]');
+    if (ledgerView) {
+        event.preventDefault();
+        updateLedgerRoute({ view: ledgerView.dataset.ledgerView }, { replace: true, focusId: ledgerView.id, animate: false, preserveRightScroll: true });
+        return;
+    }
+
     const ledgerToggle = event.target.closest('[data-ledger-toggle]');
     if (ledgerToggle) {
         event.preventDefault();
@@ -4793,7 +4807,7 @@ function countLedgerWorkbenchFilters(params) {
     return filterCount + (normalized.sort !== DEFAULT_LEDGER_SORT ? 1 : 0);
 }
 
-function renderLedgerGroups(records, params = {}) {
+function renderLedgerGroups(records, params = {}, renderEntry = renderLedgerEntry, unit = '篇') {
     const sort = normalizeLedgerParams(params).sort;
     const groups = [];
     let currentKey = '';
@@ -4820,10 +4834,10 @@ function renderLedgerGroups(records, params = {}) {
         <section class="ledger-year-group" aria-label="${escapeHtml(getLedgerGroupAriaLabel(group.label, sort))}">
             <header class="ledger-year-divider">
                 <h2>${escapeHtml(group.label)}</h2>
-                <p>${group.records.length} 篇</p>
+                <p>${group.records.length} ${unit}</p>
             </header>
             <div class="ledger-year-entries">
-                ${group.records.map(renderLedgerEntry).join('')}
+                ${group.records.map(renderEntry).join('')}
             </div>
         </section>
     `).join('');
@@ -4872,6 +4886,36 @@ function renderLedgerEntry(record) {
             </div>
         </article>
     `;
+}
+
+function getLedgerTrips(filtered) {
+    const groups = new Map();
+    for (const record of travelModel.records) {
+        const key = getVisitKey(record);
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key).push(record);
+    }
+    const seen = new Set();
+    return filtered.flatMap(record => {
+        const key = getVisitKey(record);
+        if (seen.has(key)) return [];
+        seen.add(key);
+        return [{ ...record, tripKey: key, tripRecords: groups.get(key).sort((a, b) => a.date.localeCompare(b.date)) }];
+    });
+}
+
+function renderLedgerTripEntry(record) {
+    const records = record.tripRecords;
+    const first = records[0];
+    const last = records.at(-1);
+    const places = [...new Set(records.map(item => item.locality))].join(' → ');
+    const snapshot = buildRecordSetSnapshot(records);
+    return `<a class="ledger-entry ledger-trip-entry" href="${serializeRoute({ name: 'trip', params: { id: record.tripKey } })}" aria-label="打开行程 ${escapeHtml(record.tripGroupLabel)}：${escapeHtml(places)}">
+        ${renderRecordPaperclip()}
+        <time datetime="${escapeHtml(record.date)}" class="entry-date-chip"><strong>${escapeHtml(record.date.slice(8, 10))}</strong><span>${escapeHtml(record.date.slice(0, 7))}</span></time>
+        <div class="entry-note"><h3>${escapeHtml(places)}</h3><span class="entry-location">${escapeHtml(first.date)}${first.date !== last.date ? ` 至 ${escapeHtml(last.date)}` : ''}</span>
+            <div class="entry-tags"><span class="location-chip">行程 ${escapeHtml(record.tripGroupLabel)}</span><span class="ledger-trip-summary">${records.length} 篇笔记 · ${snapshot.photoCount} 张图片 · ${snapshot.videoCount} 段视频</span></div>
+        </div></a>`;
 }
 
 function renderTripGroupHint(record) {
@@ -5134,6 +5178,7 @@ function normalizeLedgerParams(params = {}) {
         media: normalizeMedia(params.media),
         note: normalizeNote(params.note),
         q: (params.q || '').trim(),
+        view: params.view === 'trips' ? 'trips' : 'notes',
         sort: normalizeLedgerSort(params.sort)
     };
 }
@@ -5171,6 +5216,10 @@ function normalizeLedgerSort(sort) {
 
 function canonicalizeLocationRoute(route) {
     if (!travelModel || !route) return route;
+
+    if (route.name === 'trip' && !route.params.id) {
+        return { ...route, name: 'ledger', params: normalizeLedgerParams({ view: 'trips' }) };
+    }
 
     if (route.name === 'ledger') {
         const params = normalizeLedgerParams(route.params);
