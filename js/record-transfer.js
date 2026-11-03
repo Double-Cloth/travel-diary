@@ -1,14 +1,14 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.0';
-import { createPasswordGate } from './record-password.js?v=2.1.0';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.0';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.0';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.1';
+import { createPasswordGate } from './record-password.js?v=2.1.1';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.1';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.1';
 import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.0';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.0';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.0';
-import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=2.1.0';
-import { recordIdentity } from './record-identity.mjs?v=2.1.0';
-import { createContentPreviewScope, markdownPreview } from './content-preview.js?v=2.1.0';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.1';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.1';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.1';
+import { compareBackup, fileSignature, changedTextBlocks } from './record-diff.mjs?v=2.1.1';
+import { recordIdentity } from './record-identity.mjs?v=2.1.1';
+import { createContentPreviewScope, markdownPreview } from './content-preview.js?v=2.1.1';
 
 export function createRecordTransfer(onImported, getRecords) {
     const dialog = document.createElement('dialog');
@@ -345,18 +345,24 @@ export function createRecordTransfer(onImported, getRecords) {
             return capability;
         } finally { progress.remove(); }
     }
-    const authorizeImport = createPasswordGate((_capability, context, currentPassword) => loadInventory(context, currentPassword), {
-        title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，比较要导入的记录。',
+    const authorizeImport = createPasswordGate((capability, _context, currentPassword) => {
+        trigger = document.activeElement;
+        importAuthorization = { capability, currentPassword };
+        input.click();
+    }, {
+        title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，然后选择备份并比较记录。',
         staticMessage: '静态页面不提供记录导入。'
     });
-    const authorize = createPasswordGate(async (_capability, context) => {
-        if (busy) return;
-        setBusy(true);
-        try {
-            await exportRecords(context.paths);
-        } finally { setBusy(false); }
+    const authorizeExport = createPasswordGate((_capability, paths) => {
+        trigger = document.activeElement;
+        entries = undefined;
+        importAuthorization = undefined;
+        comparisons = new Map();
+        open('export', getRecords());
+        paths.forEach(path => { if (records.some(record => record.desc_md === path)) selected.add(path); });
+        render();
     }, {
-        title: '验证访问密码', description: '请输入此网站现在使用的 6 位数字访问密码。',
+        title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，然后选择要导出的记录。',
         staticMessage: '当前站点为静态只读页面，不提供部分记录导入导出。'
     });
 
@@ -395,22 +401,29 @@ export function createRecordTransfer(onImported, getRecords) {
                     } catch (failure) { status(failure.message); }
                     finally { setBusy(false); }
                 })();
-            } else if (mode === 'export') void authorize(context).catch(failure => status(failure.message));
+            } else if (mode === 'export') {
+                setBusy(true);
+                void exportRecords(context.paths).catch(failure => status(failure.message)).finally(() => setBusy(false));
+            }
             else status('验证已失效，请重新选择备份。');
         }
     });
     input.addEventListener('click', event => event.stopPropagation());
-    input.addEventListener('cancel', restoreFocus);
+    input.addEventListener('cancel', () => { importAuthorization = undefined; restoreFocus(); });
     input.addEventListener('change', async () => {
         const file = input.files[0];
         input.value = '';
-        if (!file || busy) return;
+        if (busy) return;
+        const authorization = importAuthorization;
+        importAuthorization = undefined;
+        if (!file) { restoreFocus(); return; }
+        if (!authorization) { status('验证已失效，请重新选择备份。'); restoreFocus(); return; }
         setBusy(true);
         try {
             if (file.size > MAXIMUM_ARCHIVE_BYTES) throw new Error('ZIP 备份不能超过 100 GiB。');
             const incomingEntries = await readZipSource(file);
             const incomingRecords = await readBackupRecords(incomingEntries);
-            await authorizeImport({ mode: 'import', records: incomingRecords, entries: incomingEntries });
+            await loadInventory({ mode: 'import', records: incomingRecords, entries: incomingEntries }, authorization.currentPassword);
         } catch (failure) { status(`无法读取备份：${failure.message}`); restoreFocus(); }
         finally { setBusy(false); }
     });
@@ -418,18 +431,11 @@ export function createRecordTransfer(onImported, getRecords) {
     return {
         chooseExport(paths = []) {
             if (busy || dialog.open) return;
-            trigger = document.activeElement;
-            entries = undefined;
-            importAuthorization = undefined;
-            comparisons = new Map();
-            open('export', getRecords());
-            paths.forEach(path => { if (records.some(record => record.desc_md === path)) selected.add(path); });
-            render();
+            return authorizeExport(paths);
         },
         chooseImport() {
             if (busy || dialog.open) return;
-            trigger = document.activeElement;
-            input.click();
+            return authorizeImport();
         }
     };
 }

@@ -552,7 +552,7 @@ body[data-route='preface'] .paper-page {
 .preface-tool-choices {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 20px;
+    gap: 10px 12px;
 }
 
 .preface-tool-command {
@@ -562,10 +562,11 @@ body[data-route='preface'] .paper-page {
     gap: 6px;
     min-width: 0;
     min-height: 44px;
-    padding: 10px 18px 10px 0;
+    padding: 12px 28px 12px 12px;
+    border: 1px solid #9c7a4c80;
     border-radius: 2px;
     color: var(--ink);
-    background: transparent;
+    background: #fbf0d699;
     font: inherit;
     text-align: left;
     cursor: pointer;
@@ -576,7 +577,7 @@ body[data-route='preface'] .paper-page {
     content: '';
     position: absolute;
     top: 16px;
-    right: 3px;
+    right: 13px;
     width: 6px;
     height: 6px;
     border-top: 1px solid currentColor;
@@ -589,24 +590,26 @@ body[data-route='preface'] .paper-page {
     flex-wrap: wrap;
     align-items: baseline;
     gap: 4px 8px;
-    font-size: 15px;
+    font-size: 16px;
+    font-weight: 700;
     line-height: 1.5;
 }
 
 .preface-command-kind {
     color: #793e30;
-    font-size: 11px;
+    font-size: 12px;
+    font-weight: 400;
 }
 
 .preface-command-description {
-    color: #69513a;
-    font-size: 12px;
+    color: var(--ink-soft);
+    font-size: 14px;
     line-height: 1.7;
     overflow-wrap: anywhere;
 }
 
-.preface-tool-command:hover { color: var(--stamp); background-color: #a4824312; }
-.preface-tool-command:active { background-color: #a4824326; }
+.preface-tool-command:hover { color: var(--stamp); border-color: var(--brass-300); background-color: var(--paper-50); }
+.preface-tool-command:active { background-color: var(--paper-100); }
 .preface-tool-command:disabled { opacity: .55; cursor: wait; }
 .preface-tool-command:focus-visible,
 .preface-text-action:focus-visible,
@@ -1668,7 +1671,7 @@ body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padd
     .preface-facts dd { font-size: 11px; }
     .preface-tools-panel { gap: 20px; }
     .preface-tool-section { padding-bottom: 18px; }
-    .preface-tool-choices { gap: 6px 16px; }
+    .preface-tool-choices { grid-template-columns: minmax(0, 1fr); gap: 10px; }
     .preface-writing-row { align-items: start; flex-direction: column; gap: 8px; }
     .preface-write-button { width: 100%; }
     .preface-profile-tools { justify-content: space-between; gap: 4px 12px; }

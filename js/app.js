@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=2.1.0';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.0';
-import { createRecordEditor } from './record-editor.js?v=2.1.0';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.0';
-import { createDataTransfer } from './data-transfer.js?v=2.1.0';
-import { createMediaManager } from './media-manager.js?v=2.1.0';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.0';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.0';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.0';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.0';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.0';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.0';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.0';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.0';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.0';
-import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.0';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.0';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.0';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.1';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.1';
+import { createRecordEditor } from './record-editor.js?v=2.1.1';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.1';
+import { createDataTransfer } from './data-transfer.js?v=2.1.1';
+import { createMediaManager } from './media-manager.js?v=2.1.1';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.1';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.1';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.1';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.1';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.1';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.1';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.1';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.1';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.1';
+import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.1';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.1';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.1';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.0';
+} from './location.mjs?v=2.1.1';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,7 +30,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.0';
+} from './photo-viewer-transform.mjs?v=2.1.1';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_SORT_OPTIONS = new Set(['desc', 'asc', 'location', 'area', 'title']);
@@ -1069,6 +1069,7 @@ function renderPreface() {
 
         <section class="preface-tool-section" aria-labelledby="prefaceDataTitle">
             <h3 id="prefaceDataTitle">备份与恢复</h3>
+            <p class="preface-tool-note">先验证访问密码，再选择日记或备份文件；替换全部数据前会先确认风险。</p>
             <div class="preface-backup-group" role="group" aria-labelledby="prefaceExportTitle">
                 <h4 id="prefaceExportTitle">导出 · 保存备份到本机</h4>
                 <div class="preface-tool-choices">

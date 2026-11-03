@@ -1,7 +1,7 @@
-import { escapeHtml } from './utils.js?v=2.1.0';
-import { parseMarkdown } from './data.js?v=2.1.0';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.0';
-import { createMediaPreview } from './media-preview.mjs?v=2.1.0';
+import { escapeHtml } from './utils.js?v=2.1.1';
+import { parseMarkdown } from './data.js?v=2.1.1';
+import { createMediaFileLink } from './media-file-link.js?v=2.1.1';
+import { createMediaPreview } from './media-preview.mjs?v=2.1.1';
 import { sourceOf, readSourceText } from './zip-stream.mjs';
 
 export function markdownPreview(source) {
