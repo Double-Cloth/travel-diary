@@ -30,19 +30,35 @@ export function createOperationProgress(title) {
     let lastRender = 0;
     let shown = false;
     let removed = false;
+    let modalHost;
+    function releaseModal() {
+        modalHost?.removeEventListener?.('close', moveToPage);
+        modalHost = undefined;
+    }
+    function moveToPage() {
+        releaseModal();
+        if (removed) return;
+        // 密码窗口关闭后，完成或错误提示仍需留在可见页面上。
+        document.body.append(root);
+        if (typeof root.showPopover === 'function') root.showPopover();
+    }
     function show() {
         if (shown || removed) return;
         shown = true;
         const activeModal = document.querySelector('dialog[open]');
         const host = activeModal?.open ? activeModal : document.body;
         host.append(root);
+        if (host === activeModal) {
+            modalHost = activeModal;
+            modalHost.addEventListener?.('close', moveToPage);
+        }
         // 实际处理开始后才显示；挂在此时的 dialog 下以保留模态期间的交互能力。
         if (typeof root.showPopover === 'function') {
             root.setAttribute('popover', 'manual');
             root.showPopover();
         }
     }
-    function remove() { removed = true; clearTimeout(timer); root.remove?.(); }
+    function remove() { removed = true; clearTimeout(timer); releaseModal(); root.remove?.(); }
     dismiss.addEventListener('click', remove);
     function setCancelable(value, reason = '服务器正在处理，暂不能取消。') {
         cancelButton.disabled = !value || controller.signal.aborted || finished;

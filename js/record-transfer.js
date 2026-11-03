@@ -1,7 +1,7 @@
 import { escapeHtml, getMediaFileUrl } from './utils.js';
-import { createPasswordGate } from './record-password.js?v=20261103-record-management-v1';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=20261103-record-management-v1';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261103-record-management-v1';
+import { createPasswordGate } from './record-password.js?v=20261103-operation-consistency-v1';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=20261103-operation-consistency-v1';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=20261103-operation-consistency-v1';
 import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-stream.mjs';
 import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=20261103-media-controls-v3';
 import { verifyBackupPassword } from './backup-password.js?v=20261103-media-controls-v3';
@@ -49,6 +49,7 @@ export function createRecordTransfer(onImported, getRecords) {
     let busy = false;
     let comparisons = new Map();
     let importAuthorization;
+    let importProgress;
     let previews = createContentPreviewScope();
     const status = message => {
         const output = document.querySelector('[data-data-transfer-status]');
@@ -57,6 +58,18 @@ export function createRecordTransfer(onImported, getRecords) {
     const restoreFocus = () => { if (trigger?.isConnected) trigger.focus(); };
     const close = () => { dialog.close(); previews.dispose(); restoreFocus(); };
     const error = message => { dialog.querySelector('[data-record-transfer-error]').textContent = message; };
+    function startImportProgress() {
+        importProgress?.remove();
+        return importProgress = createOperationProgress('导入部分记录');
+    }
+    function setBusy(value) {
+        busy = value;
+        dialog.setAttribute('aria-busy', String(value));
+        dialog.querySelectorAll('button, input').forEach(control => {
+            control.disabled = value || (control.type === 'checkbox' && mode === 'import' && comparisons.get(control.value)?.status === 'conflict');
+        });
+        updateSelection();
+    }
 
     function filteredRecords() {
         const query = dialog.querySelector('input[type="search"]').value.trim().toLowerCase();
@@ -78,7 +91,7 @@ export function createRecordTransfer(onImported, getRecords) {
                 ${mode === 'import' ? renderDifference(record, comparison) : ''}</li>`;
         }).join('');
         dialog.querySelector('[data-record-transfer-empty]').hidden = filtered.length > 0;
-        dialog.querySelector('[data-record-transfer-all]').disabled = filtered.length === 0;
+        dialog.querySelectorAll('input').forEach(control => { if (busy) control.disabled = true; });
         updateSelection();
     }
 
@@ -132,7 +145,9 @@ export function createRecordTransfer(onImported, getRecords) {
 
     function updateSelection() {
         dialog.querySelector('[data-record-transfer-count]').textContent = `已选 ${selected.size} / ${records.length} 条`;
-        dialog.querySelector('[data-record-transfer-submit]').disabled = selected.size === 0;
+        dialog.querySelector('[data-record-transfer-submit]').disabled = busy || selected.size === 0;
+        dialog.querySelector('[data-record-transfer-clear]').disabled = busy || selected.size === 0;
+        dialog.querySelector('[data-record-transfer-all]').disabled = busy || !filteredRecords().some(record => mode !== 'import' || comparisons.get(record.desc_md)?.status !== 'conflict');
     }
 
     function open(nextMode, nextRecords) {
@@ -182,9 +197,10 @@ export function createRecordTransfer(onImported, getRecords) {
         } catch (failure) { progress.fail(failure); throw failure; }
     }
 
-    async function upload(file, capability, currentPassword, backupPassword = currentPassword) {
-        const progress = createOperationProgress('导入部分记录');
+    async function upload(file, capability, currentPassword, backupPassword, progress) {
         try {
+            progress.throwIfCancelled();
+            progress.phase('正在上传所选记录…');
             const url = new URL('api/travel-data?mode=merge', window.location.href);
             const response = await uploadWithProgress(url, {
                 method: 'POST', credentials: 'same-origin', body: file, signal: progress.signal,
@@ -207,31 +223,30 @@ export function createRecordTransfer(onImported, getRecords) {
             return result;
         } catch (failure) {
             if (progress.signal.aborted) { progress.fail(failure); status('已取消导入。'); return null; }
-            progress.remove();
+            progress.fail(failure);
             throw failure;
         }
     }
 
-    async function importRecords(context, capability, currentPassword, backupPassword = currentPassword) {
+    async function importRecords(context, capability, currentPassword, backupPassword = currentPassword, progress = startImportProgress()) {
         const chosen = selectBackupRecords(context.records, context.paths);
-        const progress = createOperationProgress('整理所选记录');
-        let file;
         try {
+            progress.setCancelable(true);
+            progress.phase('正在整理所选日记和附件…');
             const plan = Object.fromEntries(chosen.map(record => [record.desc_md, context.comparisons.get(record.desc_md).expected]));
-            file = await createZipBlob([...recordBackupEntries(context.entries, chosen, { includeAuth: true }),
+            const file = await createZipBlob([...recordBackupEntries(context.entries, chosen, { includeAuth: true }),
                 { name: 'data/record-merge.json', data: JSON.stringify(plan) }], (loaded, total) => {
                 progress.signal.throwIfAborted();
                 progress.update(loaded, total, '正在整理正文及媒体文件…');
             });
             progress.signal.throwIfAborted();
-            progress.remove();
+            if (file.size > MAXIMUM_ARCHIVE_BYTES) throw new Error('所选记录 ZIP 不能超过 100 GiB。');
+            return await upload(file, capability, currentPassword, backupPassword, progress);
         } catch (failure) {
             progress.fail(failure);
             if (progress.signal.aborted) { status('已取消导入。'); return null; }
             throw failure;
         }
-        if (file.size > MAXIMUM_ARCHIVE_BYTES) throw new Error('所选记录 ZIP 不能超过 100 GiB。');
-        return upload(file, capability, currentPassword, backupPassword);
     }
 
     const requestBackupPassword = createPasswordGate((result, context) => context.resolve(result), {
@@ -252,14 +267,18 @@ export function createRecordTransfer(onImported, getRecords) {
             return null;
         }
         context = { ...context, paths };
+        const progress = startImportProgress();
+        progress.setCancelable(false, '正在验证备份密码，请稍候。');
+        progress.phase('正在验证备份密码…');
         try { await verifyBackupPassword(context.entries, capability, currentPassword); }
         catch (failure) {
-            if (failure.code !== 'BACKUP_PASSWORD_INVALID') throw failure;
+            if (failure.code !== 'BACKUP_PASSWORD_INVALID') { progress.fail(failure); throw failure; }
+            progress.remove();
             return new Promise((resolve, reject) => {
                 void requestBackupPassword({ ...context, capability, currentPassword, resolve }).catch(reject);
             });
         }
-        return importRecords(context, capability, currentPassword);
+        return importRecords(context, capability, currentPassword, currentPassword, progress);
     }
 
     async function loadInventory(context, currentPassword) {
@@ -322,10 +341,10 @@ export function createRecordTransfer(onImported, getRecords) {
     });
     const authorize = createPasswordGate(async (_capability, context) => {
         if (busy) return;
-        busy = true;
+        setBusy(true);
         try {
             await exportRecords(context.paths);
-        } finally { busy = false; }
+        } finally { setBusy(false); }
     }, {
         title: '验证访问密码', description: '请输入此网站现在使用的 6 位数字访问密码。',
         staticMessage: '当前站点为静态只读页面，不提供部分记录导入导出。'
@@ -349,8 +368,8 @@ export function createRecordTransfer(onImported, getRecords) {
         if (event.target.closest('[data-record-transfer-clear]')) { selected.clear(); render(); }
         if (event.target.closest('[data-record-transfer-changes]')) {
             if (busy) return;
-            busy = true;
-            void loadInventory({ mode: 'export' }).catch(failure => error(failure.message)).finally(() => { busy = false; });
+            setBusy(true);
+            void loadInventory({ mode: 'export' }).catch(failure => error(failure.message)).finally(() => { setBusy(false); });
         }
         if (event.target.closest('[data-record-transfer-submit]') && selected.size) {
             const context = { mode, paths: [...selected], records, entries, comparisons };
@@ -358,12 +377,12 @@ export function createRecordTransfer(onImported, getRecords) {
             if (mode === 'import' && importAuthorization) {
                 const { capability, currentPassword } = importAuthorization;
                 importAuthorization = undefined;
-                busy = true;
+                setBusy(true);
                 void (async () => {
                     try {
                         await performImport(context, capability, currentPassword);
                     } catch (failure) { status(failure.message); }
-                    finally { busy = false; }
+                    finally { setBusy(false); }
                 })();
             } else if (mode === 'export') void authorize(context).catch(failure => status(failure.message));
             else status('验证已失效，请重新选择备份。');
@@ -375,14 +394,14 @@ export function createRecordTransfer(onImported, getRecords) {
         const file = input.files[0];
         input.value = '';
         if (!file || busy) return;
-        busy = true;
+        setBusy(true);
         try {
             if (file.size > MAXIMUM_ARCHIVE_BYTES) throw new Error('ZIP 备份不能超过 100 GiB。');
             const incomingEntries = await readZipSource(file);
             const incomingRecords = await readBackupRecords(incomingEntries);
             await authorizeImport({ mode: 'import', records: incomingRecords, entries: incomingEntries });
         } catch (failure) { status(`无法读取备份：${failure.message}`); restoreFocus(); }
-        finally { busy = false; }
+        finally { setBusy(false); }
     });
 
     return {

@@ -4,6 +4,17 @@ import { loadBrowserModule } from './helpers/browser-modules.mjs';
 
 const { changeWriterPassword, initializeWriterPassword, probeWriterService } = await loadBrowserModule(new URL('../js/writer-capability.js', import.meta.url));
 
+test('清空回收站仅接受服务明确声明的支持状态', async t => {
+    const previous = { window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.window = { location: { href: 'https://diary.example/' } };
+    let recycleClear;
+    globalThis.fetch = async () => ({ status: 200, json: async () => ({ service: 'travel-diary-writer-v1', recycleClear }) });
+    assert.equal((await probeWriterService()).recycleClear, false);
+    recycleClear = true;
+    assert.equal((await probeWriterService()).recycleClear, true);
+});
+
 test('写入服务探测只把明确的静态标记识别为静态页面', async t => {
     const previous = { window: globalThis.window, fetch: globalThis.fetch };
     t.after(() => Object.assign(globalThis, previous));

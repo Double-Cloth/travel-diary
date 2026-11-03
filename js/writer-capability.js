@@ -19,6 +19,7 @@ function capabilityFrom(endpoint, result) {
         recordManagement: result.recordManagement === true,
         recycleBin: result.recycleBin === true,
         recyclePreviews: result.recyclePreviews === true,
+        recycleClear: result.recycleClear === true,
         authenticated: result.authenticated === true
     };
 }

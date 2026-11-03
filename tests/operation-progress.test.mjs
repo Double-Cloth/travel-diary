@@ -118,6 +118,32 @@ test('取消中止操作并保留取消结果，服务器提交期间不能取�
     assert.equal(root.querySelector('[data-progress-dismiss]').hidden, false);
 });
 
+test('密码窗口关闭后进度移回页面，移除提示时解除窗口监听', t => {
+    const nodes = installEnvironment(t);
+    const listeners = new Map();
+    const modal = {
+        open: true, append(child) { child.parentNode = this; },
+        addEventListener(name, listener) { listeners.set(name, listener); },
+        removeEventListener(name, listener) { if (listeners.get(name) === listener) listeners.delete(name); }
+    };
+    document.querySelector = () => modal;
+    const progress = createOperationProgress('导入部分记录');
+    progress.phase('正在合并…');
+    progress.complete('已合并');
+    modal.open = false;
+    listeners.get('close')();
+    assert.equal(nodes[0].parentNode, document.body);
+    assert.equal(nodes[0].attributes['data-state'], 'complete');
+    assert.equal(listeners.size, 0);
+    progress.remove();
+    modal.open = true;
+    const retry = createOperationProgress('重试导入');
+    retry.phase('正在整理…');
+    assert.equal(listeners.size, 1);
+    retry.remove();
+    assert.equal(listeners.size, 0);
+});
+
 test('上传取消会真正中止 XHR，已取消的上传不发送，完成后移除监听', async t => {
     installEnvironment(t);
     let xhr;

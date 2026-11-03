@@ -1,6 +1,6 @@
 import { escapeHtml, getMediaFileUrl } from './utils.js';
-import { createPasswordGate } from './record-password.js?v=20261103-record-management-v1';
-import { detectWriterCapability } from './writer-capability.js?v=20261103-record-management-v1';
+import { createPasswordGate } from './record-password.js?v=20261103-operation-consistency-v1';
+import { detectWriterCapability } from './writer-capability.js?v=20261103-operation-consistency-v1';
 import { createMediaFileLink } from './media-file-link.js?v=20261102-native-preview-v1';
 import { enhanceCustomSelects } from './custom-select.js?v=20261103-clear-media-ui-v1';
 
@@ -33,6 +33,7 @@ export function createMediaManager() {
     let capability;
     let trigger;
     let busy = false;
+    let stale = true;
     const selected = new Set();
     const error = message => { dialog.querySelector('[data-media-error]').textContent = message; };
     const owners = file => file.records.map(record => `<a href="#entry?id=${encodeURIComponent(record.record_id)}" data-media-record>${escapeHtml(record.date)} ${escapeHtml(record.locality)}</a>`).join('、');
@@ -40,8 +41,9 @@ export function createMediaManager() {
     function count() {
         const files = report.files.filter(file => selected.has(file.path));
         dialog.querySelector('[data-media-count]').textContent = `已选 ${files.length} 个文件 · ${sizeLabel(files.reduce((sum, file) => sum + file.size, 0))}`;
-        dialog.querySelector('[data-media-trash]').disabled = !files.length || busy;
+        dialog.querySelector('[data-media-trash]').disabled = !files.length || busy || stale;
         dialog.querySelector('[data-media-clear]').disabled = !files.length || busy;
+        dialog.querySelector('[data-media-all]').disabled = busy || stale || !report.files.some(file => !file.records.length);
     }
 
     function render() {
@@ -115,9 +117,11 @@ export function createMediaManager() {
             const result = await response.json();
             if (!response.ok || !Array.isArray(result.files)) throw new Error(result.error || '文件检查失败，请重试。');
             report = result;
+            stale = false;
             render();
             if (payload?.action === 'trash') dialog.querySelector('[data-media-summary]').textContent = '已移入回收站，可从日记工具箱打开回收站恢复。';
         } catch (failure) {
+            stale = true;
             error(failure.message);
             dialog.querySelector('[data-media-summary]').textContent = '操作未完成，请重新检查后再试。';
         } finally {
@@ -151,7 +155,7 @@ export function createMediaManager() {
         if (event.target.closest('[data-media-all]')) { report.files.filter(file => !file.records.length).forEach(file => selected.add(file.path)); renderFiles(); count(); }
         if (event.target.closest('[data-media-clear]')) { selected.clear(); renderFiles(); count(); }
         let payload;
-        if (event.target.closest('[data-media-trash]') && selected.size) {
+        if (event.target.closest('[data-media-trash]') && selected.size && !stale) {
             payload = { action: 'trash', paths: [...selected] };
         }
         if (payload) {

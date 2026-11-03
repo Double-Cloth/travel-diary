@@ -317,6 +317,7 @@ test('回收站 API 保护读取与写入，静态目录不暴露内容', async 
     const root = await fixture(t);
     const id = await captureRecycle(root, { title: '旧文件', files: [{ path: note.desc_md }] });
     const { base, headers } = await api(t, root);
+    assert.equal((await (await fetch(`${base}/api/travel-records`, { headers })).json()).recycleClear, true);
     assert.equal((await fetch(`${base}/api/travel-data?mode=recycle-bin`)).status, 401);
     const report = await (await fetch(`${base}/api/travel-data?mode=recycle-bin`, { headers })).json();
     assert.equal(report.items.length, 1);

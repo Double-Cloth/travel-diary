@@ -138,6 +138,7 @@ function openFeedback(message, options = {}) {
     dialog.querySelector('[data-feedback-cancel]').hidden = !isConfirmation;
     dialog.querySelector('[data-feedback-confirm]').textContent = options.confirmLabel || (isConfirmation ? '确认' : '知道了');
     dialog.classList.toggle('feedback-dialog-confirmation', isConfirmation);
+    dialog.classList.toggle('feedback-dialog-danger', isConfirmation && options.danger !== false);
 
     return new Promise(resolve => {
         feedbackResolver = resolve;
