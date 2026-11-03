@@ -1,8 +1,8 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.18';
-import { createPasswordGate } from './record-password.js?v=2.1.18';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.18';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.18';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.18';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.19';
+import { createPasswordGate } from './record-password.js?v=2.1.19';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.19';
+import { createMediaFileLink } from './media-file-link.js?v=2.1.19';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.19';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -21,8 +21,10 @@ export function createMediaManager() {
         <dl class="media-space-summary" data-media-space hidden></dl>
         <div class="media-manager-navigation"><h3 id="mediaFilesTitle">文件检查</h3><button class="media-text-button" type="button" data-media-refresh>重新检查</button></div>
         <section id="mediaFilesPanel" class="media-files-section" aria-labelledby="mediaFilesTitle">
-        <div class="media-filter-row"><label for="mediaFilterButton" class="field-label">查看</label><select id="mediaFilter" data-custom-select data-media-filter aria-label="文件分类"><option value="unused">未被日记使用</option><option value="missing">日记中的缺失文件</option><option value="shared">多篇日记共用</option><option value="all">全部现有文件</option></select></div>
-        <label class="field-label" for="mediaSearch">搜索文件名、路径或日记地点</label><div class="management-search"><input id="mediaSearch" type="search" autocomplete="off" data-media-search placeholder="筛选当前分类的文件"><button class="media-text-button" type="button" data-media-reset hidden>清除搜索</button></div>
+        <div class="media-manager-filters">
+            <div class="media-filter-field"><label for="mediaFilterButton" class="field-label">查看</label><select id="mediaFilter" data-custom-select data-media-filter aria-label="文件分类"><option value="unused">未被日记使用</option><option value="missing">日记中的缺失文件</option><option value="shared">多篇日记共用</option><option value="all">全部现有文件</option></select></div>
+            <div class="media-filter-field"><label class="field-label" for="mediaSearch">搜索文件名、路径或日记地点</label><div class="management-search"><input id="mediaSearch" type="search" autocomplete="off" data-media-search placeholder="筛选当前分类的文件"><button class="media-text-button" type="button" data-media-reset hidden>清除搜索</button></div></div>
+        </div>
         <p class="media-filter-hint" data-media-hint></p>
         <div class="media-selection-tools" data-media-select-tools><button class="media-text-button" type="button" data-media-all>全选筛选结果</button><button class="media-text-button" type="button" data-media-clear disabled>清空全部选择</button></div>
         <ul class="record-transfer-list media-file-list" data-media-list data-media-viewer-group aria-label="媒体文件"></ul></section>
