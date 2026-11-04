@@ -187,8 +187,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             }), () => scope === previews && state === selected.get(id));
         }
     }, true);
-    function selectItem(item, { expand = true } = {}) {
-        if (expand) setItemExpanded(item.id, true);
+    function selectItem(item) {
         const state = { id: item.id, targetDescMd: targets.get(item.id) || '', phase: 'pending' };
         selected.set(item.id, state);
         syncPreview(item.id);
@@ -318,7 +317,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         if (event.target.closest('[data-recycle-none]')) { selected.clear(); render(); return; }
         if (stale || !report) return;
         if (event.target.closest('[data-recycle-all]')) {
-            filteredItems().filter(item => !selected.has(item.id)).forEach(item => selectItem(item, { expand: false }));
+            filteredItems().filter(item => !selected.has(item.id)).forEach(selectItem);
             syncControls();
             return;
         }
