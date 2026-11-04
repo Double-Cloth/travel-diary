@@ -1410,8 +1410,8 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-manager .recycle-selection-note { grid-column: 1 / -1; font-size: 12px; }
 .recycle-manager .recycle-preview-status { padding: 10px 0; color: var(--stamp); }
 .recycle-manager .recycle-preview-path { margin: 0 0 12px; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
-.recycle-list [data-recycle-diff]:not([hidden]) { margin-top: 16px; }
-.recycle-restore-preview { border-top: 1px dashed var(--hairline); }
+/* 恢复预览独立成区，实线两侧使用相同留白，与区内虚线区分。 */
+.recycle-list [data-recycle-diff]:not([hidden]) { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); }
 .recycle-list .recycle-restore-preview > summary { color: var(--stamp); font-weight: 600; }
 .recycle-preview-body { min-width: 0; padding: 12px 0 0; border-top: 1px dashed var(--hairline); }
 .recycle-list p { margin: 0 0 12px; font-size: 13px; }
