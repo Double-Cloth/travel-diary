@@ -138,6 +138,6 @@ Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，不
 
 动态导出返回会话绑定的 `X-Travel-Backup-Receipt`，流传输成功后，在释放数据锁前自动写入备份比较基准。基准保存导出快照而非完成时重算的内容，未选记录的基准不变；失败、中断和 HEAD 请求不推进基准。保留 `POST ?mode=backup-complete` 供旧页面兼容，并继续验证会话和回执。原生下载回退复用回执参数，传输完成后同样自动更新；基准属于本机缓存，不属于可移植数据。
 
-`GET /api/travel-data?mode=media-health` 扫描普通媒体文件与引用；`POST` 同模式使用 `trash`、`restore`、`purge` 操作。操作要求会话和令牌，在共用数据锁内核对体检版本，再执行未引用媒体回收、独占恢复及显式永久清理。统一回收站位于 `.cache/recycle-bin/<批次标识>/`，旧 `data/media-trash/` 自动迁移，含原文件及恢复清单；路径逐层拒绝符号链接和 junction。损坏或缺失的回收清单停止清理并提示人工核对，不静默当作空目录。
+`GET /api/travel-data?mode=media-health` 扫描普通媒体文件与引用；`POST` 同模式使用 `trash`、`restore`、`purge`、`remove-missing` 操作。操作要求会话和令牌，在共用数据锁内核对体检版本，再执行未引用媒体回收、独占恢复及显式永久清理。`remove-missing` 仅接受当前缺失清单中的路径，从全部关联日记的附件列表中移除引用，通过临时索引与 rename 原子提交；前端检查 `mediaReferenceRemoval` 能力，成功后刷新日记数据，只读分类隐藏批量选择及回收操作。统一回收站位于 `.cache/recycle-bin/<批次标识>/`，旧 `data/media-trash/` 自动迁移，含原文件及恢复清单；路径逐层拒绝符号链接和 junction。损坏或缺失的回收清单停止清理并提示人工核对，不静默当作空目录。
 
 回收站 `POST ?mode=recycle-bin` 的 `preview` 操作在数据锁内计算实际恢复结果，复用 `compareBackup` 比较元数据、正文与附件，独立文件及整站移除也纳入差异。`record-diff-view.js` 由部分导入和回收站共同调用，统一渲染行差异和延迟加载附件，来源分别为 ZIP 字节源或已鉴权的回收文件 URL。预览令牌绑定当前数据、回收内容及目标日记，确认恢复时锁内复核；冲突覆盖前保存当前文件与索引，失败时统一回滚。旧调用未携带预览令牌时仍拒绝同名冲突。

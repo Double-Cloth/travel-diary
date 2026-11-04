@@ -1,8 +1,8 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.26';
-import { createPasswordGate } from './record-password.js?v=2.1.26';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.26';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.26';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.26';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.27';
+import { createPasswordGate } from './record-password.js?v=2.1.27';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.27';
+import { createMediaFileLink } from './media-file-link.js?v=2.1.27';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.27';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -11,7 +11,7 @@ function sizeLabel(bytes) {
     return `${(bytes / 1024 ** 3).toFixed(2)} GiB`;
 }
 
-export function createMediaManager() {
+export function createMediaManager(onReferencesRemoved = async () => {}) {
     const dialog = document.createElement('dialog');
     dialog.className = 'record-transfer media-manager management-dialog entry-sheet';
     dialog.setAttribute('aria-labelledby', 'mediaManagerTitle');
@@ -53,6 +53,7 @@ export function createMediaManager() {
         dialog.setAttribute('aria-busy', String(busy));
         dialog.querySelectorAll('button, input, select').forEach(element => { element.disabled = busy; });
         dialog.querySelectorAll('[data-media-path]').forEach(element => { element.disabled = busy || stale; });
+        dialog.querySelectorAll('[data-media-remove-missing]').forEach(element => { element.disabled = busy || stale || !capability?.mediaReferenceRemoval; });
         if (report) count();
         else dialog.querySelectorAll('[data-media-all], [data-media-clear], [data-media-trash]').forEach(element => { element.disabled = true; });
         enhanceCustomSelects(dialog);
@@ -88,7 +89,8 @@ export function createMediaManager() {
         const filter = dialog.querySelector('[data-media-filter]').value;
         dialog.querySelector('[data-media-hint]').textContent = {
             unused: `共 ${sizeLabel(report.unusedBytes)}。没有日记使用这些文件，请先点击缩略图或文件名查看，再决定是否清理。`,
-            missing: '日记引用了这些文件，但文件已不存在。请从备份恢复，或修改对应日记。',
+            missing: '日记引用了这些文件，但文件已不存在。可从备份恢复，或点击「删除引用」从所有关联日记中移除该文件的引用。'
+                + (capability?.mediaReferenceRemoval ? '' : '请重启日记服务以启用删除引用。'),
             shared: '这些文件仍被多篇日记使用，不能清理。点击下方日记可查看使用位置。',
             all: '已被日记使用的文件仅供查看；未被日记使用的文件可以勾选清理。'
         }[filter];
@@ -115,13 +117,22 @@ export function createMediaManager() {
             const references = document.createElement('small');
             references.innerHTML = file.records.length ? owners(file) : '未被日记使用';
             content.append(link, references);
+            if (missing) {
+                const remove = document.createElement('button');
+                remove.type = 'button';
+                remove.className = 'media-text-button';
+                remove.dataset.mediaRemoveMissing = file.path;
+                remove.textContent = '删除引用';
+                remove.setAttribute('aria-label', `从所有关联日记中删除缺失文件 ${file.path} 的引用`);
+                content.append(remove);
+            }
             row.append(selection, content);
             return row;
         });
         const list = dialog.querySelector('[data-media-list]');
         list.replaceChildren(...rows);
         if (!files.length) list.innerHTML = `<li class="media-empty">${dialog.querySelector('[data-media-search]').value.trim() ? '没有匹配的文件，请清除搜索或切换分类。' : filter === 'unused' ? '没有未被日记使用的文件，无需清理。' : filter === 'missing' ? '没有缺失文件。' : filter === 'shared' ? '没有多篇共用的文件。' : '还没有图片或视频。'}</li>`;
-        const canSelect = selected.size > 0 || report.files.some(file => !file.records.length);
+        const canSelect = ['unused', 'all'].includes(filter) && (selected.size > 0 || files.some(file => !file.records.length));
         dialog.querySelector('[data-media-selection]').hidden = !canSelect;
         dialog.querySelector('[data-media-select-tools]').hidden = !canSelect;
         count();
@@ -135,6 +146,7 @@ export function createMediaManager() {
         try {
             capability = await detectWriterCapability();
             if (!capability.recordManagement) throw new Error('请重启服务器后再使用媒体整理。');
+            if (payload?.action === 'remove-missing' && !capability.mediaReferenceRemoval) throw new Error('请重启日记服务后再删除缺失文件的引用。');
             const response = await fetch(new URL('api/travel-data?mode=media-health', window.location.href), {
                 credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(120000), ...(payload ? { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': capability.token }, body: JSON.stringify({ ...payload, revision: report.revision }) } : {})
             });
@@ -146,6 +158,11 @@ export function createMediaManager() {
             stale = false;
             render();
             if (payload?.action === 'trash') dialog.querySelector('[data-media-summary]').textContent = '已移入回收站，可从日记工具箱打开回收站恢复。';
+            if (payload?.action === 'remove-missing') {
+                dialog.querySelector('[data-media-summary]').textContent = '已从所有关联日记中删除该缺失文件的引用。';
+                try { await onReferencesRemoved(); }
+                catch { error('引用已删除，但页面数据刷新失败，请手动刷新页面。'); }
+            }
         } catch (failure) {
             stale = true;
             error(failure.name === 'TimeoutError' ? '媒体检查超时，请重新检查后再试。' : failure instanceof TypeError ? '无法连接日记服务，请检查网络后重新检查。' : failure.message);
@@ -186,6 +203,8 @@ export function createMediaManager() {
         if (event.target.closest('[data-media-all]') && !stale) { filteredFiles().filter(file => !file.records.length).forEach(file => selected.add(file.path)); renderFiles(); count(); }
         if (event.target.closest('[data-media-clear]')) { selected.clear(); renderFiles(); count(); }
         let payload;
+        const removeMissing = event.target.closest('[data-media-remove-missing]');
+        if (removeMissing && !stale) payload = { action: 'remove-missing', paths: [removeMissing.dataset.mediaRemoveMissing] };
         if (event.target.closest('[data-media-trash]') && selected.size && !stale) {
             payload = { action: 'trash', paths: [...selected] };
         }

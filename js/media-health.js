@@ -1,4 +1,5 @@
 const fs = require('node:fs/promises');
+const path = require('node:path');
 const { createHash, randomBytes } = require('node:crypto');
 const { ordinaryPath, readRecords } = require('./record-inventory.js');
 const { acquireDataLock } = require('./data-archive.js');
@@ -68,6 +69,25 @@ async function manageMedia(root, payload) {
     try {
         const report = await scanMedia(root);
         if (payload?.revision !== report.revision) throw failure('媒体或引用已变化，请重新检查后再操作。');
+        if (payload.action === 'remove-missing') {
+            if (!Array.isArray(payload.paths) || !payload.paths.length || new Set(payload.paths).size !== payload.paths.length) throw failure('请选择要删除引用的缺失文件。');
+            const missing = new Set(report.missing.map(file => file.path));
+            if (payload.paths.some(name => !missing.has(name))) throw failure('所选文件已存在或不再被引用，未删除引用。');
+            const removed = new Set(payload.paths);
+            const records = await readRecords(root);
+            for (const record of records) {
+                for (const [folder, list] of [['photo_folder', 'photos'], ['video_folder', 'videos']]) {
+                    if (Array.isArray(record[list])) record[list] = record[list].filter(name => !removed.has(`${record[folder]}/${name}`));
+                }
+            }
+            const temporary = path.join(root, `data/.media-references-${randomBytes(16).toString('hex')}.tmp`);
+            try {
+                await fs.writeFile(temporary, JSON.stringify(records, null, 2) + '\n', { flag: 'wx' });
+                await ordinaryPath(root, 'data/travel_data.json');
+                await fs.rename(temporary, path.join(root, 'data/travel_data.json'));
+            } finally { await fs.unlink(temporary).catch(() => {}); }
+            return await scanMedia(root);
+        }
         if (payload.action !== 'trash' || !Array.isArray(payload.paths) || !payload.paths.length || new Set(payload.paths).size !== payload.paths.length) throw failure('请选择未引用的媒体文件。');
         const files = payload.paths.map(name => {
             const file = report.files.find(file => file.path === name && !file.records.length);

@@ -82,18 +82,19 @@ test('写入服务认证配置异常时保留服务端错误码和明确提示',
     });
 });
 
-test('真实媒体同步和混合排序能力必须由服务明确声明，旧服务不会被误认为支持', async t => {
+test('真实媒体同步、混合排序和删除缺失引用能力必须由服务明确声明', async t => {
     const previous = { window: globalThis.window, fetch: globalThis.fetch };
     t.after(() => Object.assign(globalThis, previous));
     globalThis.window = { location: { href: 'http://localhost:9000/' } };
     for (const flag of [undefined, false, 'true', true]) {
         globalThis.fetch = async () => ({
             ok: true, status: 200,
-            json: async () => ({ service: 'travel-diary-writer-v1', authenticated: true, token: 'test', methods: ['PUT'], syncMediaFiles: flag, mediaOrder: flag })
+            json: async () => ({ service: 'travel-diary-writer-v1', authenticated: true, token: 'test', methods: ['PUT'], syncMediaFiles: flag, mediaOrder: flag, mediaReferenceRemoval: flag })
         });
         const capability = await probeWriterService();
         assert.equal(capability.syncMediaFiles, flag === true);
         assert.equal(capability.mediaOrder, flag === true);
+        assert.equal(capability.mediaReferenceRemoval, flag === true);
     }
 });
 

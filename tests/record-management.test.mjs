@@ -219,6 +219,92 @@ test('体检后新增引用或文件变化时拒绝清理，同名恢复不覆�
     await assert.rejects(scanMedia(root), /普通文件或目录/);
 });
 
+test('删除缺失文件引用更新所有关联日记，保留其他媒体、顺序、正文及元数据', async t => {
+    const root = await fixture(t);
+    const records = identifyRecords([
+        { ...first, photos: ['missing.png', 'shared.png', 'missing.png'], video_folder: 'data/videos/trip', videos: ['missing.mp4'], trip_id: 'trip-a' },
+        { ...second, photos: ['shared.png', 'missing.png'], video_folder: 'data/videos/trip', videos: ['missing.mp4', 'other.mp4'] },
+        { ...record('third'), photo_folder: 'data/photos/other', photos: ['missing.png'] }
+    ]);
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify(records));
+    const beforeBody = await fs.readFile(path.join(root, first.desc_md));
+    let report = await scanMedia(root);
+    report = await manageMedia(root, { action: 'remove-missing', revision: report.revision, paths: ['data/photos/trip/missing.png', 'data/videos/trip/missing.mp4'] });
+    const saved = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
+    assert.deepEqual(saved, [
+        { ...records[0], photos: ['shared.png'], videos: [] },
+        { ...records[1], photos: ['shared.png'], videos: ['other.mp4'] },
+        records[2]
+    ]);
+    assert.deepEqual(report.missing.map(file => file.path).sort(), ['data/photos/other/missing.png', 'data/videos/trip/other.mp4']);
+    assert.equal(report.files.length, 2);
+    assert.equal(report.trash.length, 0);
+    assert.deepEqual(await fs.readFile(path.join(root, first.desc_md)), beforeBody);
+    assert.equal(await fs.readFile(path.join(root, 'data/photos/trip/shared.png'), 'utf8'), 'shared');
+});
+
+test('删除引用拒绝无效、现有或不再缺失的路径，过期报告不会覆盖日记变更', async t => {
+    const root = await fixture(t);
+    const index = path.join(root, 'data/travel_data.json');
+    const records = [{ ...first, photos: ['missing.png', 'shared.png'] }, second];
+    await fs.writeFile(index, JSON.stringify(records));
+    const before = await fs.readFile(index);
+    let report = await scanMedia(root);
+    for (const paths of [undefined, [], ['data/photos/trip/missing.png', 'data/photos/trip/missing.png'], [null], ['../escape'], ['data/photos/trip/shared.png'], ['data/photos/unused.png'], ['data/photos/trip/missing.png', 'data/photos/trip/shared.png']]) {
+        await assert.rejects(manageMedia(root, { action: 'remove-missing', revision: report.revision, paths }), /请选择|已存在或不再被引用/);
+        assert.deepEqual(await fs.readFile(index), before);
+    }
+    await fs.writeFile(index, JSON.stringify([{ ...records[0], trip_id: 'updated' }, second]));
+    await assert.rejects(manageMedia(root, { action: 'remove-missing', revision: report.revision, paths: ['data/photos/trip/missing.png'] }), /已变化/);
+    report = await scanMedia(root);
+    await fs.writeFile(path.join(root, 'data/photos/trip/missing.png'), 'restored');
+    await assert.rejects(manageMedia(root, { action: 'remove-missing', revision: report.revision, paths: ['data/photos/trip/missing.png'] }), /已变化/);
+    report = await scanMedia(root);
+    await assert.rejects(manageMedia(root, { action: 'remove-missing', revision: report.revision, paths: ['data/photos/trip/missing.png'] }), /已存在或不再被引用/);
+    assert.equal(JSON.parse(await fs.readFile(index))[0].trip_id, 'updated');
+    await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
+});
+
+test('删除引用提交失败保留原索引并清理临时文件，之后可以重试', async t => {
+    const root = await fixture(t);
+    const index = path.join(root, 'data/travel_data.json');
+    await fs.writeFile(index, JSON.stringify([{ ...first, photos: ['missing.png'] }, second]));
+    const before = await fs.readFile(index);
+    const report = await scanMedia(root);
+    const rename = fs.rename;
+    const mocked = t.mock.method(fs, 'rename', async (from, to) => {
+        if (to === index) throw new Error('模拟索引提交失败');
+        return rename(from, to);
+    });
+    try { await assert.rejects(manageMedia(root, { action: 'remove-missing', revision: report.revision, paths: ['data/photos/trip/missing.png'] }), /模拟索引提交失败/); }
+    finally { mocked.mock.restore(); }
+    assert.deepEqual(await fs.readFile(index), before);
+    assert.equal((await fs.readdir(path.join(root, 'data'))).some(name => name.startsWith('.media-references-')), false);
+    const updated = await manageMedia(root, { action: 'remove-missing', revision: report.revision, paths: ['data/photos/trip/missing.png'] });
+    assert.equal(updated.missing.length, 0);
+});
+
+test('删除缺失引用接口要求会话和令牌，认证后返回更新的检查报告', async t => {
+    const root = await fixture(t);
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify([{ ...first, photos: ['missing.png'] }, second]));
+    const server = http.createServer(createHandler(root));
+    const base = await listenOnFetchSafePort(server);
+    t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
+    const { token, cookie } = await login(base);
+    const capability = await (await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } })).json();
+    assert.equal(capability.mediaReferenceRemoval, true);
+    const report = await scanMedia(root);
+    const headers = { Cookie: cookie, Origin: base, 'X-Travel-Token': token, 'Content-Type': 'application/json' };
+    const remove = (extra = {}) => fetch(`${base}/api/travel-data?mode=media-health`, { method: 'POST', headers: { ...headers, ...extra }, body: JSON.stringify({ action: 'remove-missing', revision: report.revision, paths: ['data/photos/trip/missing.png'] }) });
+    assert.equal((await remove({ Cookie: '' })).status, 401);
+    assert.equal((await remove({ 'X-Travel-Token': '' })).status, 403);
+    assert.equal((await scanMedia(root)).missing.length, 1);
+    const response = await remove();
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).missing.length, 0);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')))[0].photos, []);
+});
+
 test('回收文件被新增引用时禁止永久删除，回收清单损坏时停止操作', async t => {
     const root = await fixture(t);
     let report = await scanMedia(root);
