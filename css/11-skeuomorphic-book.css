@@ -6,6 +6,53 @@
     --leather-grain: url('../assets/textures/paper-grain.png');
     --plaque-face: linear-gradient(115deg, #fff3cf 0%, #d0ab69 13%, #f9e8ba 29%, #ddbd80 69%, #a77e46 100%);
     --plaque-edge: #79552e;
+    /* 缺口保持像素深度，长页也不会把轻微磨损拉成大裂口。 */
+    --paper-edge-top: 3px 2px, 6% .6px, 12% 1.5px, 18% 0, 24% .8px,
+        27% 1px, 28% 3px, 29% 1.2px, 36% .5px, 43% 1.5px,
+        51% .3px, 58% 1px, 65% 0, 73% 1.6px, 81% .5px,
+        87% 1px, 88% 2.8px, 89% .8px, 96% 1.2px, calc(100% - 3px) 1px;
+    --paper-edge-right: calc(100% - 1px) 3px, calc(100% - .5px) 9%,
+        calc(100% - 1.5px) 17%, 100% 24%, calc(100% - 1px) 31%,
+        calc(100% - 1.2px) 32%, calc(100% - 4px) 32.5%, calc(100% - 1px) 33.2%,
+        calc(100% - .5px) 42%, calc(100% - 1.5px) 51%, 100% 59%,
+        calc(100% - 1px) 68%, calc(100% - 2.8px) 68.6%, calc(100% - .8px) 69.4%,
+        calc(100% - 1.5px) 78%, calc(100% - .5px) 87%, calc(100% - 2px) 95%,
+        calc(100% - 4px) calc(100% - 2px);
+    --paper-edge-bottom: 96% calc(100% - .8px), 89% calc(100% - 1.6px),
+        82% calc(100% - .4px), 76% calc(100% - 1px), 75% calc(100% - 3px),
+        74% calc(100% - 1.2px), 66% 100%, 58% calc(100% - 1px),
+        49% calc(100% - .3px), 40% calc(100% - 1.5px), 32% calc(100% - .6px),
+        23% calc(100% - 1px), 22% calc(100% - 2.8px), 21% calc(100% - 1px),
+        14% 100%, 7% calc(100% - 1px), 3px calc(100% - 2px);
+    --paper-edge-left: 1px 95%, .5px 87%, 1.5px 79%, .6px 72%,
+        1px 71%, 3.8px 70.4%, 1px 69.6%, .5px 61%, 1.5px 52%,
+        0 44%, 1px 36%, 2.8px 35.4%, .8px 34.6%, 1.5px 26%,
+        .5px 18%, 1px 10%, 2px 4px;
+    --paper-edge-outline: polygon(var(--paper-edge-top), var(--paper-edge-right),
+        var(--paper-edge-bottom), var(--paper-edge-left));
+    --paper-edge-left-page: polygon(var(--paper-edge-top), 100% 0, 100% 100%,
+        var(--paper-edge-bottom), var(--paper-edge-left));
+    --paper-edge-right-page: polygon(0 0, var(--paper-edge-top), var(--paper-edge-right),
+        var(--paper-edge-bottom), 0 100%);
+}
+
+/* 只裁纸面和贴合纸面的光影，书脊与三维纸带容器保持完整。 */
+@media (min-width: 761px) {
+    .paper-page-left,
+    .page-spread::before { clip-path: var(--paper-edge-left-page); }
+    .paper-page-right,
+    .page-spread::after { clip-path: var(--paper-edge-right-page); }
+}
+
+@media (max-width: 760px) {
+    .paper-page { clip-path: var(--paper-edge-outline); }
+    /* 详情的摘要和正文共用外轮廓，接缝处不重复出现破口。 */
+    body:is([data-route='entry'], [data-route='trip'], [data-route='place'], [data-route='photos']) .page-spread {
+        clip-path: var(--paper-edge-outline);
+    }
+    body:is([data-route='entry'], [data-route='trip'], [data-route='place'], [data-route='photos']) .paper-page {
+        clip-path: none;
+    }
 }
 
 body {
