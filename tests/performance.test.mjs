@@ -9,6 +9,7 @@ const fontBuildScript = await readFile(new URL('../scripts/build-fonts.mjs', imp
 const appJs = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 const recordEditorJs = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
 const mediaFileLinkJs = await readFile(new URL('../js/media-file-link.js', import.meta.url), 'utf8');
+const mediaPreviewJs = await readFile(new URL('../js/media-preview.mjs', import.meta.url), 'utf8');
 const entrySheetCss = await readFile(new URL('../css/06-entry-sheet.css', import.meta.url), 'utf8');
 
 test('旅行日记正文允许浏览器缓存', () => {
@@ -50,9 +51,10 @@ test('可选字体子集模式显式丢弃不需要的 meta 表', () => {
 });
 
 test('多图预览不把 Base64 写入 DOM，并降低移动端重绘开销', () => {
-    assert.match(recordEditorJs, /createImageBitmap\(file,\s*\{[\s\S]*resizeWidth:\s*PHOTO_PREVIEW_WIDTH,[\s\S]*resizeQuality:\s*'medium'/);
-    assert.match(recordEditorJs, /const cropWidth = sourceRatio > previewRatio/);
-    assert.match(recordEditorJs, /canvas\.toBlob\(resolve, 'image\/jpeg'/);
+    assert.match(mediaPreviewJs, /createImageBitmap\(source,\s*\{[^}]*resizeWidth:\s*limitWidth,[^}]*resizeQuality:\s*'medium'/);
+    assert.match(mediaPreviewJs, /const cropWidth = fit === 'cover'/);
+    assert.match(mediaPreviewJs, /canvas\.toBlob\(resolve, 'image\/jpeg'/);
+    assert.match(recordEditorJs, /createMediaPreview\(file, kind/);
     assert.match(mediaFileLinkJs, /media\.loading = 'lazy';[\s\S]*media\.decoding = 'async';[\s\S]*media\.fetchPriority = 'low';/);
     assert.match(mediaFileLinkJs, /media\.width = 84;[\s\S]*media\.height = 64;/);
     assert.doesNotMatch(recordEditorJs, /<img src="data:image\/\$\{/);
@@ -62,7 +64,7 @@ test('多图预览不把 Base64 写入 DOM，并降低移动端重绘开销', ()
     assert.match(entrySheetCss, /@media \(hover: none\) and \(pointer: coarse\)[\s\S]*\.record-editor::backdrop\s*\{[\s\S]*backdrop-filter: none;/);
 });
 
-test('日记媒体列表仅使用压缩预览并懒加载，原文件留给查看器', () => {
+test('日记媒体列表显示压缩预览并懒加载，查看器保留原文件', () => {
     assert.match(appJs, /<img data-src="\$\{escapeHtml\(getMediaPreviewUrl\(item\.src\)\)\}" alt="\$\{escapeHtml\(item\.alt\)\}" loading="lazy" decoding="async" fetchpriority="low">/);
     assert.doesNotMatch(appJs, /<video data-src=/);
     assert.match(appJs, /class="photo-viewer-media photo-viewer-image"[\s\S]*decoding="async"/);

@@ -1,6 +1,7 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.48';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.48';
-import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.48';
+import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.49';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.49';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.49';
+import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.49';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
     MAXIMUM_MEDIA_BATCH_BYTES,
@@ -8,17 +9,17 @@ import {
     MAXIMUM_VIDEO_FILE_BYTES,
     mediaBytes,
     readUploads
-} from './photo-uploads.mjs?v=2.1.48';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.48';
-import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.48';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.48';
-import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.48';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.48';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.48';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.48';
+} from './photo-uploads.mjs?v=2.1.49';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.49';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.49';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.49';
+import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.49';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.49';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.49';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.49';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
-import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.48';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.48';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.49';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.49';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -137,97 +138,16 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         return photoPreviewUrls.get(media.id) || '';
     }
 
-    async function createVideoPreviewUrl(file) {
-        const sourceUrl = URL.createObjectURL(file);
-        const video = document.createElement('video');
-        video.muted = true;
-        video.playsInline = true;
-        video.preload = 'auto';
+    async function createLocalPreviewUrl(file, kind) {
         try {
-            await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => finish(new Error('视频预览超时')), 10000);
-                const finish = error => {
-                    clearTimeout(timeout);
-                    video.onloadeddata = video.onerror = null;
-                    error ? reject(error) : resolve();
-                };
-                video.onloadeddata = () => finish();
-                video.onerror = () => finish(new Error('视频编码不支持预览'));
-                video.src = sourceUrl;
+            const blob = await createMediaPreview(file, kind, {
+                width: PHOTO_PREVIEW_WIDTH, height: PHOTO_PREVIEW_HEIGHT, fit: 'cover', quality: 0.82
             });
-            const canvas = document.createElement('canvas');
-            canvas.width = PHOTO_PREVIEW_WIDTH;
-            canvas.height = PHOTO_PREVIEW_HEIGHT;
-            const context = canvas.getContext('2d');
-            if (!context || !video.videoWidth || !video.videoHeight) return '';
-            context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const preview = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
-            return preview ? URL.createObjectURL(preview) : '';
-        } catch {
+            return URL.createObjectURL(blob);
+        } catch (error) {
             // 不支持的编码仍可保存原视频，列表保留占位，查看器可下载原文件。
-            return '';
-        } finally {
-            video.removeAttribute('src');
-            video.load();
-            URL.revokeObjectURL(sourceUrl);
-        }
-    }
-
-    async function createPhotoPreviewUrl(file) {
-        let source;
-        let releaseSource = () => {};
-        if (typeof createImageBitmap === 'function') {
-            try {
-                source = await createImageBitmap(file, {
-                    resizeWidth: PHOTO_PREVIEW_WIDTH,
-                    resizeQuality: 'medium'
-                });
-                releaseSource = () => source.close();
-            } catch {
-                // Safari 的部分版本暴露了 createImageBitmap，但无法解码所有图片格式。
-            }
-        }
-        if (!source) {
-            const sourceUrl = URL.createObjectURL(file);
-            const image = new Image();
-            image.src = sourceUrl;
-            try { await image.decode(); }
-            catch {
-                URL.revokeObjectURL(sourceUrl);
-                throw new Error(`无法解码图片：${file.name}`);
-            }
-            source = image;
-            releaseSource = () => URL.revokeObjectURL(sourceUrl);
-        }
-
-        try {
-            const canvas = document.createElement('canvas');
-            canvas.width = PHOTO_PREVIEW_WIDTH;
-            canvas.height = PHOTO_PREVIEW_HEIGHT;
-            const context = canvas.getContext('2d', { alpha: false });
-            if (!context) throw new Error(`无法生成图片预览：${file.name}`);
-            context.fillStyle = '#f3e4bd';
-            context.fillRect(0, 0, canvas.width, canvas.height);
-            const sourceRatio = source.width / source.height;
-            const previewRatio = canvas.width / canvas.height;
-            const cropWidth = sourceRatio > previewRatio ? source.height * previewRatio : source.width;
-            const cropHeight = sourceRatio > previewRatio ? source.height : source.width / previewRatio;
-            context.drawImage(
-                source,
-                (source.width - cropWidth) / 2,
-                (source.height - cropHeight) / 2,
-                cropWidth,
-                cropHeight,
-                0,
-                0,
-                canvas.width,
-                canvas.height
-            );
-            const preview = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.82));
-            if (!preview) throw new Error(`无法生成图片预览：${file.name}`);
-            return URL.createObjectURL(preview);
-        } finally {
-            releaseSource();
+            if (kind === 'video') return '';
+            throw error;
         }
     }
 
@@ -1240,7 +1160,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 operationProgress.throwIfCancelled();
                 const photo = readUploads([{ id, name: file.name.slice(0, 200), data }])[0];
                 let previewUrl;
-                try { previewUrl = photo.kind === 'image' ? await createPhotoPreviewUrl(file) : await createVideoPreviewUrl(file); }
+                try { previewUrl = await createLocalPreviewUrl(file, photo.kind); }
                 catch (error) {
                     throw new Error(error.message.startsWith('无法') ? error.message : `无法解码媒体：${file.name}`);
                 }
@@ -1647,8 +1567,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 operationProgress.throwIfCancelled();
                 const blob = previewBlob(media);
                 try {
-                    photoPreviewUrls.set(media.id, media.kind === 'video'
-                        ? await createVideoPreviewUrl(blob) : await createPhotoPreviewUrl(blob));
+                    photoPreviewUrls.set(media.id, await createLocalPreviewUrl(blob, media.kind));
                 } catch {
                     // 草稿中的原文件不因缩略图无法解码而丢失。
                 }
@@ -1761,6 +1680,16 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             const result = await response.json();
             if (!response.ok || !result.saved) throw new Error(result.error || '未收到服务器的成功响应。');
             saved = true;
+            for (const type of ['photo', 'video']) {
+                for (const [index, item] of orderedMedia(type).entries()) {
+                    const previewUrl = item.upload && photoPreviewUrls.get(item.upload.id);
+                    if (!previewUrl) continue;
+                    try {
+                        const preview = await fetch(previewUrl).then(response => response.blob());
+                        await saveMediaPreview(getMediaFileUrl(`${result.record[`${type}_folder`]}/${result.record[`${type}s`][index]}`), preview);
+                    } catch { /* 记录已保存，缓存失败时保留占位，可用批量命令补齐。 */ }
+                }
+            }
             removedMedia = [];
             selectedMedia.clear();
             selectedRemovedMedia.clear();

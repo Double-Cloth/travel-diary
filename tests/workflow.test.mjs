@@ -31,5 +31,6 @@ test('GitHub Pages workflow publishes prepared static files', () => {
     assert.match(workflow, /find _site\/assets\/fonts -name '\*\.ttf' -delete/);
     assert.match(workflow, /actions\/upload-pages-artifact@v[0-9]+/);
     assert.match(workflow, /path:\s+_site/);
+    assert.match(workflow, /npm run media:previews -- --dir _site/);
     assert.match(workflow, /actions\/deploy-pages@v[0-9]+/);
 });

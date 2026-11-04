@@ -1,4 +1,4 @@
-@import url('../assets/fonts/diary-kai-core.css?v=2.1.48');
+@import url('../assets/fonts/diary-kai-core.css?v=2.1.49');
 
 @font-face {
     font-family: "Archive Code";
@@ -213,6 +213,14 @@ input,
 select,
 textarea {
     font: inherit;
+}
+
+/* 覆盖浏览器为语义化代码元素设置的系统等宽字体。 */
+pre,
+code,
+kbd,
+samp {
+    font-family: var(--font-code);
 }
 
 button,

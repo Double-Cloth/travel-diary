@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=2.1.48';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.48';
-import { createRecordEditor } from './record-editor.js?v=2.1.48';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.48';
-import { createDataTransfer } from './data-transfer.js?v=2.1.48';
-import { createMediaManager } from './media-manager.js?v=2.1.48';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.48';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.48';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.48';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.48';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.48';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.48';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.48';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.48';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.48';
-import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.48';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.48';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.48';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.49';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.49';
+import { createRecordEditor } from './record-editor.js?v=2.1.49';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.49';
+import { createDataTransfer } from './data-transfer.js?v=2.1.49';
+import { createMediaManager } from './media-manager.js?v=2.1.49';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.49';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.49';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.49';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.49';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.49';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.49';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.49';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.49';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.49';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.49';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.49';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.49';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.48';
+} from './location.mjs?v=2.1.49';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,7 +30,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.48';
+} from './photo-viewer-transform.mjs?v=2.1.49';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -345,7 +345,7 @@ function syncProfilePictureImages(root = document, cacheKey = '') {
         profilePicture.addEventListener('error', () => {
             profilePicture.hidden = true;
         }, { once: true });
-        profilePicture.src = profilePictureUrl.href;
+        void loadMediaPreview(profilePicture, source + profilePictureUrl.search, 'image');
     });
 }
 
@@ -381,6 +381,8 @@ async function handleProfilePictureSelection(input) {
                 progress.setCancelable(false);
                 progress.phase('头像上传完成，正在保存…');
             }, progress.signal);
+        try { await saveMediaPreview('data/profile/profile-picture.png', await createMediaPreview(file, 'image')); }
+        catch { /* 头像已保存，缓存失败可用批量命令补齐。 */ }
         refreshProfilePicture();
         progress.complete('新头像已保存。');
         void showFeedback('新头像已保存。', { label: '个人头像', title: '头像更新成功' });

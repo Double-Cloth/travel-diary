@@ -43,6 +43,21 @@ async function findBrowser(explicit) {
 async function buildMediaPreviews(root, options = {}) {
     root = await fs.realpath(root);
     const items = collectMedia(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')));
+    try {
+        if ((await fs.stat(path.join(root, 'data/profile/profile-picture.png'))).isFile()) {
+            items.push({ source: '/data/profile/profile-picture.png', preview: '/.cache/media-previews/profile/profile-picture.png.jpg', kind: 'image' });
+        }
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+    if (options.skipMissing) {
+        for (let index = items.length - 1; index >= 0; index--) {
+            try { await fs.access(path.join(root, decodeURIComponent(items[index].source))); }
+            catch (error) {
+                if (error.code !== 'ENOENT') throw error;
+                (options.log || console.log)(`跳过未随项目提供的原文件：${decodeURIComponent(items[index].source)}`);
+                items.splice(index, 1);
+            }
+        }
+    }
     const result = { generated: 0, cached: 0, failed: 0 };
     if (!items.length) return result;
     const browserPath = await findBrowser(options.browser || process.env.TRAVEL_BROWSER_PATH);
@@ -81,7 +96,7 @@ async function buildMediaPreviews(root, options = {}) {
                 res.writeHead(204); res.end();
                 heartbeat();
                 if (processed === items.length) resolveDone(result);
-            } else if (/^\/(?:data\/(?:photos|videos)\/|\.cache\/media-previews\/)/.test(req.url)) {
+            } else if (/^\/(?:data\/(?:photos|videos|profile)\/|\.cache\/media-previews\/)/.test(req.url)) {
                 await handler(req, res);
             } else { res.writeHead(404); res.end(); }
         } catch (error) {
@@ -118,14 +133,15 @@ async function buildMediaPreviews(root, options = {}) {
 async function main() {
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log('用法：npm run media:previews -- [--dir 项目目录] [--browser 浏览器路径]\n使用已有 Edge / Chrome 批量生成索引引用的图片缩略图与视频封面；有效缓存自动跳过。');
+        console.log('用法：npm run media:previews -- [--dir 项目目录] [--browser 浏览器路径] [--skip-missing]\n使用已有 Edge / Chrome 批量生成图片、视频和头像缩略图；有效缓存自动跳过。--skip-missing 仅跳过未随项目提供的原文件，解码或写入失败仍报错。');
         return;
     }
     const options = {};
     let root = path.resolve(__dirname, '..');
     while (args.length) {
         const arg = args.shift();
-        if ((arg === '--dir' || arg === '--browser') && args.length && !args[0].startsWith('--')) {
+        if (arg === '--skip-missing') options.skipMissing = true;
+        else if ((arg === '--dir' || arg === '--browser') && args.length && !args[0].startsWith('--')) {
             const value = args.shift();
             if (arg === '--dir') root = path.resolve(value); else options.browser = value;
         } else throw new Error(`未知参数或缺少参数值：${arg}`);

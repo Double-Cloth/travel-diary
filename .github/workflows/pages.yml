@@ -81,6 +81,11 @@ jobs:
           find _site/assets/fonts -name '*.ttf' -delete
           touch _site/.nojekyll
 
+      - name: Build media previews
+        run: npm run media:previews -- --dir _site --browser "$CHROME_BIN" --skip-missing
+        env:
+          CHROME_BIN: /usr/bin/google-chrome
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:

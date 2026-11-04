@@ -6,7 +6,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, access } from 'node:f
 import { tmpdir } from 'node:os';
 import { createMediaPreviewStore, sourceForPreview, isPreviewJpeg } from '../js/media-preview-store.js';
 import { createHandler } from '../js/server.js';
-import { getMediaPreviewUrl } from '../js/media-preview.mjs';
+import { getMediaPreviewUrl, getMediaPreviewBlob, saveMediaPreview } from '../js/media-preview.mjs';
 import { listenOnFetchSafePort } from './helpers/http.mjs';
 
 async function fixture(t) {
@@ -28,10 +28,65 @@ const previewPath = '/.cache/media-previews/photos/trip/image.png.jpg';
 test('预览放到 .cache，保留扩展名与 URL 编码并拒绝路径穿越', () => {
     assert.equal(getMediaPreviewUrl('data/photos/trip/a%20b.png'), '.cache/media-previews/photos/trip/a%20b.png.jpg');
     assert.equal(getMediaPreviewUrl('blob:local'), '');
+    assert.equal(getMediaPreviewUrl('data/profile/profile-picture.png?v=updated'), '.cache/media-previews/profile/profile-picture.png.jpg?v=updated');
+    for (const invalid of ['data/photos/../secret.png', 'data/photos/%2e%2e/secret.png', 'data/photos/%/x.png', 'data/photos/a%2Fb.png']) assert.equal(getMediaPreviewUrl(invalid), '');
     assert.equal(sourceForPreview(previewPath), 'data/photos/trip/image.png');
+    assert.equal(sourceForPreview('/.cache/media-previews/profile/profile-picture.png.jpg'), 'data/profile/profile-picture.png');
     for (const value of ['/.cache/media-previews/photos/../secret.png.jpg', '/.cache/media-previews/videos/a\\b.mp4.jpg',
         '/.cache/media-previews/photos/x.txt.jpg', '/.cache/media-previews/profile/a.png.jpg',
         '/.cache/media-previews/photos/.hidden/image.png.jpg', '/.cache/media-previews/photos/trip/.image.png.jpg']) assert.equal(sourceForPreview(value), null);
+});
+
+test('缓存缺失只生成一次并保存，重复列表共享生成任务，再次读取直接复用缩略图', async t => {
+    const previousFetch = globalThis.fetch;
+    const previousDocument = globalThis.document;
+    t.after(() => { globalThis.fetch = previousFetch; globalThis.document = previousDocument; });
+    const calls = [], originals = [];
+    let stored;
+    globalThis.document = {
+        createElement(tag) {
+            if (tag === 'canvas') return {
+                getContext: () => ({ fillRect() {}, drawImage() {} }),
+                toBlob: callback => callback(new Blob([jpeg], { type: 'image/jpeg' }))
+            };
+            return { naturalWidth: 1600, naturalHeight: 900, removeAttribute() {},
+                set src(value) { originals.push(value); queueMicrotask(() => this.onload?.()); } };
+        }
+    };
+    globalThis.fetch = async (url, options) => {
+        calls.push({ url, method: options.method || 'GET' });
+        await new Promise(resolve => setImmediate(resolve));
+        if (url === 'index.html') return new Response(null, { headers: { 'X-Travel-Media-Cache': 'disk-v1' } });
+        assert.equal(url, previewPath.slice(1));
+        if (options.method === 'PUT') { stored = options.body; return new Response(null, { status: 204 }); }
+        return new Response(stored || null, { status: stored ? 200 : 204, headers: { 'Content-Type': 'image/jpeg', ETag: 'source-version' } });
+    };
+    const results = await Promise.all([getMediaPreviewBlob('data/photos/trip/image.png', 'image'), getMediaPreviewBlob('data/photos/trip/image.png', 'image')]);
+    assert.deepEqual(originals, ['data/photos/trip/image.png']);
+    assert.equal(calls.filter(call => call.method === 'PUT').length, 1);
+    assert.equal(results[0], results[1]);
+    assert.deepEqual(Buffer.from(await results[0].arrayBuffer()), jpeg);
+    calls.length = 0;
+    await getMediaPreviewBlob('data/photos/trip/image.png', 'image');
+    assert.deepEqual(calls, [{ url: previewPath.slice(1), method: 'GET' }]);
+    assert.equal(originals.length, 1);
+    globalThis.fetch = async () => new Response('<html>错误页</html>', { headers: { 'Content-Type': 'text/html' } });
+    await assert.rejects(getMediaPreviewBlob('data/photos/trip/image.png', 'image'), /无法读取预览缓存/);
+});
+
+test('上传后的缓存保存只验证缩略图版本并写入本地压缩结果', async t => {
+    const previousFetch = globalThis.fetch;
+    t.after(() => { globalThis.fetch = previousFetch; });
+    const calls = [];
+    const blob = new Blob([jpeg], { type: 'image/jpeg' });
+    globalThis.fetch = async (url, options) => {
+        calls.push({ url, ...options });
+        return new Response(null, { status: 204, headers: { ETag: 'source-version' } });
+    };
+    await saveMediaPreview('data/photos/trip/image.png', blob);
+    assert.deepEqual(calls.map(call => [call.url, call.method]), [[previewPath.slice(1), 'HEAD'], [previewPath.slice(1), 'PUT']]);
+    assert.equal(calls[1].body, blob);
+    assert.equal(calls[1].headers['If-Match'], 'source-version');
 });
 
 test('缓存缺失不读取原文件，保存后跨实例复用，源变更拒绝旧预览', async t => {

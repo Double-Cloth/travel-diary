@@ -8,6 +8,7 @@ function failure(status, message) {
 }
 
 function sourceForPreview(urlPath) {
+    if (urlPath === '/.cache/media-previews/profile/profile-picture.png.jpg') return 'data/profile/profile-picture.png';
     const match = /^\/\.cache\/media-previews\/(photos|videos)\/(.+)\.jpg$/.exec(urlPath);
     if (!match || !/\.(jpe?g|png|gif|webp|mp4|m4v|mov|webm|ogv|ogg)$/i.test(match[2])) return null;
     const source = `data/${match[1]}/${match[2]}`;

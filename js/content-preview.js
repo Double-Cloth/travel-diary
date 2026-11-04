@@ -1,7 +1,7 @@
-import { escapeHtml } from './utils.js?v=2.1.48';
-import { parseMarkdown } from './data.js?v=2.1.48';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.48';
-import { createMediaPreview } from './media-preview.mjs?v=2.1.48';
+import { escapeHtml } from './utils.js?v=2.1.49';
+import { parseMarkdown } from './data.js?v=2.1.49';
+import { createMediaFileLink } from './media-file-link.js?v=2.1.49';
+import { createMediaPreview, getMediaPreviewBlob } from './media-preview.mjs?v=2.1.49';
 import { sourceOf, readSourceText } from './zip-stream.mjs';
 
 export function markdownPreview(source) {
@@ -64,7 +64,8 @@ export function createContentPreviewScope() {
                 const link = createMediaFileLink({ name: name.split('/').pop(), src, thumbnailSrc: '', blob, kind, index, detail: detail || name });
                 tasks.set(link, async () => {
                     try {
-                        const preview = await createMediaPreview(src, kind);
+                        // 本地文件直接压缩，远端预览复用统一缓存，缺失时只生成一次。
+                        const preview = blob ? await createMediaPreview(blob, kind) : await getMediaPreviewBlob(src, kind);
                         if (disposed || !link.isConnected) return;
                         const image = document.createElement('img');
                         image.alt = '';

@@ -78,14 +78,15 @@ npm run data:sort -- --check
 ### 媒体预览与缓存
 
 ```bash
-# 调用本机 Edge / Chrome 批量生成图片和视频缩略图，跳过有效缓存
+# 调用本机 Edge / Chrome 批量生成图片、视频和头像缩略图，跳过有效缓存
 npm run media:previews
 # 为指定项目生成预览，并手动指定浏览器可执行文件
 npm run media:previews -- --dir "项目目录" --browser "浏览器可执行文件路径"
+# 静态发布时可用 --skip-missing 跳过未提供的原文件，其他失败仍报错
 # 查看批量预览命令的可用参数和用法
 npm run media:previews -- --help
 
-# 清理 .cache/ 中的缓存，保留回收站；缩略图可在下次浏览时重建
+# 清理 .cache/ 中的缓存，保留回收站；缩略图可在下次浏览时自动重建
 npm run cache:clear
 # 清理指定项目目录下的缓存，保留规则与默认命令相同
 npm run cache:clear -- --dir "项目目录"

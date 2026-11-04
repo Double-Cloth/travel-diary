@@ -31,4 +31,8 @@ test('没有媒体时无需浏览器即可完成，不创建缓存或启动服�
     await mkdir(path.join(root, 'data'));
     await writeFile(path.join(root, 'data/travel_data.json'), '[]');
     assert.deepEqual(await buildMediaPreviews(root, { browser: 'missing' }), { generated: 0, cached: 0, failed: 0 });
+    await writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify([{ photo_folder: 'data/photos/trip', photos: ['missing.png'] }]));
+    const messages = [];
+    assert.deepEqual(await buildMediaPreviews(root, { browser: 'missing', skipMissing: true, log: message => messages.push(message) }), { generated: 0, cached: 0, failed: 0 });
+    assert.match(messages[0], /跳过未随项目提供的原文件/);
 });
