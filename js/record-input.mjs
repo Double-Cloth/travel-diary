@@ -1,6 +1,6 @@
-import { isValidDateString } from './analytics.mjs?v=2.1.54';
-import { readUploads, storedMediaNames } from './photo-uploads.mjs?v=2.1.54';
-import { isSafeAsciiFileName, pinyinSlug } from './slug.mjs?v=2.1.54';
+import { isValidDateString } from './analytics.mjs?v=2.1.55';
+import { readUploads, storedMediaNames } from './photo-uploads.mjs?v=2.1.55';
+import { isSafeAsciiFileName, pinyinSlug } from './slug.mjs?v=2.1.55';
 
 export const DRAFT_FORMAT = 'travel-diary-draft-v4';
 export const RECORD_FIELDS = ['date', 'country_code', 'country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'title', 'body', 'desc_md', 'photo_folder', 'photos', 'video_folder', 'videos'];
@@ -8,9 +8,9 @@ const LEGACY_FIELDS = ['date', 'country_code', 'admin_area', 'locality', 'trip_i
 const MEDIA_LIST_FIELDS = new Set(['photos', 'videos']);
 
 export function recordMetadataSnapshot(record) {
-    return JSON.stringify(Object.fromEntries(RECORD_FIELDS
+    return JSON.stringify({ ...Object.fromEntries(RECORD_FIELDS
         .filter(key => !['title', 'body'].includes(key))
-        .map(key => [key, record[key] ?? (MEDIA_LIST_FIELDS.has(key) ? [] : '')])));
+        .map(key => [key, record[key] ?? (MEDIA_LIST_FIELDS.has(key) ? [] : '')])), media_order: record.media_order || [] });
 }
 
 export function buildMarkdown(input) {
@@ -66,6 +66,17 @@ export function readDraft(value) {
             throw new Error('媒体顺序必须完整且不重复，请重新调整文件列表。');
         }
         mediaOrder[key] = [...order];
+    }
+    if (value.mediaOrder?.sequence !== undefined) {
+        const sequence = value.mediaOrder.sequence;
+        const photos = input.photos.length + media.filter(upload => upload.kind === 'image').length;
+        const videos = input.videos.length + media.filter(upload => upload.kind === 'video').length;
+        if (!Array.isArray(sequence) || sequence.length !== photos + videos
+            || sequence.filter(type => type === 'photo').length !== photos
+            || sequence.filter(type => type === 'video').length !== videos) {
+            throw new Error('媒体顺序必须完整且类型正确，请重新调整文件列表。');
+        }
+        mediaOrder.sequence = [...sequence];
     }
     return { format: DRAFT_FORMAT, requestId: value.requestId, input, uploads,
         ...(Object.keys(mediaOrder).length ? { mediaOrder } : {}) };
@@ -130,6 +141,10 @@ export function prepareRecord(value, countries) {
     const videoNames = [...(record.videos || [])];
     if (draft.mediaOrder?.photos) record.photos = draft.mediaOrder.photos.map(index => photoNames[index]);
     if (draft.mediaOrder?.videos && videoNames.length) record.videos = draft.mediaOrder.videos.map(index => videoNames[index]);
+    if (draft.mediaOrder?.sequence) {
+        const indexes = { photo: 0, video: 0 };
+        record.media_order = draft.mediaOrder.sequence.map(type => `${type}:${record[`${type}s`][indexes[type]++]}`);
+    }
     return {
         record,
         markdown: buildMarkdown(input),

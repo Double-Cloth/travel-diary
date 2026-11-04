@@ -15,6 +15,7 @@ function capabilityFrom(endpoint, result) {
         writeMode: result.writeMode || '',
         syncMediaFiles: result.syncMediaFiles === true,
         mediaOrder: result.mediaOrder === true,
+        mixedMediaOrder: result.mixedMediaOrder === true,
         partialRecords: result.partialRecords === true,
         recordManagement: result.recordManagement === true,
         mediaReferenceRemoval: result.mediaReferenceRemoval === true,

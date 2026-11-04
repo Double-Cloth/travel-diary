@@ -5,7 +5,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { createHandler } from '../js/server.js';
-import { DRAFT_FORMAT, prepareRecord, readDraft } from '../js/record-input.mjs';
+import { DRAFT_FORMAT, prepareRecord, readDraft, recordMetadataSnapshot } from '../js/record-input.mjs';
 import { createDraftBlob } from '../js/draft-archive.mjs';
 import { readZipSource, readSourceText } from '../js/zip-stream.mjs';
 import { createZip } from './helpers/zip-archive.mjs';
@@ -699,12 +699,52 @@ test('混合排序草稿 ZIP 往返保持图片、视频顺序及原始媒体', 
         uploads: [
             { id: 'a'.repeat(32), name: 'new.png', data: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=' },
             { id: 'b'.repeat(32), name: 'new.webm', data: Buffer.from('\x1aE\xdf\xa3video', 'latin1').toString('base64') }
-        ], mediaOrder: { photos: [0, 2, 1], videos: [1, 0] } };
+        ], mediaOrder: { photos: [0, 2, 1], videos: [1, 0], sequence: ['photo', 'video', 'photo', 'video', 'photo'] } };
     const { draft: restored } = await (await import('../js/draft-archive.mjs')).readRecordSource(await createDraftBlob(value));
     assert.deepEqual(restored.mediaOrder, value.mediaOrder);
     const { record } = prepareRecord(restored, countries);
     assert.deepEqual(record.photos, ['a.png', 'new.png', 'b.png']);
     assert.deepEqual(record.videos, ['new.webm', 'old.webm']);
+    assert.deepEqual(record.media_order, ['photo:a.png', 'video:new.webm', 'photo:new.png', 'video:old.webm', 'photo:b.png']);
+});
+
+test('跨类型顺序拒绝缺项与错误类型，元数据快照识别仅统一顺序的变化', () => {
+    const value = draft('d', { photo_folder: 'data/photos/order', photos: ['a.png'], video_folder: 'data/videos/order', videos: ['a.mp4'] });
+    for (const sequence of [null, 'photo,video', [], ['photo'], ['photo', 'photo'], ['video', 'unknown'], ['photo', 'video', 'video']]) {
+        assert.throws(() => readDraft({ ...value, mediaOrder: { sequence } }), /媒体顺序/);
+    }
+    const { record } = prepareRecord({ ...value, mediaOrder: { sequence: ['video', 'photo'] } }, countries);
+    assert.deepEqual(record.media_order, ['video:a.mp4', 'photo:a.png']);
+    assert.notEqual(recordMetadataSnapshot(record), recordMetadataSnapshot({ ...record, media_order: [...record.media_order].reverse() }));
+});
+
+test('图片视频交错顺序真实落盘、重试及重新编辑保持顺序与原文件', async () => {
+    const folder = 'data/photos/cross-type';
+    const videoFolder = 'data/videos/cross-type';
+    await fs.mkdir(path.join(root, folder), { recursive: true });
+    await fs.mkdir(path.join(root, videoFolder), { recursive: true });
+    await fs.writeFile(path.join(root, folder, 'first.png'), 'first');
+    await fs.writeFile(path.join(root, folder, 'last.png'), 'last');
+    await fs.writeFile(path.join(root, videoFolder, 'middle.mp4'), 'middle');
+    const value = { ...draft('f', { date: '2038-03-03', locality: '跨类型顺序', photo_folder: folder, photos: ['first.png', 'last.png'], video_folder: videoFolder, videos: ['middle.mp4'] }),
+        mediaOrder: { photos: [0, 1], videos: [0], sequence: ['photo', 'video', 'photo'] } };
+    const response = await post(value);
+    assert.equal(response.status, 201);
+    const created = (await response.json()).record;
+    assert.deepEqual(created.media_order, ['photo:first.png', 'video:middle.mp4', 'photo:last.png']);
+    assert.deepEqual((await readIndex()).find(record => record.desc_md === created.desc_md).media_order, created.media_order);
+    assert.equal((await post(value)).status, 200);
+    const edited = { ...value, input: { ...value.input, desc_md: created.desc_md },
+        mediaOrder: { photos: [1, 0], videos: [0], sequence: ['video', 'photo', 'photo'] } };
+    const updatedResponse = await put(created.desc_md, edited);
+    assert.equal(updatedResponse.status, 200);
+    const updated = (await updatedResponse.json()).record;
+    assert.deepEqual(updated.media_order, ['video:middle.mp4', 'photo:last.png', 'photo:first.png']);
+    const unchanged = await readIndex();
+    assert.equal((await put(created.desc_md, { ...edited, mediaOrder: { sequence: ['photo'] } })).status, 400);
+    assert.deepEqual(await readIndex(), unchanged);
+    for (const [name, content] of [['first.png', 'first'], ['last.png', 'last']]) assert.equal(await fs.readFile(path.join(root, folder, name), 'utf8'), content);
+    assert.equal(await fs.readFile(path.join(root, videoFolder, 'middle.mp4'), 'utf8'), 'middle');
 });
 
 test('新旧图片交错排序真实落盘、重试与修改后文件内容保持对应', async () => {

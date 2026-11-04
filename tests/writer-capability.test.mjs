@@ -89,11 +89,12 @@ test('真实媒体同步、混合排序、删除缺失引用及回收站批量�
     for (const flag of [undefined, false, 'true', true]) {
         globalThis.fetch = async () => ({
             ok: true, status: 200,
-            json: async () => ({ service: 'travel-diary-writer-v1', authenticated: true, token: 'test', methods: ['PUT'], syncMediaFiles: flag, mediaOrder: flag, mediaReferenceRemoval: flag, recycleSelection: flag, recyclePurgeSelection: flag })
+            json: async () => ({ service: 'travel-diary-writer-v1', authenticated: true, token: 'test', methods: ['PUT'], syncMediaFiles: flag, mediaOrder: flag, mixedMediaOrder: flag, mediaReferenceRemoval: flag, recycleSelection: flag, recyclePurgeSelection: flag })
         });
         const capability = await probeWriterService();
         assert.equal(capability.syncMediaFiles, flag === true);
         assert.equal(capability.mediaOrder, flag === true);
+        assert.equal(capability.mixedMediaOrder, flag === true);
         assert.equal(capability.mediaReferenceRemoval, flag === true);
         assert.equal(capability.recycleSelection, flag === true);
         assert.equal(capability.recyclePurgeSelection, flag === true);

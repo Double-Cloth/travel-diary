@@ -5,7 +5,7 @@ import { normalizeTravelLocation } from '../js/location.mjs';
 
 globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
-export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
+export { getRecordMedia, parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
     renderWithPageTurn, renderWithBookCover, clearPageTurn, waitForPageTurnAssets, cloneTurningPage, cloneTransitionContent, createTransitionMediaImage, observePhotoSleeveMedia, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, syncProfilePictureImages, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
@@ -1609,4 +1609,13 @@ test('手机翻页保留当前曲面加速落稳，过期回调不清理新动�
     assert.equal(rendered, '直接切换', '显式取消丢弃排队目标，过期完成回调不重放');
     assert.equal(spread.inert, false);
     assert.equal([...nodes].filter(node => node.className === 'mobile-page-transition').length, 0);
+});
+
+
+test('相册与查看器读取统一图片视频顺序，旧记录保留原有顺序', () => {
+    const record = { title: '沿河散步', photo_folder: 'data/photos/trip', photos: ['early.jpg', 'late.jpg'],
+        video_folder: 'data/videos/trip', videos: ['middle.mp4'],
+        media_order: ['photo:early.jpg', 'video:middle.mp4', 'photo:late.jpg'] };
+    assert.deepEqual(app.getRecordMedia(record).map(item => item.name), ['early.jpg', 'middle.mp4', 'late.jpg']);
+    assert.deepEqual(app.getRecordMedia({ ...record, media_order: undefined }).map(item => item.name), ['early.jpg', 'late.jpg', 'middle.mp4']);
 });

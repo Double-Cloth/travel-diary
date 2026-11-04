@@ -664,7 +664,7 @@ async function updateRecord(root, payload, authorize) {
         if (conflicting) throw failure(409, '目标正文路径已被另一条旅行记录使用。');
         const recordFields = new Set([
             'date', 'country', 'country_code', 'admin_area', 'admin_area_type', 'locality',
-            'locality_type', 'trip_id', 'desc_md', 'photo_folder', 'photos', 'video_folder', 'videos'
+            'locality_type', 'trip_id', 'desc_md', 'photo_folder', 'photos', 'video_folder', 'videos', 'media_order'
         ]);
         const preserved = Object.fromEntries(Object.entries(existing).filter(([key]) => !recordFields.has(key)));
         const { recordIdentity } = await import('./record-identity.mjs');
@@ -1103,12 +1103,12 @@ function createRecordApi(root, options = {}) {
         }
         if (requestPath === '/api/travel-records' && req.method === 'GET') {
             if (!session) {
-                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, recordManagement: true, mediaReferenceRemoval: true, recycleBin: true, recyclePreviews: true, recycleClear: true, recycleDiff: true, recycleSelection: true, recyclePurgeSelection: true, code: 'AUTH_REQUIRED' });
+                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, mixedMediaOrder: true, partialRecords: true, recordManagement: true, mediaReferenceRemoval: true, recycleBin: true, recyclePreviews: true, recycleClear: true, recycleDiff: true, recycleSelection: true, recyclePurgeSelection: true, code: 'AUTH_REQUIRED' });
                 return;
             }
             send(200, {
                 service: 'travel-diary-writer-v1', authenticated: true, token: session.token,
-                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true, partialRecords: true, recordManagement: true, mediaReferenceRemoval: true, recycleBin: true, recyclePreviews: true, recycleClear: true, recycleDiff: true, recycleSelection: true, recyclePurgeSelection: true
+                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true, mixedMediaOrder: true, partialRecords: true, recordManagement: true, mediaReferenceRemoval: true, recycleBin: true, recyclePreviews: true, recycleClear: true, recycleDiff: true, recycleSelection: true, recyclePurgeSelection: true
             });
             return;
         }

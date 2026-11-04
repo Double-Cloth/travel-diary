@@ -1,7 +1,7 @@
-import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.54';
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.54';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.54';
-import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.54';
+import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.55';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.55';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.55';
+import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.55';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
     MAXIMUM_MEDIA_BATCH_BYTES,
@@ -9,17 +9,18 @@ import {
     MAXIMUM_VIDEO_FILE_BYTES,
     mediaBytes,
     readUploads
-} from './photo-uploads.mjs?v=2.1.54';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.54';
-import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.54';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.54';
-import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.54';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.54';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.54';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.54';
+} from './photo-uploads.mjs?v=2.1.55';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.55';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.55';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.55';
+import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.55';
+import { orderMedia } from './media-order.mjs?v=2.1.55';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.55';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.55';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.55';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
-import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.54';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.54';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.55';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.55';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -68,7 +69,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let bodyScrollTop = 0;
     let uploads = [];
     let removedMedia = [];
-    let mediaOrder = { photo: [], video: [] };
+    let mediaOrder = [];
     let existingMediaEntries = { photo: [], video: [] };
     let mediaKeySequence = 0;
     const selectedMedia = new Set();
@@ -99,11 +100,11 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         format: DRAFT_FORMAT,
         requestId,
         uploads: uploads.map(({ id, name, data }) => ({ id, name, data })),
-        mediaOrder: Object.fromEntries(['photo', 'video'].map(type => {
+        mediaOrder: { sequence: orderedMedia().map(item => item.type), ...Object.fromEntries(['photo', 'video'].map(type => {
             const items = canonicalMedia(type);
             const indexes = new Map(items.map((item, index) => [item.key, index]));
             return [`${type}s`, orderedMedia(type).map(item => indexes.get(item.key))];
-        })),
+        })) },
         input: Object.fromEntries(RECORD_FIELDS.map(key => [key, ['photos', 'videos'].includes(key)
             ? field(key).value.split(/\r?\n/).map(name => name.trim()).filter(Boolean)
             : field(key).value]))
@@ -277,7 +278,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                 <small id="${editorId('UploadLimits')}" class="record-editor-upload-limits" data-editor-upload-limits hidden>图片：JPEG / PNG / GIF / WebP，单张最大 ${MAXIMUM_IMAGE_FILE_BYTES / 1024 / 1024} MiB · 视频：MP4 / M4V / MOV / WebM / Ogg，单个最大 ${MAXIMUM_VIDEO_FILE_BYTES / 1024 / 1024} MiB · 本次新媒体合计最大 ${MAXIMUM_MEDIA_BATCH_BYTES / 1024 / 1024} MiB</small>
                                 <input type="file" data-editor-photos accept=".mp4,.m4v,.mov,.webm,.ogv,.ogg,image/jpeg,image/png,image/gif,image/webp,video/mp4,video/x-m4v,video/quicktime,video/webm,video/ogg" multiple hidden aria-label="选择旅行图片或视频">
                             </div>
-                            <button class="paper-button" type="button" data-media-sort-time title="图片、视频分别按元数据时间从早到晚排序；没有时间的文件放在最后，按文件名排序">按拍摄时间排序</button>
+                            <button class="paper-button" type="button" data-media-sort-time title="图片与视频一起按元数据时间从早到晚排序；没有时间的文件放在最后，按文件名排序">按拍摄时间排序</button>
                         </div>
                         <div data-editor-media-empty class="record-editor-media-empty">暂无图片或视频，可从上方添加。</div>
                         <div class="record-editor-media-batch" data-editor-media-batch role="group" aria-label="批量文件操作" hidden>
@@ -295,8 +296,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                         <div class="record-editor-media-group" data-editor-existing-group hidden>
                             <h4>文件顺序</h4>
                             <div data-media-viewer-group>
-                                <ul class="record-editor-existing-media media-file-list" data-editor-existing-media="photo" aria-label="图片文件操作"></ul>
-                                <ul class="record-editor-existing-media media-file-list" data-editor-existing-media="video" aria-label="视频文件操作"></ul>
+                                <ul class="record-editor-existing-media media-file-list" data-editor-existing-media aria-label="图片与视频文件操作"></ul>
                                 <button class="media-file-drag" type="button" data-media-drag-group hidden aria-label="拖动所选文件组" title="上下拖动所选文件；也可用方向键调整">${mediaDragIcon()}</button>
                             </div>
                         </div>
@@ -358,7 +358,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         dirty = false;
         uploads = [];
         removedMedia = [];
-        mediaOrder = { photo: [], video: [] };
+        mediaOrder = [];
         existingMediaEntries = { photo: [], video: [] };
         selectedMedia.clear();
         selectedRemovedMedia.clear();
@@ -389,6 +389,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         updatePathHint();
         updateAutofill();
         updateBodyView(bodyView);
+        const original = record?.sourceRecord || record;
+        mediaOrder = orderMedia(['photo', 'video'].flatMap(canonicalMedia), original?.media_order).map(item => item.key);
         renderExistingMedia();
     }
 
@@ -419,13 +421,14 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function orderedMedia(type) {
-        const items = canonicalMedia(type);
+        const items = ['photo', 'video'].flatMap(canonicalMedia);
         const byKey = new Map(items.map(item => [item.key, item]));
         const removedKeys = new Set(removedMedia.map(item => item.orderKey));
-        mediaOrder[type] = mediaOrder[type].filter(key => byKey.has(key) || removedKeys.has(key));
-        const known = new Set(mediaOrder[type]);
-        mediaOrder[type].push(...items.filter(item => !known.has(item.key)).map(item => item.key));
-        return mediaOrder[type].filter(key => byKey.has(key)).map(key => byKey.get(key));
+        mediaOrder = mediaOrder.filter(key => byKey.has(key) || removedKeys.has(key));
+        const known = new Set(mediaOrder);
+        mediaOrder.push(...items.filter(item => !known.has(item.key)).map(item => item.key));
+        return mediaOrder.filter(key => byKey.has(key)).map(key => byKey.get(key))
+            .filter(item => !type || item.type === type);
     }
 
     function syncExistingOrder(type) {
@@ -450,80 +453,79 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             removedMedia.push({ ...item, orderKey: item.key, index });
             removedKeys.add(item.key);
         });
-        const order = mediaOrder[type];
+        const order = mediaOrder;
         const slots = new Set([...previousKeys, ...keys]);
         let lastSlot = -1;
         order.forEach((key, index) => { if (slots.has(key) && !removedKeys.has(key)) lastSlot = index; });
         let index = 0;
         // 已有引用按文本框排列，新增文件与待恢复文件继续保留各自的槽位。
-        mediaOrder[type] = order.flatMap((key, position) => {
+        mediaOrder = order.flatMap((key, position) => {
             if (!slots.has(key) || removedKeys.has(key)) return [key];
             const replacement = index < keys.length ? [keys[index++]] : [];
             if (position === lastSlot) replacement.push(...keys.slice(index));
             return replacement;
         });
-        if (lastSlot === -1) mediaOrder[type].unshift(...keys);
+        if (lastSlot === -1) mediaOrder.unshift(...keys);
     }
 
     function renderExistingMedia() {
         let mediaIndex = 0;
-        for (const type of ['photo', 'video']) {
-            const list = dialog.querySelector(`[data-editor-existing-media="${type}"]`);
-            const items = orderedMedia(type);
+        const list = dialog.querySelector('[data-editor-existing-media]');
+        const items = orderedMedia();
+        const existing = new Map([...list.children].map(row => [row.dataset.mediaKey, row]));
+        const rows = items.map((item, index) => {
+            const type = item.type;
             const targetFolder = uploads.some(upload => upload.kind === (type === 'photo' ? 'image' : 'video'))
                 ? `data/${type}s/${recordSlug(field('locality').value || '目的地')}` : field(`${type}_folder`).value.trim();
-            const existing = new Map([...list.children].map(row => [row.dataset.mediaKey, row]));
-            const rows = items.map((item, index) => {
-                const path = item.upload ? '' : existingMediaPath(type, item.name);
-                let row = existing.get(item.key);
-                if (row?.dataset.mediaPath !== path) row = null;
-                if (!row) {
-                    row = document.createElement('li');
-                    row.dataset.mediaKey = item.key;
-                    row.dataset.mediaPath = path;
-                    const selection = document.createElement('label');
-                    selection.className = 'media-file-selection';
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.dataset.mediaSelect = item.key;
-                    checkbox.setAttribute('aria-label', `选择 ${item.name}`);
-                    selection.append(checkbox);
-                    row.append(selection, item.upload ? uploadMediaLink(item.upload, mediaIndex)
-                        : createMediaFileLink({ path, name: item.name, kind: type === 'video' ? 'video' : 'image' }),
-                    document.createElement('div'));
-                }
-                const checkbox = row.querySelector('[data-media-select]');
-                checkbox.checked = selectedMedia.has(item.key);
-                checkbox.disabled = saved;
-                row.classList.toggle('is-selected', checkbox.checked);
-                const link = row.querySelector('.media-file-link');
-                link.dataset.mediaIndex = String(mediaIndex);
-                if (link.matches('a')) {
-                    mediaIndex++;
-                    const destination = `${targetFolder}/${item.name}`;
-                    const note = item.upload ? saved ? '已保存' : `待上传 · 保存到 ${targetFolder}/`
-                        : !getMediaFileUrl(destination) ? '路径无效，请检查高级设置'
-                        : destination !== path ? `保存到 ${destination} · 预览原文件` : `引用 ${destination}`;
-                    link.querySelector('.media-file-detail').textContent = `${type === 'photo' ? '图片' : '视频'} · ${index + 1} / ${items.length} · ${note}`;
-                }
-                const actions = row.lastElementChild;
-                actions.className = 'media-file-actions';
-                const label = escapeHtml(item.name);
-                actions.innerHTML = `
-                    <button type="button" class="media-file-remove" data-media-action="remove" aria-label="移除 ${label}"${saved ? ' disabled' : ''}>移除</button>
-                    <button type="button" data-media-action="previous" aria-label="前移 ${label}" title="前移"${saved || index === 0 ? ' disabled' : ''}>${mediaOrderIcon(-1)}</button>
-                    <button type="button" data-media-action="next" aria-label="后移 ${label}" title="后移"${saved || index === items.length - 1 ? ' disabled' : ''}>${mediaOrderIcon(1)}</button>
-                    <button type="button" class="media-file-drag" data-media-drag aria-label="拖动 ${label} 排序" title="上下拖动排序；也可用方向键调整"${saved || items.length < 2 ? ' disabled' : ''}>${mediaDragIcon()}</button>`;
-                return row;
-            });
-            list.replaceChildren(...rows);
-        }
+            const path = item.upload ? '' : existingMediaPath(type, item.name);
+            let row = existing.get(item.key);
+            if (row?.dataset.mediaPath !== path) row = null;
+            if (!row) {
+                row = document.createElement('li');
+                row.dataset.mediaKey = item.key;
+                row.dataset.mediaPath = path;
+                const selection = document.createElement('label');
+                selection.className = 'media-file-selection';
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.dataset.mediaSelect = item.key;
+                checkbox.setAttribute('aria-label', `选择 ${item.name}`);
+                selection.append(checkbox);
+                row.append(selection, item.upload ? uploadMediaLink(item.upload, mediaIndex)
+                    : createMediaFileLink({ path, name: item.name, kind: type === 'video' ? 'video' : 'image' }),
+                document.createElement('div'));
+            }
+            const checkbox = row.querySelector('[data-media-select]');
+            checkbox.checked = selectedMedia.has(item.key);
+            checkbox.disabled = saved;
+            row.classList.toggle('is-selected', checkbox.checked);
+            const link = row.querySelector('.media-file-link');
+            link.dataset.mediaIndex = String(mediaIndex);
+            if (link.matches('a')) {
+                mediaIndex++;
+                const destination = `${targetFolder}/${item.name}`;
+                const note = item.upload ? saved ? '已保存' : `待上传 · 保存到 ${targetFolder}/`
+                    : !getMediaFileUrl(destination) ? '路径无效，请检查高级设置'
+                    : destination !== path ? `保存到 ${destination} · 预览原文件` : `引用 ${destination}`;
+                link.querySelector('.media-file-detail').textContent = `${type === 'photo' ? '图片' : '视频'} · ${index + 1} / ${items.length} · ${note}`;
+            }
+            const actions = row.lastElementChild;
+            actions.className = 'media-file-actions';
+            const label = escapeHtml(item.name);
+            actions.innerHTML = `
+                <button type="button" class="media-file-remove" data-media-action="remove" aria-label="移除 ${label}"${saved ? ' disabled' : ''}>移除</button>
+                <button type="button" data-media-action="previous" aria-label="前移 ${label}" title="前移"${saved || index === 0 ? ' disabled' : ''}>${mediaOrderIcon(-1)}</button>
+                <button type="button" data-media-action="next" aria-label="后移 ${label}" title="后移"${saved || index === items.length - 1 ? ' disabled' : ''}>${mediaOrderIcon(1)}</button>
+                <button type="button" class="media-file-drag" data-media-drag aria-label="拖动 ${label} 排序" title="上下拖动排序；也可用方向键调整"${saved || items.length < 2 ? ' disabled' : ''}>${mediaDragIcon()}</button>`;
+            return row;
+        });
+        list.replaceChildren(...rows);
         updateMediaSelection();
         renderRemovedMedia();
     }
 
     function updateMediaSelection() {
-        const items = ['photo', 'video'].flatMap(orderedMedia);
+        const items = orderedMedia();
         const keys = new Set(items.map(item => item.key));
         for (const key of selectedMedia) if (!keys.has(key)) selectedMedia.delete(key);
         dialog.querySelectorAll('[data-media-select]').forEach(checkbox => {
@@ -532,7 +534,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             checkbox.closest('li').classList.toggle('is-selected', checkbox.checked);
         });
         dialog.querySelector('[data-editor-media-batch]').hidden = saved || !items.length;
-        dialog.querySelector('[data-media-sort-time]').disabled = saved || !['photo', 'video'].some(type => orderedMedia(type).length > 1);
+        dialog.querySelector('[data-media-sort-time]').disabled = saved || items.length < 2;
         const allSelected = items.length > 0 && selectedMedia.size === items.length;
         const selectAll = dialog.querySelector('[data-media-select-all]');
         selectAll.textContent = items.every(item => item.type === 'photo') ? '全选图片'
@@ -547,23 +549,16 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         clear.hidden = !selectedMedia.size;
         clear.disabled = saved || !selectedMedia.size;
         const groupDrag = dialog.querySelector('[data-media-drag-group]');
-        groupDrag.hidden = selectedMedia.size < 2 || !['photo', 'video'].some(type => {
-            const ordered = orderedMedia(type);
-            return ordered.some(item => selectedMedia.has(item.key))
-                && ordered.some(item => !selectedMedia.has(item.key));
-        });
+        groupDrag.hidden = selectedMedia.size < 2 || !items.some(item => !selectedMedia.has(item.key));
         groupDrag.disabled = saved;
         groupDrag.setAttribute('aria-label', `拖动所选 ${selectedMedia.size} 项排序`);
         updateMediaGroupSlider();
         dialog.querySelectorAll('[data-media-batch]').forEach(button => {
             const action = button.dataset.mediaBatch;
             button.hidden = !selectedMedia.size;
-            button.disabled = saved || (action === 'remove' ? !selectedMedia.size : !['photo', 'video'].some(type => {
-                const ordered = orderedMedia(type);
-                return ordered.some((item, index) => selectedMedia.has(item.key)
-                    && ordered[index + (action === 'previous' ? -1 : 1)]
-                    && !selectedMedia.has(ordered[index + (action === 'previous' ? -1 : 1)].key));
-            }));
+            button.disabled = saved || (action === 'remove' ? !selectedMedia.size : !items.some((item, index) => selectedMedia.has(item.key)
+                && items[index + (action === 'previous' ? -1 : 1)]
+                && !selectedMedia.has(items[index + (action === 'previous' ? -1 : 1)].key)));
         });
     }
 
@@ -595,18 +590,16 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         drag.targets.clear();
         dialog.querySelectorAll('.is-drop-before, .is-drop-after').forEach(row => row.classList.remove('is-drop-before', 'is-drop-after'));
         if (!drag.valid) return;
-        for (const type of ['photo', 'video']) {
-            const list = dialog.querySelector(`[data-editor-existing-media="${type}"]`);
-            const rows = [...list.children];
-            if (!rows.some(row => drag.keys.has(row.dataset.mediaKey))) continue;
-            const remaining = rows.filter(row => !drag.keys.has(row.dataset.mediaKey));
-            const before = remaining.find(row => {
-                const rect = row.getBoundingClientRect();
-                return drag.y < rect.top + rect.height / 2;
-            });
-            drag.targets.set(type, before?.dataset.mediaKey ?? null);
-            (before || remaining.at(-1))?.classList.add(before ? 'is-drop-before' : 'is-drop-after');
-        }
+        const list = dialog.querySelector('[data-editor-existing-media]');
+        const rows = [...list.children];
+        if (!rows.some(row => drag.keys.has(row.dataset.mediaKey))) return;
+        const remaining = rows.filter(row => !drag.keys.has(row.dataset.mediaKey));
+        const before = remaining.find(row => {
+            const rect = row.getBoundingClientRect();
+            return drag.y < rect.top + rect.height / 2;
+        });
+        drag.targets.set('all', before?.dataset.mediaKey ?? null);
+        (before || remaining.at(-1))?.classList.add(before ? 'is-drop-before' : 'is-drop-after');
         drag.badge.style.top = `${Math.max(bounds.top, Math.min(drag.y + 16, bounds.bottom - 36))}px`;
     }
 
@@ -639,15 +632,15 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         if (dialog.hasPointerCapture(drag.id)) dialog.releasePointerCapture(drag.id);
         let changed = false;
         if (commit && drag.active && drag.valid && !saved && !busy && !readingPhotos) {
-            for (const [type, beforeKey] of drag.targets) {
-                const order = orderedMedia(type).map(item => item.key);
+            for (const beforeKey of drag.targets.values()) {
+                const order = orderedMedia().map(item => item.key);
                 const next = moveMediaGroup(order, drag.keys, beforeKey);
                 if (next.every((key, index) => key === order[index])) continue;
                 const active = new Set(order);
                 let index = 0;
                 // 待恢复文件保留原来的槽位，拖动只重排当前可见文件。
-                mediaOrder[type] = mediaOrder[type].map(key => active.has(key) ? next[index++] : key);
-                syncExistingOrder(type);
+                mediaOrder = mediaOrder.map(key => active.has(key) ? next[index++] : key);
+                ['photo', 'video'].forEach(syncExistingOrder);
                 changed = true;
             }
         }
@@ -667,7 +660,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
 
     async function sortMediaTime() {
         finishMediaDrag();
-        const items = ['photo', 'video'].flatMap(orderedMedia);
+        const items = orderedMedia();
         const times = new Map();
         let unreadable = 0;
         busy = true;
@@ -689,15 +682,13 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 times.set(item.key, time);
             }
             operationProgress.throwIfCancelled();
-            for (const type of ['photo', 'video']) {
-                const ordered = orderedMedia(type);
-                const next = sortMediaByTime(ordered, times);
-                const active = new Set(ordered.map(item => item.key));
-                let index = 0;
-                // 保留待移除文件的槽位，恢复操作继续沿用现有顺序规则。
-                mediaOrder[type] = mediaOrder[type].map(key => active.has(key) ? next[index++].key : key);
-                syncExistingOrder(type);
-            }
+            const ordered = orderedMedia();
+            const next = sortMediaByTime(ordered, times);
+            const active = new Set(ordered.map(item => item.key));
+            let index = 0;
+            // 保留待移除文件的槽位，恢复操作继续沿用现有顺序规则。
+            mediaOrder = mediaOrder.map(key => active.has(key) ? next[index++].key : key);
+            ['photo', 'video'].forEach(syncExistingOrder);
             dirty = true;
             renderPhotos();
             const timed = [...times.values()].filter(Number.isFinite).length;
@@ -716,38 +707,37 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function operateMedia(keys, action) {
-        for (const type of ['photo', 'video']) {
-            const items = orderedMedia(type);
-            if (action === 'remove') {
-                for (const item of items.filter(item => keys.has(item.key))) {
-                    const index = item.upload ? uploads.indexOf(item.upload) : existingMediaEntries[type].findIndex(entry => entry.key === item.key);
-                    removedMedia.push({ ...item, orderKey: item.key, index,
-                        path: item.upload ? '' : existingMediaPath(type, item.name) });
-                    if (item.upload) uploads.splice(index, 1);
-                    else {
-                        const names = mediaNames(type);
-                        names.splice(index, 1);
-                        existingMediaEntries[type].splice(index, 1);
-                        field(`${type}s`).value = names.join('\n');
-                    }
-                    selectedMedia.delete(item.key);
+        const items = orderedMedia();
+        if (action === 'remove') {
+            for (const item of items.filter(item => keys.has(item.key))) {
+                const type = item.type;
+                const index = item.upload ? uploads.indexOf(item.upload) : existingMediaEntries[type].findIndex(entry => entry.key === item.key);
+                removedMedia.push({ ...item, orderKey: item.key, index,
+                    path: item.upload ? '' : existingMediaPath(type, item.name) });
+                if (item.upload) uploads.splice(index, 1);
+                else {
+                    const names = mediaNames(type);
+                    names.splice(index, 1);
+                    existingMediaEntries[type].splice(index, 1);
+                    field(`${type}s`).value = names.join('\n');
                 }
-            } else {
-                const direction = action === 'previous' ? -1 : 1;
-                const indexes = items.map((_, index) => index);
-                if (direction === 1) indexes.reverse();
-                for (const index of indexes) {
-                    const next = index + direction;
-                    if (keys.has(items[index].key) && items[next] && !keys.has(items[next].key)) {
-                        [items[index], items[next]] = [items[next], items[index]];
-                    }
-                }
-                // 保留待移除条目的槽位，恢复时仍回到原来的相对位置。
-                let index = 0;
-                const active = new Set(items.map(item => item.key));
-                mediaOrder[type] = mediaOrder[type].map(key => active.has(key) ? items[index++].key : key);
-                syncExistingOrder(type);
+                selectedMedia.delete(item.key);
             }
+        } else {
+            const direction = action === 'previous' ? -1 : 1;
+            const indexes = items.map((_, index) => index);
+            if (direction === 1) indexes.reverse();
+            for (const index of indexes) {
+                const next = index + direction;
+                if (keys.has(items[index].key) && items[next] && !keys.has(items[next].key)) {
+                    [items[index], items[next]] = [items[next], items[index]];
+                }
+            }
+            // 保留待移除条目的槽位，恢复时仍回到原来的相对位置。
+            let index = 0;
+            const active = new Set(items.map(item => item.key));
+            mediaOrder = mediaOrder.map(key => active.has(key) ? items[index++].key : key);
+            ['photo', 'video'].forEach(syncExistingOrder);
         }
         dirty = true;
         renderPhotos();
@@ -1102,7 +1092,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         releasePhotoPreviews();
         uploads = [];
         removedMedia = [];
-        mediaOrder = { photo: [], video: [] };
+        mediaOrder = [];
         existingMediaEntries = { photo: [], video: [] };
         selectedMedia.clear();
         selectedRemovedMedia.clear();
@@ -1427,7 +1417,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             return;
         }
         if (event.target.closest('[data-media-select-all]') && !saved) {
-            ['photo', 'video'].flatMap(orderedMedia).forEach(item => selectedMedia.add(item.key));
+            orderedMedia().forEach(item => selectedMedia.add(item.key));
             updateMediaSelection();
             dialog.querySelector('[data-media-select-clear]').focus();
             return;
@@ -1576,12 +1566,14 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             selectedMedia.clear();
             selectedRemovedMedia.clear();
             mediaReferenceEdits.clear();
-            mediaOrder = { photo: [], video: [] };
+            mediaOrder = [];
             existingMediaEntries = { photo: [], video: [] };
-            for (const type of ['photo', 'video']) {
+            const groups = Object.fromEntries(['photo', 'video'].map(type => {
                 const items = canonicalMedia(type);
-                mediaOrder[type] = (draft.mediaOrder?.[`${type}s`] || items.map((_, index) => index)).map(index => items[index].key);
-            }
+                return [type, (draft.mediaOrder?.[`${type}s`] || items.map((_, index) => index)).map(index => items[index].key)];
+            }));
+            const sequence = draft.mediaOrder?.sequence || ['photo', 'video'].flatMap(type => groups[type].map(() => type));
+            mediaOrder = sequence.map(type => groups[type].shift());
             dirty = true;
             userEditedAutofillFields.clear();
             autoFilledValues.clear();
@@ -1653,10 +1645,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         dialog.querySelectorAll('[name], [data-media-select], [data-media-removed-select], button:not([data-progress-cancel])').forEach(control => { control.disabled = true; });
         status('正在保存旅行记录…');
         try {
-            const customMediaOrder = Object.values(draft.mediaOrder).some(order => order.some((index, position) => index !== position));
-            if ((editingRecord && field('syncMediaFiles').checked) || customMediaOrder) {
+            const customMediaOrder = ['photos', 'videos'].some(type => draft.mediaOrder[type].some((index, position) => index !== position));
+            const mixedMediaOrder = draft.mediaOrder.sequence.includes('photo') && draft.mediaOrder.sequence.includes('video');
+            if ((editingRecord && field('syncMediaFiles').checked) || customMediaOrder || mixedMediaOrder) {
                 const capability = await detectWriterCapability();
                 if (editingRecord && field('syncMediaFiles').checked && !capability.syncMediaFiles) throw new Error('当前服务尚未支持真实媒体文件同步，请重新启动服务后再保存。');
+                if (mixedMediaOrder && !capability.mixedMediaOrder) throw new Error('当前服务尚未支持图片与视频统一排序，请重新启动服务后再保存。草稿和顺序仍保留。');
                 if (customMediaOrder && !capability.mediaOrder) throw new Error('当前服务尚未支持新旧文件混合排序，请重新启动服务后再保存。草稿和顺序仍保留。');
             }
             const archive = await createDraftBlob(draft, editingRecord ? {

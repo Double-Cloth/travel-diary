@@ -1,8 +1,8 @@
 import { ByteSource } from './zip-stream.mjs';
-import { pinyinSlug } from './slug.mjs?v=2.1.54';
-import { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs?v=2.1.54';
+import { pinyinSlug } from './slug.mjs?v=2.1.55';
+import { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs?v=2.1.55';
 
-export { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs?v=2.1.54';
+export { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs?v=2.1.55';
 
 export function mediaBytes(data) {
     if (data instanceof Uint8Array) return data;
