@@ -105,7 +105,7 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
     assert.match(output.textContent, /不能超过 102400 MiB/);
 });
 
-test('动态导出地址要求写入 API，静态页面仍拒绝全部数据导入', async t => {
+test('静态页面拒绝全部备份导出和导入，显式只读参数也不能绕过', async t => {
     const nodes = [];
     const output = { textContent: '', focus() {} };
     function node() {
@@ -145,6 +145,10 @@ test('动态导出地址要求写入 API，静态页面仍拒绝全部数据导�
     });
     const readonly = createDataTransfer(async () => {});
     await assert.rejects(readonly.getExportHref(), error => error.code === 'STATIC_READONLY');
+    await assert.rejects(readonly.exportAll(), error => error.code === 'STATIC_READONLY');
+    await assert.rejects(readonly.exportAll('backup.zip', { readonly: true, authenticated: true, token: 'ignored' }), /静态只读/);
+    assert.match(output.textContent, /导出失败.*静态只读/);
+    output.textContent = '';
     const readonlyConfirmation = nodes.filter(item => item.className === 'data-import-confirm entry-sheet').at(-1);
     await confirmImportRisk(readonly, readonlyConfirmation);
     const feedbackDialog = nodes.find(item => item.className === 'feedback-dialog entry-sheet');

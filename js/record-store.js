@@ -1191,8 +1191,13 @@ function createRecordApi(root, options = {}) {
                     const selection = requestUrl.searchParams.get('selection');
                     const paths = selection === null ? null : session.recordExports?.get(selection);
                     if (paths === undefined) throw failure(400, '记录选择已失效，请重新选择后导出。');
-                    const archive = await exportDataArchive(root, paths);
+                    const controller = new AbortController();
+                    const onClose = () => controller.abort(new Error('备份下载连接已关闭。'));
+                    res.once('close', onClose);
+                    if (res.destroyed) onClose();
+                    let archive;
                     try {
+                        archive = await exportDataArchive(root, paths, { signal: controller.signal });
                         session.backupReceipts ||= new Map();
                         const requestedReceipt = requestUrl.searchParams.get('backupReceipt');
                         const receipt = session.backupReceipts.has(requestedReceipt) ? requestedReceipt : randomBytes(16).toString('hex');
@@ -1210,12 +1215,15 @@ function createRecordApi(root, options = {}) {
                         });
                         if (req.method === 'HEAD') res.end();
                         else {
-                            await pipeline(Readable.from(archive.stream), res);
+                            const onTimeout = () => res.destroy(new Error('备份下载长时间没有传输进展。'));
+                            res.setTimeout(2 * 60 * 1000, onTimeout);
+                            try { await pipeline(Readable.from(archive.stream), res); }
+                            finally { res.removeListener('timeout', onTimeout); res.setTimeout(0); }
                             receiptState.complete = true;
                             // 仍持有导出数据锁，按此次快照更新状态；中断下载不会执行到这里。
                             await require('./record-inventory.js').rememberBackup(root, archive.snapshot);
                         }
-                    } finally { await archive.release(); }
+                    } finally { res.removeListener('close', onClose); await archive?.release(); }
                     return;
                 }
                 const passwordCheck = requestUrl.searchParams.get('mode') === 'verify-backup';

@@ -1,4 +1,48 @@
 const MEMORY_DOWNLOAD_LIMIT = 256 * 1024 * 1024;
+const TRANSFER_TIMEOUT = 8 * 60 * 60 * 1000;
+const TRANSFER_IDLE_TIMEOUT = 2 * 60 * 1000;
+
+// 总时限允许大文件慢速传输；无字节进展时单独超时，避免断网后等待数小时。
+function monitorTransfer(options, interruptionMessage, url) {
+    const controller = new AbortController();
+    const signal = controller.signal;
+    let idleTimer;
+    const abort = () => controller.abort(options.signal.reason);
+    const offline = () => controller.abort(new Error(interruptionMessage));
+    let observeNetwork = true;
+    try {
+        const hostname = new URL(url, window.location?.href).hostname;
+        // 外网离线不影响本机服务器；回环地址按实际请求错误和停滞判断。
+        observeNetwork = hostname !== 'localhost' && hostname !== '[::1]' && !/^127\.\d+\.\d+\.\d+$/.test(hostname);
+    } catch { /* 相对地址缺少页面上下文时仍保留断网检测。 */ }
+    const totalTimer = setTimeout(() => controller.abort(new Error(`传输超时。${interruptionMessage}`)), options.timeout ?? TRANSFER_TIMEOUT);
+    totalTimer.unref?.();
+    function pause() { clearTimeout(idleTimer); }
+    function touch(timeout = options.idleTimeout ?? TRANSFER_IDLE_TIMEOUT) {
+        pause();
+        if (signal.aborted) return;
+        idleTimer = setTimeout(() => controller.abort(new Error(`长时间没有传输进展。${interruptionMessage}`)), timeout);
+        idleTimer.unref?.();
+    }
+    function wait(pending) {
+        return new Promise((resolve, reject) => {
+            const interrupted = () => reject(signal.reason);
+            signal.addEventListener('abort', interrupted, { once: true });
+            Promise.resolve(pending).then(resolve, reject).finally(() => signal.removeEventListener('abort', interrupted));
+            if (signal.aborted) interrupted();
+        });
+    }
+    options.signal?.addEventListener('abort', abort, { once: true });
+    if (observeNetwork) window.addEventListener?.('offline', offline);
+    if (options.signal?.aborted) abort();
+    else if (observeNetwork && window.navigator?.onLine === false) offline();
+    return { signal, touch, pause, wait, abort: reason => controller.abort(reason), dispose() {
+        pause();
+        clearTimeout(totalTimer);
+        options.signal?.removeEventListener('abort', abort);
+        if (observeNetwork) window.removeEventListener?.('offline', offline);
+    } };
+}
 
 export function formatProgressBytes(bytes) {
     if (bytes < 1024) return `${Math.max(0, Math.round(bytes))} B`;
@@ -123,31 +167,58 @@ export function createOperationProgress(title) {
 
 // Fetch 尚不提供普遍可用的上传进度事件；原生 XHR 保留同源 Cookie、令牌和 HTTP 错误响应。
 export function uploadWithProgress(url, options, onProgress, onUploaded = () => {}) {
-    if (typeof XMLHttpRequest === 'undefined') return fetch(url, options);
+    const interruptionMessage = '网络连接中断，操作结果尚未确认。请恢复网络后另开页面核对，再决定是否重试。';
+    if (typeof XMLHttpRequest === 'undefined') {
+        const monitor = monitorTransfer(options, interruptionMessage, url);
+        // 无上传进度事件时无法区分慢速上传与停滞，仅使用断网检测和总时限。
+        if (monitor.signal.aborted) { monitor.dispose(); return Promise.reject(monitor.signal.reason); }
+        return monitor.wait(fetch(url, { ...options, signal: monitor.signal }))
+            .finally(() => monitor.dispose());
+    }
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
-        const signal = options.signal;
-        if (signal?.aborted) { reject(signal.reason); return; }
-        const abort = () => xhr.abort();
+        const monitor = monitorTransfer(options, interruptionMessage, url);
+        const signal = monitor.signal;
+        let settled = false;
+        let uploaded = false;
+        let loaded = 0;
+        const abort = () => { settle(reject, signal.reason); xhr.abort(); };
         function settle(callback, value) {
+            if (settled) return;
+            settled = true;
             signal?.removeEventListener('abort', abort);
+            monitor.dispose();
             callback(value);
         }
-        xhr.open(options.method || 'POST', url);
-        xhr.timeout = options.timeout || 8 * 60 * 60 * 1000;
-        for (const [name, value] of Object.entries(options.headers || {})) xhr.setRequestHeader(name, value);
-        xhr.upload.onprogress = event => onProgress?.(event.loaded, event.lengthComputable ? event.total : 0);
-        xhr.upload.onload = onUploaded;
+        if (signal.aborted) { settle(reject, signal.reason); return; }
+        xhr.upload.onprogress = event => {
+            if (settled || uploaded) return;
+            if (event.loaded > loaded) { loaded = event.loaded; monitor.touch(); }
+            onProgress?.(event.loaded, event.lengthComputable ? event.total : 0);
+        };
+        xhr.upload.onload = () => {
+            if (settled) return;
+            uploaded = true;
+            // 服务端校验大备份期间可能没有响应字节，继续使用总时限和断网监听。
+            monitor.pause();
+            onUploaded();
+        };
         xhr.onload = () => settle(resolve, {
             ok: xhr.status >= 200 && xhr.status < 300,
             status: xhr.status,
             json: async () => JSON.parse(xhr.responseText)
         });
-        xhr.onerror = () => settle(reject, new Error('网络连接中断，请检查网络后重试。'));
-        xhr.ontimeout = () => settle(reject, new Error('传输超时，请稍后重试。'));
+        xhr.onerror = () => settle(reject, new Error(interruptionMessage));
+        xhr.ontimeout = () => settle(reject, new Error(`传输超时。${interruptionMessage}`));
         xhr.onabort = () => settle(reject, signal?.reason || new DOMException('传输已取消。', 'AbortError'));
         signal?.addEventListener('abort', abort, { once: true });
-        try { xhr.send(options.body); }
+        try {
+            xhr.open(options.method || 'POST', url);
+            xhr.timeout = options.timeout ?? TRANSFER_TIMEOUT;
+            for (const [name, value] of Object.entries(options.headers || {})) xhr.setRequestHeader(name, value);
+            monitor.touch();
+            xhr.send(options.body);
+        }
         catch (error) { settle(reject, error); }
     });
 }
@@ -172,31 +243,39 @@ function startNativeDownload(url, name) {
 export async function downloadWithProgress(url, name, progress, options = {}) {
     let writable;
     let reader;
-    const signal = AbortSignal.any([AbortSignal.timeout(8 * 60 * 60 * 1000), ...[progress.signal, options.signal].filter(Boolean)]);
+    let response;
+    let monitor;
+    const cancellation = AbortSignal.any([progress.signal, options.signal].filter(Boolean));
     try {
-        signal.throwIfAborted();
+        cancellation.throwIfAborted();
         // 支持时直接流式写盘，大视频与备份不会在内存中累积。
         if (typeof window.showSaveFilePicker === 'function') {
             try {
                 const handle = await window.showSaveFilePicker({ suggestedName: name });
-                signal.throwIfAborted();
+                cancellation.throwIfAborted();
                 writable = await handle.createWritable();
             } catch (error) {
-                if (error.name === 'AbortError' && !signal.aborted) { progress.remove(); return { cancelled: true }; }
+                if (error.name === 'AbortError' && !cancellation.aborted) { progress.remove(); return { cancelled: true }; }
                 if (error.name !== 'SecurityError') throw error;
             }
         }
+        monitor = monitorTransfer({ ...options, signal: cancellation }, '下载连接中断，请检查网络后重新下载；未完成的文件不会保存。', url);
+        const { signal } = monitor;
         progress.phase('正在连接并准备下载…');
         signal.throwIfAborted();
-        const response = await fetch(url, { credentials: 'same-origin', ...options, signal });
+        monitor.touch(options.responseTimeout);
+        response = await monitor.wait(fetch(url, { credentials: 'same-origin', ...options, signal }));
         if (!response.ok) {
             let result;
-            try { result = await response.json(); } catch { /* 非 JSON 响应使用通用提示。 */ }
+            try { result = await monitor.wait(response.json()); } catch { signal.throwIfAborted(); /* 非 JSON 响应使用通用提示。 */ }
             throw new Error(result?.error || `下载失败（HTTP ${response.status}）。`);
         }
-        const total = response.headers.get('Content-Encoding') ? 0 : Number(response.headers.get('Content-Length')) || 0;
+        const length = response.headers.get('Content-Encoding') ? null : response.headers.get('Content-Length');
+        const expected = length !== null && /^\d+$/.test(length) && Number.isSafeInteger(Number(length)) ? Number(length) : null;
+        const total = expected ?? 0;
         const backupReceipt = response.headers.get('X-Travel-Backup-Receipt');
         async function handOff() {
+            monitor.pause();
             if (reader) await reader.cancel();
             else await response.body?.cancel();
             signal.throwIfAborted();
@@ -218,10 +297,13 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
         let loaded = 0;
         progress.update(0, total, '正在下载…');
         while (true) {
-            const { done, value } = await reader.read();
+            monitor.touch();
+            const { done, value } = await monitor.wait(reader.read());
+            monitor.pause();
             signal.throwIfAborted();
             if (done) break;
             loaded += value.byteLength;
+            if (expected !== null && loaded > expected) throw new Error('下载长度与服务器声明不符，文件未保存。请重新下载。');
             if (writable) await writable.write(value);
             else {
                 if (loaded > MEMORY_DOWNLOAD_LIMIT) return await handOff();
@@ -229,7 +311,9 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
             }
             progress.update(loaded, total, '正在下载…');
         }
+        if (expected !== null && loaded !== expected) throw new Error('下载不完整，文件未保存。请检查网络后重新下载。');
         signal.throwIfAborted();
+        monitor.dispose();
         progress.setCancelable?.(false, '文件正在保存，暂不能取消。');
         progress.phase('下载传输完成，正在保存文件…');
         if (writable) { await writable.close(); writable = null; }
@@ -237,12 +321,17 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
         progress.complete(writable === null ? '文件已保存。' : '文件已传输完成，已交给浏览器保存。');
         return { handedOff: false, ...(backupReceipt ? { backupReceipt } : {}) };
     } catch (error) {
+        if (monitor?.signal.aborted) error = monitor.signal.reason;
+        else if (error instanceof TypeError) error = new Error('下载连接中断，请检查网络后重新下载；未完成的文件不会保存。', { cause: error });
+        monitor?.abort(error);
         try { await reader?.cancel(); } catch { /* 保留原始错误。 */ }
+        if (!reader) { try { await response?.body?.cancel(); } catch { /* 保留原始错误。 */ } }
         try { await writable?.abort(); } catch { /* 保留原始错误。 */ }
         progress.fail(error);
         if (progress.signal?.aborted || options.signal?.aborted) return { cancelled: true };
         throw error;
     } finally {
+        monitor?.dispose();
         reader?.releaseLock();
     }
 }

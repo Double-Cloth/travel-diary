@@ -179,6 +179,43 @@ test('没有 Content-Length 的 HTTP 上传超限时仍可返回 413 并清理�
     assert.equal((await fs.readdir(root)).some(name => name.startsWith('.travel-upload-')), false);
 });
 
+test('HTTP 上传连接半开或主动断开时清理临时文件，保留数据并允许再次上传', async t => {
+    const root = await fixture(t);
+    for (const disconnect of [false, true]) {
+        let finish;
+        const cleaned = new Promise(resolve => { finish = resolve; });
+        const server = http.createServer(async (request, response) => {
+            try {
+                await receiveArchive(root, request, 100, { idleTimeout: 30 });
+                finish(new Error('不完整上传不应成功'));
+            } catch (error) { finish(error); }
+            response.destroy();
+        });
+        await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+        try {
+            const request = http.request(`http://127.0.0.1:${server.address().port}`, { method: 'POST', headers: { 'Content-Length': '100' } });
+            request.on('error', () => {});
+            request.write('incomplete');
+            if (disconnect) {
+                // 等服务端接收本次请求再断开，确保覆盖临时文件已创建的路径。
+                await new Promise(resolve => server.once('request', () => setImmediate(resolve)));
+                request.destroy();
+            }
+            const error = await cleaned;
+            if (!disconnect) assert.equal(error.status, 408);
+            else assert.match(error.message, /aborted|premature|reset/i);
+            assert.equal((await fs.readdir(root)).some(name => name.startsWith('.travel-upload-')), false);
+            assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]');
+        } finally {
+            server.closeAllConnections();
+            await new Promise(resolve => server.close(resolve));
+        }
+    }
+    const retry = await receiveArchive(root, Readable.from(['complete']), 100);
+    assert.equal(Buffer.from(await retry.source.read(0, 8)).toString(), 'complete');
+    await retry.cleanup();
+});
+
 test('导出持有数据锁直至完成或取消，HEAD 准备不读取媒体内容', async t => {
     const root = await fixture(t);
     const handle = await fs.open(path.join(root, 'data/large.mp4'), 'w');

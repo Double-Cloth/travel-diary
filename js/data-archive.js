@@ -92,10 +92,11 @@ async function collectFiles(directory, prefix = 'data') {
     return entries;
 }
 
-async function exportDataArchive(root, selectedPaths = null) {
+async function exportDataArchive(root, selectedPaths = null, { signal } = {}) {
     const release = await acquireDataLock(root);
     let handedOff = false;
     try {
+        signal?.throwIfAborted();
         const dataDir = path.join(root, 'data');
         const stat = await fs.lstat(dataDir);
         if (stat.isSymbolicLink() || !stat.isDirectory()) throw failure(403, 'data 必须是项目内的普通目录。');
@@ -142,7 +143,8 @@ async function exportDataArchive(root, selectedPaths = null) {
         if (size > MAXIMUM_ARCHIVE_BYTES) throw failure(413, '备份不能超过 100 GiB。');
         const { describeRecords } = await import('./record-diff.mjs');
         const { readBackupRecords } = await import('./record-backup.mjs');
-        const snapshot = await describeRecords(await readBackupRecords(entries), entries);
+        const snapshot = await describeRecords(await readBackupRecords(entries), entries, { signal });
+        signal?.throwIfAborted();
         handedOff = true;
         return { stream: createZipStream(entries), size, release, snapshot: snapshot.fingerprints };
     } finally {

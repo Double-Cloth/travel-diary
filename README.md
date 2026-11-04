@@ -45,7 +45,7 @@ npm run data:archive -- dist/travel-diary-backup.zip
 npm run auth:set
 ```
 
-认证配置保存在本机 `.secrets/`，不纳入 Git；命令行备份必须为 `.zip`，且保存到 `data/`、`.secrets/` 和 `.cache/` 之外。网页动态导出需要认证；静态页面可直接导出已发布的日记、引用附件及个人资料，也可选择部分记录或行程，不包含密码配置及未引用文件。恢复步骤见 [备份与恢复](doc/MAINTENANCE.md#备份与恢复)。
+认证配置保存在本机 `.secrets/`，不纳入 Git；命令行备份必须为 `.zip`，且保存到 `data/`、`.secrets/` 和 `.cache/` 之外。网页备份导出需要动态服务和认证；静态页面禁止全部、部分记录及行程备份导出。恢复步骤见 [备份与恢复](doc/MAINTENANCE.md#备份与恢复)。
 
 GitHub Pages 在 push 或手动触发工作流后自动构建、测试与发布。媒体默认被 Git 忽略；需要发布的文件应明确选择并与对应索引、正文一起提交：
 

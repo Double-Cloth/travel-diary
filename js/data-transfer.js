@@ -1,11 +1,10 @@
-import { createPasswordGate } from './record-password.js?v=2.1.25';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.25';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.25';
+import { createPasswordGate } from './record-password.js?v=2.1.26';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.26';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.26';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=2.1.25';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.25';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.25';
-import { downloadStaticBackup } from './static-backup.js?v=2.1.25';
+import { createRecordTransfer } from './record-transfer.js?v=2.1.26';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.26';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.26';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -73,6 +72,7 @@ export function createDataTransfer(onImported, getRecords = () => []) {
 
     async function getExportHref(authenticatedCapability = null) {
         const capability = authenticatedCapability || await detectWriterCapability();
+        if (capability.readonly) throw new Error('当前站点为静态只读页面，不提供备份导出。');
         if (!capability.authenticated || !capability.token) throw new Error('登录会话已失效，请重新输入访问密码。');
         return new URL('api/travel-data', window.location.href).href;
     }
@@ -91,21 +91,10 @@ export function createDataTransfer(onImported, getRecords = () => []) {
         busy = true;
         const progress = createOperationProgress('导出全部数据');
         try {
-            let capability = authenticatedCapability;
-            if (!capability) {
-                try { capability = await detectWriterCapability(); }
-                catch (error) {
-                    if (error.code !== 'STATIC_READONLY') throw error;
-                    capability = { readonly: true };
-                }
-            }
-            const result = capability.readonly
-                ? await downloadStaticBackup(downloadName, progress)
-                : await downloadWithProgress(await getExportHref(capability), downloadName, progress);
-            if (!result.static) progress.remove();
-            setStatus(result.cancelled ? '已取消导出。' : result.static
-                ? `已导出已发布的日记、附件和个人资料，不含密码配置及未引用文件。${result.missingMediaFiles ? `有 ${result.missingMediaFiles} 个附件缺失，未打包；日记及引用已保留。` : ''}`
-                : result.handedOff
+            const capability = authenticatedCapability || await detectWriterCapability();
+            const result = await downloadWithProgress(await getExportHref(capability), downloadName, progress, { responseTimeout: 8 * 60 * 60 * 1000 });
+            progress.remove();
+            setStatus(result.cancelled ? '已取消导出。' : result.handedOff
                 ? '备份已交给浏览器下载，请在浏览器下载列表查看进度。'
                 : '全部数据备份已传输完成，请查看保存的文件。');
         } catch (error) {

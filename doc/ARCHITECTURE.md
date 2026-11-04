@@ -35,8 +35,8 @@
 | `record-password.js`、`writer-capability.js` | 同源能力探测、首次设密、登录与换密交互。 |
 | `record-delete-dialog.js`、`feedback-dialog.js`、`custom-select.js` | 删除确认、提示与原生选择框增强。 |
 | `profile-picture.js`、`profile-owner.js`、`profile-owner-dialog.js` | 头像处理、署名读取与资料编辑。 |
-| `data-transfer.js`、`record-transfer.js`、`static-backup.js`、`record-backup.mjs`、`backup-password.js` | 完整备份与清空交互、部分记录选择界面、静态已发布内容打包、前后端共用的记录备份封装及上传前密码预校验。静态导出只在明确的只读标记下开放，网络或动态 API 错误不会降级。 |
-| `operation-progress.js` | 共用进度提示、XHR 上传进度、流式下载与保存。 |
+| `data-transfer.js`、`record-transfer.js`、`record-backup.mjs`、`backup-password.js` | 完整备份与清空交互、部分记录选择界面、前后端共用的记录备份封装及上传前密码预校验。全部、部分和行程备份导出均要求动态服务认证，静态标记及网络错误不能绕过。 |
+| `operation-progress.js` | 共用进度提示、XHR 上传进度、流式下载与保存；监听断网、总时限及传输停滞，检查未编码下载的声明长度，失败时放弃未完成文件。 |
 | `record-identity.mjs`、`record-diff.mjs`、`record-diff-view.js`、`record-inventory.js` | 固定身份、字段与文件内容比较、当前记录清单和导出传输完成后自动更新的备份基准。 |
 | `media-health.js`、`media-manager.js` | 媒体引用检查、空间统计、未引用文件移入统一回收站。 |
 | `recycle-bin.js`、`recycle-manager.js` | 数据锁内留存与恢复日记、文件和整站数据；独立回收站入口、版本校验和永久删除。 |

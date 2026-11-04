@@ -51,7 +51,7 @@ async function writeSource(file, source) {
 }
 
 // 请求先落到项目内独占临时文件；成功、校验失败与断线都由调用方清理。
-async function receiveArchive(root, request, maximumBytes) {
+async function receiveArchive(root, request, maximumBytes, { idleTimeout = 2 * 60 * 1000 } = {}) {
     const file = path.join(root, `.travel-upload-${randomBytes(16).toString('hex')}.tmp`);
     const handle = await fsp.open(file, 'wx', 0o600);
     let bytes = 0;
@@ -61,7 +61,9 @@ async function receiveArchive(root, request, maximumBytes) {
             callback(bytes > maximumBytes ? Object.assign(new Error('请求内容过大。'), { status: 413 }) : null, chunk);
         }
     });
+    const onTimeout = () => request.destroy(Object.assign(new Error('上传长时间没有数据，已中止并清理临时文件。'), { status: 408 }));
     try {
+        request.setTimeout?.(idleTimeout, onTimeout);
         // 不把 IncomingMessage 放入 pipeline，超限时仍可返回明确的 413。
         const input = Readable.from(request.iterator({ destroyOnReturn: false }));
         await pipeline(input, limiter, handle.createWriteStream());
@@ -71,6 +73,10 @@ async function receiveArchive(root, request, maximumBytes) {
         await handle.close().catch(() => {});
         await fsp.unlink(file).catch(() => {});
         throw error;
+    } finally {
+        request.removeListener('timeout', onTimeout);
+        // 只限制接收阶段，避免大备份校验或后续 keep-alive 请求继承该限制。
+        request.setTimeout?.(0);
     }
 }
 

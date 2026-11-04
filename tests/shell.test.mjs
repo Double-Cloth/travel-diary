@@ -7,6 +7,7 @@ const packageVersion = JSON.parse(await readFile(new URL('../package.json', impo
 const appJs = await readFile(new URL('../js/app.js', import.meta.url), 'utf8');
 const customSelectJs = await readFile(new URL('../js/custom-select.js', import.meta.url), 'utf8');
 const dataTransferJs = await readFile(new URL('../js/data-transfer.js', import.meta.url), 'utf8');
+const recordTransferJs = await readFile(new URL('../js/record-transfer.js', import.meta.url), 'utf8');
 const photoViewerTransformJs = await readFile(new URL('../js/photo-viewer-transform.mjs', import.meta.url), 'utf8');
 const recordEditorJs = await readFile(new URL('../js/record-editor.js', import.meta.url), 'utf8');
 const recordSuggestionsJs = await readFile(new URL('../js/record-suggestions.mjs', import.meta.url), 'utf8');
@@ -431,17 +432,19 @@ test('Markdown 源码高亮层与输入层使用相同字形和滚动槽', () =>
     assert.doesNotMatch(journalCss, /\.record-editor-source-layer \.md-(?:marker|fence|heading)[^{]*\{[^}]*font-weight:\s*700/);
 });
 
-test('全部数据动态导出通过认证 API，静态导出仅在明确只读环境开放', () => {
+test('全部数据和记录备份导出仅通过认证 API，静态页面禁止导出', () => {
     assert.match(appJs, /<button[^>]*type="button"[^>]*data-action="export-all-data"/);
     assert.match(appJs, /const requestDataExportAuthorization = createPasswordGate/);
     assert.match(appJs, /dataTransfer\.exportAll\(`travel-diary-data-\$\{getTodayDate\(\)\}\.zip`, capability\)/);
     assert.match(appJs, /data-action="export-all-data"[^}]+event\.preventDefault\(\);[^}]+openDataExport\(\)/s);
-    assert.match(appJs, /onStatic: \(\) => dataTransfer\.exportAll\([^\n]+readonly: true/);
+    assert.match(appJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据备份导出。'/);
+    assert.match(recordTransferJs, /staticMessage: '当前站点为静态只读页面，不提供部分记录或行程备份导出。'/);
+    assert.doesNotMatch(dataTransferJs + recordTransferJs, /static-backup|downloadStaticBackup|staticExport/);
     assert.doesNotMatch(appJs, /catch \{\s*return dataTransfer\.exportAll/);
     assert.match(dataTransferJs, /api\/travel-data/);
     assert.match(dataTransferJs, /detectWriterCapability\(\)/);
     assert.doesNotMatch(dataTransferJs, /new URL\('travel-diary-data\.zip'/);
-    assert.match(dataTransferJs, /downloadWithProgress\(await getExportHref\(capability\), downloadName, progress\)/);
+    assert.match(dataTransferJs, /downloadWithProgress\(await getExportHref\(capability\), downloadName, progress, \{ responseTimeout:/);
     assert.doesNotMatch(dataTransferJs, /createObjectURL|new Blob|\.exportAll\(/);
     assert.doesNotMatch(dataTransferJs, /window\.location\.hostname|isLocalWriterHost/);
 });

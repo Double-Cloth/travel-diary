@@ -91,6 +91,30 @@ test('差异预览区分相同、新增、正文及媒体变化，输出字段�
     assert.deepEqual((await describeRecords([reversed], currentEntries)).fingerprints, (await describeRecords([records[0]], currentEntries)).fingerprints);
 });
 
+test('备份准备期间取消会停止媒体指纹读取并释放锁', async t => {
+    const root = await fixture(t);
+    const large = await fs.open(path.join(root, 'data/photos/trip/shared.png'), 'w');
+    try { await large.truncate(16 * 1024 * 1024); } finally { await large.close(); }
+    const controller = new AbortController();
+    const nativeFs = require('node:fs');
+    const original = nativeFs.createReadStream;
+    let chunks = 0;
+    const mocked = t.mock.method(nativeFs, 'createReadStream', function (file, options) {
+        const stream = original.call(this, file, options);
+        if (file.endsWith('shared.png')) stream.on('data', () => {
+            chunks += 1;
+            controller.abort(new Error('备份下载连接已关闭。'));
+        });
+        return stream;
+    });
+    try { await assert.rejects(exportDataArchive(root, null, { signal: controller.signal }), /下载连接已关闭/); }
+    finally { mocked.mock.restore(); }
+    assert.equal(chunks, 1, '取消后不继续扫描整段媒体');
+    await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
+    const retry = await exportDataArchive(root);
+    await retry.release();
+});
+
 test('新增记录持久保存固定标识，修改日期及路径后标识和页面链接保持不变', async t => {
     const root = await fixture(t);
     await fs.mkdir(path.join(root, 'assets/catalogs'), { recursive: true });
@@ -259,6 +283,35 @@ test('导出传输完成自动记录快照，无需确认，回执仍校验会�
     await fs.writeFile(path.join(root, 'data/photos/trip/shared.png'), 'change');
     const afterMedia = await getInventory();
     for (const record of afterMedia.records) assert.notEqual(afterMedia.backup.records[record.record_id], afterMedia.fingerprints[record.record_id], '共享媒体字节变化使引用它的记录都需要备份');
+});
+
+test('备份下载中途断线释放锁且不推进比较基准，随后可以重新导出', async t => {
+    const root = await fixture(t);
+    await fs.mkdir(path.join(root, 'data/videos'));
+    const large = await fs.open(path.join(root, 'data/videos/large.mp4'), 'w');
+    try { await large.truncate(16 * 1024 * 1024); } finally { await large.close(); }
+    const server = http.createServer(createHandler(root));
+    const base = await listenOnFetchSafePort(server);
+    t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
+    const { cookie } = await login(base);
+    await new Promise((resolve, reject) => {
+        const request = http.get(`${base}/api/travel-data`, { headers: { Cookie: cookie } }, response => {
+            assert.equal(response.statusCode, 200);
+            response.once('data', () => { response.destroy(); resolve(); });
+            response.on('error', reject);
+        });
+        request.on('error', reject);
+    });
+    let locked = true;
+    for (let attempt = 0; attempt < 100 && locked; attempt += 1) {
+        try { await fs.stat(path.join(root, '.travel-data.lock')); }
+        catch (error) { if (error.code !== 'ENOENT') throw error; locked = false; }
+        if (locked) await new Promise(resolve => setTimeout(resolve, 10));
+    }
+    assert.equal(locked, false, '中断导出必须释放数据锁');
+    assert.deepEqual((await readBackupState(root)).records, {});
+    const retry = await exportDataArchive(root);
+    await retry.release();
 });
 
 test('行程路由可往返序列化、按时间阅读、导出整趟，并保留旧记录书签', async t => {
