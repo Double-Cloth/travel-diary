@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=2.1.52';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.52';
-import { createRecordEditor } from './record-editor.js?v=2.1.52';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.52';
-import { createDataTransfer } from './data-transfer.js?v=2.1.52';
-import { createMediaManager } from './media-manager.js?v=2.1.52';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.52';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.52';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.52';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.52';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.52';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.52';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.52';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.52';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.52';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.52';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.52';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.52';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.53';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.53';
+import { createRecordEditor } from './record-editor.js?v=2.1.53';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.53';
+import { createDataTransfer } from './data-transfer.js?v=2.1.53';
+import { createMediaManager } from './media-manager.js?v=2.1.53';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.53';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.53';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.53';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.53';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.53';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.53';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.53';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.53';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.53';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.53';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.53';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.53';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.52';
+} from './location.mjs?v=2.1.53';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,7 +30,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.52';
+} from './photo-viewer-transform.mjs?v=2.1.53';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -3681,7 +3681,6 @@ function cloneTurningPage(page) {
     const style = getComputedStyle(page);
     clone.style.background = style.background;
     clone.style.padding = style.padding;
-    clone.style.clipPath = style.clipPath;
     clone.classList.add('book-page-copy');
     return clone;
 }
@@ -3840,7 +3839,7 @@ function renderWithPageTurn(renderFn, options = {}) {
                 const style = getComputedStyle(originals[index]);
                 for (const property of ['display', 'flexDirection', 'alignItems', 'gap', 'order',
                     'padding', 'margin', 'border', 'borderRadius', 'background', 'backgroundBlendMode',
-                    'backgroundAttachment', 'boxShadow', 'minHeight', 'overflow', 'clipPath']) {
+                    'backgroundAttachment', 'boxShadow', 'minHeight', 'overflow']) {
                     node.style[property] = style[property];
                 }
             });
@@ -3995,8 +3994,6 @@ function renderWithPageTurn(renderFn, options = {}) {
                 surface.className = 'book-curl-surface';
                 surface.style.width = `${width}px`;
                 surface.style.height = `${height}px`;
-                // 纸背高光和卷曲阴影沿同一破边裁绘，避免缺口被矩形光影填回。
-                surface.style.clipPath = source.style.clipPath;
                 const copy = source.cloneNode(true);
                 copy.style.width = `${width}px`;
                 copy.style.height = `${height}px`;
