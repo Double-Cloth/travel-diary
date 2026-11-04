@@ -8,37 +8,38 @@
     --plaque-edge: #79552e;
 }
 
-/* 破边只绘在独立装饰层，禁止裁切三维纸带、纸面或其祖先。 */
+/* 破边绘在平面装饰层或副本外框，禁止裁切三维纸带、纸面或其祖先。 */
 .page-spread::before,
 .page-spread::after,
-.book-page-copy::before {
+.paper-page.book-page-copy {
     border-image-source: url('../assets/textures/paper-worn-edge.svg');
     border-image-slice: 12;
     border-image-repeat: round;
     border-style: solid;
     border-width: 0;
 }
-.page-spread::before { border-image-width: 12px 0 12px 12px; }
-.page-spread::after { border-image-width: 12px 12px 12px 0; }
-
-/* 复制纸页自身带上装饰；沿用原来的曲面与正反面光影。 */
-.book-page-copy::before {
-    content: "";
-    position: absolute;
-    z-index: 18;
-    inset: 0;
-    pointer-events: none;
+.page-spread::before {
+    border-image-width: 12px 0 12px 12px;
+    /* 只约束平面装饰层，避免矩形纹理越过纸页圆角与书脊弧线。 */
+    clip-path: inset(0 round var(--book-left-radius));
 }
-.paper-page-left.book-page-copy::before { border-image-width: 12px 0 12px 12px; }
-.paper-page-right.book-page-copy::before { border-image-width: 12px 12px 12px 0; }
+.page-spread::after {
+    border-image-width: 12px 12px 12px 0;
+    clip-path: inset(0 round var(--book-right-radius));
+}
+
+/* 边框绘在副本的外框上，不随正文滚动，也不被滚动条槽挤向页内。 */
+.paper-page-left.book-page-copy { border-image-width: 12px 0 12px 12px; }
+.paper-page-right.book-page-copy { border-image-width: 12px 12px 12px 0; }
 
 @media (max-width: 760px) {
     /* 整张单列纸面只绘一圈，详情摘要和正文之间不重复起边。 */
     .page-spread::before {
         display: block;
         inset: 0;
-        width: 100%;
+        width: auto;
         border-radius: 0;
+        clip-path: none;
         border-image-width: 12px;
         background: none;
         box-shadow: none;

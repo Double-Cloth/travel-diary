@@ -173,7 +173,9 @@
         align-items: stretch;
         gap: 0;
         overflow: hidden;
-        border-inline: 5px solid #bfa780;
+        /* 保留原来纸边的占位，让装饰层的定位框与纸面外沿一致。 */
+        border-inline: 0;
+        padding-inline: 5px;
         background:
             linear-gradient(rgba(249, 239, 223, 0.58), rgba(244, 232, 215, 0.6)),
             url("../assets/images/pages/left-page-ledger-travel-diary.webp") center / cover,
