@@ -11,6 +11,7 @@ pids/
 *.pid
 
 # Runtime data
+.secrets/
 .travel-data.lock
 .travel-data-import-*/
 .travel-data-clear-*/

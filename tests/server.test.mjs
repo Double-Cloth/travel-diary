@@ -7,7 +7,7 @@ import { mkdtemp, mkdir, readFile, stat, writeFile, symlink, rm } from 'node:fs/
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { createHandler, ensureDataStructure, parseArgs, safeJoin, listenWithRetries } from '../js/server.js';
-import { isMatchingHttpOrigin, isValidHostHeader, isWriterRequestAllowed } from '../js/record-store.js';
+import { isValidHostHeader, isWriterRequestAllowed } from '../js/record-store.js';
 
 let fixture;
 let root;
@@ -199,6 +199,22 @@ test('remote 写入仅接受 HTTPS Origin 白名单中的 Host 与来源', () =>
     assert.equal(isWriterRequestAllowed({ host: 'example.com', origin: 'https://example.com' }, 'remote'), false);
 
     assert.equal(isValidHostHeader('[::1]:9000'), true);
-    assert.equal(isMatchingHttpOrigin('example.com', 'https://example.com'), true);
-    assert.equal(isMatchingHttpOrigin('example.com', 'https://other.example'), false);
+});
+
+test('嵌套隐藏文件、备份、运行目录及其目录别名均不能静态下载', async () => {
+    await mkdir(path.join(root, 'dist'));
+    await mkdir(path.join(root, '.git'));
+    await writeFile(path.join(root, 'dist', 'backup.zip'), '认证备份');
+    await writeFile(path.join(root, '.git', 'config'), '仓库配置');
+    await writeFile(path.join(root, 'nested', '.travel-edit.tmp'), '暂存正文');
+    await writeFile(path.join(root, 'nested', 'backup.ZIP'), '自定义备份');
+    await writeFile(path.join(root, 'nested', 'old.md.bak'), '旧正文');
+    for (const directory of ['dist', '.git']) {
+        await symlink(path.join(root, directory), path.join(root, `alias-${directory}`), process.platform === 'win32' ? 'junction' : 'dir');
+    }
+    for (const url of ['/dist/backup.zip', '/nested/backup.ZIP', '/nested/old.md.bak', '/nested/.travel-edit.tmp',
+        '/nested/%2etravel-edit.tmp', '/alias-dist/backup.zip', '/alias-.git/config']) {
+        for (const method of ['GET', 'HEAD']) assert.equal((await request(url, method)).status, 403, `${method} ${url}`);
+    }
+    assert.equal((await request('/nested/')).body, '子目录');
 });

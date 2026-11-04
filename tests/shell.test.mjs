@@ -738,8 +738,6 @@ test('扉页署名像头像一样验证后修改并随完整备份导出', () =>
     assert.match(profileOwnerDialogJs, /export function createOwnerNameDialog\(\)/);
     assert.match(profileOwnerDialogJs, /data-owner-name-input/);
     assert.match(profileOwnerDialogJs, /normalizeOwnerName\(input\.value\)/);
-    assert.match(recordStoreJs, /async function saveOwnerName\(root, payload\)/);
-    assert.match(recordStoreJs, /async function saveProfile\(root, payload\)/);
     assert.match(recordStoreJs, /owner-name\.txt/);
     assert.match(journalCss, /\.preface-owner-plaque:hover,/);
     assert.match(journalCss, /\.profile-owner-dialog-card\s*{/);

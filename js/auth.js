@@ -6,7 +6,6 @@ const { promisify } = require('util');
 const scryptAsync = promisify(scrypt);
 const AUTH_RELATIVE_PATH = '.secrets/auth.json';
 const PASSWORD_LENGTH = 6;
-const PASSWORD_MAX_LENGTH = PASSWORD_LENGTH;
 const SCRYPT_OPTIONS = Object.freeze({ N: 32768, r: 8, p: 1, maxmem: 64 * 1024 * 1024 });
 const HASH_LENGTH = 32;
 const COMMON_PASSWORDS = new Set([
@@ -280,7 +279,6 @@ async function verifyBackupAccess(config, password, authenticatedConfig) {
 
 module.exports = {
     AUTH_RELATIVE_PATH,
-    PASSWORD_MAX_LENGTH,
     PASSWORD_LENGTH,
     SCRYPT_OPTIONS,
     createAuthConfig,

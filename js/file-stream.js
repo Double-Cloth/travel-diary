@@ -5,16 +5,16 @@ const { randomBytes } = require('node:crypto');
 const { Transform, Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 
-async function fileSource(file, start = 0, size = null) {
+async function fileSource(file) {
     const { ByteSource, ZIP_CHUNK_BYTES, updateCrc } = await import('./zip-stream.mjs');
-    if (size === null) size = (await fsp.stat(file)).size;
+    const size = (await fsp.stat(file)).size;
     const source = new ByteSource(size, async (offset, length) => {
         const handle = await fsp.open(file, 'r');
         try {
             const bytes = Buffer.alloc(length);
             let read = 0;
             while (read < length) {
-                const result = await handle.read(bytes, read, length - read, start + offset + read);
+                const result = await handle.read(bytes, read, length - read, offset + read);
                 if (!result.bytesRead) throw new Error('文件读取不完整。');
                 read += result.bytesRead;
             }
@@ -22,8 +22,8 @@ async function fileSource(file, start = 0, size = null) {
         } finally { await handle.close(); }
     });
     source.slice = (offset, length) => {
-        const part = new ByteSource(length, (position, count) => source.read(offset + position, count));
-        part.chunks = () => chunks(part, start + offset);
+        const part = ByteSource.prototype.slice.call(source, offset, length);
+        part.chunks = () => chunks(part, offset);
         return part;
     };
     async function* chunks(part, offset) {
@@ -40,7 +40,7 @@ async function fileSource(file, start = 0, size = null) {
         }
         if (part.checksum !== undefined && ((crc ^ 0xffffffff) >>> 0) !== part.checksum) throw Object.assign(new Error('ZIP 文件校验失败。'), { status: 400 });
     }
-    source.chunks = () => chunks(source, start);
+    source.chunks = () => chunks(source, 0);
     return source;
 }
 

@@ -289,3 +289,20 @@ test('数据备份包含认证配置，便于完整恢复部署', async t => {
     assert.equal(result.bytes, archive.length);
     assert.deepEqual((await readZip(archive)).map(entry => entry.name), ['data/travel_data.json', '.secrets/auth.json']);
 });
+
+test('命令行备份拒绝覆盖数据、认证及缓存目录，失败后不留锁或临时文件', async t => {
+    const root = await fixture(t);
+    for (const destination of ['data/travel_data.json', 'data/backup.zip', '.secrets/auth.json', '.secrets/backup.zip', '.cache/new/backup.zip']) {
+        await assert.rejects(writeDataBackup(root, path.join(root, destination)), /备份/);
+    }
+    await fs.symlink(path.join(root, 'data'), path.join(root, 'data-alias'), process.platform === 'win32' ? 'junction' : 'dir');
+    await assert.rejects(writeDataBackup(root, path.join(root, 'data-alias/nested/backup.zip')), /备份/);
+    assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]');
+    const blockedOutput = path.join(root, 'blocked.zip');
+    await fs.mkdir(blockedOutput);
+    await assert.rejects(writeDataBackup(root, blockedOutput));
+    assert.equal((await fs.readdir(root)).some(name => name.endsWith('.tmp') || name === '.travel-data.lock'), false);
+    await writeDataBackup(root, path.join(root, 'dist/backup.zip'));
+    await writeDataBackup(root, path.join(root, 'dist/backup.zip'));
+    assert.ok((await fs.stat(path.join(root, 'dist/backup.zip'))).size > 0);
+});

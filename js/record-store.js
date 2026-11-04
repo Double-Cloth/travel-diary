@@ -41,24 +41,6 @@ function isValidHostHeader(host) {
     }
 }
 
-function isMatchingHttpOrigin(host, origin) {
-    if (!isValidHostHeader(host)) return false;
-    if (!origin) return true;
-    if (typeof origin !== 'string') return false;
-    try {
-        const parsedOrigin = new URL(origin);
-        if (!['http:', 'https:'].includes(parsedOrigin.protocol)
-            || parsedOrigin.origin !== origin
-            || parsedOrigin.pathname !== '/'
-            || parsedOrigin.username
-            || parsedOrigin.password) return false;
-        const hostAtOriginScheme = new URL(`${parsedOrigin.protocol}//${host}`);
-        return hostAtOriginScheme.host === parsedOrigin.host;
-    } catch {
-        return false;
-    }
-}
-
 function normalizeAllowedOrigins(origins) {
     if (!Array.isArray(origins)) throw new Error('allowedOrigins 必须是数组。');
     return [...new Set(origins.map(origin => {
@@ -130,7 +112,8 @@ async function readBody(request, maximumBytes) {
     declaredBodyLength(request, maximumBytes);
     const chunks = [];
     let bytes = 0;
-    for await (const chunk of request) {
+    // 超限时保留连接，交由 API 返回 413 后关闭，避免客户端只收到连接重置。
+    for await (const chunk of request.iterator({ destroyOnReturn: false })) {
         bytes += chunk.length;
         if (bytes > maximumBytes) throw failure(413, '请求内容过大。');
         chunks.push(chunk);
@@ -224,7 +207,7 @@ function readOwnerName(payload) {
     return name;
 }
 
-async function writeProfileFile(root, fileName, content) {
+async function writeProfileFile(root, fileName, content, authorize) {
     const releaseLock = await acquireDataLock(root);
     const suffix = randomBytes(8).toString('hex');
     let temporaryFile = '';
@@ -232,6 +215,7 @@ async function writeProfileFile(root, fileName, content) {
     let profileRecycleId;
     let committed = false;
     try {
+        await authorize?.();
         const profileDirectory = await checkedDirectory(root, ['data', 'profile'], true);
         const targetFile = path.join(profileDirectory, fileName);
         try { await checkedFile(targetFile); }
@@ -254,6 +238,7 @@ async function writeProfileFile(root, fileName, content) {
             backupFile = '';
         }
         try {
+            await authorize?.();
             await fs.rename(temporaryFile, targetFile);
             temporaryFile = '';
             committed = true;
@@ -277,30 +262,31 @@ async function writeProfileFile(root, fileName, content) {
     }
 }
 
-async function saveProfilePicture(root, payload) {
+async function saveProfilePicture(root, payload, authorize) {
     const picture = readProfilePicture(payload);
-    return writeProfileFile(root, 'profile-picture.png', picture);
+    return writeProfileFile(root, 'profile-picture.png', picture, authorize);
 }
 
-async function saveOwnerName(root, payload) {
+async function saveOwnerName(root, payload, authorize) {
     const name = readOwnerName(payload);
-    return writeProfileFile(root, 'owner-name.txt', name);
+    return writeProfileFile(root, 'owner-name.txt', name, authorize);
 }
 
-async function saveProfile(root, payload) {
+async function saveProfile(root, payload, authorize) {
     if (payload && typeof payload === 'object' && !Array.isArray(payload)
         && Object.prototype.hasOwnProperty.call(payload, 'name')) {
-        return saveOwnerName(root, payload);
+        return saveOwnerName(root, payload, authorize);
     }
-    return saveProfilePicture(root, payload);
+    return saveProfilePicture(root, payload, authorize);
 }
 
-async function replaceIndex(dataDir, indexFile, previous, records) {
+async function replaceIndex(dataDir, indexFile, previous, records, authorize) {
     let temporaryFile = path.join(dataDir, `.travel-write-${randomBytes(16).toString('hex')}.tmp`);
     try {
         await writeSynced(temporaryFile, JSON.stringify(records, null, 2) + '\n');
         await checkedFile(indexFile);
         if (await fs.readFile(indexFile, 'utf8') !== previous) throw failure(409, '旅行索引在保存期间被修改，请重试。');
+        await authorize?.();
         await fs.rename(temporaryFile, indexFile);
         temporaryFile = null;
     } finally {
@@ -551,7 +537,7 @@ async function verifySavedMedia(root, record, contents, options) {
     }
 }
 
-async function saveRecord(root, payload) {
+async function saveRecord(root, payload, authorize) {
     const { prepareRecord } = await import('./record-input.mjs');
     const catalog = JSON.parse(await fs.readFile(path.join(root, 'assets/catalogs/countries.json'), 'utf8'));
     let prepared;
@@ -570,6 +556,7 @@ async function saveRecord(root, payload) {
     let createdMarkdown;
     let mediaStage;
     try {
+        await authorize?.();
         await checkedFile(indexFile);
         const previous = await fs.readFile(indexFile, 'utf8');
         const records = JSON.parse(previous);
@@ -612,6 +599,7 @@ async function saveRecord(root, payload) {
         await writeSynced(temporaryFile, JSON.stringify([...records, record], null, 2) + '\n');
         await checkedFile(indexFile);
         if (await fs.readFile(indexFile, 'utf8') !== previous) throw failure(409, '旅行索引在保存期间被修改，请重试。');
+        await authorize?.();
         await fs.rename(temporaryFile, indexFile);
         temporaryFile = null;
         createdMarkdown = null;
@@ -625,7 +613,7 @@ async function saveRecord(root, payload) {
     }
 }
 
-async function updateRecord(root, payload) {
+async function updateRecord(root, payload, authorize) {
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)
         || typeof payload.originalDescMd !== 'string' || payload.originalDescMd.length > 200) {
         throw failure(400, '缺少要修改的旅行记录标识。');
@@ -661,6 +649,7 @@ async function updateRecord(root, payload) {
     let newDiaryFile;
     let committed = false;
     try {
+        await authorize?.();
         await checkedFile(indexFile);
         const previous = await fs.readFile(indexFile, 'utf8');
         const records = JSON.parse(previous);
@@ -724,7 +713,7 @@ async function updateRecord(root, payload) {
             }
         }
 
-        await replaceIndex(dataDir, indexFile, previous, nextRecords);
+        await replaceIndex(dataDir, indexFile, previous, nextRecords, authorize);
         committed = true;
         if (backupMarkdown) await fs.unlink(backupMarkdown).catch(() => {});
         backupMarkdown = null;
@@ -754,7 +743,7 @@ async function updateRecord(root, payload) {
     }
 }
 
-async function deleteRecord(root, payload) {
+async function deleteRecord(root, payload, authorize) {
     const markdownPath = payload && typeof payload === 'object' && !Array.isArray(payload)
         ? payload.desc_md
         : '';
@@ -771,6 +760,7 @@ async function deleteRecord(root, payload) {
     let recycleId;
     let unusedMediaStage;
     try {
+        await authorize?.();
         await checkedFile(indexFile);
         const previous = await fs.readFile(indexFile, 'utf8');
         const records = JSON.parse(previous);
@@ -792,7 +782,7 @@ async function deleteRecord(root, payload) {
         } catch (error) {
             if (error.code !== 'ENOENT') throw error;
         }
-        await replaceIndex(dataDir, indexFile, previous, records.filter((_, itemIndex) => itemIndex !== index));
+        await replaceIndex(dataDir, indexFile, previous, records.filter((_, itemIndex) => itemIndex !== index), authorize);
         committed = true;
         if (unusedMediaStage) await unusedMediaStage.commit();
         if (backupMarkdown) await fs.unlink(backupMarkdown).catch(() => {});
@@ -946,7 +936,7 @@ function createRecordApi(root, options = {}) {
                         ? 400
                         : (setupError.code === 'AUTH_SETUP_ALREADY_COMPLETE'
                             ? 409
-                            : (setupError.code?.startsWith('AUTH_CONFIG_') ? 503 : 500));
+                            : (setupError.code?.startsWith('AUTH_CONFIG_') ? 503 : (setupError.status || 500)));
                     send(status, {
                         service: 'travel-diary-writer-v1',
                         error: setupError.message || '访问密码创建失败，请检查 .secrets 目录权限。',
@@ -1168,6 +1158,7 @@ function createRecordApi(root, options = {}) {
                 if (req.method === 'POST' && ['media-health', 'backup-complete', 'recycle-bin'].includes(mode)) {
                     if (!hasMediaType(req, 'application/json')) throw failure(415, '此操作必须使用 application/json。');
                     const payload = await readJsonBody(req, 4 * 1024 * 1024);
+                    await verifyUploadSession(req, host);
                     if (mode === 'recycle-bin') send(200, await require('./recycle-bin.js').manageRecycleBin(root, payload));
                     else if (mode === 'media-health') send(200, await require('./media-health.js').manageMedia(root, payload));
                     else {
@@ -1184,6 +1175,7 @@ function createRecordApi(root, options = {}) {
                 if (req.method === 'POST' && requestUrl.searchParams.get('mode') === 'select') {
                     if (!hasMediaType(req, 'application/json')) throw failure(415, '记录选择必须使用 application/json。');
                     const payload = await readJsonBody(req, 4 * 1024 * 1024);
+                    await verifyUploadSession(req, host);
                     const paths = payload?.paths;
                     const { selectBackupRecords } = await import('./record-backup.mjs');
                     try { selectBackupRecords(Array.isArray(paths) ? paths.map(desc_md => ({ desc_md })) : null, paths); }
@@ -1231,7 +1223,7 @@ function createRecordApi(root, options = {}) {
                     throw failure(415, '备份密码预校验必须使用 application/json。');
                 }
                 if (req.method === 'POST' && (passwordCheck || hasMediaType(req, 'application/zip'))) {
-                    const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs?v=20261009-stream-files-v2');
+                    const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs');
                     declaredBodyLength(req, passwordCheck ? MAXIMUM_LOGIN_BYTES : MAXIMUM_ARCHIVE_BYTES);
                     // 导入失败独立限速，避免重新登录清除备份密码的失败计数。
                     const state = failureState('data-import');
@@ -1319,7 +1311,7 @@ function createRecordApi(root, options = {}) {
             }
             try {
                 const payload = await readJsonBody(req, MAXIMUM_PROFILE_BYTES);
-                const result = await saveProfile(root, payload);
+                const result = await saveProfile(root, payload, () => verifyUploadSession(req, host));
                 send(200, { saved: true, ...result });
             } catch (error) {
                 send(error.status || 500, {
@@ -1349,7 +1341,7 @@ function createRecordApi(root, options = {}) {
         try {
             let payload;
             if (isArchive) {
-                const { MAXIMUM_RECORD_ARCHIVE_BYTES } = await import('./file-limits.mjs?v=20261009-stream-files-v2');
+                const { MAXIMUM_RECORD_ARCHIVE_BYTES } = await import('./file-limits.mjs');
                 declaredBodyLength(req, MAXIMUM_RECORD_ARCHIVE_BYTES);
                 receivedArchive = await receiveArchive(root, req, MAXIMUM_RECORD_ARCHIVE_BYTES);
                 const { readRecordSource } = await import('./draft-archive.mjs');
@@ -1359,21 +1351,20 @@ function createRecordApi(root, options = {}) {
                 } catch (error) {
                     throw failure(400, error.message);
                 }
-                await verifyUploadSession(req, host);
             } else {
                 payload = await readJsonBody(req, MAXIMUM_RECORD_BYTES);
             }
             if (req.method === 'PUT') {
-                const result = await updateRecord(root, payload);
+                const result = await updateRecord(root, payload, () => verifyUploadSession(req, host));
                 send(200, { saved: true, updated: true, ...result });
                 return;
             }
             if (req.method === 'DELETE') {
-                const result = await deleteRecord(root, payload);
+                const result = await deleteRecord(root, payload, () => verifyUploadSession(req, host));
                 send(200, { deleted: true, ...result });
                 return;
             }
-            const result = await saveRecord(root, payload);
+            const result = await saveRecord(root, payload, () => verifyUploadSession(req, host));
             send(result.alreadySaved ? 200 : 201, { saved: true, ...result });
         } catch (error) {
             send(error.status || 500, { error: error.status ? error.message : '文件保存失败，请检查数据文件格式及目录写入权限。草稿仍保留，可下载后重试。' });
@@ -1384,6 +1375,6 @@ function createRecordApi(root, options = {}) {
 }
 
 module.exports = {
-    createRecordApi, isMatchingHttpOrigin, isValidHostHeader, isWriterRequestAllowed,
+    createRecordApi, isValidHostHeader, isWriterRequestAllowed,
     normalizeAllowedOrigins
 };

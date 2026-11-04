@@ -30,7 +30,8 @@ test('预览放到 .cache，保留扩展名与 URL 编码并拒绝路径穿越',
     assert.equal(getMediaPreviewUrl('blob:local'), '');
     assert.equal(sourceForPreview(previewPath), 'data/photos/trip/image.png');
     for (const value of ['/.cache/media-previews/photos/../secret.png.jpg', '/.cache/media-previews/videos/a\\b.mp4.jpg',
-        '/.cache/media-previews/photos/x.txt.jpg', '/.cache/media-previews/profile/a.png.jpg']) assert.equal(sourceForPreview(value), null);
+        '/.cache/media-previews/photos/x.txt.jpg', '/.cache/media-previews/profile/a.png.jpg',
+        '/.cache/media-previews/photos/.hidden/image.png.jpg', '/.cache/media-previews/photos/trip/.image.png.jpg']) assert.equal(sourceForPreview(value), null);
 });
 
 test('缓存缺失不读取原文件，保存后跨实例复用，源变更拒绝旧预览', async t => {
@@ -67,6 +68,24 @@ test('拒绝超大、非 JPEG 和过大尺寸的缓存，拒绝链接目录', as
     await symlink(path.join(root, 'data'), path.join(root, '.cache/media-previews'), process.platform === 'win32' ? 'junction' : 'dir');
     await assert.rejects(store.get(previewPath), { status: 403 });
     await assert.rejects(store.put(previewPath, jpeg, ''), { status: 403 });
+});
+
+test('损坏的预览与元数据视为缓存未命中，修复后可以继续读取', async t => {
+    const root = await fixture(t);
+    const store = createMediaPreviewStore(root);
+    const { etag } = await store.get(previewPath);
+    await store.put(previewPath, jpeg, etag);
+    const metadataPath = path.join(root, `${previewPath}.json`);
+    const metadata = await readFile(metadataPath, 'utf8');
+    for (const invalid of ['null', '{', '[]', ' '.repeat(4097) + metadata]) {
+        await writeFile(metadataPath, invalid);
+        assert.equal((await store.get(previewPath)).image, null);
+    }
+    await writeFile(metadataPath, metadata);
+    await writeFile(path.join(root, previewPath), '损坏图片');
+    assert.equal((await store.get(previewPath)).image, null);
+    await store.put(previewPath, jpeg, etag);
+    assert.deepEqual((await store.get(previewPath)).image, jpeg);
 });
 
 test('HTTP 自动缓存接口只接受同源小型预览，支持 ETag、HEAD 和源文件失效', async t => {

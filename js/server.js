@@ -215,6 +215,12 @@ function isWithinRoot(rootDir, targetPath) {
   return relativePath !== '..' && !relativePath.startsWith(`..${path.sep}`) && !path.isAbsolute(relativePath);
 }
 
+function isPrivateStaticPath(relativePath) {
+  const parts = relativePath.replace(/\\/g, '/').split('/').filter(Boolean);
+  return parts.some(part => part.startsWith('.') || /\.(?:zip|bak|tmp)$/i.test(part))
+    || ['dist', 'build', 'output', 'tmp', 'temp', 'node_modules', '_site', 'coverage'].includes(parts[0]?.toLowerCase());
+}
+
 async function ensureDataStructure(rootDir) {
   const resolvedRoot = await fs.promises.realpath(rootDir);
   const directories = ['.secrets', 'data', 'data/travel-diary', 'data/photos', 'data/videos', 'data/profile'];
@@ -293,7 +299,6 @@ async function ensureDataStructure(rootDir) {
 
 function createHandler(rootDir, options = {}) {
   rootDir = fs.realpathSync(rootDir);
-  const secretsRoot = path.join(rootDir, '.secrets');
   const mediaPreviews = createMediaPreviewStore(rootDir);
   const recordApi = createRecordApi(rootDir, {
     writeMode: options.writeMode || CONFIG.defaultWriteMode,
@@ -384,8 +389,7 @@ function createHandler(rootDir, options = {}) {
       return;
     }
 
-    const firstSegment = pathname.replace(/^\/+/, '').split('/')[0];
-    if (firstSegment.startsWith('.')) {
+    if (isPrivateStaticPath(pathname)) {
       res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
       res.end('Forbidden');
       return;
@@ -400,7 +404,7 @@ function createHandler(rootDir, options = {}) {
 
     try {
       let targetPath = await fs.promises.realpath(filePath);
-      if (!isWithinRoot(rootDir, targetPath) || isWithinRoot(secretsRoot, targetPath)) {
+      if (!isWithinRoot(rootDir, targetPath) || isPrivateStaticPath(path.relative(rootDir, targetPath))) {
         res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('Forbidden');
         return;
@@ -415,7 +419,7 @@ function createHandler(rootDir, options = {}) {
         targetPath = await fs.promises.realpath(path.join(targetPath, 'index.html'));
         stats = await fs.promises.stat(targetPath);
       }
-      if (!isWithinRoot(rootDir, targetPath) || isWithinRoot(secretsRoot, targetPath)) {
+      if (!isWithinRoot(rootDir, targetPath) || isPrivateStaticPath(path.relative(rootDir, targetPath))) {
         res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' });
         res.end('Forbidden');
         return;

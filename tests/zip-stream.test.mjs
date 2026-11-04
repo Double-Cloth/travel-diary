@@ -30,6 +30,19 @@ async function fixture(t) {
     return root;
 }
 
+test('内存与磁盘字节源切片统一拒绝非整数和越界范围，支持空切片与嵌套切片', async t => {
+    const root = await fixture(t);
+    const file = path.join(root, 'slice.bin');
+    await fs.writeFile(file, Buffer.from('0123456789'));
+    for (const source of [sourceOf(Buffer.from('0123456789')), await fileSource(file)]) {
+        for (const [offset, size] of [[-1, 1], [11, 0], [9, 2], [NaN, 0], [0, NaN], [Infinity, 0], [0.5, 1], [0, 0.5]]) {
+            assert.throws(() => source.slice(offset, size), /范围|大小/);
+        }
+        assert.equal((await collect(source.slice(10, 0).chunks())).length, 0);
+        assert.equal((await collect(source.slice(2, 5).slice(1, 3).chunks())).toString(), '345');
+    }
+});
+
 test('ZIP64 流与 Blob 包含正确 CRC、长度和数据描述符，并兼容旧 ZIP', async () => {
     const entries = [{ name: '清单.json', data: '记录内容' }, { name: 'media/video.mp4', data: Uint8Array.of(1, 2, 3) }];
     const streamed = await collect(createZipStream(entries));

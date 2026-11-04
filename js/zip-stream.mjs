@@ -29,7 +29,9 @@ export class ByteSource {
     }
 
     slice(offset, size) {
-        if (offset < 0 || size < 0 || offset + size > this.size) throw new Error('ZIP 条目范围无效。');
+        if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(size) || offset < 0 || size < 0 || offset > this.size - size) {
+            throw new Error('ZIP 条目范围无效。');
+        }
         return new ByteSource(size, (start, length) => this.read(offset + start, length), this.blob?.slice(offset, offset + size));
     }
 

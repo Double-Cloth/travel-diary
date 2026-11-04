@@ -8,6 +8,7 @@ import { createRequire } from 'node:module';
 import { createHandler } from '../js/server.js';
 import { AUTH_PASSWORD, installAuth, login } from './helpers/auth.mjs';
 import { listenOnFetchSafePort } from './helpers/http.mjs';
+import { DRAFT_FORMAT } from '../js/record-input.mjs';
 
 const require = createRequire(import.meta.url);
 const { createAuthConfig } = require('../js/auth.js');
@@ -29,7 +30,7 @@ async function fixture(t, { configured = true, authSource } = {}) {
         await new Promise(resolve => server.close(resolve));
         await fs.rm(root, { recursive: true, force: true });
     });
-    return { base, root };
+    return { base, root, server };
 }
 
 async function assertUnauthenticatedCapability(base, cookie = '') {
@@ -307,4 +308,97 @@ test('认证接口兼容带 charset 的 JSON，并在读取前拒绝超大请求
         body: JSON.stringify({ password: '9'.repeat(5000) })
     });
     assert.equal(oversized.status, 413);
+});
+
+function jsonRequest(base, route, body, headers = {}) {
+    return new Promise((resolve, reject) => {
+        const request = http.request(`${base}${route}`, { method: 'POST', headers: {
+            Origin: base, 'Content-Type': 'application/json', 'Transfer-Encoding': 'chunked', ...headers
+        } }, response => {
+            let content = '';
+            response.setEncoding('utf8');
+            response.on('data', chunk => { content += chunk; });
+            response.on('error', reject);
+            response.on('end', () => resolve({ status: response.statusCode, body: JSON.parse(content) }));
+        });
+        request.on('error', reject);
+        request.setTimeout(5000, () => request.destroy(new Error('JSON 请求超时')));
+        request.end(body);
+    });
+}
+
+test('首次设密与登录对畸形和分块超限 JSON 返回 400 或 413，后续请求仍正常', async t => {
+    for (const configured of [false, true]) {
+        const { base } = await fixture(t, { configured });
+        const route = configured ? '/api/travel-auth' : '/api/travel-auth/setup';
+        assert.equal((await jsonRequest(base, route, '{')).status, 400);
+        assert.equal((await jsonRequest(base, route, JSON.stringify({ password: '9'.repeat(5000) }))).status, 413);
+        const response = await fetch(`${base}${route}`, {
+            method: 'POST', headers: { Origin: base, 'Content-Type': 'application/json' },
+            body: JSON.stringify({ password: AUTH_PASSWORD })
+        });
+        assert.equal(response.status, configured ? 200 : 201);
+    }
+});
+
+test('JSON 上传期间注销后，记录写入、资料保存和备份选择均拒绝且不留暂存文件', async t => {
+    const { base, root, server } = await fixture(t);
+    const desc_md = 'data/travel-diary/2026/2026-11-04-audit.md';
+    const record = { date: '2026-11-04', country: '中国', country_code: 'CN', locality: '苏州', desc_md, photos: [] };
+    const index = JSON.stringify([record]);
+    const markdown = '# 原标题\n\n原正文\n';
+    await fs.mkdir(path.join(root, 'assets/catalogs'), { recursive: true });
+    await fs.writeFile(path.join(root, 'assets/catalogs/countries.json'), JSON.stringify({ countries: [{ code: 'CN', name_zh: '中国' }] }));
+    await fs.mkdir(path.join(root, 'data/travel-diary/2026'), { recursive: true });
+    await fs.mkdir(path.join(root, 'data/profile'));
+    await fs.writeFile(path.join(root, 'data/profile/owner-name.txt'), '原署名');
+    await fs.writeFile(path.join(root, desc_md), markdown);
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), index);
+    const draft = { format: DRAFT_FORMAT, requestId: 'a'.repeat(32), uploads: [], input: {
+        date: record.date, country: record.country, country_code: record.country_code, admin_area: '', admin_area_type: '',
+        locality: record.locality, locality_type: '', trip_id: '', title: '新标题', body: '新正文',
+        desc_md, photo_folder: '', photos: [], video_folder: '', videos: []
+    } };
+    for (const [route, method, payload] of [
+        ['/api/travel-profile', 'PUT', { name: '新署名' }],
+        ['/api/travel-records', 'POST', { ...draft, input: { ...draft.input, desc_md: desc_md.replace('audit.md', 'new.md') } }],
+        ['/api/travel-records', 'PUT', { originalDescMd: desc_md, draft }],
+        ['/api/travel-records', 'DELETE', { desc_md }],
+        ['/api/travel-data?mode=select', 'POST', { paths: [desc_md] }]
+    ]) {
+        const { cookie, token } = await login(base);
+        // 等到服务端已读取认证并进入请求体迭代，再注销，避免依赖定时延迟。
+        const reading = new Promise(resolve => server.once('request', request => {
+            const onListener = event => {
+                if (event !== 'readable') return;
+                request.removeListener('newListener', onListener);
+                resolve();
+            };
+            request.on('newListener', onListener);
+        }));
+        const body = JSON.stringify(payload);
+        let upload;
+        const responsePromise = new Promise((resolve, reject) => {
+            upload = http.request(`${base}${route}`, { method, headers: {
+                Origin: base, 'Content-Type': 'application/json', Cookie: cookie, 'X-Travel-Token': token,
+                'Transfer-Encoding': 'chunked'
+            } }, response => {
+                response.resume();
+                response.on('error', reject);
+                response.on('end', () => resolve(response.statusCode));
+            });
+            upload.on('error', reject);
+            upload.setTimeout(5000, () => upload.destroy(new Error('上传测试超时')));
+            upload.write(body.slice(0, body.length >> 1));
+        });
+        await reading;
+        assert.equal((await fetch(`${base}/api/travel-auth`, { method: 'DELETE', headers: { Cookie: cookie, Origin: base } })).status, 200);
+        upload.end(body.slice(body.length >> 1));
+        assert.equal(await responsePromise, 401, `${method} ${route}`);
+        assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), index);
+        assert.equal(await fs.readFile(path.join(root, desc_md), 'utf8'), markdown);
+        assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '原署名');
+        assert.equal((await fs.readdir(root)).includes('.travel-data.lock'), false);
+    }
+    assert.deepEqual(await fs.readdir(path.join(root, 'data/travel-diary/2026')), ['2026-11-04-audit.md']);
 });

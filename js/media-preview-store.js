@@ -12,7 +12,7 @@ function sourceForPreview(urlPath) {
     if (!match || !/\.(jpe?g|png|gif|webp|mp4|m4v|mov|webm|ogv|ogg)$/i.test(match[2])) return null;
     const source = `data/${match[1]}/${match[2]}`;
     if (/[\u0000-\u001f\u007f\\:]/.test(source)
-        || !source.split('/').every(part => part && part !== '.' && part !== '..' && !/[. ]$/.test(part))) return null;
+        || !source.split('/').every(part => part && !part.startsWith('.') && !/[. ]$/.test(part))) return null;
     return source;
 }
 
@@ -79,10 +79,13 @@ function createMediaPreviewStore(root) {
         const { signature, etag } = await locate(urlPath);
         try {
             const metadata = await safePath(root, `${urlPath.slice(1)}.json`);
-            if (JSON.parse(await fs.readFile(metadata, 'utf8')).signature === signature) {
+            if ((await fs.stat(metadata)).size <= 4096 && JSON.parse(await fs.readFile(metadata, 'utf8'))?.signature === signature) {
                 const destination = await safePath(root, urlPath.slice(1));
                 const stat = await fs.stat(destination);
-                if (stat.size <= MAXIMUM_PREVIEW_BYTES) return { image: await fs.readFile(destination), etag };
+                if (stat.size <= MAXIMUM_PREVIEW_BYTES) {
+                    const image = await fs.readFile(destination);
+                    if (isPreviewJpeg(image)) return { image, etag };
+                }
             }
         } catch (error) {
             if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;

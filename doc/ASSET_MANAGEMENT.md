@@ -41,7 +41,7 @@ HTML 和数据路径相对项目根目录；`css/` 下所有分片使用 `../ass
 
 桌面、封面与纸页图像使用 WebP，保留原始像素尺寸与构图，以质量 85 编码并保留透明通道；四张图像合计约 1.56 MB。共用纸纹及个人头像继续使用 PNG。替换资产时同步所有 CSS 引用，不保留重复的 PNG 备用图。
 
-`.secrets/` 不是浏览器资产，不在 HTML、CSS 或前端模块中引用。授权的动态完整备份包含认证哈希，静态发布排除整个目录。个人媒体默认被 Git 忽略，发布前须明确选择文件或由部署流程提供，见 [发布说明](MAINTENANCE.md#静态发布)。
+`.secrets/` 属于本机运行数据，整个目录由 Git 忽略；它不是浏览器资产，不在 HTML、CSS 或前端模块中引用。授权的动态完整备份包含认证哈希，静态发布排除整个目录。个人媒体默认被 Git 忽略，发布前须明确选择文件或由部署流程提供，见 [发布说明](MAINTENANCE.md#静态发布)。
 
 ## 字体
 
@@ -49,9 +49,18 @@ HTML 和数据路径相对项目根目录；`css/` 下所有分片使用 `../ass
 
 印章字体来自 [Google Fonts 的 Cormorant SC](https://github.com/google/fonts/tree/main/ofl/cormorantsc)，采用 SIL Open Font License 1.1，许可随字体保存为 `assets/fonts/CormorantSC-OFL.txt`。只在印章使用，浏览器按需加载本地 WOFF2。
 
-`fonts` 命令默认生成完整压缩字体，并从界面与个人内容生成两种字重的 `*-core.woff2` 和 `diary-kai-core.css`，需要 Python 与 `fonttools[woff]`，普通启动不需要这些工具。生成的 CSS 先声明完整字体，再用实际 cmap 对轻量字集声明 `unicode-range`；当前界面优先加载轻量字集，新增的未覆盖字符按需加载相同字重的完整本地字体，保持字体样式与任意内容可读性。轻量字体 URL 附带内容哈希，避免重新生成后仍使用旧缓存。拼音字典和全国地点目录不纳入首屏字集。
+`fonts` 命令默认生成完整压缩字体，并从界面与个人内容生成两种字重的 `*-core.woff2` 和 `diary-kai-core.css`，需要 Python 与 `fonttools[woff]`，普通启动不需要这些工具。生成的 CSS 先声明完整字体，再用实际 cmap 对轻量字集声明 `unicode-range`；当前界面优先加载轻量字集，新增的未覆盖字符按需加载相同字重的完整本地字体，保持字体样式与任意内容可读性。轻量字体 URL 附带内容哈希，避免重新生成后仍使用旧缓存。拼音字典和全国地点目录不纳入首屏字集；缓存、回收站、日志及测试输出目录不参与字体文字收集。
 
 只更新日记或界面文字后，可运行 `fonts:core` 刷新轻量字集，无需重新压缩完整字体；同时更新 CSS 引用版本并提交生成文件。`fonts:subset` 会替换完整字体文件为当前项目文字的子集，仍保留数字等基础字符；之后新增日记、动态署名或地点可能缺字，采用此显式模式时应重新生成并检查回退。一般内容持续增长的档案使用默认完整字体模式。
+
+字体维护命令：
+
+```bash
+pip install "fonttools[woff]"
+npm run fonts
+npm run fonts:core
+npm run fonts:subset
+```
 
 ## 地点目录
 
@@ -61,6 +70,14 @@ HTML 和数据路径相对项目根目录；`css/` 下所有分片使用 `../ass
 | `assets/catalogs/china-locations.json` | 固定 `cn-division 2026.0.1`，提供大陆 31 个省级行政区及地级、区县候选，用于中国目的地省份反查。 |
 
 生成文件保存来源信息；以各上游项目的授权说明为准。更新脚本仅在维护时联网，单次请求 30 秒超时，普通启动不会拉取上游。复用项目保留完整目录，不按个人旅行范围裁剪，也不在运行时代码另建一份国家表。
+
+重新生成固定版本的目录并校验：
+
+```bash
+npm run countries
+npm run china-locations
+npm test
+```
 
 ## 清理与替换
 

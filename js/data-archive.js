@@ -37,6 +37,21 @@ function safeArchivePath(name) {
         && !/^(con|prn|aux|nul|com[0-9]|lpt[0-9])(?:\.|$)/i.test(part));
 }
 
+function validatePortablePaths(entries, status, message) {
+    const paths = new Map();
+    for (const entry of entries) {
+        const parts = entry.name.split('/');
+        for (let length = 1; length <= parts.length; length += 1) {
+            const name = parts.slice(0, length).join('/');
+            const key = name.toLowerCase();
+            const isFile = length === parts.length;
+            const previous = paths.get(key);
+            if (previous && (previous.name !== name || previous.isFile || isFile)) throw failure(status, message);
+            paths.set(key, { name, isFile });
+        }
+    }
+}
+
 function decodeUtf8(data, fileName) {
     try {
         return new TextDecoder('utf-8', { fatal: true }).decode(data);
@@ -123,7 +138,7 @@ async function exportDataArchive(root, selectedPaths = null) {
         }
         const { createZipStream, zipStreamSize } = await import('./zip-stream.mjs');
         const size = zipStreamSize(entries);
-        const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs?v=20261009-stream-files-v2');
+        const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs');
         if (size > MAXIMUM_ARCHIVE_BYTES) throw failure(413, '备份不能超过 100 GiB。');
         const { describeRecords } = await import('./record-diff.mjs');
         const { readBackupRecords } = await import('./record-backup.mjs');
@@ -348,20 +363,7 @@ async function importDataArchive(root, archive, options = {}) {
         if (!entries.length || entries.some(entry => !safeArchivePath(entry.name))) {
             throw failure(400, `备份只能包含 data/ 和 ${AUTH_RELATIVE_PATH} 下的安全文件路径。`);
         }
-        const portablePaths = new Map();
-        for (const entry of entries) {
-            const parts = entry.name.split('/');
-            for (let length = 1; length <= parts.length; length += 1) {
-                const name = parts.slice(0, length).join('/');
-                const key = name.toLocaleLowerCase('en-US');
-                const isFile = length === parts.length;
-                const previous = portablePaths.get(key);
-                if (previous && (previous.name !== name || previous.isFile || isFile)) {
-                    throw failure(400, '备份包含大小写冲突或文件与目录重名的路径，无法安全导入。');
-                }
-                portablePaths.set(key, { name, isFile });
-            }
-        }
+        validatePortablePaths(entries, 400, '备份包含大小写冲突或文件与目录重名的路径，无法安全导入。');
         let validation;
         try { validation = await validateImportedRecords(entries); }
         catch (error) { throw failure(error.status || 400, error.message); }
@@ -388,18 +390,7 @@ async function importDataArchive(root, archive, options = {}) {
             entries = mergeResult.entries;
             authEntry = null;
             // 合并后的完整目录同样要检查跨平台路径冲突，避免覆盖未选中的文件。
-            const paths = new Map();
-            for (const entry of entries) {
-                const parts = entry.name.split('/');
-                for (let length = 1; length <= parts.length; length += 1) {
-                    const name = parts.slice(0, length).join('/');
-                    const key = name.toLowerCase();
-                    const isFile = length === parts.length;
-                    const previous = paths.get(key);
-                    if (previous && (previous.name !== name || previous.isFile || isFile)) throw failure(409, '导入文件与当前数据存在大小写或文件目录路径冲突。');
-                    paths.set(key, { name, isFile });
-                }
-            }
+            validatePortablePaths(entries, 409, '导入文件与当前数据存在大小写或文件目录路径冲突。');
             validation = await validateImportedRecords(entries);
         }
         // 所有恢复都保存固定标识，旧备份也能在后续改名后识别为同一记录。

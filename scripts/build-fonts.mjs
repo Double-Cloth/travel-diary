@@ -10,7 +10,7 @@ const subsetMode = process.argv.slice(2).includes('--subset');
 const coreOnlyMode = process.argv.slice(2).includes('--core');
 const unknownArguments = process.argv.slice(2).filter(argument => !['--subset', '--core'].includes(argument));
 const textExtensions = new Set(['.html', '.css', '.js', '.mjs', '.json', '.md']);
-const excludedDirs = new Set(['.git', '.github', '.secrets', '.codex', '.playwright-cli', 'node_modules', '_site', 'dist', 'build', 'coverage', 'tmp', 'temp']);
+const excludedDirs = new Set(['.git', '.github', '.secrets', '.cache', '.codex', '.playwright-cli', 'node_modules', '_site', 'dist', 'build', 'coverage', 'tmp', 'temp', 'output', 'test-results', 'playwright-report', 'logs', 'screenshots']);
 const commonUnicodeRanges = 'U+0000-00FF,U+2000-206F,U+3000-303F';
 
 const fontJobs = [
