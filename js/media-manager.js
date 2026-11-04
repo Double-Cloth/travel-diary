@@ -98,10 +98,10 @@ export function createMediaManager(onReferencesRemoved = async () => {}) {
     function renderFiles() {
         const filter = dialog.querySelector('[data-media-filter]').value;
         dialog.querySelector('[data-media-hint]').textContent = {
-            unused: `共 ${sizeLabel(report.unusedBytes)}。没有日记使用这些文件，请先点击缩略图或文件名查看，再决定是否清理。`,
-            missing: '日记引用了这些文件，但文件已不存在。可从备份恢复，或勾选后点击「删除所选引用」批量移除引用。'
+            unused: `以下文件没有被任何日记使用，共 ${sizeLabel(report.unusedBytes)}。`,
+            missing: '日记引用了这些文件，但文件已不存在。'
                 + (capability?.mediaReferenceRemoval ? '' : '请重启日记服务以启用删除引用。'),
-            shared: '这些文件仍被多篇日记使用，不能清理。点击下方日记可查看使用位置。',
+            shared: '这些文件仍被多篇日记使用，不能清理。',
             all: '已被日记使用的文件仅供查看；未被日记使用的文件可以勾选清理。'
         }[filter];
         const files = filteredFiles();
