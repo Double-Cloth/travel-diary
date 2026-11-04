@@ -1446,6 +1446,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-manager .media-file-list > .media-health-file { grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; }
 .media-manager .media-file-list > .media-health-file-readonly { grid-template-columns: minmax(0, 1fr); }
 .media-manager [data-media-path]:disabled { accent-color: var(--ink-soft); cursor: not-allowed; }
+.media-manager [data-media-path][data-media-unavailable="true"] { appearance: none; border: 1px solid #888; border-radius: 3px; background: linear-gradient(135deg, transparent calc(50% - 1px), #707070 calc(50% - 1px), #707070 calc(50% + 1px), transparent calc(50% + 1px)) center / 12px 12px no-repeat #e4e4e4; opacity: 1; }
 .media-manager label:has([data-media-path]:disabled) { cursor: not-allowed; }
 .media-health-file > div { min-width: 0; overflow-wrap: anywhere; }
 .media-health-file small { display: block; margin-top: 5px; }
