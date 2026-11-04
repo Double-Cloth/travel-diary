@@ -472,8 +472,7 @@ body[data-route='preface'] .paper-page {
 .preface-facts dd { margin: 6px 0 0; color: #71583e; font-size: 12px; line-height: 1.6; }
 
 .preface-tools-panel { gap: 22px; }
-.preface-tools-panel button,
-.preface-tools-panel summary { -webkit-tap-highlight-color: #a4824326; }
+.preface-tools-panel button { -webkit-tap-highlight-color: #a4824326; }
 
 .preface-tool-section {
     display: grid;
@@ -615,8 +614,7 @@ body[data-route='preface'] .paper-page {
 .preface-tool-command:active { background-color: var(--paper-200); }
 .preface-tool-command:disabled { opacity: .55; cursor: wait; }
 .preface-tool-command:focus-visible,
-.preface-text-action:focus-visible,
-.preface-reset-tools > summary:focus-visible {
+.preface-text-action:focus-visible {
     outline: 2px solid var(--stamp);
     outline-offset: 3px;
 }
@@ -625,29 +623,14 @@ body[data-route='preface'] .paper-page {
 .preface-security-row > .preface-tool-command { flex: 1; }
 .preface-security-row .password-reset-help { flex: none; margin: 0; }
 .preface-reset-tools { border-top: 1px dashed #9c7a4c66; }
-.preface-reset-tools > summary {
-    position: relative;
-    min-height: 44px;
-    padding: 13px 22px 9px 0;
+.preface-reset-tools > h4 {
+    margin: 0;
+    padding: 13px 0 9px;
     color: #793e30;
     font-size: 13px;
+    font-weight: 400;
     line-height: 1.6;
-    list-style: none;
-    cursor: pointer;
 }
-.preface-reset-tools > summary::-webkit-details-marker { display: none; }
-.preface-reset-tools > summary::after {
-    content: '';
-    position: absolute;
-    right: 5px;
-    top: 17px;
-    width: 6px;
-    height: 6px;
-    border-right: 1px solid currentColor;
-    border-bottom: 1px solid currentColor;
-    rotate: 45deg;
-}
-.preface-reset-tools[open] > summary::after { top: 20px; rotate: 225deg; }
 .preface-reset-content { display: grid; gap: 12px; padding: 4px 0 2px; }
 .preface-reset-content .paper-button { justify-self: start; font-size: 13px; min-height: 44px; }
 .preface-transfer-status { margin: 0; color: var(--stamp); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }

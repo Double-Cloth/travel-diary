@@ -1131,13 +1131,13 @@ function renderPreface() {
                     </svg>
                 </button>
             </div>
-            <details class="preface-reset-tools archive-danger-zone">
-                <summary>清空日记与资料</summary>
+            <div class="preface-reset-tools archive-danger-zone">
+                <h4>清空日记与资料</h4>
                 <div class="preface-reset-content">
                     <p>清空全部日记、附件、头像和署名，访问密码保留。原数据会存入回收站。</p>
                     <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
                 </div>
-            </details>
+            </div>
         </section>
     `, 'dossier-page context-panel preface-tools-panel');
 }
