@@ -792,6 +792,20 @@ body[data-route='preface'] .paper-page {
     box-shadow: inset 0 1px #fffced, inset 1px 0 #fff9e5, 1px 0 #76563935;
     text-shadow: 0 1px #fff7de;
 }
+.year-bookmark[data-value='all']:not(:last-child) {
+    position: relative;
+    margin-inline-end: 12px;
+}
+.year-bookmark[data-value='all']:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    inset-block: 8px;
+    inset-inline-end: -9px;
+    width: 1px;
+    background: #a78b6180;
+    box-shadow: 1px 0 #fff9e099;
+    pointer-events: none;
+}
 .year-bookmark:hover,
 .year-bookmark:focus-visible {
     color: #533623;
