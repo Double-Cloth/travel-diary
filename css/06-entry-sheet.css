@@ -1444,10 +1444,16 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-manager .custom-select-menu { min-width: 100%; }
 .media-manager .media-filter-hint { margin: 12px 0; font-size: 13px; overflow-wrap: anywhere; }
 .media-manager .media-file-list > .media-health-file { grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; }
+.media-manager .media-file-list > .media-health-file-readonly { grid-template-columns: minmax(0, 1fr); }
+.media-manager [data-media-path]:disabled { accent-color: var(--ink-soft); cursor: not-allowed; }
+.media-manager label:has([data-media-path]:disabled) { cursor: not-allowed; }
 .media-health-file > div { min-width: 0; overflow-wrap: anywhere; }
 .media-health-file small { display: block; margin-top: 5px; }
 .media-selection { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 12px; padding-top: 16px; }
-.media-selection-tools { display: flex; flex-wrap: wrap; gap: 20px; }
+.media-selection-tools { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; }
+.media-selection-tools .paper-button { font-size: 13px; border-radius: 4px; }
+.media-selection-tools .paper-button:hover:not(:disabled) { background: var(--paper-100); }
+.media-selection-tools .paper-button:active:not(:disabled) { background: var(--paper-200); }
 .media-selection > p { margin: 0; font-variant-numeric: tabular-nums; }
 .media-manager .media-selection-note { width: 100%; font-size: 12px; }
 .media-manager [data-media-record] { color: var(--stamp); text-underline-offset: 3px; }
@@ -1459,6 +1465,9 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-manager .custom-select-trigger { min-height: 44px; }
 @media (max-width: 600px) {
     .media-manager-filters { grid-template-columns: minmax(0, 1fr); }
+    .media-manager .record-transfer-card { max-height: none; }
+    .media-manager .media-files-section { flex-shrink: 0; min-height: 0; }
+    .media-manager .media-file-list { overflow-y: visible; }
 }
 @media (max-width: 760px) {
     .record-diff { margin-left: 0; }
