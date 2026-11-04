@@ -1,5 +1,7 @@
 # Travel Diary
 
+> 个人旅行日记
+
 ## 文档索引
 
 | 文档 | 内容 |
@@ -15,96 +17,85 @@
 ### 启动服务
 
 ```bash
-# 启动服务
+# 启动本机服务，默认地址为 http://localhost:9000，以终端输出为准
 npm start
-# 等价启动命令
+# 与 npm start 等价，使用相同的默认配置
 npm run serve
 
-# 指定端口与项目目录
+# 使用 8080 端口；第二条命令同时指定站点所在的项目目录
 npm start -- --port 8080
 npm start -- --dir "项目目录" --port 9000
 
-# 指定监听范围
+# 仅允许本机连接（默认）
 npm start -- --local
+# 允许局域网访问页面，远程认证和写入仍默认关闭
 npm start -- --network
 
-# HTTPS 反向代理写入
+# 配合 HTTPS 反向代理开放白名单站点写入，需先在本机设置密码
 npm start -- --local --write-mode=remote --allowed-origin=https://diary.example.com
-# 配置多个 HTTPS Origin
+# 重复指定 --allowed-origin，允许多个完整 HTTPS 来源
 npm start -- --local --write-mode=remote --allowed-origin=https://diary.example.com --allowed-origin=https://notes.example.com
 
-# 查看启动参数
+# 查看全部启动参数及用法示例
 node js/server.js --help
 ```
 
 ### 测试与资源版本
 
 ```bash
-# 运行全部测试
+# 使用 Node.js 内置测试运行器执行全部测试，无需安装测试依赖
 npm test
 
-# 同步浏览器资源版本
+# 更新浏览器资源引用的版本参数，避免修改后继续使用旧缓存
 npm run assets:version
-# 检查浏览器资源版本
+# 只检查资源版本是否同步，不修改文件
 npm run assets:version -- --check
-
-# 检查补丁格式
-git diff --check
 ```
 
 ### 认证与备份
 
 ```bash
-# 交互式重置访问密码
+# 按终端提示重置访问密码，适用于配置损坏或需要强制恢复时
 npm run auth:set
 
-# 导出完整备份
+# 导出 data/ 和认证配置，默认保存到 dist/travel-diary-data.zip
 npm run data:archive
-# 指定备份输出路径
+# 自定义备份 ZIP 的输出路径，备份内含认证配置，请妥善保管
 npm run data:archive -- dist/travel-diary-backup.zip
 ```
 
 ### 媒体预览与缓存
 
 ```bash
-# 批量生成媒体预览
+# 调用本机 Edge / Chrome 批量生成图片和视频缩略图，跳过有效缓存
 npm run media:previews
-# 指定项目目录与浏览器
+# 为指定项目生成预览，并手动指定浏览器可执行文件
 npm run media:previews -- --dir "项目目录" --browser "浏览器可执行文件路径"
-# 查看预览命令参数
+# 查看批量预览命令的可用参数和用法
 npm run media:previews -- --help
 
-# 清理项目缓存
+# 清理 .cache/ 中的缓存，保留回收站；缩略图可在下次浏览时重建
 npm run cache:clear
-# 指定项目目录
+# 清理指定项目目录下的缓存，保留规则与默认命令相同
 npm run cache:clear -- --dir "项目目录"
-# 查看缓存命令参数
+# 查看缓存清理命令的可用参数和用法
 npm run cache:clear -- --help
 ```
 
 ### 字体与地点目录
 
 ```bash
-# 安装字体工具
+# 安装字体生成所需的 Python 工具，普通启动服务无需安装
 pip install "fonttools[woff]"
-# 生成完整字体和轻量字集
+# 生成完整 WOFF2 字体，并按界面与个人内容生成轻量字集
 npm run fonts
-# 刷新轻量字集
+# 仅刷新轻量字集，适合更新文字后运行，无需重新压缩完整字体
 npm run fonts:core
-# 生成字体子集
+# 将完整字体替换为当前项目文字的子集，后续新增文字可能缺字
 npm run fonts:subset
 
-# 生成国家目录
+# 从脚本指定版本的数据源生成国家目录，需联网获取数据
 npm run countries
-# 生成中国省市区目录
+# 从脚本指定版本的数据源生成中国省市区目录，需联网获取数据
 npm run china-locations
-```
-
-### 发布媒体
-
-```bash
-# 将指定照片加入 Git 暂存区
-git add -f data/photos/suzhou/canal.jpg
-# 将指定视频加入 Git 暂存区
-git add -f data/videos/suzhou/walk.mp4
 ```
