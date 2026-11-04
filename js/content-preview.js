@@ -1,7 +1,7 @@
-import { escapeHtml } from './utils.js?v=2.1.34';
-import { parseMarkdown } from './data.js?v=2.1.34';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.34';
-import { createMediaPreview } from './media-preview.mjs?v=2.1.34';
+import { escapeHtml } from './utils.js?v=2.1.35';
+import { parseMarkdown } from './data.js?v=2.1.35';
+import { createMediaFileLink } from './media-file-link.js?v=2.1.35';
+import { createMediaPreview } from './media-preview.mjs?v=2.1.35';
 import { sourceOf, readSourceText } from './zip-stream.mjs';
 
 export function markdownPreview(source) {
@@ -81,9 +81,11 @@ export function createContentPreviewScope() {
             entry.className = 'content-file-preview';
             const summary = document.createElement(collapsible ? 'summary' : 'p');
             if (!collapsible) summary.className = 'content-file-heading';
-            summary.textContent = `${name.split('/').pop()}${detail ? ` · ${detail}` : ''}`;
+            const label = document.createElement('span');
+            label.textContent = `${name.split('/').pop()}${detail ? ` · ${detail}` : ''}`;
+            summary.append(label);
             entry.append(summary);
-            if (!/\.(md|json|txt)$/i.test(name)) { summary.textContent += ' · 暂不支持预览'; return entry; }
+            if (!/\.(md|json|txt)$/i.test(name)) { label.textContent += ' · 暂不支持预览'; return entry; }
             let loaded = false;
             const load = async () => {
                 if ((collapsible && !entry.open) || loaded) return;

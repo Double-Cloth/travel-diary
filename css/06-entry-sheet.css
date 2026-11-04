@@ -1297,7 +1297,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .management-search > button { flex-shrink: 0; }
 .management-dialog .management-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; padding-top: 16px; border-top: 1px solid var(--hairline); }
 .management-dialog .management-footer > p { margin: 0; font-size: 13px; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-.management-dialog .record-transfer-list, .management-dialog .recycle-list { flex-shrink: 1; min-height: 80px; max-height: none; overflow-y: auto; overscroll-behavior: contain; margin-bottom: 0; }
+.management-dialog .record-transfer-list { flex-shrink: 1; min-height: 80px; max-height: none; overflow-y: auto; overscroll-behavior: contain; margin-bottom: 0; }
 .management-dialog .media-files-section { display: flex; flex-direction: column; flex-shrink: 1; min-height: 160px; }
 .management-dialog .media-files-section > * { flex-shrink: 0; }
 .management-dialog .media-files-section > .record-transfer-list { flex-shrink: 1; }
@@ -1380,55 +1380,70 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .content-record-list strong { color: var(--ink); font-size: 15px; }
 .content-record-list small { color: var(--ink-soft); font-size: 12px; }
 .content-file-body > pre { max-height: 320px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; font-size: 13px; padding: 12px; margin: 0; background: rgba(142, 102, 52, 0.06); }
+.recycle-manager.entry-sheet { width: min(760px, calc(100vw - 24px)); scrollbar-gutter: stable; }
+/* 回收内容、正文和差异随整张纸面滚动，避免在展开区内叠加滚动条。 */
+.recycle-manager .record-transfer-card { display: block; max-height: none; padding: 24px 28px; }
+.recycle-manager .management-heading { align-items: center; margin-bottom: 16px; }
 .recycle-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding-bottom: 16px; }
 .recycle-toolbar-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
 .recycle-toolbar p { margin: 0; font-size: 13px; font-variant-numeric: tabular-nums; }
 .recycle-filter-bar { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 16px; padding-block: 16px; border-block: 1px solid var(--hairline); }
 .recycle-search-field { flex: 1 1 240px; min-width: 0; }
 .recycle-search-field > .field-label { display: block; margin-bottom: 8px; }
-.recycle-manager .media-selection-tools { gap: 8px; margin: 0; padding: 0; }
+.recycle-manager .media-selection-tools { align-items: stretch; gap: 8px; margin: 0; padding: 0; }
 .recycle-list { list-style: none; padding: 0; margin: 0; }
-.recycle-list > li { padding: 16px 12px; border-bottom: 1px solid var(--hairline); overflow-wrap: anywhere; }
+.recycle-list > li { padding: 20px 12px; border-bottom: 1px solid var(--hairline); overflow-wrap: anywhere; }
 .recycle-list > li.is-selected { background: var(--paper-100); }
-.recycle-item-choice { display: flex; align-items: start; gap: 12px; min-height: 60px; padding-block: 4px 8px; cursor: pointer; }
-.recycle-item-choice input { flex: 0 0 auto; width: 18px; height: 18px; margin: 5px 0 0; accent-color: var(--stamp); }
-.recycle-item-choice > span { display: grid; flex: 1; gap: 4px; min-width: 0; }
-.recycle-item-choice strong { color: var(--ink); font-size: 16px; font-weight: 600; }
-.recycle-item-choice small { color: var(--ink-soft); font-size: 12px; line-height: 1.8; }
-.recycle-item-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 16px; font-variant-numeric: tabular-nums; }
-.recycle-item-body { min-width: 0; margin-left: 30px; }
+.recycle-item-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 0 12px; }
+.recycle-item-choice { display: flex; min-width: 0; align-items: start; gap: 12px; min-height: 44px; padding: 8px 0; cursor: pointer; }
+.recycle-item-choice input { flex: 0 0 auto; width: 18px; height: 18px; margin: 4px 0 0; accent-color: var(--stamp); }
+.recycle-item-choice strong { min-width: 0; color: var(--ink); font-size: 16px; font-weight: 600; line-height: 1.6; }
+.recycle-item-meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 4px 12px; margin-left: 30px; color: var(--ink-soft); font-size: 12px; line-height: 1.6; font-variant-numeric: tabular-nums; }
+.recycle-item-meta > * { white-space: nowrap; }
+.recycle-manager .recycle-item-toggle { min-width: 44px; min-height: 44px; margin: 0; padding: 8px 0; font-size: 13px; }
+.recycle-item-body { min-width: 0; margin: 16px 0 0 30px; }
 .recycle-item-choice:has(input:disabled) { cursor: not-allowed; }
 .recycle-item-choice input:focus-visible { outline: 2px solid var(--stamp); outline-offset: 4px; }
-.recycle-manager .recycle-selection { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; margin-top: 12px; }
-.recycle-selection-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.recycle-manager .recycle-selection { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; margin-top: 0; padding-top: 20px; border-top: 0; }
+.recycle-selection-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 8px; }
 .recycle-manager .recycle-selection-note { grid-column: 1 / -1; font-size: 12px; }
 .recycle-manager .recycle-preview-status { padding: 10px 0; color: var(--stamp); }
-.recycle-manager .recycle-preview-path { margin-top: 16px; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
+.recycle-manager .recycle-preview-path { margin: 16px 0 8px; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
 .recycle-restore-preview { border-top: 1px solid var(--hairline); }
 .recycle-list .recycle-restore-preview > summary { color: var(--stamp); font-weight: 600; }
-.recycle-preview-body { min-width: 0; padding: 12px; border-top: 1px dashed var(--hairline); background: var(--paper-50); }
-.recycle-list p { margin: 4px 0 12px; font-size: 13px; }
+.recycle-preview-body { min-width: 0; padding: 12px 0 0; border-top: 1px dashed var(--hairline); }
+.recycle-list p { margin: 0 0 12px; font-size: 13px; }
 .recycle-list .recycle-restore-note { font-size: 12px; }
 .recycle-list details { margin: 0; font-size: 12px; line-height: 1.8; }
-.recycle-list summary { cursor: pointer; display: list-item; min-height: 44px; align-content: center; color: var(--ink); }
+.recycle-list summary { cursor: pointer; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 0; color: var(--ink); list-style: none; }
+.recycle-list summary::-webkit-details-marker { display: none; }
+.recycle-list summary::before { content: ''; flex: 0 0 6px; width: 6px; height: 6px; margin-inline: 2px 4px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
+.recycle-list details[open] > summary::before { transform: rotate(45deg); }
+.recycle-list summary > span { flex: 1; min-width: 0; }
+.recycle-list .content-file-preview > summary { padding-inline: 0; }
 .recycle-list .recycle-attachments[open] > summary { border-bottom: 1px dashed var(--hairline); }
-.recycle-list .recycle-contents .content-preview-list { margin-block: 8px 16px; }
-.recycle-list .content-file-heading { padding-block: 8px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.recycle-list .recycle-contents .content-preview-list { margin: 0; }
+.recycle-list .content-file-heading { margin: 0 0 8px; padding: 0; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
 .recycle-preview-path a { color: var(--stamp); text-decoration: underline; text-underline-offset: 3px; }
 .recycle-preview-path a:focus-visible, .recycle-contents li:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
 .recycle-list .record-diff { margin: 0 0 12px; }
+.recycle-list section.record-diff > .record-diff-body { padding: 0; border-top: 0; }
 .recycle-list .record-diff-section > h3 { font-size: 15px; }
-.recycle-list .content-preview-list { max-height: 440px; overflow: auto; padding: 0; overscroll-behavior: contain; }
+.recycle-list .content-preview-list, .recycle-list .content-preview-markdown, .recycle-list .content-file-body > pre, .recycle-list .record-diff pre { max-height: none; overflow: visible; }
+.recycle-list .content-preview-markdown { padding: 12px 0; }
+.recycle-list .content-preview-list > li { padding: 12px 0; border-bottom: 0; }
+.recycle-list .content-preview-list > li + li { border-top: 1px dashed var(--hairline); }
+.recycle-list .content-preview-list > li:first-child { padding-top: 0; }
+.recycle-list .content-preview-list > li:last-child { padding-bottom: 0; }
 .content-preview-list > li { grid-template-columns: minmax(0, 1fr); }
 .recycle-list .content-file-preview { margin: 0; }
 .recycle-list .recycle-record-info { color: var(--ink); }
-.recycle-target { margin: 12px 0; }
+.recycle-target { display: grid; gap: 8px; margin: 16px 0; padding-top: 16px; border-top: 1px solid var(--hairline); }
 .recycle-target .custom-select { width: 100%; }
-.recycle-target > p { margin-top: 8px; }
-.recycle-manager.entry-sheet { width: min(760px, calc(100vw - 24px)); }
+.recycle-target > p { margin: 0; }
 .recycle-manager summary { -webkit-tap-highlight-color: rgba(145, 66, 44, 0.12); }
 .recycle-list details small { color: var(--ink-soft); }
-.recycle-manager .paper-button { width: auto; min-width: 44px; min-height: 44px; padding: 8px 14px; font: inherit; font-size: 14px; }
+.recycle-manager .paper-button { width: auto; min-width: 44px; min-height: 44px; padding: 8px 14px; font: inherit; font-size: 14px; line-height: 1.5; }
 .recycle-manager .recycle-purge { color: var(--stamp); border-color: rgba(145, 66, 44, 0.4); background: transparent; box-shadow: none; }
 .recycle-manager .recycle-purge:hover:not(:disabled) { background: rgba(145, 66, 44, 0.06); }
 .recycle-manager .paper-button:disabled { cursor: not-allowed; transform: none; }
@@ -1437,16 +1452,17 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-manager [data-recycle-error] { color: var(--stamp); }
 .recycle-manager [data-recycle-error]:empty, .recycle-notice:empty { display: none; }
 @media (max-width: 480px) {
+    .recycle-manager .record-transfer-card { padding: 20px 16px; }
     .recycle-toolbar-actions { margin-left: 0; }
     .recycle-toolbar { gap: 8px; }
     .recycle-toolbar > p { width: 100%; }
-    .recycle-filter-bar { gap: 8px; padding-block: 12px; }
+    .recycle-filter-bar { gap: 12px; padding-block: 12px; }
     .recycle-search-field { flex-basis: 100%; }
     .recycle-manager .recycle-selection { grid-template-columns: minmax(0, 1fr); }
-    .recycle-selection-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .recycle-manager .recycle-selection-actions > button { padding-inline: 8px; font-size: 13px; }
-    .recycle-list > li { padding: 16px 8px; }
-    .recycle-preview-body { padding: 8px; }
+    .recycle-list > li { padding: 16px 4px; }
+    .recycle-item-meta time { flex-basis: 100%; }
+    .recycle-item-body { margin-left: 0; }
     .management-heading { gap: 12px; }
 }
 @media (max-width: 760px) {
@@ -1514,7 +1530,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 }
 @media (max-height: 650px) {
     .management-dialog .record-transfer-card { max-height: none; }
-    .management-dialog .record-transfer-list, .management-dialog .recycle-list { max-height: 42dvh; }
+    .management-dialog .record-transfer-list { max-height: 42dvh; }
     .management-dialog .management-footer { position: sticky; bottom: calc(-1 * clamp(20px, 5vw, 36px)); margin-bottom: calc(-1 * clamp(20px, 5vw, 36px)); padding-bottom: clamp(20px, 5vw, 36px); background: var(--paper-50); }
     .recycle-manager .recycle-selection { position: static; margin-bottom: 0; padding-bottom: 0; }
 }
@@ -1962,20 +1978,3 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
 }
 
 .media-batch-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-
-/* 回收站沿用部分备份的差异视图，取消复选框预留缩进。 */
-.recycle-list .record-diff { margin-left: 0; }
-.recycle-list .record-diff > summary { display: flex; }
-
-@media (min-width: 600px) and (max-height: 650px) {
-    .recycle-manager .record-transfer-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto auto minmax(60px, 1fr) auto; grid-template-areas: "heading toolbar" "filters filters" "notice notice" "error error" "list list" "footer footer"; gap: 4px 16px; height: calc(100dvh - 34px); max-height: calc(100dvh - 34px); padding: 12px 24px; }
-    .recycle-manager .management-heading { grid-area: heading; align-items: center; margin: 0; }
-    .recycle-manager .management-heading h2 { margin: 0; font-size: 22px; }
-    .recycle-manager .management-heading p, .recycle-manager label[for="recycleSearch"], .recycle-manager [data-recycle-status], .recycle-manager [data-recycle-selection-issue="false"] { display: none; }
-    .recycle-manager .recycle-filter-bar { grid-area: filters; padding-block: 8px; }
-    .recycle-manager .recycle-toolbar { grid-area: toolbar; margin: 0; padding: 0; border: 0; }
-    .recycle-manager .recycle-notice { grid-area: notice; margin: 0; }
-    .recycle-manager [data-recycle-error] { grid-area: error; margin: 0; }
-    .recycle-manager .recycle-list { grid-area: list; min-height: 60px; max-height: none; }
-    .recycle-manager .recycle-selection { grid-area: footer; position: static; margin: 0; padding: 8px 0 0; gap: 8px; background: transparent; }
-}
