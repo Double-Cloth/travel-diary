@@ -6,7 +6,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { createAuthConfig, replaceAuthConfig, validateAuthConfig, validatePassword, verifyBackupAccess, verifyPassword } = require('../js/auth.js');
+const { createAuthConfig, readAuthConfig, replaceAuthConfig, validateAuthConfig, validatePassword, verifyBackupAccess, verifyPassword } = require('../js/auth.js');
 const { writeAuthConfig } = require('../scripts/set-auth-password.js');
 
 test('六位数字密码使用带随机盐的 scrypt 哈希且不保存明文', async () => {
@@ -70,12 +70,19 @@ test('密码策略只接受非弱组合的六位数字', () => {
     }
 });
 
-test('仓库不发布明文密码，跟踪的哈希配置可用于 remote 模式', async () => {
+test('仓库不发布明文密码', async () => {
     await assert.rejects(access(new URL('../data/password.json', import.meta.url)));
-    const config = JSON.parse(await readFile(new URL('../.secrets/auth.json', import.meta.url), 'utf8'));
+});
+
+test('本机生成的哈希配置可用于 remote 模式，旧策略配置被拒绝', async t => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'travel-diary-password-remote-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    await writeAuthConfig(root, await createAuthConfig('483920'));
+    const config = await readAuthConfig(root, { requireProduction: true });
     assert.equal('password' in config, false);
-    assert.equal(validateAuthConfig(config, { requireProduction: true }).productionReady, true);
+    assert.equal(config.productionReady, true);
     const legacy = await createAuthConfig('483920');
     delete legacy.policy.commonPatternsRejected;
-    assert.throws(() => validateAuthConfig(legacy, { requireProduction: true }), { code: 'AUTH_NOT_PRODUCTION_READY' });
+    await writeAuthConfig(root, legacy);
+    await assert.rejects(readAuthConfig(root, { requireProduction: true }), { code: 'AUTH_NOT_PRODUCTION_READY' });
 });
