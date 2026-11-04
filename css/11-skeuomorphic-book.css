@@ -24,14 +24,13 @@
     clip-path: inset(0 round var(--book-left-radius));
 }
 .page-spread::after {
-    /* 右侧纹理只占滚动槽外侧留白，避免覆盖滑块。 */
-    border-image-width: 12px 2px 12px 0;
+    border-image-width: 12px 12px 12px 0;
     clip-path: inset(0 round var(--book-right-radius));
 }
 
 /* 边框绘在副本的外框上，不随正文滚动，也不被滚动条槽挤向页内。 */
 .paper-page-left.book-page-copy { border-image-width: 12px 0 12px 12px; }
-.paper-page-right.book-page-copy { border-image-width: 12px 2px 12px 0; }
+.paper-page-right.book-page-copy { border-image-width: 12px 12px 12px 0; }
 
 @media (max-width: 760px) {
     /* 整张单列纸面只绘一圈，详情摘要和正文之间不重复起边。 */
