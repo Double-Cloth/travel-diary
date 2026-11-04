@@ -17,7 +17,7 @@
 ### 启动服务
 
 ```bash
-# 启动本机服务，默认地址为 http://localhost:9000，以终端输出为准
+# 启动本机服务，默认地址为 http://localhost:9000，实际以终端输出为准
 npm start
 # 与 npm start 等价，使用相同的默认配置
 npm run serve
