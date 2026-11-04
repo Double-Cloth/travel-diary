@@ -549,3 +549,132 @@ test('单栏正文差异保留空行计数，空正文不产生虚假的删除�
         assert.deepEqual(result, after ? after.split('\n') : []);
     }
 });
+
+async function selectedRestore(root, selections, revision) {
+    return manageRecycleBin(root, { action: 'restore-selected', selections, revision: revision ?? (await readRecycleBin(root)).revision });
+}
+async function selectionsFor(root, ids) {
+    const selections = [];
+    for (const id of ids) selections.push({ id, previewToken: (await preview(root, id)).previewToken });
+    return selections;
+}
+
+test('选择恢复一次合并多份同篇附件，保留后续日记内容且留存恢复前版本', async t => {
+    const root = await fixture(t);
+    const names = ['data/photos/trip/unique.png', 'data/photos/trip/second.png'];
+    await write(root, names[1], 'second');
+    const saved = { ...note, photos: ['shared.png', 'unique.png', 'second.png'] };
+    const ids = [];
+    for (const name of names) {
+        ids.push(await captureRecycle(root, { title: name, mediaReferences: [saved], files: [{ path: name }] }));
+        await fs.unlink(path.join(root, name));
+    }
+    await write(root, 'data/travel_data.json', JSON.stringify([{ ...note, locality: '后续地点', photos: ['shared.png'] }, other]));
+    const result = await selectedRestore(root, await selectionsFor(root, ids));
+    const restored = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')))[0];
+    assert.deepEqual(restored.photos, saved.photos);
+    assert.equal(restored.locality, '后续地点');
+    for (const name of names) assert.ok((await fs.stat(path.join(root, name))).isFile());
+    assert.equal(result.items.length, 1);
+    assert.equal(result.items[0].title, '恢复前的文件');
+    assert.ok(result.items[0].files.some(file => file.path === 'data/travel_data.json'));
+});
+
+test('选择恢复先校验全部令牌，缺失、重复、过期或目标变更均不写入', async t => {
+    const root = await fixture(t);
+    const ids = [];
+    for (const name of [note.desc_md, other.desc_md]) {
+        ids.push(await captureRecycle(root, { kind: 'version', title: name, files: [{ path: name }] }));
+        await write(root, name, '# 当前正文');
+    }
+    const selections = await selectionsFor(root, ids);
+    for (const invalid of [[], [selections[0], selections[0]], [selections[0], { id: ids[1] }], [selections[0], { ...selections[1], previewToken: 'bad' }], [selections[0], { ...selections[1], targetDescMd: note.desc_md }]]) {
+        await assert.rejects(selectedRestore(root, invalid), /选择|预览/);
+        assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 当前正文');
+        assert.deepEqual(new Set((await readRecycleBin(root)).items.map(item => item.id)), new Set(ids));
+    }
+    await write(root, 'data/profile/owner-name.txt', '预览后的变化');
+    await assert.rejects(selectedRestore(root, selections), /预览后内容已变化/);
+    assert.equal(await fs.readFile(path.join(root, other.desc_md), 'utf8'), '# 当前正文');
+});
+
+test('所选文件版本冲突或整站混选在写入前拒绝，整站单选仍可恢复', async t => {
+    const root = await fixture(t);
+    const first = await captureRecycle(root, { kind: 'version', title: '版本一', files: [{ path: note.desc_md }] });
+    await write(root, note.desc_md, '# 版本二');
+    const second = await captureRecycle(root, { kind: 'version', title: '版本二', files: [{ path: note.desc_md }] });
+    await write(root, note.desc_md, '# 当前正文');
+    await assert.rejects(selectedRestore(root, await selectionsFor(root, [first, second])), /同一文件的不同版本/);
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 当前正文');
+    const snapshot = await captureRecycle(root, { kind: 'snapshot', title: '整站备份' });
+    await write(root, note.desc_md, '# 之后修改');
+    await assert.rejects(selectedRestore(root, await selectionsFor(root, [first, snapshot])), /需要单独恢复/);
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 之后修改');
+    await selectedRestore(root, await selectionsFor(root, [snapshot]));
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 当前正文');
+});
+
+test('同篇日记的完整记录与附件混选被拒绝，不互相覆盖', async t => {
+    const root = await fixture(t);
+    const record = await captureRecycle(root, { kind: 'record', title: '整篇日记', records: [note], files: [{ path: note.desc_md }] });
+    const media = await captureRecycle(root, { title: '附件', mediaReferences: [note], files: [{ path: 'data/photos/trip/unique.png' }] });
+    await assert.rejects(selectedRestore(root, await selectionsFor(root, [record, media])), /同一篇日记/);
+    assert.equal((await readRecycleBin(root)).items.length, 2);
+});
+
+test('选择恢复提交失败时整批撤回文件与索引，保留全部原回收项目', async t => {
+    const root = await fixture(t);
+    const ids = [];
+    for (const name of [note.desc_md, 'data/photos/trip/unique.png']) {
+        ids.push(await captureRecycle(root, { title: name, mediaReferences: name.endsWith('.png') ? [note] : [], files: [{ path: name }] }));
+        await write(root, name, '当前文件');
+    }
+    await write(root, 'data/travel_data.json', JSON.stringify([{ ...note, photos: ['shared.png'] }, other]));
+    const before = await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8');
+    const selections = await selectionsFor(root, ids);
+    const writeFile = fs.writeFile;
+    const mocked = t.mock.method(fs, 'writeFile', async (target, ...args) => {
+        if (target === path.join(root, 'data/travel_data.json')) throw new Error('模拟整批索引提交失败');
+        return writeFile(target, ...args);
+    });
+    try { await assert.rejects(selectedRestore(root, selections), /索引提交失败/); }
+    finally { mocked.mock.restore(); }
+    for (const name of [note.desc_md, 'data/photos/trip/unique.png']) assert.equal(await fs.readFile(path.join(root, name), 'utf8'), '当前文件');
+    assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), before);
+    assert.deepEqual(new Set((await readRecycleBin(root)).items.map(item => item.id)), new Set(ids));
+});
+
+test('选择恢复 API 要求会话与写入令牌，并一次恢复全部已预览项目', async t => {
+    const root = await fixture(t);
+    const { base, headers } = await api(t, root);
+    const capability = await (await fetch(`${base}/api/travel-records`, { headers })).json();
+    assert.equal(capability.recycleSelection, true);
+    const ids = [];
+    for (const name of [note.desc_md, other.desc_md]) {
+        ids.push(await captureRecycle(root, { kind: 'version', title: name, files: [{ path: name }] }));
+        await write(root, name, '# 当前正文');
+    }
+    const body = JSON.stringify({ action: 'restore-selected', selections: await selectionsFor(root, ids), revision: (await readRecycleBin(root)).revision });
+    const url = `${base}/api/travel-data?mode=recycle-bin`;
+    assert.equal((await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })).status, 401);
+    assert.equal((await fetch(url, { method: 'POST', headers: { ...headers, 'X-Travel-Token': '' }, body })).status, 403);
+    const response = await fetch(url, { method: 'POST', headers, body });
+    assert.equal(response.status, 200);
+    assert.ok((await response.json()).items.every(item => !ids.includes(item.id)));
+    assert.equal(await fs.readFile(path.join(root, other.desc_md), 'utf8'), '# 另一篇');
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 标题\n\n原正文');
+});
+
+test('选择恢复补回多篇删除日记，重复的相同文件仅写入一次', async t => {
+    const root = await fixture(t);
+    const shared = 'data/photos/trip/shared.png';
+    const ids = [];
+    for (const record of [note, other]) ids.push(await captureRecycle(root, { kind: 'record', title: record.desc_md, records: [record], files: [{ path: record.desc_md }, { path: shared }] }));
+    await write(root, 'data/travel_data.json', '[]');
+    for (const name of [note.desc_md, other.desc_md, shared]) await fs.unlink(path.join(root, name));
+    const result = await selectedRestore(root, await selectionsFor(root, ids));
+    const restored = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
+    assert.deepEqual(restored.map(record => record.desc_md), [note.desc_md, other.desc_md]);
+    assert.equal(await fs.readFile(path.join(root, shared), 'utf8'), 'shared');
+    assert.ok(result.items.every(item => !ids.includes(item.id)));
+});

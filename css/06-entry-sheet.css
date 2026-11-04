@@ -1386,6 +1386,24 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-item-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; margin-top: 16px; }
 .recycle-list { list-style: none; padding: 0; margin: 0; }
 .recycle-list > li { padding: 22px 0; border-bottom: 1px solid var(--hairline); overflow-wrap: anywhere; }
+.recycle-list > li.is-selected { background: var(--paper-100); }
+.recycle-item-choice { display: flex; align-items: start; gap: 12px; min-height: 60px; padding: 10px 8px; cursor: pointer; }
+.recycle-item-choice input { flex: 0 0 auto; width: 18px; height: 18px; margin: 5px 0 0; accent-color: var(--stamp); }
+.recycle-item-choice > span { display: grid; gap: 4px; min-width: 0; }
+.recycle-item-choice strong { color: var(--ink); font-size: 18px; font-weight: 600; }
+.recycle-item-choice small { color: var(--ink-soft); font-size: 13px; }
+.recycle-item-choice:has(input:disabled) { cursor: not-allowed; }
+.recycle-item-choice input:focus-visible { outline: 2px solid var(--stamp); outline-offset: 4px; }
+.recycle-manager .media-selection-tools { padding-top: 12px; padding-bottom: 8px; }
+.recycle-manager .recycle-list > li { padding: 14px 8px; }
+.recycle-manager .recycle-item-actions { justify-content: flex-end; margin-top: 4px; }
+.recycle-manager .recycle-toolbar { margin-top: 12px; }
+.recycle-manager .recycle-selection { margin-top: 12px; }
+.recycle-manager .recycle-selection-note { width: 100%; font-size: 12px; }
+.recycle-manager .recycle-preview-status { padding: 10px 0; color: var(--stamp); }
+.recycle-manager .recycle-preview-path { color: var(--ink); font-size: 12px; overflow-wrap: anywhere; }
+.recycle-restore-preview > summary { font-weight: 600; }
+.recycle-preview-body { min-width: 0; padding: 0 8px; }
 .recycle-item-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; color: var(--ink-soft); font-size: 12px; }
 .recycle-kind { font-size: 12px; color: var(--stamp); }
 .recycle-list h3 { margin: 10px 0 4px; font-size: 18px; }
@@ -1932,3 +1950,17 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
 /* 回收站沿用部分备份的差异视图，取消复选框预留缩进。 */
 .recycle-list .record-diff { margin-left: 0; }
 .recycle-list .record-diff > summary { display: flex; }
+
+@media (min-width: 761px) and (max-height: 650px) {
+    .recycle-manager .record-transfer-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto auto auto auto minmax(60px, 1fr) auto; grid-template-areas: "heading heading" "search toolbar" "tools tools" "notice notice" "error error" "list list" "footer footer"; gap: 4px 16px; height: calc(100dvh - 34px); max-height: calc(100dvh - 34px); padding: 12px 24px; }
+    .recycle-manager .management-heading { grid-area: heading; align-items: center; margin: 0; }
+    .recycle-manager .management-heading h2 { margin: 0; font-size: 22px; }
+    .recycle-manager .management-heading p, .recycle-manager label[for="recycleSearch"], .recycle-manager [data-recycle-status], .recycle-manager [data-recycle-selection-issue="false"] { display: none; }
+    .recycle-manager .management-search { grid-area: search; }
+    .recycle-manager .recycle-toolbar { grid-area: toolbar; margin: 0; padding: 0; border: 0; }
+    .recycle-manager .media-selection-tools { grid-area: tools; margin: 0; padding: 0; }
+    .recycle-manager .recycle-notice { grid-area: notice; margin: 0; }
+    .recycle-manager [data-recycle-error] { grid-area: error; margin: 0; }
+    .recycle-manager .recycle-list { grid-area: list; min-height: 60px; max-height: none; }
+    .recycle-manager .recycle-selection { grid-area: footer; position: static; margin: 0; padding: 8px 0 0; gap: 8px; background: transparent; }
+}

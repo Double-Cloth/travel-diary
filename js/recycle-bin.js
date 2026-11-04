@@ -130,8 +130,8 @@ async function recycleFile(root, id, name) {
     return ordinaryPath(root, `${BASE}/${id}/${name}`);
 }
 
-async function restoredRecords(root, item, targetDescMd, replace = false) {
-    const current = await readRecords(root);
+async function restoredRecords(root, item, targetDescMd, replace = false, records) {
+    const current = records || await readRecords(root);
     const { matchRecord } = await import('./record-identity.mjs');
     for (const record of item.records) if (!replace && matchRecord(record, current)) throw failure('这篇日记已存在，请先处理当前记录再恢复，未覆盖任何内容。');
     const next = current.map(record => ({ ...record }));
@@ -211,7 +211,7 @@ async function restoreFiles(root, item, targetDescMd) {
     finally { if (temporary) await fs.unlink(temporary).catch(() => {}); }
 }
 
-async function restoreVersion(root, item, records) {
+async function restoreVersion(root, item, records, sources = new Map()) {
     // 将附件与索引放在同一回滚范围，任何一步失败都还原当前文件。
     const incoming = [...item.files];
     if (records) {
@@ -236,7 +236,7 @@ async function restoreVersion(root, item, records) {
         }
         for (const file of incoming) {
             if (file.content !== undefined) await fs.writeFile(path.join(root, file.path), file.content, { flag: 'wx' });
-            else await fs.copyFile(await ordinaryPath(root, `${BASE}/${item.id}/${file.path}`), path.join(root, file.path), fs.constants.COPYFILE_EXCL);
+            else await fs.copyFile(await ordinaryPath(root, sources.get(file.path) || `${BASE}/${item.id}/${file.path}`), path.join(root, file.path), fs.constants.COPYFILE_EXCL);
             created.push(path.join(root, file.path));
         }
     } catch (error) {
@@ -349,11 +349,57 @@ async function previewRestore(root, item, targetDescMd, revision) {
     } })), savedPaths: item.files.map(file => file.path) };
 }
 
+// 全部预览先通过校验，再将文件与合并后的目录放进同一个回滚范围。
+async function restoreSelected(root, report, selections) {
+    if (!Array.isArray(selections) || !selections.length || selections.length > report.items.length
+        || new Set(selections.map(selection => selection?.id)).size !== selections.length) throw failure('请选择有效且不重复的回收项目。');
+    const plans = [];
+    for (const selection of selections) {
+        const item = report.items.find(item => item.id === selection?.id);
+        if (!item || !selection.previewToken) throw failure('所选项目缺少恢复预览，请刷新后重新选择。');
+        if (await restoreToken(root, item, selection.targetDescMd, report.revision) !== selection.previewToken) throw failure('预览后内容已变化，请重新预览再恢复，未覆盖任何内容。');
+        plans.push({ item, targetDescMd: selection.targetDescMd });
+    }
+    if (plans.length === 1 && (plans[0].item.kind === 'snapshot' || plans[0].item.kind === 'version')) {
+        const { item } = plans[0];
+        if (item.kind === 'snapshot') await restoreSnapshot(root, item);
+        else await restoreVersion(root, item);
+    } else {
+        if (plans.some(({ item }) => item.kind === 'snapshot' || item.files.some(file => file.path === 'data/travel_data.json'))) throw failure('整站数据或包含日记目录的旧版本需要单独恢复，请调整选择。');
+        const { matchRecord } = await import('./record-identity.mjs');
+        const current = await readRecords(root);
+        let next = current;
+        const files = new Map();
+        const owners = [];
+        for (const { item, targetDescMd } of plans) {
+            const references = targetDescMd ? current.filter(record => record.desc_md === targetDescMd) : item.mediaReferences || [];
+            for (const record of [...item.records, ...references]) {
+                const full = item.records.includes(record);
+                if (owners.some(owner => matchRecord(record, [owner.record]) && (full || owner.full))) throw failure('所选项目包含同一篇日记的不同恢复内容，请分别恢复。');
+                owners.push({ record, full });
+            }
+            for (const file of item.files) {
+                const source = `${BASE}/${item.id}/${file.path}`;
+                const key = file.path.toLowerCase();
+                const previous = files.get(key);
+                if (previous && (previous.path !== file.path || await fileDigest(await ordinaryPath(root, previous.source)) !== await fileDigest(await ordinaryPath(root, source)))) throw failure(`所选项目包含同一文件的不同版本，请分别恢复：${file.path}`);
+                files.set(key, { ...file, source });
+            }
+            if (item.kind !== 'version') ({ next } = await restoredRecords(root, item, targetDescMd, true, next));
+        }
+        await restoreVersion(root, { files: [...files.values()] }, JSON.stringify(current) === JSON.stringify(next) ? undefined : next,
+            new Map([...files.values()].map(file => [file.path, file.source])));
+    }
+    for (const { item } of plans) await discardRecycle(root, item.id);
+    return readRecycleBin(root);
+}
+
 async function manageRecycleBin(root, payload) {
     const release = await require('./data-archive.js').acquireDataLock(root);
     try {
         const report = await readRecycleBin(root);
         if (payload?.revision !== report.revision) throw failure('回收站已变化，请刷新后重试。');
+        if (payload.action === 'restore-selected') return await restoreSelected(root, report, payload.selections);
         if (payload.action === 'clear' || payload.action === 'purge') {
             const items = payload.action === 'clear' ? report.items : report.items.filter(item => item.id === payload.id);
             const { recordFilePaths } = await import('./record-backup.mjs');

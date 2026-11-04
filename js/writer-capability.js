@@ -22,6 +22,7 @@ function capabilityFrom(endpoint, result) {
         recyclePreviews: result.recyclePreviews === true,
         recycleClear: result.recycleClear === true,
         recycleDiff: result.recycleDiff === true,
+        recycleSelection: result.recycleSelection === true,
         authenticated: result.authenticated === true
     };
 }
