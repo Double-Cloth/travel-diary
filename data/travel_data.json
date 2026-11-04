@@ -41,6 +41,19 @@
     "video_folder": "data/videos/kunming",
     "videos": [
       "mmexport1720612753719.mp4"
+    ],
+    "media_order": [
+      "photo:img_20240720_230101.jpg",
+      "photo:img_20240710_100419.jpg",
+      "photo:img_20240710_160053.jpg",
+      "photo:img_20240710_100442.jpg",
+      "photo:mvimg_20240710_100826.jpg",
+      "photo:mvimg_20240710_100832.jpg",
+      "photo:mvimg_20240710_100843.jpg",
+      "photo:mvimg_20240710_101240.jpg",
+      "photo:mvimg_20240710_101258.jpg",
+      "photo:mvimg_20240710_101500.jpg",
+      "video:mmexport1720612753719.mp4"
     ]
   },
   {
@@ -65,6 +78,17 @@
       "mmexport1721300988129.jpg",
       "mmexport1721300995350.jpg",
       "mmexport1721306220405.jpg"
+    ],
+    "media_order": [
+      "photo:img_20240718_160051.jpg",
+      "photo:img_20240718_160109.jpg",
+      "photo:img_20240718_204742.jpg",
+      "photo:img_20240718_204759.jpg",
+      "photo:img_20240718_205420.jpg",
+      "photo:mmexport1721300985400.jpg",
+      "photo:mmexport1721300988129.jpg",
+      "photo:mmexport1721300995350.jpg",
+      "photo:mmexport1721306220405.jpg"
     ]
   },
   {
@@ -99,7 +123,28 @@
       "mmexport1722168216313.jpg",
       "mmexport1722169591615.jpg"
     ],
-    "video_folder": "data/videos/chuxiong"
+    "video_folder": "data/videos/chuxiong",
+    "media_order": [
+      "photo:mmexport1722183697554.jpg",
+      "photo:mmexport1722183702562.jpg",
+      "photo:img_20240729_003642.jpg",
+      "photo:img_20240729_003658.jpg",
+      "photo:mmexport1722183731666.jpg",
+      "photo:img_20240728_115042.jpg",
+      "photo:1000004183.jpg",
+      "photo:1000004245.jpg",
+      "photo:1000004249.jpg",
+      "photo:img_20240728_163706.jpg",
+      "photo:img_20240728_163707.jpg",
+      "photo:img_20240728_163709.jpg",
+      "photo:img_20240728_163715.jpg",
+      "photo:img_20240728_163717.jpg",
+      "photo:img_20240728_163717_1.jpg",
+      "photo:img_20240728_163729.jpg",
+      "photo:img_20240728_163738_6.jpg",
+      "photo:mmexport1722168216313.jpg",
+      "photo:mmexport1722169591615.jpg"
+    ]
   },
   {
     "record_id": "legacy:data/travel-diary/2024/2024-08-12-shanghai.md",
@@ -119,7 +164,14 @@
       "img_20240815_222912.jpg",
       "img_20240815_222935.jpg"
     ],
-    "video_folder": "data/videos/shanghai"
+    "video_folder": "data/videos/shanghai",
+    "media_order": [
+      "photo:img_20240813_141044.jpg",
+      "photo:img_20240813_162309.jpg",
+      "photo:img_20240814_203453.jpg",
+      "photo:img_20240815_222912.jpg",
+      "photo:img_20240815_222935.jpg"
+    ]
   },
   {
     "record_id": "legacy:data/travel-diary/2024/2024-10-04-kunming.md",
@@ -138,6 +190,13 @@
       "img_20241004_183617.jpg",
       "img_20241005_123800.jpg",
       "img_20241005_225648.jpg"
+    ],
+    "media_order": [
+      "photo:img_20241004_141039.jpg",
+      "photo:1000017565.jpg",
+      "photo:img_20241004_183617.jpg",
+      "photo:img_20241005_123800.jpg",
+      "photo:img_20241005_225648.jpg"
     ]
   },
   {
@@ -211,6 +270,64 @@
     "video_folder": "data/videos/beijing",
     "videos": [
       "vid_20241018_234934.mp4"
+    ],
+    "media_order": [
+      "photo:img_20241018_232836.jpg",
+      "photo:img_20241018_232931.jpg",
+      "video:vid_20241018_234934.mp4",
+      "photo:img_20241019_000326.jpg",
+      "photo:mmexport1729315899875.jpg",
+      "photo:mmexport1729274044706.jpg",
+      "photo:mmexport1729315887224.jpg",
+      "photo:mmexport1729315876462.jpg",
+      "photo:img_20241019_010539.jpg",
+      "photo:img_20241019_010541.jpg",
+      "photo:mmexport1729315891059.jpg",
+      "photo:mmexport1729315895399.jpg",
+      "photo:img_20241019_020219.jpg",
+      "photo:img_20241019_020221.jpg",
+      "photo:mmexport1729315946562.jpg",
+      "photo:img_20241019_034953.jpg",
+      "photo:img_20241019_111524.jpg",
+      "photo:img_20241019_120346.jpg",
+      "photo:img_20241019_123601.jpg",
+      "photo:mmexport1729324685983.jpg",
+      "photo:mmexport1729324483204.jpg",
+      "photo:mmexport1729396932942.jpg",
+      "photo:mmexport1729324588576.jpg",
+      "photo:mmexport1729324607002.jpg",
+      "photo:mmexport1729324522348.jpg",
+      "photo:img_20241019_152127.jpg",
+      "photo:img_20241020_120858.jpg",
+      "photo:img_20241019_221749.jpg",
+      "photo:img_20241019_221750.jpg",
+      "photo:img_20241019_221759.jpg",
+      "photo:img_20241019_221805.jpg",
+      "photo:img_20241019_221807.jpg",
+      "photo:img_20241019_222410.jpg",
+      "photo:img_20241020_120953.jpg",
+      "photo:img_20241020_133200.jpg",
+      "photo:img_20241020_212205.jpg",
+      "photo:mvimg_20241020_133613.jpg",
+      "photo:img_20241020_133730.jpg",
+      "photo:img_20241020_211928.jpg",
+      "photo:img_20241020_134937.jpg",
+      "photo:mmexport1729412194604.jpg",
+      "photo:img_20241020_140341.jpg",
+      "photo:img_20241020_150203.jpg",
+      "photo:img_20241020_211735.jpg",
+      "photo:img_20241020_211656.jpg",
+      "photo:img_20241020_152135.jpg",
+      "photo:img_20241020_152245.jpg",
+      "photo:img_20241020_165441.jpg",
+      "photo:img_20241020_175115.jpg",
+      "photo:img_20241020_175116.jpg",
+      "photo:img_20241020_175117.jpg",
+      "photo:mmexport1729410816743.jpg",
+      "photo:mmexport1729410824878.jpg",
+      "photo:mmexport1729412163165.jpg",
+      "photo:mmexport1729412170873.jpg",
+      "photo:wx_camera_1729406006169.jpg"
     ]
   },
   {
@@ -251,9 +368,34 @@
     "video_folder": "data/videos/nanjing",
     "videos": [
       "vid_20241102_192136.mp4"
+    ],
+    "media_order": [
+      "photo:img_20241103_091350.jpg",
+      "photo:img_20241102_110732.jpg",
+      "photo:img_20241102_115506.jpg",
+      "photo:img_20241102_115701.jpg",
+      "photo:img_20241102_120051.jpg",
+      "photo:img_20241102_120053.jpg",
+      "photo:img_20241102_120056.jpg",
+      "photo:img_20241102_120058.jpg",
+      "photo:img_20241102_124856.jpg",
+      "photo:img_20241102_142200.jpg",
+      "photo:img_20241102_142211.jpg",
+      "photo:img_20241102_142704.jpg",
+      "photo:img_20241103_091553.jpg",
+      "photo:img_20241102_162001.jpg",
+      "photo:img_20241102_181005.jpg",
+      "photo:img_20241102_191557.jpg",
+      "video:vid_20241102_192136.mp4",
+      "photo:img_20241102_195054.jpg",
+      "photo:img_20241102_200253890.jpg",
+      "photo:img_20241103_090910.jpg",
+      "photo:img_20241103_090814.jpg",
+      "photo:mmexport1730541576002.jpg"
     ]
   },
   {
+    "record_id": "legacy:data/travel-diary/2024/2024-11-03-suzhou.md",
     "date": "2024-11-03",
     "country": "中国",
     "country_code": "CN",
@@ -264,8 +406,41 @@
     "trip_id": "2024-11-jiangsu",
     "desc_md": "data/travel-diary/2024/2024-11-03-suzhou.md",
     "photo_folder": "data/photos/suzhou",
-    "photos": [],
-    "record_id": "legacy:data/travel-diary/2024/2024-11-03-suzhou.md"
+    "photos": [
+      "img_20241103_101039.jpg",
+      "img_20241103_101626.jpg",
+      "img_20241103_102149.jpg",
+      "img_20241103_102444.jpg",
+      "img_20241103_103953.jpg",
+      "img_20241103_134052.jpg",
+      "1000025886.jpg",
+      "img_20241103_134509.jpg",
+      "img_20241103_140301.jpg",
+      "img_20241103_142304.jpg",
+      "img_20241103_142312.jpg",
+      "img_20241103_201221.jpg",
+      "kimi-1730600354813.jpg"
+    ],
+    "video_folder": "data/videos/suzhou",
+    "videos": [
+      "vid_20241103_104055.mp4"
+    ],
+    "media_order": [
+      "photo:img_20241103_101039.jpg",
+      "photo:img_20241103_101626.jpg",
+      "photo:img_20241103_102149.jpg",
+      "photo:img_20241103_102444.jpg",
+      "photo:img_20241103_103953.jpg",
+      "video:vid_20241103_104055.mp4",
+      "photo:img_20241103_134052.jpg",
+      "photo:1000025886.jpg",
+      "photo:img_20241103_134509.jpg",
+      "photo:img_20241103_140301.jpg",
+      "photo:img_20241103_142304.jpg",
+      "photo:img_20241103_142312.jpg",
+      "photo:img_20241103_201221.jpg",
+      "photo:kimi-1730600354813.jpg"
+    ]
   },
   {
     "date": "2025-01-31",
