@@ -301,6 +301,54 @@ test('清空 API 要求登录和写入令牌，成功返回空回收站', async 
     assert.deepEqual((await response.json()).items, []);
 });
 
+test('清除所选内容仅删除指定批次，保留未选内容和当前数据', async t => {
+    const root = await fixture(t);
+    const current = await fs.readFile(path.join(root, 'data/travel_data.json'));
+    const ids = [];
+    for (const title of ['选中一', '保留', '选中二']) ids.push(await captureRecycle(root, { title, files: [{ path: note.desc_md }] }));
+    const report = await readRecycleBin(root);
+    const result = await manageRecycleBin(root, { action: 'purge-selected', ids: [ids[0], ids[2]], revision: report.revision });
+    assert.deepEqual(result.items.map(item => item.id), [ids[1]]);
+    assert.deepEqual(await fs.readFile(path.join(root, 'data/travel_data.json')), current);
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 标题\n\n原正文');
+    for (const id of [ids[0], ids[2]]) await assert.rejects(fs.stat(path.join(root, '.cache/recycle-bin', id)), { code: 'ENOENT' });
+    assert.equal(await fs.readFile(path.join(root, '.cache/recycle-bin', ids[1], note.desc_md), 'utf8'), '# 标题\n\n原正文');
+});
+
+test('清除所选内容在删除前拒绝无效、重复、过期选择及当前日记缺失的依赖', async t => {
+    const root = await fixture(t);
+    const first = await captureRecycle(root, { title: '可删除', files: [{ path: note.desc_md }] });
+    const protectedId = await captureRecycle(root, { title: '被引用', files: [{ path: 'data/photos/trip/unique.png' }] });
+    const report = await readRecycleBin(root);
+    for (const ids of [undefined, [], 'invalid', [first, first], [first, 'missing'], [null]]) {
+        await assert.rejects(manageRecycleBin(root, { action: 'purge-selected', ids, revision: report.revision }), /有效且不重复/);
+    }
+    await assert.rejects(manageRecycleBin(root, { action: 'purge-selected', ids: [first], revision: 'stale' }), /已变化/);
+    await fs.unlink(path.join(root, 'data/photos/trip/unique.png'));
+    await assert.rejects(manageRecycleBin(root, { action: 'purge-selected', ids: [first, protectedId], revision: report.revision }), /请先恢复/);
+    assert.deepEqual(new Set((await readRecycleBin(root)).items.map(item => item.id)), new Set([first, protectedId]));
+    for (const item of report.items) for (const file of item.files) await fs.stat(path.join(root, '.cache/recycle-bin', item.id, file.path));
+    await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
+    const result = await manageRecycleBin(root, { action: 'purge-selected', ids: [first], revision: report.revision });
+    assert.deepEqual(result.items.map(item => item.id), [protectedId]);
+});
+
+test('清除所选内容 API 要求会话与令牌，无需恢复预览即可删除', async t => {
+    const root = await fixture(t);
+    const id = await captureRecycle(root, { title: '旧文件', files: [{ path: note.desc_md }] });
+    const { base, headers } = await api(t, root);
+    const capability = await (await fetch(`${base}/api/travel-records`, { headers })).json();
+    assert.equal(capability.recyclePurgeSelection, true);
+    const endpoint = `${base}/api/travel-data?mode=recycle-bin`;
+    const body = JSON.stringify({ action: 'purge-selected', ids: [id], revision: (await readRecycleBin(root)).revision });
+    assert.equal((await fetch(endpoint, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })).status, 401);
+    assert.equal((await fetch(endpoint, { method: 'POST', headers: { ...headers, 'X-Travel-Token': '' }, body })).status, 403);
+    assert.equal((await readRecycleBin(root)).items.length, 1);
+    const response = await fetch(endpoint, { method: 'POST', headers, body });
+    assert.equal(response.status, 200);
+    assert.deepEqual((await response.json()).items, []);
+});
+
 test('恢复冲突、过期版本及回收路径链接均被拒绝，不会覆盖站外文件', async t => {
     const root = await fixture(t);
     const id = await captureRecycle(root, { kind: 'record', title: '重复日记', records: [note], files: [{ path: note.desc_md }] });

@@ -400,17 +400,20 @@ async function manageRecycleBin(root, payload) {
         const report = await readRecycleBin(root);
         if (payload?.revision !== report.revision) throw failure('回收站已变化，请刷新后重试。');
         if (payload.action === 'restore-selected') return await restoreSelected(root, report, payload.selections);
-        if (payload.action === 'clear' || payload.action === 'purge') {
-            const items = payload.action === 'clear' ? report.items : report.items.filter(item => item.id === payload.id);
+        if (payload.action === 'clear' || payload.action === 'purge' || payload.action === 'purge-selected') {
+            if (payload.action === 'purge-selected' && (!Array.isArray(payload.ids) || !payload.ids.length
+                || payload.ids.length > report.items.length || new Set(payload.ids).size !== payload.ids.length
+                || payload.ids.some(id => !report.items.some(item => item.id === id)))) throw failure('请选择有效且不重复的回收项目，刷新后重试。');
+            const items = payload.action === 'clear' ? report.items : report.items.filter(item => payload.action === 'purge-selected' ? payload.ids.includes(item.id) : item.id === payload.id);
             const { recordFilePaths } = await import('./record-backup.mjs');
             const referenced = recordFilePaths(await readRecords(root));
-            // 先检查全部项目，避免清空到一半才发现仍被日记依赖的文件。
+            // 先检查全部所选项目，避免删除到一半才发现仍被日记依赖的文件。
             for (const item of items) for (const file of item.files) {
                 if (!referenced.has(file.path)) continue;
                 try { await ordinaryPath(root, file.path); }
                 catch (error) { if (error.code === 'ENOENT') throw failure('回收站文件现在被记录引用，请先恢复，未永久删除。'); throw error; }
             }
-            if (payload.action === 'clear') {
+            if (payload.action !== 'purge') {
                 for (const item of items) await discardRecycle(root, item.id);
                 return readRecycleBin(root);
             }
