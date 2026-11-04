@@ -1409,38 +1409,45 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-selection-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 8px; }
 .recycle-manager .recycle-selection-note { grid-column: 1 / -1; font-size: 12px; }
 .recycle-manager .recycle-preview-status { padding: 10px 0; color: var(--stamp); }
-.recycle-manager .recycle-preview-path { margin: 16px 0 8px; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
-.recycle-restore-preview { border-top: 1px solid var(--hairline); }
+.recycle-manager .recycle-preview-path { margin: 0 0 12px; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
+.recycle-list [data-recycle-diff]:not([hidden]) { margin-top: 16px; }
+.recycle-restore-preview { border-top: 1px dashed var(--hairline); }
 .recycle-list .recycle-restore-preview > summary { color: var(--stamp); font-weight: 600; }
 .recycle-preview-body { min-width: 0; padding: 12px 0 0; border-top: 1px dashed var(--hairline); }
-.recycle-preview-change { display: flow-root; }
-.recycle-preview-change + .recycle-preview-change { border-top: 1px dashed var(--hairline); }
 .recycle-list p { margin: 0 0 12px; font-size: 13px; }
 .recycle-list .recycle-restore-note { font-size: 12px; }
+.recycle-preview-body > .recycle-restore-note { margin: 0; }
 .recycle-list details { margin: 0; font-size: 12px; line-height: 1.8; }
-.recycle-list summary { font-size: 12px; font-weight: 400; line-height: 1.8; cursor: pointer; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 0; color: var(--ink); list-style: none; }
+.recycle-list summary { font-size: 12px; font-weight: 400; line-height: 1.8; cursor: pointer; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 12px 0; color: var(--ink); list-style: none; }
 .recycle-list summary::-webkit-details-marker { display: none; }
 .recycle-list summary::before { content: ''; flex: 0 0 6px; width: 6px; height: 6px; margin-inline: 2px 4px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
 .recycle-list details[open] > summary::before { transform: rotate(45deg); }
 .recycle-list summary > span { flex: 1; min-width: 0; }
-.recycle-list .content-file-preview > summary { padding: 8px 0; }
 .recycle-list summary small { flex: 0 0 auto; font-size: 12px; line-height: inherit; }
-.recycle-list .recycle-attachments { border-top: 1px dashed var(--hairline); }
-.recycle-list .recycle-attachments[open] > summary { border-bottom: 1px dashed var(--hairline); }
-.recycle-list .recycle-attachments > .content-preview-list { padding-top: 12px; }
-.recycle-list .recycle-contents .content-preview-list { margin: 0; }
-.recycle-list .content-file-heading { margin: 0 0 8px; padding: 0; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
+/* 分隔线归后一个内容行或展开区所有，两侧统一保留 12px，不再单独清零列表首尾。 */
+.recycle-list .recycle-contents > * + *,
+.recycle-list .content-preview-list > li + li,
+.recycle-preview-change + .recycle-preview-change,
+.recycle-list details.content-file-preview > .content-file-body,
+.recycle-list .recycle-attachments > .content-preview-list { border-top: 1px dashed var(--hairline); }
+.recycle-list .content-file-heading { margin: 0; padding: 12px 0; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
 .recycle-list a:not(.media-file-link) { color: var(--stamp); text-decoration: underline; text-underline-offset: 3px; }
 .recycle-list a:focus-visible, .recycle-contents li:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
-.recycle-list .record-diff { margin: 0 0 12px; }
+.recycle-list .record-diff { margin: 0; }
+.recycle-list .record-diff-body { padding: 12px 0; }
 .recycle-list section.record-diff > .record-diff-body { padding: 0; border-top: 0; }
+.recycle-list .record-diff-note:empty { display: none; }
+.recycle-list .content-preview-source { margin-top: 16px; }
 .recycle-list .record-diff-section > h3 { font-size: 15px; }
 .recycle-list .content-preview-list, .recycle-list .content-preview-markdown, .recycle-list .content-file-body > pre, .recycle-list .record-diff pre { max-height: none; overflow: visible; }
-.recycle-list .content-preview-markdown { padding: 12px 0; }
-.recycle-list .content-preview-list > li { padding: 12px 0; border-bottom: 0; }
-.recycle-list .content-preview-list > li + li { border-top: 1px dashed var(--hairline); }
-.recycle-list .content-preview-list > li:first-child { padding-top: 0; }
-.recycle-list .content-preview-list > li:last-child { padding-bottom: 0; }
+.recycle-list .content-file-body,
+.recycle-list .content-preview-source > .content-preview-markdown,
+.recycle-list .content-preview-list > li,
+.recycle-preview-change { padding: 12px 0; }
+.recycle-list .content-preview-list > li { border-bottom: 0; }
+.recycle-list .content-preview-list > li:has(> .content-file-preview) { padding: 0; }
+.recycle-list .content-file-body > .content-preview-markdown { padding: 0; }
+.recycle-list .content-preview-markdown > :last-child { margin-bottom: 0; }
 .content-preview-list > li { grid-template-columns: minmax(0, 1fr); }
 .recycle-list .content-file-preview { margin: 0; }
 .recycle-list .recycle-record-info { color: var(--ink); }
