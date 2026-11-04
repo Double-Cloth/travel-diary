@@ -1,3 +1,6 @@
+const { serializeRecords, sortRecords } = require('./record-order.js');
+const { acquireDataLock } = require('./data-archive.js');
+const { randomBytes } = require('node:crypto');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -281,6 +284,25 @@ async function ensureDataStructure(rootDir) {
     if (stats.isSymbolicLink() || !stats.isFile()) {
       throw new Error(`${file.label} 必须是项目内的普通文件。`);
     }
+  }
+
+  const release = await acquireDataLock(resolvedRoot);
+  const indexFile = path.join(resolvedRoot, 'data', 'travel_data.json');
+  const temporary = path.join(resolvedRoot, 'data', `.travel-order-${randomBytes(16).toString('hex')}.tmp`);
+  try {
+    const previous = await fs.promises.readFile(indexFile, 'utf8');
+    const records = JSON.parse(previous);
+    const sorted = sortRecords(records);
+    if (sorted.some((record, index) => record !== records[index])) {
+      await fs.promises.writeFile(temporary, serializeRecords(records), { flag: 'wx' });
+      if (await fs.promises.readFile(indexFile, 'utf8') !== previous) {
+        throw new Error('旅行索引在排序期间被修改，请重试。');
+      }
+      await fs.promises.rename(temporary, indexFile);
+    }
+  } finally {
+    await fs.promises.unlink(temporary).catch(() => {});
+    await release();
   }
 
   const authFile = path.join(resolvedRoot, '.secrets', 'auth.json');

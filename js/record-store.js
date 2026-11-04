@@ -1,3 +1,4 @@
+const { serializeRecords } = require('./record-order.js');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 const { createHash } = require('node:crypto');
@@ -283,7 +284,7 @@ async function saveProfile(root, payload, authorize) {
 async function replaceIndex(dataDir, indexFile, previous, records, authorize) {
     let temporaryFile = path.join(dataDir, `.travel-write-${randomBytes(16).toString('hex')}.tmp`);
     try {
-        await writeSynced(temporaryFile, JSON.stringify(records, null, 2) + '\n');
+        await writeSynced(temporaryFile, serializeRecords(records));
         await checkedFile(indexFile);
         if (await fs.readFile(indexFile, 'utf8') !== previous) throw failure(409, '旅行索引在保存期间被修改，请重试。');
         await authorize?.();
@@ -596,7 +597,7 @@ async function saveRecord(root, payload, authorize) {
             throw error;
         }
         temporaryFile = path.join(dataDir, `.travel-write-${randomBytes(16).toString('hex')}.tmp`);
-        await writeSynced(temporaryFile, JSON.stringify([...records, record], null, 2) + '\n');
+        await writeSynced(temporaryFile, serializeRecords([...records, record]));
         await checkedFile(indexFile);
         if (await fs.readFile(indexFile, 'utf8') !== previous) throw failure(409, '旅行索引在保存期间被修改，请重试。');
         await authorize?.();

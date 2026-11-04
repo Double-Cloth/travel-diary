@@ -1,3 +1,4 @@
+const { serializeRecords } = require('./record-order.js');
 const fs = require('fs/promises');
 const path = require('path');
 const { randomBytes } = require('crypto');
@@ -128,7 +129,7 @@ async function exportDataArchive(root, selectedPaths = null, { signal } = {}) {
         entries.push({ name: AUTH_RELATIVE_PATH, data: authData });
         const recordsWithIds = await require('./record-inventory.js').readRecords(root);
         entries = entries.map(entry => entry.name === 'data/travel_data.json'
-            ? { ...entry, data: Buffer.from(JSON.stringify(recordsWithIds, null, 2) + '\n') } : entry);
+            ? { ...entry, data: Buffer.from(serializeRecords(recordsWithIds)) } : entry);
         if (selectedPaths !== null) {
             const { readBackupRecords, selectBackupRecords, recordBackupEntries } = await import('./record-backup.mjs');
             try {
@@ -321,7 +322,7 @@ async function mergeRecordEntries(root, incoming) {
         const previous = matches.get(record);
         if (previous && previous.desc_md !== record.desc_md && !protectedFiles.has(previous.desc_md)) entries.delete(previous.desc_md);
     }
-    entries.set('data/travel_data.json', { name: 'data/travel_data.json', data: Buffer.from(JSON.stringify(merged, null, 2) + '\n') });
+    entries.set('data/travel_data.json', { name: 'data/travel_data.json', data: Buffer.from(serializeRecords(merged)) });
     const { compareBackup, describeRecords } = await import('./record-diff.mjs');
     const comparisons = await compareBackup(selected, incoming, await describeRecords([...matches.values()].filter(Boolean), current));
     const replacedRecords = selected.filter(record => matches.get(record) && comparisons.get(record.desc_md).status !== 'same').map(record => matches.get(record));
@@ -401,7 +402,7 @@ async function importDataArchive(root, archive, options = {}) {
         // 所有恢复都保存固定标识，旧备份也能在后续改名后识别为同一记录。
         const indexEntry = entries.find(entry => entry.name === 'data/travel_data.json');
         const { identifyRecords } = await import('./record-identity.mjs');
-        indexEntry.data = Buffer.from(JSON.stringify(identifyRecords(parseJsonFile(indexEntry.data, indexEntry.name)), null, 2) + '\n');
+        indexEntry.data = Buffer.from(serializeRecords(identifyRecords(parseJsonFile(indexEntry.data, indexEntry.name))));
         entries = entries.filter(entry => entry.name !== 'data/record-merge.json');
         const stageSecrets = path.join(stageRoot, '.secrets');
         const currentSecrets = path.join(root, '.secrets');

@@ -1,3 +1,4 @@
+const { serializeRecords } = require('./record-order.js');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { randomBytes, createHash } = require('node:crypto');
@@ -207,7 +208,7 @@ async function restoreFiles(root, item, targetDescMd) {
         }
         if (item.records.length || JSON.stringify(next) !== JSON.stringify(current)) {
             temporary = path.join(root, `data/.recycle-restore-${randomBytes(16).toString('hex')}.tmp`);
-            await fs.writeFile(temporary, JSON.stringify(next, null, 2) + '\n', { flag: 'wx' });
+            await fs.writeFile(temporary, serializeRecords(next), { flag: 'wx' });
             await ordinaryPath(root, 'data/travel_data.json');
             await fs.rename(temporary, path.join(root, 'data/travel_data.json'));
         }
@@ -218,9 +219,16 @@ async function restoreFiles(root, item, targetDescMd) {
 async function restoreVersion(root, item, records, sources = new Map()) {
     // 将附件与索引放在同一回滚范围，任何一步失败都还原当前文件。
     const incoming = [...item.files];
+    for (let index = 0; index < incoming.length; index++) {
+        const file = incoming[index];
+        if (file.path !== 'data/travel_data.json') continue;
+        const content = file.content ?? await fs.readFile(await ordinaryPath(root,
+            sources.get(file.path) || `${BASE}/${item.id}/${file.path}`), 'utf8');
+        incoming[index] = { ...file, content: serializeRecords(JSON.parse(content)) };
+    }
     if (records) {
         if (incoming.some(file => file.path === 'data/travel_data.json')) throw failure('附件恢复不能替换整份日记目录。');
-        incoming.push({ path: 'data/travel_data.json', content: JSON.stringify(records, null, 2) + '\n' });
+        incoming.push({ path: 'data/travel_data.json', content: serializeRecords(records) });
     }
     const files = [];
     for (const file of incoming) {
@@ -265,6 +273,8 @@ async function restoreSnapshot(root, item) {
             await ensureParent(root, target);
             await fs.copyFile(await ordinaryPath(root, `${BASE}/${item.id}/${file.path}`), path.join(root, target), fs.constants.COPYFILE_EXCL);
         }
+        const stagedIndex = path.join(root, stage, 'data/travel_data.json');
+        await fs.writeFile(stagedIndex, serializeRecords(JSON.parse(await fs.readFile(stagedIndex, 'utf8'))));
         const protection = await captureRecycle(root, { kind: 'snapshot', title: '恢复前的数据' });
         try {
             await ordinaryPath(root, 'data', true);

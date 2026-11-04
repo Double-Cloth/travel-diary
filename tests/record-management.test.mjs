@@ -149,13 +149,14 @@ test('固定标识合并改名记录及其旧备份不新增重复记录，身�
     assert.equal(result.addedRecords, 0);
     let records = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
     assert.equal(records.length, 2);
-    assert.equal(records[0].record_id, recordIdentity(first));
+    assert.deepEqual(records.map(record => record.date), [second.date, moved.date]);
+    assert.equal(records[1].record_id, recordIdentity(first));
     await assert.rejects(fs.stat(path.join(root, first.desc_md)), { code: 'ENOENT' });
     // 没有固定标识的老备份仍可按最初正文路径派生的身份找到改名后的记录。
     await importDataArchive(root, await archive([first], [{ name: first.desc_md, data: '# 老备份正文' }, files[1]]), { mergeRecords: true });
     records = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
     assert.equal(records.length, 2);
-    assert.equal(records[0].desc_md, first.desc_md);
+    assert.equal(records.find(record => record.record_id === recordIdentity(first)).desc_md, first.desc_md);
     const before = await fs.readFile(path.join(root, 'data/travel_data.json'));
     await assert.rejects(importDataArchive(root, await archive([{ ...moved, desc_md: second.desc_md, date: second.date }], [{ name: second.desc_md, data: '# 冲突' }, files[1]]), { mergeRecords: true }), /不同记录/);
     assert.deepEqual(await fs.readFile(path.join(root, 'data/travel_data.json')), before);

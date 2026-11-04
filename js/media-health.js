@@ -1,3 +1,4 @@
+const { serializeRecords } = require('./record-order.js');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { createHash, randomBytes } = require('node:crypto');
@@ -82,7 +83,7 @@ async function manageMedia(root, payload) {
             }
             const temporary = path.join(root, `data/.media-references-${randomBytes(16).toString('hex')}.tmp`);
             try {
-                await fs.writeFile(temporary, JSON.stringify(records, null, 2) + '\n', { flag: 'wx' });
+                await fs.writeFile(temporary, serializeRecords(records), { flag: 'wx' });
                 await ordinaryPath(root, 'data/travel_data.json');
                 await fs.rename(temporary, path.join(root, 'data/travel_data.json'));
             } finally { await fs.unlink(temporary).catch(() => {}); }
