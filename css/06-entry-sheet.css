@@ -1701,8 +1701,10 @@ dialog.feedback-dialog.entry-sheet {
 .data-import-success h2 { margin: 0; color: var(--ink); font-size: 27px; line-height: 1.25; }
 .data-import-success-note { margin: 10px 0 22px; color: var(--ink-soft); font-size: 14px; line-height: 1.8; }
 .data-import-success-actions { display: grid; }
-.data-import-success-actions .data-import-success-close { color: var(--paper-50); border-color: rgba(45, 56, 34, 0.56); background: linear-gradient(180deg, #596747, #35422b); }
-.data-import-success-actions .data-import-success-close:hover { border-color: rgba(45, 56, 34, 0.78); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -3px 8px rgba(25, 34, 18, 0.2), 0 12px 20px rgba(52, 31, 14, 0.2); }
+.data-import-success-actions .data-import-success-close,
+.record-delete-dialog-success .record-delete-dialog-close { color: var(--paper-50); border-color: rgba(45, 56, 34, 0.56); background: linear-gradient(180deg, #596747, #35422b); }
+.data-import-success-actions .data-import-success-close:hover,
+.record-delete-dialog-success .record-delete-dialog-close:hover { border-color: rgba(45, 56, 34, 0.78); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.2), inset 0 -3px 8px rgba(25, 34, 18, 0.2), 0 12px 20px rgba(52, 31, 14, 0.2); }
 
 .record-delete-dialog-card { padding: 32px 38px 36px; text-align: center; }
 .record-delete-dialog-seal {

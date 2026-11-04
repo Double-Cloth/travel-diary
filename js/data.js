@@ -1,11 +1,11 @@
-import { buildFallbackTitle, escapeHtml } from './utils.js?v=2.1.44';
-import { isValidDateString } from './analytics.mjs?v=2.1.44';
-import { recordIdentity, validRecordIdentity } from './record-identity.mjs?v=2.1.44';
+import { buildFallbackTitle, escapeHtml } from './utils.js?v=2.1.45';
+import { isValidDateString } from './analytics.mjs?v=2.1.45';
+import { recordIdentity, validRecordIdentity } from './record-identity.mjs?v=2.1.45';
 import {
     configureCountryCatalog,
     getLocationSearchValues,
     normalizeTravelLocation
-} from './location.mjs?v=2.1.44';
+} from './location.mjs?v=2.1.45';
 
 const LOAD_TIMEOUT_MS = 20000;
 const MARKDOWN_CONCURRENCY = 8;

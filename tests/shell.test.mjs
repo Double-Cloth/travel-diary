@@ -424,7 +424,7 @@ test('日记详情在动态站点验证修改与删除，静态站点只允许�
     assert.match(journalCss, /\.sheet-record-actions\s*{/);
     assert.match(journalCss, /dialog\.record-delete-dialog\.entry-sheet/);
     assert.match(journalCss, /\.record-delete-dialog-actions\s*{/);
-    assert.doesNotMatch(journalCss, /\.record-delete-dialog-success \.record-delete-dialog-close\s*{/);
+    assert.match(journalCss, /\.data-import-success-actions \.data-import-success-close,\s*\.record-delete-dialog-success \.record-delete-dialog-close\s*{/);
 });
 
 test('Markdown 源码高亮层与输入层使用相同字形和滚动槽', () => {
