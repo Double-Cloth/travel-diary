@@ -8,6 +8,6 @@ Travel Diary 是个人旅行手账：以行程、地点和 Markdown 日记组织
 | 理解页面路由、模块职责、数据流和写入边界 | [架构说明](ARCHITECTURE.md) |
 | 替换图片、字体、纹理及维护地点目录 | [资产管理规范](ASSET_MANAGEMENT.md) |
 | 本机运行、认证、部署、故障与异常退出恢复 | [维护与发布指南](MAINTENANCE.md) |
-| 查询开发与运维常用命令 | [README](../README.md) |
+| 查询全部开发与运维命令 | [README](../README.md) |
 
 个人内容放在 `data/`，通用资源放在 `assets/`，认证配置放在 `.secrets/`。静态页面可公开读取旅行内容；访问密码控制写入，不能限制日记阅读。离线使用需要本机服务器和完整本地资源，线上页面没有 Service Worker 离线缓存。

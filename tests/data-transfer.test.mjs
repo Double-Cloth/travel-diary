@@ -105,7 +105,7 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
     assert.match(output.textContent, /不能超过 102400 MiB/);
 });
 
-test('导出和导入都要求写入 API，静态页面不提供全部数据备份', async t => {
+test('动态导出地址要求写入 API，静态页面仍拒绝全部数据导入', async t => {
     const nodes = [];
     const output = { textContent: '', focus() {} };
     function node() {
@@ -159,6 +159,35 @@ test('导出和导入都要求写入 API，静态页面不提供全部数据备�
     feedbackDialog.events.click({
         target: { closest: selector => selector === '[data-feedback-confirm]' ? {} : null }
     });
+});
+
+test('动态认证失效、网络中断与异常 API 响应不会降级为静态备份', async t => {
+    const previous = { document: globalThis.document, window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    function node() {
+        const children = new Map();
+        return {
+            classList: { add() {}, remove() {} }, setAttribute() {}, addEventListener() {},
+            querySelectorAll: () => [],
+            querySelector(selector) { if (!children.has(selector)) children.set(selector, node()); return children.get(selector); },
+            removeAttribute() {}, remove() {}, append() {}
+        };
+    }
+    globalThis.document = { createElement: node, body: { append() {} }, querySelector: () => null };
+    globalThis.window = { location: { href: 'https://diary.example/' } };
+    const transfer = createDataTransfer(async () => {});
+    for (const code of ['AUTH_REQUIRED', 'WRITER_INVALID_RESPONSE', 'WRITER_UNREACHABLE']) {
+        let requests = 0;
+        globalThis.fetch = async url => {
+            requests += 1;
+            assert.equal(url.pathname, '/api/travel-records');
+            if (code === 'WRITER_UNREACHABLE') throw new TypeError('网络中断');
+            return new Response(JSON.stringify(code === 'AUTH_REQUIRED'
+                ? { service: 'travel-diary-writer-v1', authenticated: false } : {}));
+        };
+        await assert.rejects(transfer.exportAll(), error => error.code === code);
+        assert.equal(requests, 1);
+    }
 });
 
 test('导入缺少媒体文件的备份后提示缺失数量但保留旅行数据', async t => {

@@ -383,7 +383,6 @@ test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () =>
 test('运行时提示全部使用站内反馈弹窗而不是浏览器 alert', () => {
     assert.match(appJs, /import \{ confirmFeedback, showFeedback \} from '\.\/feedback-dialog\.js\?v=[^']+';/);
     assert.match(appJs, /\.catch\(error => showFeedback\(error\.message\)\)/);
-    assert.match(appJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据导出。'/);
     assert.match(dataTransferJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据导入。'/);
     assert.doesNotMatch(dataTransferJs, /onStatic: \(\) => setStatus/);
     assert.match(recordPasswordJs, /import \{ showFeedback \} from '\.\/feedback-dialog\.js\?v=[^']+';/);
@@ -432,12 +431,12 @@ test('Markdown 源码高亮层与输入层使用相同字形和滚动槽', () =>
     assert.doesNotMatch(journalCss, /\.record-editor-source-layer \.md-(?:marker|fence|heading)[^{]*\{[^}]*font-weight:\s*700/);
 });
 
-test('全部数据导出通过认证 API 流式下载并反馈进度', () => {
+test('全部数据动态导出通过认证 API，静态导出仅在明确只读环境开放', () => {
     assert.match(appJs, /<button[^>]*type="button"[^>]*data-action="export-all-data"/);
     assert.match(appJs, /const requestDataExportAuthorization = createPasswordGate/);
     assert.match(appJs, /dataTransfer\.exportAll\(`travel-diary-data-\$\{getTodayDate\(\)\}\.zip`, capability\)/);
     assert.match(appJs, /data-action="export-all-data"[^}]+event\.preventDefault\(\);[^}]+openDataExport\(\)/s);
-    assert.match(appJs, /静态只读页面，不提供全部数据导出/);
+    assert.match(appJs, /onStatic: \(\) => dataTransfer\.exportAll\([^\n]+readonly: true/);
     assert.doesNotMatch(appJs, /catch \{\s*return dataTransfer\.exportAll/);
     assert.match(dataTransferJs, /api\/travel-data/);
     assert.match(dataTransferJs, /detectWriterCapability\(\)/);

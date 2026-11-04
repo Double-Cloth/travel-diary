@@ -1,10 +1,11 @@
-import { createPasswordGate } from './record-password.js?v=2.1.24';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.24';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.24';
+import { createPasswordGate } from './record-password.js?v=2.1.25';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.25';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.25';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=2.1.24';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.24';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.24';
+import { createRecordTransfer } from './record-transfer.js?v=2.1.25';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.25';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.25';
+import { downloadStaticBackup } from './static-backup.js?v=2.1.25';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -90,10 +91,21 @@ export function createDataTransfer(onImported, getRecords = () => []) {
         busy = true;
         const progress = createOperationProgress('导出全部数据');
         try {
-            const capability = authenticatedCapability || await detectWriterCapability();
-            const result = await downloadWithProgress(await getExportHref(capability), downloadName, progress);
-            progress.remove();
-            setStatus(result.cancelled ? '已取消导出。' : result.handedOff
+            let capability = authenticatedCapability;
+            if (!capability) {
+                try { capability = await detectWriterCapability(); }
+                catch (error) {
+                    if (error.code !== 'STATIC_READONLY') throw error;
+                    capability = { readonly: true };
+                }
+            }
+            const result = capability.readonly
+                ? await downloadStaticBackup(downloadName, progress)
+                : await downloadWithProgress(await getExportHref(capability), downloadName, progress);
+            if (!result.static) progress.remove();
+            setStatus(result.cancelled ? '已取消导出。' : result.static
+                ? `已导出已发布的日记、附件和个人资料，不含密码配置及未引用文件。${result.missingMediaFiles ? `有 ${result.missingMediaFiles} 个附件缺失，未打包；日记及引用已保留。` : ''}`
+                : result.handedOff
                 ? '备份已交给浏览器下载，请在浏览器下载列表查看进度。'
                 : '全部数据备份已传输完成，请查看保存的文件。');
         } catch (error) {
@@ -226,7 +238,7 @@ export function createDataTransfer(onImported, getRecords = () => []) {
         dialog.querySelector('#dataImportConfirmDescription').textContent = file
             ? (hasBackupPassword
                 ? '导入后，网站访问密码将恢复为备份时的密码。若该密码与当前密码不一致，下一步将验证备份密码。'
-                : '这是不含密码设置的旧备份。导入后，此网站的访问密码保持不变。')
+                : '这份备份不含密码设置。导入后，此网站的访问密码保持不变。')
             : '导入会替换全部日记、图片、视频、头像和署名。替换前的数据会保存在回收站，可以恢复。';
         return new Promise(resolve => {
             confirmationResolver = resolve;

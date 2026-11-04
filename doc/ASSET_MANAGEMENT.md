@@ -53,14 +53,7 @@ HTML 和数据路径相对项目根目录；`css/` 下所有分片使用 `../ass
 
 只更新日记或界面文字后，可运行 `fonts:core` 刷新轻量字集，无需重新压缩完整字体；同时更新 CSS 引用版本并提交生成文件。`fonts:subset` 会替换完整字体文件为当前项目文字的子集，仍保留数字等基础字符；之后新增日记、动态署名或地点可能缺字，采用此显式模式时应重新生成并检查回退。一般内容持续增长的档案使用默认完整字体模式。
 
-字体维护命令：
-
-```bash
-pip install "fonttools[woff]"
-npm run fonts
-npm run fonts:core
-npm run fonts:subset
-```
+字体安装与生成命令统一见 [README](../README.md#字体与地点目录)。
 
 ## 地点目录
 
@@ -71,13 +64,7 @@ npm run fonts:subset
 
 生成文件保存来源信息；以各上游项目的授权说明为准。更新脚本仅在维护时联网，单次请求 30 秒超时，普通启动不会拉取上游。复用项目保留完整目录，不按个人旅行范围裁剪，也不在运行时代码另建一份国家表。
 
-重新生成固定版本的目录并校验：
-
-```bash
-npm run countries
-npm run china-locations
-npm test
-```
+重新生成固定版本的目录并校验，命令见 [README](../README.md#字体与地点目录)。
 
 ## 清理与替换
 

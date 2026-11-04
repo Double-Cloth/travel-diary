@@ -35,7 +35,7 @@
 | `record-password.js`、`writer-capability.js` | 同源能力探测、首次设密、登录与换密交互。 |
 | `record-delete-dialog.js`、`feedback-dialog.js`、`custom-select.js` | 删除确认、提示与原生选择框增强。 |
 | `profile-picture.js`、`profile-owner.js`、`profile-owner-dialog.js` | 头像处理、署名读取与资料编辑。 |
-| `data-transfer.js`、`record-transfer.js`、`record-backup.mjs`、`backup-password.js` | 完整备份与清空交互、部分记录选择界面、前后端共用的记录备份封装及上传前密码预校验。 |
+| `data-transfer.js`、`record-transfer.js`、`static-backup.js`、`record-backup.mjs`、`backup-password.js` | 完整备份与清空交互、部分记录选择界面、静态已发布内容打包、前后端共用的记录备份封装及上传前密码预校验。静态导出只在明确的只读标记下开放，网络或动态 API 错误不会降级。 |
 | `operation-progress.js` | 共用进度提示、XHR 上传进度、流式下载与保存。 |
 | `record-identity.mjs`、`record-diff.mjs`、`record-diff-view.js`、`record-inventory.js` | 固定身份、字段与文件内容比较、当前记录清单和导出传输完成后自动更新的备份基准。 |
 | `media-health.js`、`media-manager.js` | 媒体引用检查、空间统计、未引用文件移入统一回收站。 |
@@ -77,7 +77,7 @@ Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，不
 | `06-entry-sheet`、`07-responsive`、`08-custom-select` | 正文、事务对话框、基础适配和选择菜单。 |
 | `09-book-experience`、`10-refined-ui`、`11-skeuomorphic-book` | 开合封面、视觉覆盖、拟物细节和最终屏幕适配。 |
 
-改样式先确认实际生效的覆盖层，延续皮革、纸张、黄铜和手账排版。发布浏览器资源修改时，更新 `package.json` 的版本并运行 `npm run assets:version`，从入口递归同步模块与样式的版本参数；公共模块不得同时使用带版本和不带版本的 URL，避免重复初始化弹窗和全局事件。不要增加另一套页面入口或平行组件体系。旧首页的近期记录卡片、随机路线票据、旧日记详情弹层及配套动画、样式已移除，`#cover` 只保留实体封面，记录浏览统一从日记目录进入；`entry-sheet` 仍为现有编辑、认证和数据操作对话框提供共用纸面样式。
+改样式先确认实际生效的覆盖层，延续皮革、纸张、黄铜和手账排版。发布浏览器资源修改时，更新 `package.json` 的版本并执行 [README 中的资源版本同步](../README.md#启动与检查)，从入口递归同步模块与样式的版本参数；公共模块不得同时使用带版本和不带版本的 URL，避免重复初始化弹窗和全局事件。不要增加另一套页面入口或平行组件体系。旧首页的近期记录卡片、随机路线票据、旧日记详情弹层及配套动画、样式已移除，`#cover` 只保留实体封面，记录浏览统一从日记目录进入；`entry-sheet` 仍为现有编辑、认证和数据操作对话框提供共用纸面样式。
 
 部分记录导入导出、媒体整理及回收站共用 `management-dialog` 的标题、关闭入口、搜索、文字工具和操作区。选择跨搜索或分类保留，底部明确提示筛选范围外的已选数量；全选只作用于当前筛选结果，清空选择作用于全部已选项。媒体重新检查会保留仍未被引用的已选文件，并移除已不存在或被引用的选择；请求失败后禁止清理，重新检查成功才能继续。回收站搜索仅筛选显示，清空回收站始终作用于全部回收项目，确认框明确列出总数。
 

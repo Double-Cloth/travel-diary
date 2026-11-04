@@ -1,16 +1,17 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.24';
-import { createPasswordGate } from './record-password.js?v=2.1.24';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.24';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.24';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.25';
+import { createPasswordGate } from './record-password.js?v=2.1.25';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.25';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.25';
 import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.24';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.24';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.24';
-import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.24';
-import { recordIdentity } from './record-identity.mjs?v=2.1.24';
-import { createContentPreviewScope } from './content-preview.js?v=2.1.24';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.25';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.25';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.25';
+import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.25';
+import { recordIdentity } from './record-identity.mjs?v=2.1.25';
+import { createContentPreviewScope } from './content-preview.js?v=2.1.25';
 
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.24';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.25';
+import { downloadStaticBackup } from './static-backup.js?v=2.1.25';
 
 export function createRecordTransfer(onImported, getRecords) {
     const dialog = document.createElement('dialog');
@@ -47,6 +48,7 @@ export function createRecordTransfer(onImported, getRecords) {
     let mode;
     let trigger;
     let busy = false;
+    let staticExport = false;
     let comparisons = new Map();
     let importAuthorization;
     let importProgress;
@@ -129,9 +131,10 @@ export function createRecordTransfer(onImported, getRecords) {
         dialog.querySelector('input[type="search"]').placeholder = mode === 'export' ? '筛选要备份的日记' : '筛选要导入的日记';
         dialog.querySelector('#recordTransferTitle').textContent = mode === 'export' ? '导出部分记录' : '导入部分记录';
         dialog.querySelector('[data-record-transfer-note]').textContent = mode === 'export'
-            ? '日记按日期由近到远排列。备份包含正文、图片和视频，导入时会验证导出时的访问密码。'
+            ? (staticExport ? '备份包含已发布的正文、图片和视频，不含密码配置。缺失附件会在导出后提示。'
+                : '日记按日期由近到远排列。备份包含正文、图片和视频，导入时会验证导出时的访问密码。')
             : '勾选要合并的日记，有差异时采用备份，相同内容会跳过。其他记录、个人资料和密码保持不变。替换前的数据会留在回收站。';
-        dialog.querySelector('[data-record-transfer-changes]').hidden = mode !== 'export';
+        dialog.querySelector('[data-record-transfer-changes]').hidden = mode !== 'export' || staticExport;
         dialog.querySelector('[data-record-transfer-submit]').textContent = mode === 'export' ? '导出所选记录' : '确认合并所选记录';
         error('');
         render();
@@ -149,6 +152,11 @@ export function createRecordTransfer(onImported, getRecords) {
     async function exportRecords(paths) {
         const progress = createOperationProgress('导出部分记录');
         try {
+            if (staticExport) {
+                const result = await downloadStaticBackup(`travel-diary-records-${new Date().toLocaleDateString('sv-SE')}.zip`, progress, paths);
+                status(result.cancelled ? '已取消导出。' : `已导出 ${paths.length} 条已发布记录及其附件，不含密码配置。${result.missingMediaFiles ? `有 ${result.missingMediaFiles} 个附件缺失，未打包；日记及引用已保留。` : ''}`);
+                return;
+            }
             const capability = await requireService();
             const url = new URL('api/travel-data', window.location.href);
             url.searchParams.set('mode', 'select');
@@ -314,7 +322,8 @@ export function createRecordTransfer(onImported, getRecords) {
         title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，然后选择备份并比较记录。',
         staticMessage: '静态页面不提供记录导入。'
     });
-    const authorizeExport = createPasswordGate((_capability, paths) => {
+    function openExport(paths, readonly = false) {
+        staticExport = readonly;
         trigger = document.activeElement;
         entries = undefined;
         importAuthorization = undefined;
@@ -322,9 +331,10 @@ export function createRecordTransfer(onImported, getRecords) {
         open('export', getRecords());
         paths.forEach(path => { if (records.some(record => record.desc_md === path)) selected.add(path); });
         render();
-    }, {
+    }
+    const authorizeExport = createPasswordGate((_capability, paths) => openExport(paths), {
         title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，然后选择要导出的记录。',
-        staticMessage: '当前站点为静态只读页面，不提供部分记录导入导出。'
+        onStatic: paths => openExport(paths, true)
     });
 
     dialog.addEventListener('input', event => {

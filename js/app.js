@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=2.1.24';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.24';
-import { createRecordEditor } from './record-editor.js?v=2.1.24';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.24';
-import { createDataTransfer } from './data-transfer.js?v=2.1.24';
-import { createMediaManager } from './media-manager.js?v=2.1.24';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.24';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.24';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.24';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.24';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.24';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.24';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.24';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.24';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.24';
-import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.24';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.24';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.24';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.25';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.25';
+import { createRecordEditor } from './record-editor.js?v=2.1.25';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.25';
+import { createDataTransfer } from './data-transfer.js?v=2.1.25';
+import { createMediaManager } from './media-manager.js?v=2.1.25';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.25';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.25';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.25';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.25';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.25';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.25';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.25';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.25';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.25';
+import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.25';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.25';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.25';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.24';
+} from './location.mjs?v=2.1.25';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,7 +30,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.24';
+} from './photo-viewer-transform.mjs?v=2.1.25';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -201,7 +201,7 @@ async function initApp() {
             description: '输入 6 位数字密码后导出全部旅行数据和认证配置。',
             verifying: '正在验证并准备下载…',
             actionError: '无法导出全部数据，请重试。',
-            staticMessage: '当前站点为静态只读页面，不提供全部数据导出。'
+            onStatic: () => dataTransfer.exportAll(`travel-diary-data-${getTodayDate()}.zip`, { readonly: true })
         }
     );
     openDataExport = requestDataExportAuthorization;
@@ -1072,7 +1072,7 @@ function renderPreface() {
 
         <section class="preface-tool-section" aria-labelledby="prefaceDataTitle">
             <h3 id="prefaceDataTitle">备份与恢复</h3>
-            <p class="preface-tool-note">先验证访问密码，再选择日记或备份文件；替换全部数据前会先确认风险。</p>
+            <p class="preface-section-note">先验证访问密码，再选择日记或备份文件；替换全部数据前会先确认风险。</p>
             <div class="preface-backup-group" role="group" aria-labelledby="prefaceExportTitle">
                 <h4 id="prefaceExportTitle">导出 · 保存备份到本机</h4>
                 <div class="preface-tool-choices">
@@ -1082,7 +1082,7 @@ function renderPreface() {
                     </button>
                     <button class="preface-tool-command" type="button" data-action="export-all-data">
                         <span class="preface-command-title">导出全部数据</span>
-                        <span class="preface-command-description">备份全部日记、附件、个人资料和密码配置。</span>
+                        <span class="preface-command-description">备份日记、附件和个人资料；动态服务另含密码配置。</span>
                     </button>
                 </div>
             </div>
