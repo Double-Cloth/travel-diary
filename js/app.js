@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=2.1.47';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.47';
-import { createRecordEditor } from './record-editor.js?v=2.1.47';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.47';
-import { createDataTransfer } from './data-transfer.js?v=2.1.47';
-import { createMediaManager } from './media-manager.js?v=2.1.47';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.47';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.47';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.47';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.47';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.47';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.47';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.47';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.47';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.47';
-import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.47';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.47';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.47';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.48';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.48';
+import { createRecordEditor } from './record-editor.js?v=2.1.48';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.48';
+import { createDataTransfer } from './data-transfer.js?v=2.1.48';
+import { createMediaManager } from './media-manager.js?v=2.1.48';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.48';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.48';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.48';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.48';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.48';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.48';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.48';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.48';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.48';
+import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.48';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.48';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.48';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.47';
+} from './location.mjs?v=2.1.48';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,7 +30,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.47';
+} from './photo-viewer-transform.mjs?v=2.1.48';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -1822,7 +1822,10 @@ function renderTrip(params = {}) {
     setPages(`
         <div class="place-page" aria-labelledby="tripTitle">
             <div class="place-summary">
-                <a class="ribbon-back" href="${returnHash}">返回日记目录</a>
+                <header class="entry-book-toolbar">
+                    <a class="ribbon-back" href="${returnHash}">返回日记目录</a>
+                    <button class="paper-button trip-export-button" type="button" data-action="export-trip" data-trip-key="${escapeHtml(params.id)}">导出本次行程</button>
+                </header>
                 <h1 id="tripTitle">行程 ${escapeHtml(first.tripGroupLabel)}</h1>
                 <div class="trip-identity">
                     <p class="trip-date-range"><time datetime="${escapeHtml(first.date)}">${escapeHtml(first.date)}</time>${first.date !== last.date ? `<span>至</span><time datetime="${escapeHtml(last.date)}">${escapeHtml(last.date)}</time>` : ''}</p>
@@ -1830,7 +1833,6 @@ function renderTrip(params = {}) {
                 </div>
                 <p class="place-count"><span>${records.length} 篇日记</span> · <span>${snapshot.localityCount} 个目的地</span> · <span>${snapshot.photoCount} 张图片</span> · <span>${snapshot.videoCount} 个视频</span></p>
                 <div class="city-tags" aria-label="沿途目的地">${places.map(record => `<a class="location-chip" href="${placeHash(record.countryKey, record.adminArea, record.locality)}">${escapeHtml(record.locality || record.adminArea || record.country)}</a>`).join('')}</div>
-                <div class="trip-actions"><button class="paper-button" type="button" data-action="export-trip" data-trip-key="${escapeHtml(params.id)}">导出本次行程</button></div>
             </div>
             ${media.length ? `<div class="place-media">${renderPhotoSleeve(first, {
                 media, previewRows: ENTRY_PHOTO_PREVIEW_ROWS, showViewAll: true,

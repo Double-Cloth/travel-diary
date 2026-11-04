@@ -382,6 +382,5 @@
 .trip-identity { display: grid; min-width: 0; gap: 6px; }
 .trip-id { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: baseline; gap: 4px; margin: 0; color: var(--ink-soft); font: 12px/1.7 var(--font-serif); }
 .trip-id-value { font: 11px/1.7 var(--font-code); overflow-wrap: anywhere; }
-.trip-actions { margin-top: 18px; }
-.trip-actions .paper-button { width: auto; }
+.entry-book-toolbar .trip-export-button { width: auto; margin-left: auto; }
 .trip-stamp[href] { text-decoration: none; }
