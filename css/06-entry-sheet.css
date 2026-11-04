@@ -1413,6 +1413,8 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-restore-preview { border-top: 1px solid var(--hairline); }
 .recycle-list .recycle-restore-preview > summary { color: var(--stamp); font-weight: 600; }
 .recycle-preview-body { min-width: 0; padding: 12px 0 0; border-top: 1px dashed var(--hairline); }
+.recycle-preview-change { display: flow-root; }
+.recycle-preview-change + .recycle-preview-change { border-top: 1px dashed var(--hairline); }
 .recycle-list p { margin: 0 0 12px; font-size: 13px; }
 .recycle-list .recycle-restore-note { font-size: 12px; }
 .recycle-list details { margin: 0; font-size: 12px; line-height: 1.8; }
@@ -1423,7 +1425,9 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list summary > span { flex: 1; min-width: 0; }
 .recycle-list .content-file-preview > summary { padding: 8px 0; }
 .recycle-list summary small { flex: 0 0 auto; font-size: 12px; line-height: inherit; }
+.recycle-list .recycle-attachments { border-top: 1px dashed var(--hairline); }
 .recycle-list .recycle-attachments[open] > summary { border-bottom: 1px dashed var(--hairline); }
+.recycle-list .recycle-attachments > .content-preview-list { padding-top: 12px; }
 .recycle-list .recycle-contents .content-preview-list { margin: 0; }
 .recycle-list .content-file-heading { margin: 0 0 8px; padding: 0; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
 .recycle-list a:not(.media-file-link) { color: var(--stamp); text-decoration: underline; text-underline-offset: 3px; }

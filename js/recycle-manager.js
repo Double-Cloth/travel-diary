@@ -1,11 +1,11 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.41';
-import { createPasswordGate } from './record-password.js?v=2.1.41';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.41';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.41';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.41';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.41';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.41';
-import { recordIdentity } from './record-identity.mjs?v=2.1.41';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.42';
+import { createPasswordGate } from './record-password.js?v=2.1.42';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.42';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.42';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.42';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.42';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.42';
+import { recordIdentity } from './record-identity.mjs?v=2.1.42';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -87,9 +87,9 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         if (!state) return '';
         if (state.phase === 'pending') return '<p class="recycle-preview-status" role="status">正在生成恢复预览…</p>';
         if (state.phase === 'error') return `<p class="recycle-preview-status" role="alert">${escapeHtml(state.message)}</p><button class="media-text-button" type="button" data-recycle-retry="${state.id}">重试预览</button>`;
-        return `<details class="recycle-restore-preview"><summary>预览恢复后的变化 <small>${state.changes.length ? `${state.changes.length} 项内容` : '内容相同'}</small></summary><div class="recycle-preview-body"><p class="recycle-restore-note">以下为这个项目恢复后的变化。确认恢复后才会写入。</p>${state.changes.length ? state.changes.map(({ record }) => `<p class="recycle-preview-path">${recordLink(record, record.desc_md, state.comparisons.get(record.desc_md)?.previous)}</p>${renderRecordDifference(record, state.comparisons.get(record.desc_md), {
+        return `<details class="recycle-restore-preview"><summary>预览恢复后的变化 <small>${state.changes.length ? `${state.changes.length} 项内容` : '内容相同'}</small></summary><div class="recycle-preview-body"><p class="recycle-restore-note">以下为这个项目恢复后的变化。确认恢复后才会写入。</p>${state.changes.length ? state.changes.map(({ record }) => `<div class="recycle-preview-change"><p class="recycle-preview-path">${recordLink(record, record.desc_md, state.comparisons.get(record.desc_md)?.previous)}</p>${renderRecordDifference(record, state.comparisons.get(record.desc_md), {
             afterLabel: '恢复后', note: '', previewLabel: '预览恢复后的正文', collapsible: state.changes.length > 1, mediaLink: (name, side) => mediaLink(name, side, state)
-        })}`).join('') : '<p>内容与当前相同，无需替换。</p>'}</div></details>`;
+        })}</div>`).join('') : '<p>内容与当前相同，无需替换。</p>'}</div></details>`;
     }
     function currentRecord(record, previous) {
         return report.currentRecords?.find(candidate => [record, previous].some(value => value && (recordIdentity(value) === recordIdentity(candidate) || value.desc_md === candidate.desc_md)));
