@@ -777,7 +777,7 @@ body[data-route='preface'] .paper-page {
     gap: 3px;
     padding: 6px 6px 7px;
     border-bottom: 2px solid #bca47c;
-    border-radius: 5px 5px 0 0;
+    border-radius: 5px;
     background: linear-gradient(#b79b6b39, #e1cda47d);
     box-shadow: inset 0 2px 4px #80643d24, 0 1px #fff9e0;
 }
@@ -786,8 +786,7 @@ body[data-route='preface'] .paper-page {
     min-height: 37px;
     padding: 8px 15px;
     border: 1px solid #a78b61;
-    border-bottom: 0;
-    border-radius: 8px 8px 0 0;
+    border-radius: 8px;
     color: #614730;
     background: linear-gradient(#fff7df 0%, #e7d4ac 48%, #d2b888 100%);
     box-shadow: inset 0 1px #fffced, inset 1px 0 #fff9e5, 1px 0 #76563935;
@@ -1442,7 +1441,7 @@ body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padd
     .entry-location { font-size: 10px; }
     .entry-date-chip { border: 1px solid #89613b; border-radius: 6px; background: linear-gradient(115deg, #e0bf82, #fff1c9 23%, #ead2a0 72%, #b48751); }
     .year-bookmarks { margin-inline: 0; padding-inline: 5px; }
-    .year-bookmark { border-radius: 7px 7px 0 0; }
+    .year-bookmark { border-radius: 7px; }
     .entry-book-index { gap: 20px; }
     .entry-book-index > .journal-label { display: none; }
     body[data-route='entry'] .paper-page-left { min-height: 0; padding-bottom: 24px; }
