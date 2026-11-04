@@ -82,7 +82,8 @@ npm run data:sort -- --check
 npm run media:previews
 # 为指定项目生成预览，并手动指定浏览器可执行文件
 npm run media:previews -- --dir "项目目录" --browser "浏览器可执行文件路径"
-# 静态发布时可用 --skip-missing 跳过未提供的原文件，其他失败仍报错
+# 静态发布时跳过未提供的原文件，其他失败仍报错
+npm run media:previews -- --skip-missing
 # 查看批量预览命令的可用参数和用法
 npm run media:previews -- --help
 
