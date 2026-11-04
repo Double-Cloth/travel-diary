@@ -1,5 +1,5 @@
-import { getMediaFileUrl } from './utils.js?v=2.1.55';
-import { getMediaPreviewUrl, observeMediaPreview } from './media-preview.mjs?v=2.1.55';
+import { getMediaFileUrl } from './utils.js?v=2.1.56';
+import { getMediaPreviewUrl, observeMediaPreview } from './media-preview.mjs?v=2.1.56';
 
 export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbnailSrc = getMediaPreviewUrl(src), blob, name, kind, index = 0, detail = '' }) {
     const link = document.createElement(src ? 'a' : 'span');
@@ -34,6 +34,16 @@ export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbna
         thumbnail.append(media);
         if (thumbnailSrc.startsWith('blob:')) media.src = thumbnailSrc;
         else observeMediaPreview(media, src, kind);
+    }
+    if (kind === 'video') {
+        const play = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        play.setAttribute('class', 'media-file-play');
+        play.setAttribute('viewBox', '0 0 24 24');
+        play.setAttribute('focusable', 'false');
+        const triangle = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        triangle.setAttribute('d', 'M9 6v12l10-6z');
+        play.append(triangle);
+        thumbnail.append(play);
     }
     const text = document.createElement('span');
     text.className = 'media-file-description';
