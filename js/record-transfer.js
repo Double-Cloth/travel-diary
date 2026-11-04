@@ -1,16 +1,16 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.39';
-import { createPasswordGate } from './record-password.js?v=2.1.39';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.39';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.39';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.40';
+import { createPasswordGate } from './record-password.js?v=2.1.40';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.40';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.40';
 import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.39';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.39';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.39';
-import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.39';
-import { recordIdentity } from './record-identity.mjs?v=2.1.39';
-import { createContentPreviewScope } from './content-preview.js?v=2.1.39';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.40';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.40';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.40';
+import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.40';
+import { recordIdentity } from './record-identity.mjs?v=2.1.40';
+import { createContentPreviewScope } from './content-preview.js?v=2.1.40';
 
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.39';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.40';
 
 export function createRecordTransfer(onImported, getRecords) {
     const dialog = document.createElement('dialog');
@@ -22,9 +22,9 @@ export function createRecordTransfer(onImported, getRecords) {
             <label class="field-label" for="recordTransferSearch">搜索日期、地点或文件名</label>
             <div class="management-search"><input id="recordTransferSearch" type="search" autocomplete="off" placeholder="筛选要备份的日记"><button class="media-text-button" type="button" data-record-transfer-reset hidden>清除搜索</button></div>
             <div class="record-transfer-toolbar">
-                <button class="media-text-button" type="button" data-record-transfer-all>全选筛选结果</button>
-                <button class="media-text-button" type="button" data-record-transfer-clear>清空全部选择</button>
-                <button class="media-text-button" type="button" data-record-transfer-changes>选中新增和修改的记录</button>
+                <button class="paper-button management-secondary" type="button" data-record-transfer-all>全选筛选结果</button>
+                <button class="paper-button management-secondary" type="button" data-record-transfer-clear>清空全部选择</button>
+                <button class="paper-button management-secondary" type="button" data-record-transfer-changes>选中新增和修改的记录</button>
             </div>
             <ul class="record-transfer-list" data-record-transfer-list aria-label="选择旅行记录"></ul>
             <p class="management-empty" data-record-transfer-empty role="status" hidden></p>

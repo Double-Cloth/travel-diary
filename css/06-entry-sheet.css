@@ -1503,9 +1503,9 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-health-file small { display: block; margin-top: 5px; }
 .media-selection { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 12px; padding-top: 16px; }
 .media-selection-tools { display: flex; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; }
-.media-selection-tools .paper-button { font-size: 13px; border-radius: 4px; }
-.media-selection-tools .paper-button:hover:not(:disabled) { background: var(--paper-100); }
-.media-selection-tools .paper-button:active:not(:disabled) { background: var(--paper-200); }
+.media-selection-tools .paper-button, .record-transfer-toolbar .paper-button { font-size: 13px; border-radius: 4px; }
+.media-selection-tools .paper-button:hover:not(:disabled), .record-transfer-toolbar .paper-button:hover:not(:disabled) { background: var(--paper-100); }
+.media-selection-tools .paper-button:active:not(:disabled), .record-transfer-toolbar .paper-button:active:not(:disabled) { background: var(--paper-200); }
 .media-selection > p { margin: 0; font-variant-numeric: tabular-nums; }
 .media-manager .media-selection-note { width: 100%; font-size: 12px; }
 .media-manager [data-media-record] { color: var(--stamp); text-underline-offset: 3px; }
