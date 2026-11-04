@@ -856,6 +856,64 @@ test('翻页等待纸面、可见图片和字体解码，忽略屏外图片并�
     assert.equal(calls.length, 3, '超时后的迟到回调不重复播放');
 });
 
+test('翻页等待尚无 src 和正在读取的可见缩略图，复用懒加载任务并等到解码完成', async t => {
+    const previous = { document: globalThis.document, window: globalThis.window,
+        fetch: globalThis.fetch, getComputedStyle: globalThis.getComputedStyle,
+        IntersectionObserver: globalThis.IntersectionObserver };
+    t.after(() => Object.assign(globalThis, previous));
+    let finishFetch, finishDecode, startDecode;
+    const response = new Promise(resolve => { finishFetch = resolve; });
+    const decoded = new Promise(resolve => { finishDecode = resolve; });
+    const decoding = new Promise(resolve => { startDecode = resolve; });
+    const requests = [];
+    let observer, decodeCount = 0;
+    globalThis.fetch = async url => {
+        if (url === 'index.html') return new Response(null, { headers: { 'X-Travel-Media-Cache': 'disk-v1' } });
+        requests.push(url);
+        return response;
+    };
+    globalThis.IntersectionObserver = class {
+        constructor(callback) { observer = callback; }
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+    };
+    globalThis.window = { innerHeight: 800, IntersectionObserver: true };
+    globalThis.getComputedStyle = () => ({ backgroundImage: 'none' });
+    const visible = Object.assign(new EventTarget(), {
+        dataset: { src: '.cache/media-previews/photos/trip/turn.png.jpg' }, isConnected: true,
+        closest: () => ({ dataset: { mediaSrc: 'data/photos/trip/turn.png', mediaKind: 'image' } }),
+        getBoundingClientRect: () => ({ width: 100, height: 100, top: 40, bottom: 140 }),
+        decode() { decodeCount += 1; startDecode(); return decoded; }
+    });
+    t.after(() => { if (visible.src) URL.revokeObjectURL(visible.src); });
+    const offscreen = { dataset: { src: 'offscreen.jpg' },
+        getBoundingClientRect: () => ({ width: 100, height: 100, top: 900, bottom: 1000 }),
+        closest() { assert.fail('屏外图片不应提前读取'); } };
+    const page = { getBoundingClientRect: () => ({ top: 0, bottom: 800 }), querySelectorAll: () => [visible, offscreen] };
+    globalThis.document = { querySelectorAll: () => [visible, offscreen] };
+    app.observePhotoSleeveMedia();
+    const ready = [];
+    app.waitForPageTurnAssets([page], value => ready.push(value));
+    observer([{ target: visible, isIntersecting: true }]);
+    const mobilePage = { ...page, getBoundingClientRect: () => ({ top: 0, bottom: 0 }) };
+    app.waitForPageTurnAssets([mobilePage], value => ready.push(value));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(visible.src, undefined);
+    assert.equal(visible.loading, 'eager');
+    assert.deepEqual(ready, [], '尚未获得 Blob URL 时不能复制新页');
+    assert.deepEqual(requests, ['.cache/media-previews/photos/trip/turn.png.jpg'], '观察器和两次翻页共用一次读取');
+    finishFetch(new Response(new Blob(['preview'], { type: 'image/jpeg' })));
+    await decoding;
+    assert.match(visible.src, /^blob:/);
+    assert.equal(decodeCount, 1);
+    assert.deepEqual(ready, [], '设置 src 后还要等待解码');
+    finishDecode();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(ready, [true, true], '手机 display: contents 纸页也等待可见缩略图');
+    assert.equal(offscreen.dataset.src, 'offscreen.jpg');
+});
+
 test('桌面连续翻页加速落稳后衔接最新目标，取消会清理副本', async t => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const previous = { window: globalThis.window, document: globalThis.document, getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame };

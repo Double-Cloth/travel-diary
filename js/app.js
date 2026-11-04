@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=2.1.49';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.49';
-import { createRecordEditor } from './record-editor.js?v=2.1.49';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.49';
-import { createDataTransfer } from './data-transfer.js?v=2.1.49';
-import { createMediaManager } from './media-manager.js?v=2.1.49';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.49';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.49';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.49';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.49';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.49';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.49';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.49';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.49';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.49';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.49';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.49';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.49';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.50';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.50';
+import { createRecordEditor } from './record-editor.js?v=2.1.50';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.50';
+import { createDataTransfer } from './data-transfer.js?v=2.1.50';
+import { createMediaManager } from './media-manager.js?v=2.1.50';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.50';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.50';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.50';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.50';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.50';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.50';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.50';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.50';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.50';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.50';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.50';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.50';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.49';
+} from './location.mjs?v=2.1.50';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,7 +30,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.49';
+} from './photo-viewer-transform.mjs?v=2.1.50';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -97,6 +97,7 @@ let photoPreviewResizeTimer = null;
 let photoPreviewLateResizeTimer = null;
 let photoSleeveResizeObserver = null;
 let photoSleeveMediaObserver = null;
+const photoSleeveMediaLoads = new WeakMap();
 const observedPhotoSleeves = new Set();
 const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
@@ -3760,15 +3761,20 @@ function waitForPageTurnAssets(pages, onReady) {
     const backgrounds = new Set();
     pages.forEach(page => {
         const bounds = page.getBoundingClientRect();
+        // 手机详情页使用 display: contents，纸页自身没有矩形，改用视口判断子元素。
+        const top = bounds.bottom > bounds.top ? Math.max(0, bounds.top) : 0;
+        const bottom = bounds.bottom > bounds.top ? Math.min(window.innerHeight, bounds.bottom) : window.innerHeight;
         const background = getComputedStyle(page).backgroundImage || '';
         for (const match of background.matchAll(/url\(["']?([^"')]+)["']?\)/g)) {
             backgrounds.add(match[1]);
         }
-        page.querySelectorAll('img[src]').forEach(image => {
+        page.querySelectorAll('img[src], .photo-sleeve img').forEach(image => {
             const rect = image.getBoundingClientRect();
-            if (!rect.width || !rect.height || rect.bottom <= Math.max(0, bounds.top)
-                || rect.top >= Math.min(window.innerHeight, bounds.bottom)) return;
-            if (image.decode) pending.push(image.decode());
+            if (!rect.width || !rect.height || rect.bottom <= top || rect.top >= bottom) return;
+            // 懒加载尚未设置 src 时也要等待，避免把空白预览冻结进翻页纸带。
+            const preview = loadPhotoSleeveMedia(image);
+            if (preview) pending.push(preview);
+            else if (image.decode) pending.push(image.decode());
         });
     });
     backgrounds.forEach(src => {
@@ -5149,14 +5155,25 @@ function getRecordMedia(record) {
     return [...photos, ...videos];
 }
 
+function loadPhotoSleeveMedia(image) {
+    if (!photoSleeveMediaLoads.has(image) && image.dataset?.src) {
+        const button = image.closest('.photo-sleeve-button');
+        if (!button) return;
+        // 视口检测已由调用方完成，主动解码不再等待浏览器的第二轮懒加载。
+        image.loading = 'eager';
+        const ready = loadMediaPreview(image, button.dataset.mediaSrc, button.dataset.mediaKind)
+            .then(() => image.decode?.());
+        photoSleeveMediaLoads.set(image, ready);
+        delete image.dataset.src;
+    }
+    return photoSleeveMediaLoads.get(image);
+}
+
 function observePhotoSleeveMedia() {
     photoSleeveMediaObserver?.disconnect();
     const images = document.querySelectorAll('#leftPage .photo-sleeve img[data-src], #rightPage .photo-sleeve img[data-src]');
     const load = image => {
-        if (!image.dataset.src) return;
-        const button = image.closest('.photo-sleeve-button');
-        void loadMediaPreview(image, button.dataset.mediaSrc, button.dataset.mediaKind);
-        delete image.dataset.src;
+        void loadPhotoSleeveMedia(image)?.catch(() => {});
     };
     if (!('IntersectionObserver' in window)) {
         images.forEach(image => { if (!image.closest('[hidden]')) load(image); });
