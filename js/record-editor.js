@@ -348,7 +348,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                             <h3 id="${editorId('PhotosTitle')}"><span>03</span> 图片与视频</h3>
                             <span data-editor-media-count></span>
                         </div>
-                        <p class="record-editor-media-intro">点击缩略图或文件名预览，抓住六点手柄上下拖动排序。勾选多项可整组拖动或移除，更改保存后生效。</p>
+                        <p class="record-editor-media-intro">点击缩略图或文件名预览，抓住六点手柄上下拖动排序。更改保存后生效。</p>
                         <div class="record-editor-media-tools">
                             <div class="record-editor-upload-zone" data-editor-drop>
                                 <button class="paper-button" type="button" data-editor-upload>添加图片或视频</button>
