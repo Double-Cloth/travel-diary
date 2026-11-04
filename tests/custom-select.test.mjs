@@ -132,7 +132,7 @@ test('菜单获得焦点后仍可键盘导航，Escape 关闭并恢复按钮焦�
     assert.equal(menu.hidden, true);
 });
 
-test('关闭的选择框在初始化布局、滚动和窗口变化后同步方向，隐藏控件跳过测量', () => {
+test('关闭的选择框不测量菜单，打开后随滚动和窗口变化更新位置', () => {
     const originals = { document: globalThis.document, window: globalThis.window, requestAnimationFrame: globalThis.requestAnimationFrame };
     const events = {};
     const frames = [];
@@ -140,7 +140,13 @@ test('关闭的选择框在初始化布局、滚动和窗口变化后同步方�
     let top = 510;
     let visible = true;
     let measurements = 0;
-    const menu = { hidden: true, scrollHeight: 472, style: {} };
+    let hidden = true;
+    let hiddenChanges = 0;
+    const menu = {
+        get hidden() { return hidden; },
+        set hidden(value) { hiddenChanges += 1; hidden = value; },
+        scrollHeight: 472, style: {}
+    };
     const trigger = {
         getClientRects: () => visible ? [{}] : [],
         getBoundingClientRect: () => {
@@ -157,7 +163,7 @@ test('关闭的选择框在初始化布局、滚动和窗口变化后同步方�
     try {
         globalThis.document = {
             documentElement: {},
-            querySelectorAll: selector => selector === '.custom-select' ? [wrapper] : [],
+            querySelectorAll: selector => selector === '.custom-select.is-open' && !menu.hidden ? [wrapper] : [],
             addEventListener: (name, handler) => { events[name] = handler; }
         };
         globalThis.window = {
@@ -169,8 +175,20 @@ test('关闭的选择框在初始化布局、滚动和窗口变化后同步方�
         customSelect.enhanceCustomSelects();
         assert.equal(frames.length, 1);
         frames.shift()();
-        assert.ok(classes.has('is-open-upward'));
+        assert.equal(measurements, 0);
+        assert.equal(hiddenChanges, 0);
         assert.equal(menu.hidden, true);
+
+        events.scroll();
+        events.resize();
+        frames.shift()();
+        assert.equal(measurements, 0);
+        assert.equal(hiddenChanges, 0);
+
+        menu.hidden = false;
+        events.resize();
+        frames.shift()();
+        assert.ok(classes.has('is-open-upward'));
 
         top = 455;
         events.scroll();
@@ -180,7 +198,7 @@ test('关闭的选择框在初始化布局、滚动和窗口变化后同步方�
         frames.shift()();
         assert.ok(classes.has('is-open-downward'));
         assert.ok(!classes.has('is-open-upward'));
-        assert.equal(menu.hidden, true);
+        assert.equal(menu.hidden, false);
 
         globalThis.window.innerHeight = 600;
         events.resize();
@@ -192,7 +210,28 @@ test('关闭的选择框在初始化布局、滚动和窗口变化后同步方�
         events.scroll();
         frames.shift()();
         assert.equal(measurements, previousMeasurements);
+
+        menu.hidden = true;
+        events.scroll();
+        frames.shift()();
+        assert.equal(measurements, previousMeasurements);
+        assert.equal(hiddenChanges, 2);
     } finally {
         Object.assign(globalThis, originals);
     }
+});
+
+test('打开的菜单按滚动容器可用宽度定位，排除边框与滚动条', t => {
+    const { wrapper, trigger, menu } = createSelectFixture(t);
+    wrapper.parentElement = {
+        handlers: {},
+        clientLeft: 1, clientTop: 1, clientWidth: 248, clientHeight: 588,
+        getBoundingClientRect: () => ({ left: 0, top: 0, right: 260, bottom: 600 })
+    };
+    globalThis.window.getComputedStyle = () => ({ overflowY: 'auto' });
+    trigger.emit('click');
+    assert.equal(menu.hidden, false);
+    assert.equal(menu.style.width, '232px');
+    assert.equal(menu.style.left, '-11px');
+    assert.equal(menu.style.maxHeight, '272px');
 });

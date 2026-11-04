@@ -1,7 +1,7 @@
-import { DRAFT_FORMAT, readDraft } from './record-input.mjs?v=2.1.30';
-import { mediaBytes, readUploads } from './photo-uploads.mjs?v=2.1.30';
-import { pinyinSlug } from './slug.mjs?v=2.1.30';
-import { MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.30';
+import { DRAFT_FORMAT, readDraft } from './record-input.mjs?v=2.1.31';
+import { mediaBytes, readUploads } from './photo-uploads.mjs?v=2.1.31';
+import { pinyinSlug } from './slug.mjs?v=2.1.31';
+import { MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.31';
 
 import { ByteSource, createZipBlob, readZipSource, readSourceText } from './zip-stream.mjs';
 

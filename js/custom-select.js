@@ -39,16 +39,20 @@ function getCustomSelectBoundary(wrapper) {
 function updateCustomSelectPlacement(wrapper) {
     const trigger = wrapper.querySelector('[data-custom-select-trigger]');
     const menu = wrapper.querySelector('[data-custom-select-menu]');
-    if (!trigger || !menu) return;
-
-    const wasHidden = menu.hidden;
-    if (wasHidden) menu.hidden = false;
+    // 关闭的菜单不参与测量，避免离散显隐过渡引发溢出和滚动反馈。
+    if (!trigger || !menu || menu.hidden) return;
 
     const boundary = getCustomSelectBoundary(wrapper);
     const triggerRect = trigger.getBoundingClientRect();
+    const bounds = boundary === document.documentElement ? null : boundary.getBoundingClientRect();
     const boundaryRect = boundary === document.documentElement
         ? { top: 0, right: window.innerWidth, bottom: window.innerHeight, left: 0 }
-        : boundary.getBoundingClientRect();
+        : {
+            top: bounds.top + boundary.clientTop,
+            right: bounds.left + boundary.clientLeft + boundary.clientWidth,
+            bottom: bounds.top + boundary.clientTop + boundary.clientHeight,
+            left: bounds.left + boundary.clientLeft
+        };
     const isLedgerFilter = Boolean(wrapper.closest('.ledger-feature-filters'));
     const gap = 8;
     const visibleTop = Math.max(8, boundaryRect.top);
@@ -75,7 +79,6 @@ function updateCustomSelectPlacement(wrapper) {
     menu.style.maxHeight = `${Math.min(272, opensUpward ? spaceAbove : spaceBelow)}px`;
     wrapper.classList.toggle('is-open-upward', opensUpward);
     wrapper.classList.toggle('is-open-downward', !opensUpward);
-    if (wasHidden) menu.hidden = true;
 }
 
 function closeOtherCustomSelects(current) {
@@ -318,7 +321,7 @@ function updateCustomSelectPlacements() {
     if (placementUpdateFrame) return;
     placementUpdateFrame = requestAnimationFrame(() => {
         placementUpdateFrame = 0;
-        document.querySelectorAll('.custom-select').forEach(wrapper => {
+        document.querySelectorAll('.custom-select.is-open').forEach(wrapper => {
             const trigger = wrapper.querySelector('[data-custom-select-trigger]');
             if (trigger?.getClientRects().length) updateCustomSelectPlacement(wrapper);
         });
