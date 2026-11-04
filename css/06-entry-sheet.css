@@ -1411,8 +1411,11 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list .recycle-restore-note { font-size: 12px; }
 .recycle-list details { margin: 0; font-size: 12px; line-height: 1.8; }
 .recycle-list summary { cursor: pointer; display: list-item; min-height: 44px; align-content: center; color: var(--ink); }
-.recycle-list .recycle-contents[open] > summary { border-bottom: 1px dashed var(--hairline); }
-.recycle-list .recycle-contents > .content-preview-list { margin-block: 8px 16px; }
+.recycle-list .recycle-attachments[open] > summary { border-bottom: 1px dashed var(--hairline); }
+.recycle-list .recycle-contents .content-preview-list { margin-block: 8px 16px; }
+.recycle-list .content-file-heading { padding-block: 8px; color: var(--ink-soft); overflow-wrap: anywhere; }
+.recycle-preview-path a { color: var(--stamp); text-decoration: underline; text-underline-offset: 3px; }
+.recycle-preview-path a:focus-visible, .recycle-contents li:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
 .recycle-list .record-diff { margin: 0 0 12px; }
 .recycle-list .record-diff-section > h3 { font-size: 15px; }
 .recycle-list .content-preview-list { max-height: 440px; overflow: auto; padding: 0; overscroll-behavior: contain; }

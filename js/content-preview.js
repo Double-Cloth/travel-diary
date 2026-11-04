@@ -1,7 +1,7 @@
-import { escapeHtml } from './utils.js?v=2.1.33';
-import { parseMarkdown } from './data.js?v=2.1.33';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.33';
-import { createMediaPreview } from './media-preview.mjs?v=2.1.33';
+import { escapeHtml } from './utils.js?v=2.1.34';
+import { parseMarkdown } from './data.js?v=2.1.34';
+import { createMediaFileLink } from './media-file-link.js?v=2.1.34';
+import { createMediaPreview } from './media-preview.mjs?v=2.1.34';
 import { sourceOf, readSourceText } from './zip-stream.mjs';
 
 export function markdownPreview(source) {
@@ -56,7 +56,7 @@ export function createContentPreviewScope() {
             urls.forEach(url => URL.revokeObjectURL(url));
             urls.clear();
         },
-        async file({ name, url, source, detail = '', index = 0 }) {
+        async file({ name, url, source, detail = '', index = 0, collapsible = true }) {
             const kind = mediaKind(name);
             if (kind) {
                 const blob = source ? sourceOf(source).blob || new Blob([await readSourceText(sourceOf(source))]) : null;
@@ -77,15 +77,16 @@ export function createContentPreviewScope() {
                 observer.observe(link);
                 return link;
             }
-            const entry = document.createElement('details');
+            const entry = document.createElement(collapsible ? 'details' : 'div');
             entry.className = 'content-file-preview';
-            const summary = document.createElement('summary');
+            const summary = document.createElement(collapsible ? 'summary' : 'p');
+            if (!collapsible) summary.className = 'content-file-heading';
             summary.textContent = `${name.split('/').pop()}${detail ? ` · ${detail}` : ''}`;
             entry.append(summary);
             if (!/\.(md|json|txt)$/i.test(name)) { summary.textContent += ' · 暂不支持预览'; return entry; }
             let loaded = false;
-            entry.addEventListener('toggle', async () => {
-                if (!entry.open || loaded) return;
+            const load = async () => {
+                if ((collapsible && !entry.open) || loaded) return;
                 loaded = true;
                 entry.querySelector('.content-file-body')?.remove();
                 const content = document.createElement('div');
@@ -113,8 +114,22 @@ export function createContentPreviewScope() {
                         pre.textContent = /\.json$/i.test(name) ? JSON.stringify(JSON.parse(text), null, 2) : text;
                         content.replaceChildren(pre);
                     }
-                } catch (failure) { if (!disposed) { content.textContent = failure.message; loaded = false; } }
-            });
+                } catch (failure) {
+                    if (disposed) return;
+                    content.textContent = failure.message;
+                    loaded = false;
+                    if (!collapsible) {
+                        const retry = document.createElement('button');
+                        retry.type = 'button';
+                        retry.className = 'media-text-button';
+                        retry.textContent = '重新读取';
+                        retry.addEventListener('click', load);
+                        content.append(retry);
+                    }
+                }
+            };
+            if (collapsible) entry.addEventListener('toggle', load);
+            else void load();
             return entry;
         }
     };

@@ -15,6 +15,7 @@ const require = createRequire(import.meta.url);
 const { exportDataArchive, importDataArchive } = require('../js/data-archive.js');
 const { createHandler } = require('../js/server.js');
 const { createAuthConfig } = require('../js/auth.js');
+const { readRecycleBin, manageRecycleBin } = require('../js/recycle-bin.js');
 const record = name => ({ date: '2026-11-03', country: '中国', country_code: 'CN', locality: name,
     desc_md: `data/travel-diary/2026/2026-11-03-${name}.md`, photo_folder: 'data/photos/trip', photos: ['lake.png'],
     video_folder: 'data/videos/trip', videos: ['walk.mp4'] });
@@ -107,6 +108,55 @@ test('增量合并更新所选并新增记录，保留其他日记、个人资�
         assert.deepEqual(await fs.readFile(path.join(root, '.secrets/auth.json')), originalAuth);
         assert.equal((await fs.readdir(root)).some(name => name.startsWith('.travel-')), false);
     }
+});
+
+test('部分导入只留存被覆盖日记，恢复时保留之后修改的其他日记和新增记录', async t => {
+    const root = await fixture(t);
+    const third = record('third');
+    const archive = await selectedArchive([{ ...first, trip_id: 'updated' }, third]);
+    await importDataArchive(root, archive, { mergeRecords: true });
+    let report = await readRecycleBin(root);
+    assert.equal(report.items.length, 1);
+    const item = report.items[0];
+    assert.equal(item.kind, 'record');
+    assert.deepEqual(item.records, identifyRecords([first]));
+    assert.deepEqual(item.files.map(file => file.path).sort(), [first.desc_md, 'data/photos/trip/lake.png', 'data/videos/trip/walk.mp4'].sort());
+    // 相同记录重试和纯新增记录不会再生成回收批次。
+    await importDataArchive(root, archive, { mergeRecords: true });
+    await importDataArchive(root, await selectedArchive([record('fourth')]), { mergeRecords: true });
+    assert.equal((await readRecycleBin(root)).items.length, 1);
+    const records = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
+    records[1].trip_id = 'later-change';
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify(records));
+    await fs.writeFile(path.join(root, second.desc_md), '# 后来修改的另一篇');
+    await fs.writeFile(path.join(root, 'data/profile/owner-name.txt'), '后来修改的署名');
+    report = await readRecycleBin(root);
+    const preview = await manageRecycleBin(root, { action: 'preview', id: item.id, revision: report.revision });
+    assert.deepEqual(preview.changes.map(change => change.record.desc_md), [first.desc_md]);
+    await manageRecycleBin(root, { action: 'restore-selected', revision: report.revision, selections: [{ id: item.id, previewToken: preview.previewToken }] });
+    const restored = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
+    assert.deepEqual(restored[0], identifyRecords([first])[0]);
+    assert.equal(restored.length, 4);
+    assert.equal(restored[1].trip_id, 'later-change');
+    assert.ok(restored.some(record => record.desc_md === third.desc_md));
+    assert.equal(await fs.readFile(path.join(root, first.desc_md), 'utf8'), '# first\n正文');
+    assert.equal(await fs.readFile(path.join(root, second.desc_md), 'utf8'), '# 后来修改的另一篇');
+    assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '后来修改的署名');
+});
+
+test('部分导入安装失败时撤回所选日记的回收留存，不遗留数据锁', async t => {
+    const root = await fixture(t);
+    const before = await fs.readFile(path.join(root, 'data/travel_data.json'));
+    const rename = fs.rename;
+    const mocked = t.mock.method(fs, 'rename', async (source, target) => {
+        if (source.includes('.travel-data-import-') && target === path.join(root, 'data')) throw new Error('模拟部分导入安装失败');
+        return rename(source, target);
+    });
+    try { await assert.rejects(importDataArchive(root, await selectedArchive([first]), { mergeRecords: true }), /安装失败/); }
+    finally { mocked.mock.restore(); }
+    assert.deepEqual(await fs.readFile(path.join(root, 'data/travel_data.json')), before);
+    assert.equal((await readRecycleBin(root)).items.length, 0);
+    await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
 });
 
 test('共享媒体冲突、跨目录大小写冲突及损坏 CRC 都不修改现有数据', async t => {

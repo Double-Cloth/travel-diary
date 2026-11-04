@@ -322,8 +322,11 @@ async function mergeRecordEntries(root, incoming) {
         if (previous && previous.desc_md !== record.desc_md && !protectedFiles.has(previous.desc_md)) entries.delete(previous.desc_md);
     }
     entries.set('data/travel_data.json', { name: 'data/travel_data.json', data: Buffer.from(JSON.stringify(merged, null, 2) + '\n') });
+    const { compareBackup, describeRecords } = await import('./record-diff.mjs');
+    const comparisons = await compareBackup(selected, incoming, await describeRecords([...matches.values()].filter(Boolean), current));
+    const replacedRecords = selected.filter(record => matches.get(record) && comparisons.get(record.desc_md).status !== 'same').map(record => matches.get(record));
     return { entries: [...entries.values()], addedRecords: selected.filter(record => !matches.get(record)).length,
-        updatedRecords: selected.filter(record => matches.get(record)).length };
+        updatedRecords: selected.filter(record => matches.get(record)).length, replacedRecords };
 }
 
 async function importDataArchive(root, archive, options = {}) {
@@ -434,7 +437,11 @@ async function importDataArchive(root, archive, options = {}) {
         }
         let movedSecrets = false;
         let installedSecrets = false;
-        if (!mergeResult || mergeResult.updatedRecords) recycleId = await require('./recycle-bin.js').captureRecycle(root, { kind: 'snapshot', title: options.mergeRecords ? '导入部分记录前的数据' : '导入全部数据前的数据' });
+        if (mergeResult?.replacedRecords.length) {
+            const { recordFilePaths } = await import('./record-backup.mjs');
+            recycleId = await require('./recycle-bin.js').captureRecycle(root, { kind: 'record', title: '导入部分记录前的日记', records: identifyRecords(mergeResult.replacedRecords),
+                files: [...recordFilePaths(mergeResult.replacedRecords)].map(name => ({ path: name, optional: true })) });
+        } else if (!mergeResult) recycleId = await require('./recycle-bin.js').captureRecycle(root, { kind: 'snapshot', title: '导入全部数据前的数据' });
         await fs.rename(currentData, backupData);
         movedData = true;
         try {

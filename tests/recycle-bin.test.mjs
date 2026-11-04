@@ -147,6 +147,61 @@ test('旧媒体必须选择原日记，指定后同时恢复图片、视频引�
     assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), before);
 });
 
+test('清理的附件可恢复到不同目录的日记，预览与提交使用相同目标并保留现有附件', async t => {
+    const root = await fixture(t);
+    const source = 'data/photos/yuxi/recovered.png';
+    const destination = 'data/photos/trip/recovered.png';
+    await write(root, source, 'recovered');
+    const id = await captureRecycle(root, { title: '清理的媒体', files: [{ path: source }] });
+    await fs.unlink(path.join(root, source));
+    let report = await readRecycleBin(root);
+    const preview = await manageRecycleBin(root, { action: 'preview', id, targetDescMd: note.desc_md, revision: report.revision });
+    assert.deepEqual(preview.savedFiles, [{ path: destination, sourcePath: source }]);
+    assert.deepEqual(preview.savedPaths, [destination]);
+    assert.equal(preview.changes.length, 1);
+    assert.equal(preview.changes[0].record.photo_folder, note.photo_folder);
+    assert.deepEqual(new Set(preview.changes[0].record.photos), new Set([...note.photos, 'recovered.png']));
+    assert.deepEqual(preview.changes[0].comparison.media, [destination]);
+    await assert.rejects(fs.stat(path.join(root, destination)), { code: 'ENOENT' });
+    await manageRecycleBin(root, { action: 'restore-selected', revision: report.revision, selections: [{ id, targetDescMd: note.desc_md, previewToken: preview.previewToken }] });
+    const records = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
+    assert.deepEqual(new Set(records[0].photos), new Set([...note.photos, 'recovered.png']));
+    assert.deepEqual(records[1], { ...other, record_id: `legacy:${other.desc_md}` });
+    assert.equal(await fs.readFile(path.join(root, destination), 'utf8'), 'recovered');
+    await assert.rejects(fs.stat(path.join(root, source)), { code: 'ENOENT' });
+    assert.equal(await fs.readFile(path.join(root, 'data/photos/trip/shared.png'), 'utf8'), 'shared');
+    report = await readRecycleBin(root);
+    assert.ok(!report.items.some(item => item.id === id));
+    assert.ok(report.items.some(item => item.title === '恢复前的文件'));
+});
+
+test('跨目录恢复在提交失败时撤回目标文件；同名来源及非法目标不会被合并', async t => {
+    const root = await fixture(t);
+    const source = 'data/photos/yuxi/new.png';
+    await write(root, source, 'source');
+    const id = await captureRecycle(root, { title: '清理的媒体', files: [{ path: source }] });
+    await fs.unlink(path.join(root, source));
+    const report = await readRecycleBin(root);
+    const preview = await manageRecycleBin(root, { action: 'preview', id, targetDescMd: note.desc_md, revision: report.revision });
+    const before = await fs.readFile(path.join(root, 'data/travel_data.json'));
+    const writeFile = fs.writeFile;
+    const failure = t.mock.method(fs, 'writeFile', async (target, ...args) => {
+        if (target === path.join(root, 'data/travel_data.json')) throw new Error('模拟跨目录提交失败');
+        return writeFile(target, ...args);
+    });
+    try { await assert.rejects(manageRecycleBin(root, { action: 'restore-selected', revision: report.revision, selections: [{ id, targetDescMd: note.desc_md, previewToken: preview.previewToken }] }), /跨目录提交失败/); }
+    finally { failure.mock.restore(); }
+    assert.deepEqual(await fs.readFile(path.join(root, 'data/travel_data.json')), before);
+    await assert.rejects(fs.stat(path.join(root, 'data/photos/trip/new.png')), { code: 'ENOENT' });
+    assert.ok((await readRecycleBin(root)).items.some(item => item.id === id));
+    await write(root, 'data/photos/one/same.png', 'one');
+    await write(root, 'data/photos/two/same.png', 'two');
+    const duplicate = await captureRecycle(root, { title: '多目录媒体', files: [{ path: 'data/photos/one/same.png' }, { path: 'data/photos/two/same.png' }] });
+    await assert.rejects(manageRecycleBin(root, { action: 'preview', id: duplicate, revision: (await readRecycleBin(root)).revision, targetDescMd: note.desc_md }), /同名文件/);
+    await write(root, 'data/travel_data.json', JSON.stringify([{ ...note, photo_folder: 'data/photos/../outside' }, other]));
+    await assert.rejects(manageRecycleBin(root, { action: 'preview', id, revision: (await readRecycleBin(root)).revision, targetDescMd: note.desc_md }), /路径无效/);
+});
+
 test('回收文件预览需登录，只读取清单内文件，支持视频范围读取并防止路径越界', async t => {
     const root = await fixture(t);
     const name = 'data/photos/trip/unique.png';
