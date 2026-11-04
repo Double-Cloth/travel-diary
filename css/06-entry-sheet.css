@@ -1918,3 +1918,7 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
 }
 
 .media-batch-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+
+/* 回收站沿用部分备份的差异视图，取消复选框预留缩进。 */
+.recycle-list .record-diff { margin-left: 0; }
+.recycle-list .record-diff > summary { display: flex; }

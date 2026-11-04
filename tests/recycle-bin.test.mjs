@@ -336,6 +336,175 @@ test('相同正文不展示正文，仅元数据或附件变化仍能准确识�
     assert.deepEqual(changedTextBlocks('# 相同正文', '# 相同正文'), []);
 });
 
+async function preview(root, id, targetDescMd) {
+    return manageRecycleBin(root, { action: 'preview', id, targetDescMd, revision: (await readRecycleBin(root)).revision });
+}
+
+async function confirmRestore(root, id, plan, targetDescMd) {
+    return manageRecycleBin(root, { action: 'restore', id, targetDescMd, previewToken: plan.previewToken, revision: (await readRecycleBin(root)).revision });
+}
+
+test('恢复预览的整个异步读取过程持有数据锁', async t => {
+    const root = await fixture(t);
+    const id = await captureRecycle(root, { kind: 'version', title: '旧正文', files: [{ path: note.desc_md }] });
+    const revision = (await readRecycleBin(root)).revision;
+    const readFile = fs.readFile;
+    let count = 0;
+    let entered;
+    let resume;
+    const reading = new Promise(resolve => { entered = resolve; });
+    const gate = new Promise(resolve => { resume = resolve; });
+    const mocked = t.mock.method(fs, 'readFile', async (target, ...args) => {
+        if (target === path.join(root, 'data/travel_data.json') && ++count === 2) {
+            entered();
+            await gate;
+        }
+        return readFile(target, ...args);
+    });
+    const pending = manageRecycleBin(root, { action: 'preview', id, revision });
+    try {
+        await reading;
+        assert.ok((await fs.stat(path.join(root, '.travel-data.lock'))).isFile());
+    } finally { resume(); await pending; mocked.mock.restore(); }
+    await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
+});
+
+test('同一日记冲突先预览字段、正文和附件，确认恢复留存当前版本且不影响其他日记', async t => {
+    const root = await fixture(t);
+    const id = await captureRecycle(root, { kind: 'record', title: '旧日记', records: [note], files: [note.desc_md, 'data/photos/trip/unique.png'].map(path => ({ path })) });
+    await write(root, note.desc_md, '# 新标题\n\n新正文');
+    await write(root, 'data/photos/trip/unique.png', 'new-photo');
+    await write(root, 'data/travel_data.json', JSON.stringify([{ ...note, locality: '新地点' }, other]));
+    const plan = await preview(root, id);
+    const change = plan.changes.find(change => change.record.desc_md === note.desc_md).comparison;
+    assert.equal(change.status, 'changed');
+    assert.deepEqual(change.fields, ['locality']);
+    assert.equal(change.currentMarkdown, '# 新标题\n\n新正文');
+    assert.equal(change.markdown, '# 标题\n\n原正文');
+    assert.deepEqual(change.media, ['data/photos/trip/unique.png']);
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 新标题\n\n新正文');
+    assert.equal((await readRecycleBin(root)).items.length, 1);
+    await confirmRestore(root, id, plan);
+    const records = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
+    assert.equal(records.length, 2);
+    assert.equal(records[0].locality, note.locality);
+    assert.equal(records[1].desc_md, other.desc_md);
+    assert.equal(await fs.readFile(path.join(root, 'data/photos/trip/unique.png'), 'utf8'), 'unique');
+    const protection = (await readRecycleBin(root)).items.find(item => item.title === '恢复前的文件');
+    assert.ok(protection);
+    await action(root, protection.id);
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 新标题\n\n新正文');
+    assert.equal(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')))[0].locality, '新地点');
+});
+
+test('附件恢复预览真实的合并结果，保留后续字段与附件并显示同名内容变化', async t => {
+    const root = await fixture(t);
+    const name = 'data/photos/trip/unique.png';
+    const id = await captureRecycle(root, { title: '旧附件', mediaReferences: [note], files: [{ path: name }] });
+    await write(root, name, 'newer');
+    await write(root, 'data/travel_data.json', JSON.stringify([{ ...note, locality: '后续地点', photos: ['shared.png', 'later.png'] }, other]));
+    const plan = await preview(root, id);
+    const change = plan.changes.find(change => change.record.desc_md === note.desc_md);
+    assert.deepEqual(change.comparison.fields, ['photos']);
+    assert.equal(change.comparison.markdownChanged, false);
+    assert.deepEqual(change.comparison.media, [name]);
+    assert.deepEqual(change.record.photos, ['shared.png', 'unique.png', 'later.png']);
+    await confirmRestore(root, id, plan);
+    const record = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')))[0];
+    assert.equal(record.locality, '后续地点');
+    assert.deepEqual(record.photos, change.record.photos);
+});
+
+test('预览后正文、同大小媒体、索引、无引用文件变化或恢复目标改变时拒绝旧预览', async t => {
+    const root = await fixture(t);
+    const name = 'data/photos/trip/unique.png';
+    const id = await captureRecycle(root, { title: '旧文件', files: [{ path: name }] });
+    for (const [target, value] of [[note.desc_md, '# 后续修改'], [name, 'UNIQUE'], ['data/travel_data.json', JSON.stringify([{ ...note, trip_id: 'later' }, other])], ['data/profile/owner-name.txt', '新署名']]) {
+        const plan = await preview(root, id);
+        await write(root, target, value);
+        await assert.rejects(confirmRestore(root, id, plan), /预览后内容已变化/);
+        assert.equal(await fs.readFile(path.join(root, target), 'utf8'), value);
+    }
+    const plan = await preview(root, id);
+    await assert.rejects(confirmRestore(root, id, plan, other.desc_md), /预览后内容已变化/);
+    assert.equal((await readRecycleBin(root)).items.length, 1);
+});
+
+test('整站恢复预览包含日记移除、个人资料和无引用文件变化，预览不改磁盘', async t => {
+    const root = await fixture(t);
+    await write(root, 'data/profile/owner-name.txt', '旧署名');
+    const id = await captureRecycle(root, { kind: 'snapshot', title: '旧整站' });
+    const added = { ...other, date: '2026-11-05', desc_md: 'data/travel-diary/2026/2026-11-05-new.md' };
+    await write(root, added.desc_md, '# 后新增日记');
+    await write(root, 'data/travel_data.json', JSON.stringify([note, other, added]));
+    await write(root, 'data/profile/owner-name.txt', '新署名');
+    await write(root, 'data/photos/orphan.png', 'orphan');
+    const plan = await preview(root, id);
+    assert.equal(plan.changes.find(change => change.record.desc_md === added.desc_md).comparison.status, 'removed');
+    assert.equal(plan.changes.find(change => change.record.desc_md === 'data/profile/owner-name.txt').comparison.markdown, '旧署名');
+    assert.equal(plan.changes.find(change => change.record.desc_md === 'data/photos/orphan.png').comparison.status, 'removed');
+    assert.equal(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))).length, 3);
+    await confirmRestore(root, id, plan);
+    assert.equal(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))).length, 2);
+    assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '旧署名');
+    await assert.rejects(fs.stat(path.join(root, 'data/photos/orphan.png')), { code: 'ENOENT' });
+});
+
+test('旧正文与未引用文件复用恢复差异，正文缺失的其他日记不阻断预览', async t => {
+    const root = await fixture(t);
+    const id = await captureRecycle(root, { kind: 'version', title: '旧正文', files: [{ path: note.desc_md }] });
+    await write(root, note.desc_md, '# 当前正文');
+    await fs.unlink(path.join(root, other.desc_md));
+    const plan = await preview(root, id);
+    assert.equal(plan.changes.length, 1);
+    assert.equal(plan.changes[0].comparison.currentMarkdown, '# 当前正文');
+    await confirmRestore(root, id, plan);
+    const name = 'data/photos/orphan.png';
+    await write(root, name, 'old');
+    const fileId = await captureRecycle(root, { title: '无引用文件', files: [{ path: name }] });
+    await write(root, name, 'new');
+    const filePlan = await preview(root, fileId);
+    assert.deepEqual(filePlan.changes[0].comparison.media, [name]);
+    const index = await fs.readFile(path.join(root, 'data/travel_data.json'));
+    await confirmRestore(root, fileId, filePlan);
+    assert.equal(await fs.readFile(path.join(root, name), 'utf8'), 'old');
+    assert.deepEqual(await fs.readFile(path.join(root, 'data/travel_data.json')), index);
+});
+
+test('确认冲突恢复时索引提交失败，撤回附件覆盖并保留原回收项目', async t => {
+    const root = await fixture(t);
+    const name = 'data/photos/trip/unique.png';
+    const id = await captureRecycle(root, { title: '旧附件', mediaReferences: [note], files: [{ path: name }] });
+    await write(root, name, 'current');
+    await write(root, 'data/travel_data.json', JSON.stringify([{ ...note, photos: ['shared.png'] }, other]));
+    const plan = await preview(root, id);
+    const writeFile = fs.writeFile;
+    const mocked = t.mock.method(fs, 'writeFile', async (target, ...args) => {
+        if (target === path.join(root, 'data/travel_data.json')) throw new Error('模拟索引提交失败');
+        return writeFile(target, ...args);
+    });
+    try { await assert.rejects(confirmRestore(root, id, plan), /索引提交失败/); }
+    finally { mocked.mock.restore(); }
+    assert.equal(await fs.readFile(path.join(root, name), 'utf8'), 'current');
+    assert.deepEqual((await readRecycleBin(root)).items.map(item => item.id), [id]);
+    await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
+});
+
+test('恢复预览 API 要求会话与令牌，返回差异而非执行恢复', async t => {
+    const root = await fixture(t);
+    const id = await captureRecycle(root, { kind: 'version', title: '旧正文', files: [{ path: note.desc_md }] });
+    await write(root, note.desc_md, '# 当前正文');
+    const { base, headers } = await api(t, root);
+    const url = `${base}/api/travel-data?mode=recycle-bin`;
+    const body = JSON.stringify({ action: 'preview', id, revision: (await readRecycleBin(root)).revision });
+    assert.equal((await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })).status, 401);
+    assert.equal((await fetch(url, { method: 'POST', headers: { ...headers, 'X-Travel-Token': '' }, body })).status, 403);
+    const response = await fetch(url, { method: 'POST', headers, body });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).changes[0].comparison.markdown, '# 标题\n\n原正文');
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 当前正文');
+});
+
 test('共用媒体的字节未变，单篇日记新增或移除引用仍列入附件差异', async () => {
     const files = [{ name: note.desc_md, data: '# 日记' }, { name: other.desc_md, data: '# 另一篇' }, { name: 'data/photos/trip/shared.png', data: 'shared' }, { name: 'data/photos/trip/unique.png', data: 'unique' }];
     const current = await describeRecords([note, other], files);

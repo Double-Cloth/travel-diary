@@ -20,6 +20,7 @@ function capabilityFrom(endpoint, result) {
         recycleBin: result.recycleBin === true,
         recyclePreviews: result.recyclePreviews === true,
         recycleClear: result.recycleClear === true,
+        recycleDiff: result.recycleDiff === true,
         authenticated: result.authenticated === true
     };
 }

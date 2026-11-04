@@ -1,9 +1,10 @@
-import { escapeHtml } from './utils.js?v=2.1.22';
-import { createPasswordGate } from './record-password.js?v=2.1.22';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.22';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.22';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.22';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.22';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.23';
+import { createPasswordGate } from './record-password.js?v=2.1.23';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.23';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.23';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.23';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.23';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.23';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -27,6 +28,7 @@ export function createRecycleManager(onRestored) {
     let stale = true;
     let clearSupported = false;
     let trigger;
+    let restorePreview;
     let previews = createContentPreviewScope();
     const error = message => { dialog.querySelector('[data-recycle-error]').textContent = message; };
     const notice = message => { dialog.querySelector('[data-recycle-notice]').textContent = message; };
@@ -48,6 +50,7 @@ export function createRecycleManager(onRestored) {
         enhanceCustomSelects(dialog);
     }
     function render() {
+        restorePreview = undefined;
         previews.dispose();
         previews = createContentPreviewScope();
         const items = filteredItems();
@@ -60,12 +63,21 @@ export function createRecycleManager(onRestored) {
             ${(item.records.length ? item.records : item.mediaReferences || []).map(record => `<p class="recycle-record-info">${escapeHtml([record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · '))}</p>`).join('')}
             <details class="recycle-contents" data-recycle-contents="${item.id}"><summary>查看内容与附件 <small>${item.files.length} 个文件</small></summary><ul class="media-file-list content-preview-list" data-recycle-files data-media-viewer-group></ul></details>
             ${item.kind === 'files' && !item.mediaReferences?.length && item.files.some(file => mediaKind(file.path)) ? `<div class="recycle-target"><label class="field-label" for="recycleTarget-${item.id}">恢复到</label><select id="recycleTarget-${item.id}" data-custom-select data-recycle-target="${item.id}"><option value="">${item.title === '编辑日记时移除的媒体' ? '请选择原日记' : '仅恢复文件'}</option>${(report.currentRecords || []).map(record => `<option value="${escapeHtml(record.desc_md)}">${escapeHtml([record.date, record.locality].filter(Boolean).join(' · '))}</option>`).join('')}</select><p class="recycle-restore-note">选择日记后，同时补回附件列表；其他日记信息保持不变。</p></div>` : item.mediaReferences?.length ? '<p class="recycle-restore-note">恢复文件并补回原日记的附件列表，保留之后修改的内容。</p>' : ''}
-            <div class="recycle-item-actions"><button class="paper-button recycle-purge" type="button" data-recycle-purge="${item.id}">永久删除</button><button class="paper-button" type="button" data-recycle-restore="${item.id}">恢复${item.kind === 'snapshot' ? '全部数据' : item.kind === 'version' ? '此版本' : item.kind === 'record' ? '日记' : '文件'}</button></div></li>`).join('') : `<li class="media-empty">${report.items.length ? '没有匹配的回收项目，清除搜索后可查看全部内容。' : '回收站为空。删除的内容会显示在这里。'}</li>`;
+            <div data-recycle-diff="${item.id}" hidden></div>
+            <div class="recycle-item-actions"><button class="paper-button recycle-purge" type="button" data-recycle-purge="${item.id}">永久删除</button><button class="paper-button" type="button" data-recycle-preview-cancel="${item.id}" hidden>取消恢复</button><button class="paper-button" type="button" data-recycle-restore="${item.id}">预览恢复</button></div></li>`).join('') : `<li class="media-empty">${report.items.length ? '没有匹配的回收项目，清除搜索后可查看全部内容。' : '回收站为空。删除的内容会显示在这里。'}</li>`;
         enhanceCustomSelects(dialog);
         syncControls();
     }
     dialog.addEventListener('toggle', async event => {
         const details = event.target;
+        if (details.matches('[data-diff-record]')) {
+            const state = restorePreview;
+            const scope = previews;
+            await loadDifferenceMedia(details, state?.comparisons.get(details.dataset.diffRecord), scope, (name, side) => ({
+                url: side === 'after' && state.savedPaths.has(name) ? recycleUrl(state.id, name) : getMediaFileUrl(name)
+            }), () => scope === previews && state === restorePreview);
+            return;
+        }
         if (!details.matches('[data-recycle-contents]') || !details.open || details.dataset.loaded) return;
         details.dataset.loaded = 'true';
         const scope = previews;
@@ -83,6 +95,66 @@ export function createRecycleManager(onRestored) {
             list.append(row);
         }
     }, true);
+    function recycleUrl(id, name) {
+        const url = new URL('api/travel-data?mode=recycle-file', window.location.href);
+        url.searchParams.set('id', id);
+        url.searchParams.set('path', name);
+        return url.href;
+    }
+    function clearRestorePreview() {
+        if (!restorePreview) return;
+        const id = restorePreview.id;
+        const container = dialog.querySelector(`[data-recycle-diff="${id}"]`);
+        container.replaceChildren();
+        container.hidden = true;
+        dialog.querySelector(`[data-recycle-restore="${id}"]`).textContent = '预览恢复';
+        dialog.querySelector(`[data-recycle-preview-cancel="${id}"]`).hidden = true;
+        restorePreview = undefined;
+        previews.dispose();
+        previews = createContentPreviewScope();
+        dialog.querySelectorAll('[data-recycle-contents]').forEach(details => {
+            details.open = false;
+            delete details.dataset.loaded;
+            details.querySelector('[data-recycle-files]').replaceChildren();
+        });
+    }
+    async function previewRestore(item, targetDescMd) {
+        clearRestorePreview();
+        busy = true;
+        error('');
+        notice('正在比较恢复后的内容…');
+        syncControls();
+        try {
+            const capability = await detectWriterCapability();
+            if (!capability.recycleDiff) throw new Error('请重启日记服务后再预览恢复差异。');
+            const response = await fetch(new URL('api/travel-data?mode=recycle-bin', window.location.href), {
+                method: 'POST', credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(120000),
+                headers: { 'Content-Type': 'application/json', 'X-Travel-Token': capability.token },
+                body: JSON.stringify({ action: 'preview', id: item.id, targetDescMd, revision: report.revision })
+            });
+            const result = await response.json();
+            if (!response.ok || !Array.isArray(result.changes) || !result.previewToken) throw new Error(result.error || '无法比较恢复内容，请刷新后重试。');
+            const comparisons = new Map(result.changes.map(({ record, comparison }) => [record.desc_md, {
+                ...comparison, previousMediaPaths: new Set(comparison.previousMediaPaths), incomingMediaPaths: new Set(comparison.incomingMediaPaths)
+            }]));
+            restorePreview = { id: item.id, targetDescMd, previewToken: result.previewToken, comparisons, savedPaths: new Set(result.savedPaths) };
+            const container = dialog.querySelector(`[data-recycle-diff="${item.id}"]`);
+            container.innerHTML = `<p class="recycle-restore-note">请核对恢复后的变化。确认后将采用回收站内容，被替换的当前内容会先存入回收站。</p>`
+                + (result.changes.length ? result.changes.map(({ record }) => `<p><strong>${escapeHtml(record.desc_md)}</strong></p>${renderRecordDifference(record, comparisons.get(record.desc_md), {
+                    afterLabel: '恢复后', note: '仅显示有变化的部分。确认恢复后将应用这些变化。', previewLabel: '预览恢复后的正文'
+                })}`).join('') : '<p>内容与当前相同，无需替换。</p>');
+            container.hidden = false;
+            container.querySelectorAll('[data-diff-record]').forEach(details => { details.open = true; });
+            dialog.querySelector(`[data-recycle-restore="${item.id}"]`).textContent = '确认恢复';
+            dialog.querySelector(`[data-recycle-preview-cancel="${item.id}"]`).hidden = false;
+            notice('已生成恢复预览，核对差异后可确认恢复。');
+            container.scrollIntoView({ block: 'nearest' });
+        } catch (failure) {
+            stale = true;
+            error(failure.message);
+            notice('未恢复任何内容，请刷新回收站后重试。');
+        } finally { busy = false; syncControls(); }
+    }
     async function request(payload) {
         busy = true;
         error('');
@@ -123,6 +195,7 @@ export function createRecycleManager(onRestored) {
     function close() {
         if (busy) return;
         dialog.close();
+        restorePreview = undefined;
         previews.dispose();
         if (trigger?.isConnected) trigger.focus();
         else document.getElementById('journalStage')?.focus();
@@ -132,8 +205,12 @@ export function createRecycleManager(onRestored) {
     dialog.addEventListener('input', event => {
         if (event.target.matches('[data-recycle-search]') && report && !busy) render();
     });
+    dialog.addEventListener('change', event => {
+        if (event.target.matches('[data-recycle-target]')) clearRestorePreview();
+    });
     dialog.addEventListener('click', async event => {
         if (busy) return;
+        if (event.target.closest('[data-recycle-preview-cancel]')) { clearRestorePreview(); notice('已取消恢复。'); return; }
         if (event.target.closest('[data-recycle-close]')) { close(); return; }
         if (event.target.closest('[data-recycle-refresh]')) { await request(); return; }
         if (event.target.closest('[data-recycle-reset]')) { dialog.querySelector('[data-recycle-search]').value = ''; render(); dialog.querySelector('[data-recycle-search]').focus(); return; }
@@ -159,16 +236,20 @@ export function createRecycleManager(onRestored) {
             dialog.querySelector(`#recycleTarget-${id}Button`)?.focus();
             return;
         }
+        if (!purge && (restorePreview?.id !== id || restorePreview.targetDescMd !== targetDescMd)) {
+            await previewRestore(item, targetDescMd);
+            return;
+        }
         const message = purge ? `将永久删除「${item.title}」及其中的 ${item.files.length} 个文件，删除后无法恢复。`
             : item.kind === 'snapshot' ? '将全部日记和个人资料恢复到这个时间点。当前数据会先存入回收站；访问密码保持不变。'
                 : item.kind === 'version' ? '将文件恢复到原位置，被替换的当前文件会先存入回收站。'
-                    : item.kind === 'record' ? '将日记和附件恢复到原位置。遇到同名但内容不同的文件时会停止，不会覆盖。'
+                    : item.kind === 'record' ? '将按预览恢复日记和附件，被替换的当前内容会先存入回收站。'
                         : targetDescMd || item.mediaReferences?.length ? '将文件恢复到原位置，并补回对应日记的附件列表。日记中之后修改的内容保持不变。'
                             : '仅将文件恢复到原位置，不修改日记内容。';
         busy = true;
         try {
             if (await confirmFeedback(message, { title: purge ? '永久删除这个项目？' : '恢复这个项目？', confirmLabel: purge ? '永久删除' : '恢复', danger: purge })) {
-                await request({ action: purge ? 'purge' : 'restore', id, ...(targetDescMd ? { targetDescMd } : {}) });
+                await request({ action: purge ? 'purge' : 'restore', id, ...(purge ? {} : { previewToken: restorePreview.previewToken }), ...(targetDescMd ? { targetDescMd } : {}) });
             }
         } finally { busy = false; }
     });

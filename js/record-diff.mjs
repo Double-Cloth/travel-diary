@@ -1,5 +1,5 @@
-import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.22';
-import { recordFilePaths } from './record-backup.mjs?v=2.1.22';
+import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.23';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.23';
 import { sourceOf, updateCrc, readSourceText } from './zip-stream.mjs';
 
 export function canonical(value) {
@@ -55,7 +55,7 @@ export async function compareBackup(records, entries, current) {
         comparisons.set(record.desc_md, { status, previous, expected, fields, media,
             previousMediaPaths, incomingMediaPaths,
             markdownChanged: !previous || incoming.signatures[record.desc_md] !== current.signatures[previous.desc_md],
-            markdown: new TextDecoder('utf-8', { fatal: true }).decode(await readSourceText(sourceOf(files.get(record.desc_md)))) });
+            markdown: files.has(record.desc_md) ? new TextDecoder('utf-8', { fatal: true }).decode(await readSourceText(sourceOf(files.get(record.desc_md)))) : '' });
     }
     return comparisons;
 }

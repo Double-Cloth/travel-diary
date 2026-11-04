@@ -37,7 +37,7 @@
 | `profile-picture.js`、`profile-owner.js`、`profile-owner-dialog.js` | 头像处理、署名读取与资料编辑。 |
 | `data-transfer.js`、`record-transfer.js`、`record-backup.mjs`、`backup-password.js` | 完整备份与清空交互、部分记录选择界面、前后端共用的记录备份封装及上传前密码预校验。 |
 | `operation-progress.js` | 共用进度提示、XHR 上传进度、流式下载与保存。 |
-| `record-identity.mjs`、`record-diff.mjs`、`record-inventory.js` | 固定身份、字段与文件内容比较、当前记录清单和导出传输完成后自动更新的备份基准。 |
+| `record-identity.mjs`、`record-diff.mjs`、`record-diff-view.js`、`record-inventory.js` | 固定身份、字段与文件内容比较、当前记录清单和导出传输完成后自动更新的备份基准。 |
 | `media-health.js`、`media-manager.js` | 媒体引用检查、空间统计、未引用文件移入统一回收站。 |
 | `recycle-bin.js`、`recycle-manager.js` | 数据锁内留存与恢复日记、文件和整站数据；独立回收站入口、版本校验和永久删除。 |
 | `server.js`、`record-store.js`、`auth.js`、`data-archive.js` | 静态服务、API、写入策略、认证、数据锁与恢复。 |
@@ -139,3 +139,5 @@ Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，不
 动态导出返回会话绑定的 `X-Travel-Backup-Receipt`，流传输成功后，在释放数据锁前自动写入备份比较基准。基准保存导出快照而非完成时重算的内容，未选记录的基准不变；失败、中断和 HEAD 请求不推进基准。保留 `POST ?mode=backup-complete` 供旧页面兼容，并继续验证会话和回执。原生下载回退复用回执参数，传输完成后同样自动更新；基准属于本机缓存，不属于可移植数据。
 
 `GET /api/travel-data?mode=media-health` 扫描普通媒体文件与引用；`POST` 同模式使用 `trash`、`restore`、`purge` 操作。操作要求会话和令牌，在共用数据锁内核对体检版本，再执行未引用媒体回收、独占恢复及显式永久清理。统一回收站位于 `.cache/recycle-bin/<批次标识>/`，旧 `data/media-trash/` 自动迁移，含原文件及恢复清单；路径逐层拒绝符号链接和 junction。损坏或缺失的回收清单停止清理并提示人工核对，不静默当作空目录。
+
+回收站 `POST ?mode=recycle-bin` 的 `preview` 操作在数据锁内计算实际恢复结果，复用 `compareBackup` 比较元数据、正文与附件，独立文件及整站移除也纳入差异。`record-diff-view.js` 由部分导入和回收站共同调用，统一渲染行差异和延迟加载附件，来源分别为 ZIP 字节源或已鉴权的回收文件 URL。预览令牌绑定当前数据、回收内容及目标日记，确认恢复时锁内复核；冲突覆盖前保存当前文件与索引，失败时统一回滚。旧调用未携带预览令牌时仍拒绝同名冲突。

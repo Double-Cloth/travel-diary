@@ -130,10 +130,10 @@ async function recycleFile(root, id, name) {
     return ordinaryPath(root, `${BASE}/${id}/${name}`);
 }
 
-async function restoreFiles(root, item, targetDescMd) {
+async function restoredRecords(root, item, targetDescMd, replace = false) {
     const current = await readRecords(root);
     const { matchRecord } = await import('./record-identity.mjs');
-    for (const record of item.records) if (matchRecord(record, current)) throw failure('这篇日记已存在，请先处理当前记录再恢复，未覆盖任何内容。');
+    for (const record of item.records) if (!replace && matchRecord(record, current)) throw failure('这篇日记已存在，请先处理当前记录再恢复，未覆盖任何内容。');
     const next = current.map(record => ({ ...record }));
     const paths = new Set(item.files.map(file => file.path));
     let references = item.mediaReferences || [];
@@ -174,6 +174,16 @@ async function restoreFiles(root, item, targetDescMd) {
             target[list] = merged;
         }
     }
+    for (const record of item.records) {
+        const previous = matchRecord(record, next);
+        if (previous) next[next.indexOf(previous)] = { ...record, record_id: previous.record_id };
+        else next.push(record);
+    }
+    return { current, next };
+}
+
+async function restoreFiles(root, item, targetDescMd) {
+    const { current, next } = await restoredRecords(root, item, targetDescMd);
     const copies = [];
     for (const file of item.files) {
         await ensureParent(root, file.path);
@@ -193,7 +203,7 @@ async function restoreFiles(root, item, targetDescMd) {
         }
         if (item.records.length || JSON.stringify(next) !== JSON.stringify(current)) {
             temporary = path.join(root, `data/.recycle-restore-${randomBytes(16).toString('hex')}.tmp`);
-            await fs.writeFile(temporary, JSON.stringify([...next, ...item.records], null, 2) + '\n', { flag: 'wx' });
+            await fs.writeFile(temporary, JSON.stringify(next, null, 2) + '\n', { flag: 'wx' });
             await ordinaryPath(root, 'data/travel_data.json');
             await fs.rename(temporary, path.join(root, 'data/travel_data.json'));
         }
@@ -201,9 +211,15 @@ async function restoreFiles(root, item, targetDescMd) {
     finally { if (temporary) await fs.unlink(temporary).catch(() => {}); }
 }
 
-async function restoreVersion(root, item) {
+async function restoreVersion(root, item, records) {
+    // 将附件与索引放在同一回滚范围，任何一步失败都还原当前文件。
+    const incoming = [...item.files];
+    if (records) {
+        if (incoming.some(file => file.path === 'data/travel_data.json')) throw failure('附件恢复不能替换整份日记目录。');
+        incoming.push({ path: 'data/travel_data.json', content: JSON.stringify(records, null, 2) + '\n' });
+    }
     const files = [];
-    for (const file of item.files) {
+    for (const file of incoming) {
         await ensureParent(root, file.path);
         try { await ordinaryPath(root, file.path); files.push({ path: file.path }); }
         catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -218,8 +234,9 @@ async function restoreVersion(root, item) {
             await fs.rename(original, temporary);
             moved.push({ original, temporary });
         }
-        for (const file of item.files) {
-            await fs.copyFile(await ordinaryPath(root, `${BASE}/${item.id}/${file.path}`), path.join(root, file.path), fs.constants.COPYFILE_EXCL);
+        for (const file of incoming) {
+            if (file.content !== undefined) await fs.writeFile(path.join(root, file.path), file.content, { flag: 'wx' });
+            else await fs.copyFile(await ordinaryPath(root, `${BASE}/${item.id}/${file.path}`), path.join(root, file.path), fs.constants.COPYFILE_EXCL);
             created.push(path.join(root, file.path));
         }
     } catch (error) {
@@ -261,6 +278,77 @@ async function restoreSnapshot(root, item) {
     }
 }
 
+// 预览与提交比较同一份磁盘状态，连未被索引引用的文件也纳入检查。
+async function restoreToken(root, item, targetDescMd, revision) {
+    const hash = createHash('sha256').update(JSON.stringify([revision, item.id, targetDescMd || '']));
+    for (const [prefix, files] of [['', await dataFiles(root)], [`${BASE}/${item.id}/`, item.files]]) {
+        for (const file of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
+            const source = await ordinaryPath(root, prefix + file.path);
+            hash.update(JSON.stringify([prefix, file.path, await fileDigest(source)]));
+        }
+    }
+    return hash.digest('hex');
+}
+
+async function previewRestore(root, item, targetDescMd, revision) {
+    const { fileSource } = require('./file-stream.js');
+    const { compareBackup, describeRecords, fileSignature } = await import('./record-diff.mjs');
+    const { recordFilePaths } = await import('./record-backup.mjs');
+    const { matchRecord, identifyRecords } = await import('./record-identity.mjs');
+    const { readSourceText, sourceOf } = await import('./zip-stream.mjs');
+    const previewToken = await restoreToken(root, item, targetDescMd, revision);
+    const current = await readRecords(root);
+    const before = new Map();
+    for (const file of await dataFiles(root)) before.set(file.path, await fileSource(await ordinaryPath(root, file.path)));
+    const after = item.kind === 'snapshot' ? new Map() : new Map(before);
+    for (const file of item.files) after.set(file.path, await fileSource(await ordinaryPath(root, `${BASE}/${item.id}/${file.path}`)));
+    const text = async source => source ? new TextDecoder('utf-8', { fatal: true }).decode(await readSourceText(sourceOf(source))) : '';
+    let next;
+    if (item.kind === 'snapshot' || item.kind === 'version') {
+        if (!after.has('data/travel_data.json')) throw failure('这份数据缺少日记目录，无法恢复。');
+        next = identifyRecords(JSON.parse(await text(after.get('data/travel_data.json'))));
+    } else {
+        ({ next } = await restoredRecords(root, item, targetDescMd, true));
+    }
+    const entries = files => [...files].map(([name, data]) => ({ name, data }));
+    const comparisons = await compareBackup(next, entries(after), await describeRecords(current, entries(before)));
+    const changes = [];
+    for (const record of next) {
+        const comparison = comparisons.get(record.desc_md);
+        if (comparison.status === 'same') continue;
+        if (comparison.status === 'conflict') throw failure(comparison.message);
+        comparison.currentMarkdown = await text(before.get(comparison.previous?.desc_md));
+        changes.push({ record, comparison });
+    }
+    for (const record of current) {
+        if (next.some(incoming => matchRecord(incoming, [record]))) continue;
+        changes.push({ record: { desc_md: record.desc_md }, comparison: {
+            status: 'removed', previous: record, fields: Object.keys(record).filter(key => key !== 'record_id'),
+            currentMarkdown: await text(before.get(record.desc_md)), markdown: '', markdownChanged: true,
+            media: [...recordFilePaths([record])].filter(name => name !== record.desc_md),
+            previousMediaPaths: recordFilePaths([record]), incomingMediaPaths: new Set()
+        } });
+    }
+    // 个人资料、无引用文件及旧版本文件，同样使用共享的文本和附件差异视图。
+    const covered = new Set(changes.flatMap(({ record, comparison }) => [record.desc_md, comparison.previous?.desc_md, ...comparison.media]));
+    for (const name of new Set([...before.keys(), ...after.keys()])) {
+        if (name === 'data/travel_data.json' || covered.has(name)) continue;
+        const left = before.get(name);
+        const right = after.get(name);
+        if (left === right || (left && right && await fileSignature(left) === await fileSignature(right))) continue;
+        const isText = /\.(md|json|txt)$/i.test(name);
+        changes.push({ record: { desc_md: name }, comparison: {
+            status: !left ? 'added' : !right ? 'removed' : 'changed', fields: [],
+            currentMarkdown: isText ? await text(left) : '', markdown: isText ? await text(right) : '', markdownChanged: isText,
+            media: isText ? [] : [name], previousMediaPaths: new Set(left ? [name] : []), incomingMediaPaths: new Set(right ? [name] : [])
+        } });
+    }
+    // Sets 必须显式序列化；after 中未被回收文件覆盖的附件仍从当前位置读取。
+    return { previewToken, changes: changes.map(({ record, comparison }) => ({ record, comparison: {
+        ...comparison, previousMediaPaths: [...comparison.previousMediaPaths], incomingMediaPaths: [...comparison.incomingMediaPaths]
+    } })), savedPaths: item.files.map(file => file.path) };
+}
+
 async function manageRecycleBin(root, payload) {
     const release = await require('./data-archive.js').acquireDataLock(root);
     try {
@@ -283,10 +371,18 @@ async function manageRecycleBin(root, payload) {
         }
         const item = report.items.find(item => item.id === payload.id);
         if (!item) throw failure('这个回收项目已不存在，请刷新。');
+        if (payload.action === 'preview') return await previewRestore(root, item, payload.targetDescMd, report.revision);
         if (payload.action === 'restore') {
+            if (payload.previewToken) {
+                const token = await restoreToken(root, item, payload.targetDescMd, report.revision);
+                if (token !== payload.previewToken) throw failure('预览后内容已变化，请重新预览再恢复，未覆盖任何内容。');
+            }
             if (item.kind === 'snapshot') await restoreSnapshot(root, item);
             else if (item.kind === 'version') await restoreVersion(root, item);
-            else await restoreFiles(root, item, payload.targetDescMd);
+            else if (payload.previewToken) {
+                const { current, next } = await restoredRecords(root, item, payload.targetDescMd, true);
+                await restoreVersion(root, item, JSON.stringify(current) === JSON.stringify(next) ? undefined : next);
+            } else await restoreFiles(root, item, payload.targetDescMd);
         } else if (payload.action !== 'purge') throw failure('不支持这项回收站操作。');
         await discardRecycle(root, item.id);
         return readRecycleBin(root);
