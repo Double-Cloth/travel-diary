@@ -1,6 +1,6 @@
 {
   "name": "travel-diary",
-  "version": "2.1.43",
+  "version": "2.1.44",
   "private": true,
   "description": "Personal travel diary static site.",
   "type": "commonjs",

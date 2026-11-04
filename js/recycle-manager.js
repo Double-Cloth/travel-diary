@@ -1,17 +1,35 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.43';
-import { createPasswordGate } from './record-password.js?v=2.1.43';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.43';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.43';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.43';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.43';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.43';
-import { recordIdentity } from './record-identity.mjs?v=2.1.43';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.44';
+import { createPasswordGate } from './record-password.js?v=2.1.44';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.44';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.44';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.44';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.44';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.44';
+import { recordIdentity } from './record-identity.mjs?v=2.1.44';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`;
     if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
     return `${(bytes / 1024 ** 3).toFixed(2)} GiB`;
+}
+
+function restoreChangeTitle(record, comparison) {
+    const diary = record.date ? record : comparison.previous?.date ? comparison.previous : null;
+    if (diary) {
+        const attachmentFields = ['photo_folder', 'photos', 'video_folder', 'videos'];
+        const parts = [comparison.fields.some(key => !attachmentFields.includes(key)) ? '信息' : '',
+            comparison.markdownChanged ? '正文' : '',
+            comparison.media.length || comparison.fields.some(key => attachmentFields.includes(key)) ? '附件' : ''].filter(Boolean);
+        const type = comparison.status === 'changed' && parts.length ? `日记${parts.join('、')}` : '日记';
+        return [type, diary.date, diary.locality || diary.admin_area || diary.country].filter(Boolean).join(' · ');
+    }
+    const name = record.desc_md;
+    if (name === 'data/profile/owner-name.txt') return '个人署名';
+    if (name === 'data/profile/profile-picture.png') return '个人头像';
+    const kind = mediaKind(name);
+    const type = kind === 'image' ? '图片' : kind === 'video' ? '视频' : /\.md$/i.test(name) ? '正文文件' : '文件';
+    return `${type} · ${name.split('/').pop()}`;
 }
 
 export function createRecycleManager(onRestored, { onClose, isActive = () => true } = {}) {
@@ -87,7 +105,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         if (!state) return '';
         if (state.phase === 'pending') return '<p class="recycle-preview-status" role="status">正在生成恢复预览…</p>';
         if (state.phase === 'error') return `<p class="recycle-preview-status" role="alert">${escapeHtml(state.message)}</p><button class="media-text-button" type="button" data-recycle-retry="${state.id}">重试预览</button>`;
-        return `<details class="recycle-restore-preview"><summary>预览恢复后的变化 <small>${state.changes.length ? `${state.changes.length} 项内容` : '内容相同'}</small></summary><div class="recycle-preview-body"><p class="recycle-restore-note">以下为这个项目恢复后的变化。确认恢复后才会写入。</p>${state.changes.length ? state.changes.map(({ record }) => `<div class="recycle-preview-change"><p class="recycle-preview-path">${recordLink(record, record.desc_md, state.comparisons.get(record.desc_md)?.previous)}</p>${renderRecordDifference(record, state.comparisons.get(record.desc_md), {
+        return `<details class="recycle-restore-preview"><summary>预览恢复后的变化 <small>${state.changes.length ? `${state.changes.length} 项内容` : '内容相同'}</small></summary><div class="recycle-preview-body"><p class="recycle-restore-note">以下为这个项目恢复后的变化。确认恢复后才会写入。</p>${state.changes.length ? state.changes.map(({ record }) => `<div class="recycle-preview-change"><p class="recycle-preview-path" title="${escapeHtml(record.desc_md)}">${recordLink(record, restoreChangeTitle(record, state.comparisons.get(record.desc_md)), state.comparisons.get(record.desc_md)?.previous)}</p>${renderRecordDifference(record, state.comparisons.get(record.desc_md), {
             afterLabel: '恢复后', note: '', previewLabel: '预览恢复后的正文', collapsible: state.changes.length > 1, mediaLink: (name, side) => mediaLink(name, side, state)
         })}</div>`).join('') : '<p>内容与当前相同，无需替换。</p>'}</div></details>`;
     }
