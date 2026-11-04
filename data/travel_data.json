@@ -37,6 +37,10 @@
       "mvimg_20240710_101240.jpg",
       "mvimg_20240710_101258.jpg",
       "mvimg_20240710_101500.jpg"
+    ],
+    "video_folder": "data/videos/kunming",
+    "videos": [
+      "mmexport1720612753719.mp4"
     ]
   },
   {
@@ -64,6 +68,7 @@
     ]
   },
   {
+    "record_id": "legacy:data/travel-diary/2024/2024-07-28-chuxiong.md",
     "date": "2024-07-28",
     "country": "中国",
     "country_code": "CN",
@@ -73,11 +78,31 @@
     "locality_type": "山野",
     "desc_md": "data/travel-diary/2024/2024-07-28-chuxiong.md",
     "photo_folder": "data/photos/chuxiong",
-    "photos": [],
-    "video_folder": "data/videos/chuxiong",
-    "record_id": "legacy:data/travel-diary/2024/2024-07-28-chuxiong.md"
+    "photos": [
+      "mmexport1722183697554.jpg",
+      "mmexport1722183702562.jpg",
+      "img_20240729_003642.jpg",
+      "img_20240729_003658.jpg",
+      "mmexport1722183731666.jpg",
+      "img_20240728_115042.jpg",
+      "1000004183.jpg",
+      "1000004245.jpg",
+      "1000004249.jpg",
+      "img_20240728_163706.jpg",
+      "img_20240728_163707.jpg",
+      "img_20240728_163709.jpg",
+      "img_20240728_163715.jpg",
+      "img_20240728_163717.jpg",
+      "img_20240728_163717_1.jpg",
+      "img_20240728_163729.jpg",
+      "img_20240728_163738_6.jpg",
+      "mmexport1722168216313.jpg",
+      "mmexport1722169591615.jpg"
+    ],
+    "video_folder": "data/videos/chuxiong"
   },
   {
+    "record_id": "legacy:data/travel-diary/2024/2024-08-12-shanghai.md",
     "date": "2024-08-12",
     "country": "中国",
     "country_code": "CN",
@@ -87,11 +112,17 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2024/2024-08-12-shanghai.md",
     "photo_folder": "data/photos/shanghai",
-    "photos": [],
-    "video_folder": "data/videos/shanghai",
-    "record_id": "legacy:data/travel-diary/2024/2024-08-12-shanghai.md"
+    "photos": [
+      "img_20240813_141044.jpg",
+      "img_20240813_162309.jpg",
+      "img_20240814_203453.jpg",
+      "img_20240815_222912.jpg",
+      "img_20240815_222935.jpg"
+    ],
+    "video_folder": "data/videos/shanghai"
   },
   {
+    "record_id": "legacy:data/travel-diary/2024/2024-10-04-kunming.md",
     "date": "2024-10-04",
     "country": "中国",
     "country_code": "CN",
@@ -101,10 +132,16 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2024/2024-10-04-kunming.md",
     "photo_folder": "data/photos/kunming",
-    "photos": [],
-    "record_id": "legacy:data/travel-diary/2024/2024-10-04-kunming.md"
+    "photos": [
+      "img_20241004_141039.jpg",
+      "1000017565.jpg",
+      "img_20241004_183617.jpg",
+      "img_20241005_123800.jpg",
+      "img_20241005_225648.jpg"
+    ]
   },
   {
+    "record_id": "legacy:data/travel-diary/2024/2024-10-18-beijing.md",
     "date": "2024-10-18",
     "country": "中国",
     "country_code": "CN",
@@ -114,10 +151,70 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2024/2024-10-18-beijing.md",
     "photo_folder": "data/photos/beijing",
-    "photos": [],
-    "record_id": "legacy:data/travel-diary/2024/2024-10-18-beijing.md"
+    "photos": [
+      "img_20241018_232836.jpg",
+      "img_20241018_232931.jpg",
+      "img_20241019_000326.jpg",
+      "mmexport1729315899875.jpg",
+      "mmexport1729274044706.jpg",
+      "mmexport1729315887224.jpg",
+      "mmexport1729315876462.jpg",
+      "img_20241019_010539.jpg",
+      "img_20241019_010541.jpg",
+      "mmexport1729315891059.jpg",
+      "mmexport1729315895399.jpg",
+      "img_20241019_020219.jpg",
+      "img_20241019_020221.jpg",
+      "mmexport1729315946562.jpg",
+      "img_20241019_034953.jpg",
+      "img_20241019_111524.jpg",
+      "img_20241019_120346.jpg",
+      "img_20241019_123601.jpg",
+      "mmexport1729324685983.jpg",
+      "mmexport1729324483204.jpg",
+      "mmexport1729396932942.jpg",
+      "mmexport1729324588576.jpg",
+      "mmexport1729324607002.jpg",
+      "mmexport1729324522348.jpg",
+      "img_20241019_152127.jpg",
+      "img_20241020_120858.jpg",
+      "img_20241019_221749.jpg",
+      "img_20241019_221750.jpg",
+      "img_20241019_221759.jpg",
+      "img_20241019_221805.jpg",
+      "img_20241019_221807.jpg",
+      "img_20241019_222410.jpg",
+      "img_20241020_120953.jpg",
+      "img_20241020_133200.jpg",
+      "img_20241020_212205.jpg",
+      "mvimg_20241020_133613.jpg",
+      "img_20241020_133730.jpg",
+      "img_20241020_211928.jpg",
+      "img_20241020_134937.jpg",
+      "mmexport1729412194604.jpg",
+      "img_20241020_140341.jpg",
+      "img_20241020_150203.jpg",
+      "img_20241020_211735.jpg",
+      "img_20241020_211656.jpg",
+      "img_20241020_152135.jpg",
+      "img_20241020_152245.jpg",
+      "img_20241020_165441.jpg",
+      "img_20241020_175115.jpg",
+      "img_20241020_175116.jpg",
+      "img_20241020_175117.jpg",
+      "mmexport1729410816743.jpg",
+      "mmexport1729410824878.jpg",
+      "mmexport1729412163165.jpg",
+      "mmexport1729412170873.jpg",
+      "wx_camera_1729406006169.jpg"
+    ],
+    "video_folder": "data/videos/beijing",
+    "videos": [
+      "vid_20241018_234934.mp4"
+    ]
   },
   {
+    "record_id": "legacy:data/travel-diary/2024/2024-11-02-nanjing.md",
     "date": "2024-11-02",
     "country": "中国",
     "country_code": "CN",
@@ -128,8 +225,33 @@
     "trip_id": "2024-11-jiangsu",
     "desc_md": "data/travel-diary/2024/2024-11-02-nanjing.md",
     "photo_folder": "data/photos/nanjing",
-    "photos": [],
-    "record_id": "legacy:data/travel-diary/2024/2024-11-02-nanjing.md"
+    "photos": [
+      "img_20241103_091350.jpg",
+      "img_20241102_110732.jpg",
+      "img_20241102_115506.jpg",
+      "img_20241102_115701.jpg",
+      "img_20241102_120051.jpg",
+      "img_20241102_120053.jpg",
+      "img_20241102_120056.jpg",
+      "img_20241102_120058.jpg",
+      "img_20241102_124856.jpg",
+      "img_20241102_142200.jpg",
+      "img_20241102_142211.jpg",
+      "img_20241102_142704.jpg",
+      "img_20241103_091553.jpg",
+      "img_20241102_162001.jpg",
+      "img_20241102_181005.jpg",
+      "img_20241102_191557.jpg",
+      "img_20241102_195054.jpg",
+      "img_20241102_200253890.jpg",
+      "img_20241103_090910.jpg",
+      "img_20241103_090814.jpg",
+      "mmexport1730541576002.jpg"
+    ],
+    "video_folder": "data/videos/nanjing",
+    "videos": [
+      "vid_20241102_192136.mp4"
+    ]
   },
   {
     "date": "2024-11-03",
@@ -319,6 +441,7 @@
     "record_id": "legacy:data/travel-diary/2025/2025-10-05-hohhot.md"
   },
   {
+    "record_id": "legacy:data/travel-diary/2025/2025-10-06-ulanchab.md",
     "date": "2025-10-06",
     "country": "中国",
     "country_code": "CN",
@@ -328,9 +451,10 @@
     "locality_type": "城市",
     "trip_id": "2025-10-inner-mongolia",
     "desc_md": "data/travel-diary/2025/2025-10-06-ulanchab.md",
-    "photo_folder": "data/photos/ulanchab",
-    "photos": [],
-    "record_id": "legacy:data/travel-diary/2025/2025-10-06-ulanchab.md"
+    "photo_folder": "data/photos/wulanchabu",
+    "photos": [
+      "1000126532.jpg"
+    ]
   },
   {
     "date": "2025-11-01",
@@ -359,6 +483,7 @@
     "record_id": "legacy:data/travel-diary/2025/2025-11-07-shanghai.md"
   },
   {
+    "record_id": "legacy:data/travel-diary/2026/2026-02-18-wuhan.md",
     "date": "2026-02-18",
     "country": "中国",
     "country_code": "CN",
@@ -368,8 +493,9 @@
     "locality_type": "城市",
     "desc_md": "data/travel-diary/2026/2026-02-18-wuhan.md",
     "photo_folder": "data/photos/wuhan",
-    "photos": [],
-    "record_id": "legacy:data/travel-diary/2026/2026-02-18-wuhan.md"
+    "photos": [
+      "img_20260217_130542.jpg"
+    ]
   },
   {
     "date": "2026-03-14",
@@ -510,6 +636,7 @@
     "record_id": "legacy:data/travel-diary/2026/2026-07-04-taishan.md"
   },
   {
+    "record_id": "legacy:data/travel-diary/2026/2026-07-21-kuala-lumpur.md",
     "date": "2026-07-21",
     "country": "马来西亚",
     "country_code": "MY",
@@ -518,9 +645,13 @@
     "locality_type": "城市",
     "trip_id": "2026-07-malaysia",
     "desc_md": "data/travel-diary/2026/2026-07-21-kuala-lumpur.md",
-    "photo_folder": "data/photos/kuala-lumpur",
-    "photos": [],
-    "record_id": "legacy:data/travel-diary/2026/2026-07-21-kuala-lumpur.md"
+    "photo_folder": "data/photos/jilongpo",
+    "photos": [
+      "img_20260721_125156.jpg",
+      "img_20260721_130213.jpg",
+      "img_20260721_145426.jpg",
+      "img_20260721_150617.jpg"
+    ]
   },
   {
     "date": "2026-07-22",
@@ -620,6 +751,7 @@
     "record_id": "legacy:data/travel-diary/2026/2026-10-06-hangzhou.md"
   },
   {
+    "record_id": "legacy:data/travel-diary/2026/2026-10-23-yinchuan.md",
     "date": "2026-10-23",
     "country": "中国",
     "country_code": "CN",
@@ -630,8 +762,9 @@
     "trip_id": "2026-10-23-tengri",
     "desc_md": "data/travel-diary/2026/2026-10-23-yinchuan.md",
     "photo_folder": "data/photos/yinchuan",
-    "photos": [],
-    "record_id": "legacy:data/travel-diary/2026/2026-10-23-yinchuan.md"
+    "photos": [
+      "dsc_5329-1.jpg"
+    ]
   },
   {
     "date": "2026-10-25",
