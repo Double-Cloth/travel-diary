@@ -197,7 +197,9 @@
 
     body[data-route="entry"] .paper-page-left,
     body[data-route="entry"] .entry-book-index,
+    body[data-route="trip"] .paper-page-left,
     body[data-route="place"] .paper-page-left,
+    body[data-route="trip"] .place-page,
     body[data-route="place"] .place-page,
     body[data-route="photos"] .paper-page-left,
     body[data-route="photos"] .place-page {
@@ -205,6 +207,7 @@
     }
 
     body[data-route="entry"] .entry-book-summary,
+    body[data-route="trip"] .place-summary,
     body[data-route="place"] .place-summary {
         order: 0;
         padding: clamp(16px, 4.5vw, 20px) clamp(16px, 4.5vw, 20px) 0;
@@ -215,6 +218,7 @@
         gap: 20px;
     }
 
+    body[data-route="trip"] .place-summary,
     body[data-route="place"] .place-summary {
         display: block;
     }
@@ -226,6 +230,7 @@
     }
 
     body[data-route="entry"] .page-spread > .paper-page-right,
+    body[data-route="trip"] .page-spread > .paper-page-right,
     body[data-route="place"] .page-spread > .paper-page-right,
     body[data-route="photos"] .page-spread > .paper-page-right {
         order: 1;
@@ -250,6 +255,7 @@
     }
 
     body[data-route="entry"] .entry-neighbors,
+    body[data-route="trip"] .place-neighbors,
     body[data-route="place"] .place-neighbors {
         order: 2;
         margin-top: 0;
@@ -257,24 +263,29 @@
     }
 
     body[data-route="entry"] .entry-book-media,
+    body[data-route="trip"] .place-media,
     body[data-route="place"] .place-media {
         order: 2;
         padding: 0 clamp(16px, 4.5vw, 20px);
     }
 
+    body[data-route="trip"] .place-neighbors,
     body[data-route="place"] .place-neighbors {
         order: 3;
     }
 
+    body[data-route="trip"] .paper-page-right > .place-records,
     body[data-route="place"] .paper-page-right > .place-records {
         padding-bottom: 0;
     }
 
+    body[data-route="trip"] .place-media > .photo-sleeve,
     body[data-route="place"] .place-media > .photo-sleeve {
         margin-top: 0;
     }
 
     body[data-route="entry"] .entry-neighbors,
+    body[data-route="trip"] .place-neighbors,
     body[data-route="place"] .place-neighbors {
         padding-bottom: clamp(16px, 4.5vw, 20px);
     }
@@ -441,6 +452,7 @@
         padding-bottom: 24px;
     }
 
+    body[data-route="trip"] .paper-page-right,
     body[data-route="place"] .paper-page-right {
         min-height: 0;
         padding-top: 14px;

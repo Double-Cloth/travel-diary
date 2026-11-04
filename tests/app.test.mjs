@@ -40,6 +40,14 @@ export function renderTestPlace(records, params, photos = false) {
     }
     finally { ({ setPages, travelModel } = originals); }
 }
+export function renderTestTrip(records, params) {
+    const originals = { setPages, travelModel };
+    let result;
+    setPages = (left, right, mode, options = {}) => { result = { left, right, mode, ...options }; };
+    travelModel = deriveTravelModel(records);
+    try { renderTrip(params); return result; }
+    finally { ({ setPages, travelModel } = originals); }
+}
 export function renderTestSummary(records, route, params = {}) {
     const originals = { setPages, travelModel };
     let result;
@@ -107,16 +115,6 @@ export function stubReadingRoutes() {
             refs.shell = originals.shell;
         }
     };
-}
-export function stubSpine(spine) {
-    const previous = refs.spine;
-    refs.spine = spine;
-    return () => { refs.spine = previous; };
-}
-export function stubRightPage(page) {
-    const previous = refs.rightPage;
-    refs.rightPage = page;
-    return () => { refs.rightPage = previous; };
 }
 export function setTestState(values) {
     if (values.shell) refs.shell = values.shell;
@@ -229,6 +227,36 @@ test('没有媒体的省份保留记录列表，空附件页提供返回入口',
     }
 });
 
+test('行程媒体覆盖沿途日记，附件路由保持行程范围、分组和返回入口', t => {
+    const previous = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = () => 1;
+    t.after(() => { globalThis.requestAnimationFrame = previous; });
+    const records = [
+        { date: '2026-10-02', trip_id: 'holiday', locality: '南京市', descTitle: '南京', photos: ['gate.jpg'], videos: ['walk.mp4'] },
+        { date: '2026-10-01', trip_id: 'holiday', locality: '苏州市', descTitle: '苏州', photos: ['river.jpg', 'street.jpg', 'garden.jpg'] },
+        { date: '2026-10-03', trip_id: 'other', locality: '苏州市', photos: ['other.jpg'] }
+    ].map(record => normalizeTravelLocation({ country_code: 'CN', admin_area: '江苏省', photo_folder: 'data/photos', video_folder: 'data/videos', ...record }));
+    const preview = app.renderTestTrip(records, { id: 'trip:holiday' });
+    assert.match(preview.left, /href="#photos\?trip=trip%3Aholiday"/);
+    assert.match(preview.left, /2 篇日记<\/span> · <span>2 个目的地<\/span> · <span>4 张图片<\/span> · <span>1 个视频/);
+    assert.match(preview.left, /data-preview-rows="3"/);
+    assert.match(preview.left, /river\.jpg|gate\.jpg|walk\.mp4/);
+    assert.doesNotMatch(preview.left + preview.right, /other\.jpg/);
+    const params = { trip: 'trip:holiday' };
+    const route = app.parseRoute(app.serializeRoute({ name: 'photos', params }));
+    assert.deepEqual(route.params, params);
+    const full = app.renderTestPlace(records, route.params, true);
+    assert.match(full.left, /href="#trip\?id=trip%3Aholiday">返回行程详情/);
+    assert.match(full.left, /4 张图片 · 1 个视频/);
+    assert.equal((full.right.match(/class="photo-sleeve-group-heading"/g) || []).length, 2);
+    assert.equal((full.right.match(/data-action="open-media-viewer"/g) || []).length, 5);
+    assert.ok(full.right.indexOf('river.jpg') < full.right.indexOf('gate.jpg'));
+    assert.doesNotMatch(full.right, /photo-sleeve-preview|other\.jpg/);
+    const empty = app.renderTestPlace([], params, true);
+    assert.match(empty.left, /没有找到这次行程/);
+    assert.match(empty.right, /这次行程还没有图片或视频附件/);
+});
+
 test('搜索保留原输入和中间选区，Tab 离开后保持下一控件焦点', t => {
     const previous = globalThis.document;
     const input = { id: 'ledgerSearch', value: ' axbc ', selectionStart: 2, selectionEnd: 3, selectionDirection: 'backward' };
@@ -313,41 +341,17 @@ test('跳到内容直接聚焦正文，不改变章节路由', t => {
     assert.deepEqual(calls, ['prevent', 'focus', 'scroll']);
 });
 
-test('行程时间线平滑定位，手机避开吸顶导航，减少动态效果时直接定位', t => {
-    const previous = { document: globalThis.document, window: globalThis.window };
-    t.after(() => Object.assign(globalThis, previous));
-    const calls = [];
-    let mobile = true;
-    let reduced = false;
-    const article = {
-        getBoundingClientRect: () => ({ top: 600 }),
-        focus: options => calls.push(['focus', options])
-    };
-    globalThis.document = { getElementById: id => id === 'trip-record-note-2' ? article : null };
-    globalThis.window = {
-        matchMedia: query => ({ matches: query.includes('reduced-motion') ? reduced : mobile }),
-        scrollY: 200,
-        scrollTo: options => calls.push(['window', options])
-    };
-    t.after(app.stubSpine({ getBoundingClientRect: () => ({ bottom: 112 }) }));
-    t.after(app.stubRightPage({ scrollTop: 100, getBoundingClientRect: () => ({ top: 80 }), scrollTo: options => calls.push(['page', options]) }));
-    const event = {
-        preventDefault() {},
-        target: { closest: selector => selector === '[data-trip-record]' ? { dataset: { tripRecord: 'note-2' } } : null }
-    };
-    app.handleDocumentClick(event);
-    assert.deepEqual(calls, [
-        ['window', { top: 668, behavior: 'smooth' }],
-        ['focus', { preventScroll: true }]
-    ]);
-    calls.length = 0;
-    mobile = false;
-    app.handleDocumentClick(event);
-    assert.deepEqual(calls, [['page', { top: 596, behavior: 'smooth' }], ['focus', { preventScroll: true }]]);
-    calls.length = 0;
-    reduced = true;
-    app.handleDocumentClick(event);
-    assert.equal(calls[0][1].behavior, 'instant');
+test('行程快捷翻页打开对应行程路由', t => {
+    const navigation = app.stubSearchNavigation({ name: 'trip', params: { id: 'trip:first' } });
+    t.after(() => navigation.restore());
+    let prevented = false;
+    app.handleDocumentClick({
+        preventDefault() { prevented = true; },
+        target: { closest: selector => selector === '[data-action="open-trip"]'
+            ? { dataset: { tripKey: 'trip:next' } } : null }
+    });
+    assert.equal(prevented, true);
+    assert.deepEqual(navigation.calls[0].next, { name: 'trip', params: { id: 'trip:next' } });
 });
 
 test('目录记住分类，明确链接和历史记录覆盖偏好，存储不可用时保留会话状态', t => {

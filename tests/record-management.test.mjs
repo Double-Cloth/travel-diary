@@ -401,7 +401,7 @@ test('备份下载中途断线释放锁且不推进比较基准，随后可以�
     await retry.release();
 });
 
-test('行程路由可往返序列化、按时间阅读、导出整趟，并保留旧记录书签', async t => {
+test('行程路由可往返序列化、按时间列出日记、导出整趟，并保留旧记录书签', async t => {
     globalThis.document = { addEventListener() {} };
     const originalFrame = globalThis.requestAnimationFrame;
     globalThis.requestAnimationFrame = () => {};
@@ -410,25 +410,32 @@ test('行程路由可往返序列化、按时间阅读、导出整趟，并保�
         export { parseRoute, serializeRoute, deriveTravelModel, canonicalizeLocationRoute, renderLedgerTripEntry, renderTripGroupHint };
         export function renderTripTest(records, params) {
             let result; travelModel = deriveTravelModel(records);
-            setPages = (left, right) => { result = { left, right }; };
+            setPages = (left, right, mode, options = {}) => { result = { left, right, mode, ...options }; };
             renderTrip(params); return result;
         }
         export function ledgerTripsTest(records, params) {
             travelModel = deriveTravelModel(records.map(record => ({ ...record, searchText: record.locality })));
             return getLedgerTrips(getLedgerRecords(params));
+        }
+        export function tripEntryNavigationTest(records, key, id) {
+            travelModel = deriveTravelModel(records);
+            lastReadingHash = serializeRoute({ name: 'trip', params: { id: key } });
+            return getEntryNavigation(travelModel.recordsById.get(id));
         }`);
     const route = { name: 'trip', params: { id: 'trip:long-trip' } };
     assert.deepEqual(app.parseRoute(app.serializeRoute(route)), { ...route, valid: true });
     const records = identifyRecords([second, { ...first, date: '2026-11-02' }]).map(record => normalizeTravelLocation({ ...record, trip_id: 'long-trip', descTitle: record.locality, descBodyHtml: `<p>${record.locality}正文</p>`, photos: [] }));
     const result = app.renderTripTest(records, route.params);
-    assert.match(result.left, /本次行程时间线/);
+    assert.match(result.left, /class="place-page"/);
+    assert.match(result.right, /class="place-records"/);
+    assert.match(result.left, /href="#ledger\?view=trips"/);
     assert.match(result.left, /导出本次行程/);
     assert.match(result.left, /行程 ID：<\/span><span class="trip-id-value">long-trip<\/span>/);
-    for (const article of result.right.split('<article class="trip-record"').slice(1)) {
-        assert.ok(article.indexOf('打开这篇日记') < article.indexOf('trip-record-meta'), '打开按钮位于每篇日记顶部');
-        assert.equal((article.match(/打开这篇日记/g) || []).length, 1);
-    }
-    assert.ok(result.right.indexOf('first正文') < result.right.indexOf('second正文'));
+    assert.equal((result.right.match(/data-open-entry=/g) || []).length, 2);
+    assert.ok(result.right.indexOf('打开 first 日记') < result.right.indexOf('打开 second 日记'));
+    assert.doesNotMatch(result.left + result.right, /first正文|second正文|trip-timeline|trip-reading/);
+    assert.doesNotMatch(result.left, /photo-sleeve/);
+    assert.equal(result.mode, 'dossier-page place-detail-page');
     const model = app.deriveTravelModel(records);
     assert.equal(model.recordsById.get('2026-11-03-second').record_id, recordIdentity(second));
     const tripRoute = app.parseRoute('#ledger?view=trips&q=first&sort=asc');
@@ -442,9 +449,22 @@ test('行程路由可往返序列化、按时间阅读、导出整趟，并保�
     assert.match(tripEntry, /<span class="trip-stamp trip-variant-\d">行程 \d+<\/span>/);
     assert.equal(tripEntry.match(/trip-variant-\d/)[0], noteStamp.match(/trip-variant-\d/)[0], '两种目录视图使用同一行程颜色');
     for (const record of model.records) {
-        assert.ok(result.left.includes(`aria-controls="trip-record-${record.id}"`));
-        assert.ok(result.right.includes(`id="trip-record-${record.id}"`));
+        assert.ok(result.right.includes(`data-open-entry="${record.id}"`));
     }
+    assert.match(result.left, /已到首次行程/);
+    assert.match(result.left, /已到末次行程/);
+    assert.doesNotMatch(result.pageTurns, /data-action="open-trip"/);
+    const multiple = app.renderTripTest([...records, normalizeTravelLocation({ ...record('later'), date: '2026-12-01', trip_id: 'later' })], route.params);
+    assert.match(multiple.pageTurns, /data-action="open-trip" data-trip-key="trip:later"/);
+    assert.match(multiple.left, /href="#trip\?id=trip%3Alater"/);
+    const chronological = [...model.records].sort((a, b) => a.date.localeCompare(b.date));
+    const entryNavigation = app.tripEntryNavigationTest([...records, normalizeTravelLocation({ ...record('outside'), date: '2026-11-04' })], 'trip:long-trip', chronological[0].id);
+    assert.equal(entryNavigation.total, 2, '相邻日记只在当前行程内切换');
+    assert.equal(entryNavigation.previous, null);
+    assert.equal(entryNavigation.next.id, chronological[1].id);
+    const missing = app.renderTripTest([], route.params);
+    assert.match(missing.left, /没有找到这次行程/);
+    assert.match(missing.left, /href="#ledger\?view=trips"/);
     assert.equal(app.ledgerTripsTest(records, {}).length, 1, '同一行程只展示一次');
     const empty = app.renderTripTest([], {});
     assert.match(empty.left, /目录查看方式/);
