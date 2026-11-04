@@ -1415,17 +1415,18 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list p { margin: 0 0 12px; font-size: 13px; }
 .recycle-list .recycle-restore-note { font-size: 12px; }
 .recycle-list details { margin: 0; font-size: 12px; line-height: 1.8; }
-.recycle-list summary { cursor: pointer; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 0; color: var(--ink); list-style: none; }
+.recycle-list summary { font-size: 12px; font-weight: 400; line-height: 1.8; cursor: pointer; display: flex; align-items: center; gap: 8px; min-height: 44px; padding: 8px 0; color: var(--ink); list-style: none; }
 .recycle-list summary::-webkit-details-marker { display: none; }
 .recycle-list summary::before { content: ''; flex: 0 0 6px; width: 6px; height: 6px; margin-inline: 2px 4px; border-right: 1.5px solid currentColor; border-bottom: 1.5px solid currentColor; transform: rotate(-45deg); }
 .recycle-list details[open] > summary::before { transform: rotate(45deg); }
 .recycle-list summary > span { flex: 1; min-width: 0; }
-.recycle-list .content-file-preview > summary { padding-inline: 0; }
+.recycle-list .content-file-preview > summary { padding: 8px 0; }
+.recycle-list summary small { flex: 0 0 auto; font-size: 12px; line-height: inherit; }
 .recycle-list .recycle-attachments[open] > summary { border-bottom: 1px dashed var(--hairline); }
 .recycle-list .recycle-contents .content-preview-list { margin: 0; }
 .recycle-list .content-file-heading { margin: 0 0 8px; padding: 0; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
-.recycle-preview-path a { color: var(--stamp); text-decoration: underline; text-underline-offset: 3px; }
-.recycle-preview-path a:focus-visible, .recycle-contents li:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
+.recycle-list a:not(.media-file-link) { color: var(--stamp); text-decoration: underline; text-underline-offset: 3px; }
+.recycle-list a:focus-visible, .recycle-contents li:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
 .recycle-list .record-diff { margin: 0 0 12px; }
 .recycle-list section.record-diff > .record-diff-body { padding: 0; border-top: 0; }
 .recycle-list .record-diff-section > h3 { font-size: 15px; }

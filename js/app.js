@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=2.1.35';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.35';
-import { createRecordEditor } from './record-editor.js?v=2.1.35';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.35';
-import { createDataTransfer } from './data-transfer.js?v=2.1.35';
-import { createMediaManager } from './media-manager.js?v=2.1.35';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.35';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.35';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.35';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.35';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.35';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.35';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.35';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.35';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.35';
-import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.35';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.35';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.35';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.36';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.36';
+import { createRecordEditor } from './record-editor.js?v=2.1.36';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.36';
+import { createDataTransfer } from './data-transfer.js?v=2.1.36';
+import { createMediaManager } from './media-manager.js?v=2.1.36';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.36';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.36';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.36';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.36';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.36';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.36';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.36';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.36';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.36';
+import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.36';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.36';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.36';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.35';
+} from './location.mjs?v=2.1.36';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,7 +30,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.35';
+} from './photo-viewer-transform.mjs?v=2.1.36';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -196,6 +196,13 @@ async function initApp() {
         profileOwnerName = await loadOwnerName(getRefreshKey());
         await refreshTravelModel(getRefreshKey());
         syncRouteFromHash({ initial: true });
+    }, {
+        isActive: () => activeRoute?.name === 'preface' && activeRoute.params.panel === 'recycle',
+        onClose: () => {
+            if (activeRoute?.name === 'preface' && activeRoute.params.panel === 'recycle') {
+                navigateTo('#preface', { replace: true, animate: false });
+            }
+        }
     });
     const requestDataExportAuthorization = createPasswordGate(
         capability => dataTransfer.exportAll(`travel-diary-data-${getTodayDate()}.zip`, capability),
@@ -424,7 +431,7 @@ function parseRoute(hash = window.location.hash) {
         case 'cover':
             return { name: 'cover', params: {}, valid: true };
         case 'preface':
-            return { name: 'preface', params: {}, valid: true };
+            return { name: 'preface', params: params.get('panel') === 'recycle' ? { panel: 'recycle' } : {}, valid: true };
         case 'ledger':
             return {
                 name: 'ledger',
@@ -467,7 +474,8 @@ function parseRoute(hash = window.location.hash) {
             return {
                 name: 'entry',
                 params: {
-                    id: params.get('id') || ''
+                    id: params.get('id') || '',
+                    ...(params.get('from') === 'recycle' ? { from: 'recycle' } : {})
                 },
                 valid: true
             };
@@ -499,7 +507,7 @@ function serializeRoute(route) {
         case 'cover':
             return '#cover';
         case 'preface':
-            return '#preface';
+            return route.params?.panel === 'recycle' ? '#preface?panel=recycle' : '#preface';
         case 'ledger':
             {
                 const ledgerParams = normalizeLedgerParams(route.params);
@@ -529,6 +537,7 @@ function serializeRoute(route) {
             return `#trip${params.toString() ? `?${params}` : ''}`;
         case 'entry':
             if (route.params.id) params.set('id', route.params.id);
+            if (route.params.from === 'recycle') params.set('from', 'recycle');
             return `#entry${params.toString() ? `?${params}` : ''}`;
         case 'photos':
             if (route.params.id) params.set('id', route.params.id);
@@ -559,7 +568,10 @@ function syncRouteFromHash(options = {}) {
         history.replaceState(null, document.title, normalizedHash);
     }
 
+    const recycleActive = parsed.name === 'preface' && parsed.params.panel === 'recycle';
+    if (!recycleActive) openRecycleManager?.suspend();
     renderRoute(parsed, options);
+    if (recycleActive) void openRecycleManager?.();
 }
 
 function navigateTo(route, options = {}) {
@@ -1837,14 +1849,16 @@ function renderTrip(params = {}) {
 }
 
 function renderEntryRoute(params = {}) {
+    if (params.from === 'recycle') lastReadingHash = '#preface?panel=recycle';
     const record = travelModel.recordsById.get(params.id);
     const returnHash = lastReadingHash || '#ledger';
+    const returnLabel = returnHash === '#preface?panel=recycle' ? '返回回收站' : '返回原处';
 
     if (!record) {
         setPages(`
             <div class="entry-book-index">
                 <div class="entry-book-summary">
-                    <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回旅行路径</a>
+                    <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">${returnLabel === '返回回收站' ? returnLabel : '返回旅行路径'}</a>
                     <p class="journal-label">旅行日记</p>
                     <h1>没有找到这篇日记</h1>
                 </div>
@@ -1860,7 +1874,7 @@ function renderEntryRoute(params = {}) {
         <article class="entry-book-index" aria-labelledby="entryBookTitle">
             <div class="entry-book-summary">
                 <header class="entry-book-toolbar">
-                    <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">返回原处</a>
+                    <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">${returnLabel}</a>
                     <div class="entry-toolbar-management">
                         <button class="paper-button entry-toolbar-toggle" type="button" data-action="toggle-record-actions" aria-controls="entryRecordActions" aria-expanded="false">记录管理<span aria-hidden="true"><svg viewBox="0 0 12 12" focusable="false"><path d="M4 2 10 6 4 10Z"/></svg></span></button>
                         <div id="entryRecordActions" class="sheet-record-actions" role="group" aria-label="记录管理">
@@ -4069,7 +4083,7 @@ function handleDocumentClick(event) {
     }
     if (event.target.closest('[data-action="recycle-bin"]')) {
         event.preventDefault();
-        void openRecycleManager();
+        navigateTo('#preface?panel=recycle', { animate: false });
         return;
     }
     const exportTrip = event.target.closest('[data-action="export-trip"]');

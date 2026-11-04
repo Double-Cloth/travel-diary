@@ -1245,6 +1245,14 @@ test('手机柔性纸页始终固定左侧装订边，分段曲面连续并能�
     }
 });
 
+test('回收站位置和日记来源在路由规范化后保留，普通页面不携带额外来源', () => {
+    for (const hash of ['#preface?panel=recycle', '#entry?id=note&from=recycle']) {
+        assert.equal(app.serializeRoute(app.parseRoute(hash)), hash);
+    }
+    assert.equal(app.serializeRoute(app.parseRoute('#preface?panel=unknown')), '#preface');
+    assert.equal(app.serializeRoute(app.parseRoute('#entry?id=note&from=unknown')), '#entry?id=note');
+});
+
 test('外部路由变化取消搜索定时器并忽略离开页面后的搜索回调', () => {
     let cancelled = false;
     globalThis.window = { setTimeout: () => 1, clearTimeout: () => { cancelled = true; } };
