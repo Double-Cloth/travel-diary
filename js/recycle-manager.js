@@ -1,11 +1,11 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.36';
-import { createPasswordGate } from './record-password.js?v=2.1.36';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.36';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.36';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.36';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.36';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.36';
-import { recordIdentity } from './record-identity.mjs?v=2.1.36';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.37';
+import { createPasswordGate } from './record-password.js?v=2.1.37';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.37';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.37';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.37';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.37';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.37';
+import { recordIdentity } from './record-identity.mjs?v=2.1.37';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -78,7 +78,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         dialog.querySelectorAll('[data-recycle-target-link]').forEach(element => {
             const id = element.closest('[data-recycle-item]').dataset.recycleItem;
             const record = report.currentRecords?.find(record => record.desc_md === targets.get(id));
-            element.innerHTML = record ? recordLink(record, report.items.find(item => item.id === id), '查看目标日记') : '';
+            element.innerHTML = record ? recordLink(record, '查看目标日记') : '';
             element.hidden = !record;
         });
         enhanceCustomSelects(dialog);
@@ -87,18 +87,16 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         if (!state) return '';
         if (state.phase === 'pending') return '<p class="recycle-preview-status" role="status">正在生成恢复预览…</p>';
         if (state.phase === 'error') return `<p class="recycle-preview-status" role="alert">${escapeHtml(state.message)}</p><button class="media-text-button" type="button" data-recycle-retry="${state.id}">重试预览</button>`;
-        return `<details class="recycle-restore-preview"><summary>预览恢复后的变化 <small>${state.changes.length ? `${state.changes.length} 项内容` : '内容相同'}</small></summary><div class="recycle-preview-body"><p class="recycle-restore-note">以下为这个项目恢复后的变化。确认恢复后才会写入。</p>${state.changes.length ? state.changes.map(({ record }) => `<p class="recycle-preview-path">${recordLink(record, report.items.find(item => item.id === state.id), record.desc_md, state.comparisons.get(record.desc_md)?.previous)}</p>${renderRecordDifference(record, state.comparisons.get(record.desc_md), {
+        return `<details class="recycle-restore-preview"><summary>预览恢复后的变化 <small>${state.changes.length ? `${state.changes.length} 项内容` : '内容相同'}</small></summary><div class="recycle-preview-body"><p class="recycle-restore-note">以下为这个项目恢复后的变化。确认恢复后才会写入。</p>${state.changes.length ? state.changes.map(({ record }) => `<p class="recycle-preview-path">${recordLink(record, record.desc_md, state.comparisons.get(record.desc_md)?.previous)}</p>${renderRecordDifference(record, state.comparisons.get(record.desc_md), {
             afterLabel: '恢复后', note: '仅显示有变化的部分。恢复所选内容后将应用这些变化。', previewLabel: '预览恢复后的正文', collapsible: state.changes.length > 1, mediaLink: (name, side) => mediaLink(name, side, state)
         })}`).join('') : '<p>内容与当前相同，无需替换。</p>'}</div></details>`;
     }
     function currentRecord(record, previous) {
         return report.currentRecords?.find(candidate => [record, previous].some(value => value && (recordIdentity(value) === recordIdentity(candidate) || value.desc_md === candidate.desc_md)));
     }
-    function recordLink(record, item, label = record.desc_md, previous) {
+    function recordLink(record, label = record.desc_md, previous) {
         const current = currentRecord(record, previous);
         if (current) return `<a href="#entry?id=${encodeURIComponent(recordIdentity(current))}&from=recycle" data-recycle-record>${escapeHtml(label)}</a>`;
-        const index = item.files.findIndex(file => file.path === record.desc_md && /\.md$/i.test(file.path));
-        if (index >= 0) return `<a href="#recycle-file-${item.id}-${index}" data-recycle-file-link data-recycle-owner="${item.id}">${escapeHtml(label)}</a>`;
         return escapeHtml(label);
     }
     function mediaLink(name, side, state) {
@@ -116,18 +114,17 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
     async function loadContents(list, item, scope) {
         const diaries = item.files.filter(file => /\.md$/i.test(file.path));
         const fold = diaries.length > 1 || (diaries.length > 0 && diaries.length < item.files.length);
-        for (const [index, file] of item.files.entries()) {
+        for (const file of item.files) {
             if (/\.md$/i.test(file.path) !== (list.dataset.recycleCategory === 'diaries')) continue;
             if (!list.isConnected || scope !== previews) return;
             const row = document.createElement('li');
-            row.id = `recycle-file-${item.id}-${index}`;
             row.title = file.path;
             try { row.append(await scope.file({ name: file.path, url: recycleUrl(item.id, file.path), detail: mediaKind(file.path) ? `${file.path} · ${sizeLabel(file.size)}` : sizeLabel(file.size), index: list.querySelectorAll('[data-action="open-media-viewer"]').length, collapsible: fold })); }
             catch (failure) { row.textContent = `${file.path}：${failure.message}`; }
             if (scope !== previews || !list.isConnected || (!dialog.open && !suspended)) return;
             if (/\.md$/i.test(file.path)) {
                 const label = row.querySelector('.content-file-preview > summary > span, .content-file-heading > span');
-                if (label) label.innerHTML = `${recordLink({ desc_md: file.path }, item, file.path.split('/').pop())} · ${sizeLabel(file.size)}`;
+                if (label) label.innerHTML = `${recordLink({ desc_md: file.path }, file.path.split('/').pop())} · ${sizeLabel(file.size)}`;
             }
             list.append(row);
         }
@@ -164,7 +161,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             <small class="recycle-item-meta"><span>${types[item.kind] || '文件'}</span>${item.records.length ? `<span>${item.records.length} 篇日记</span>` : ''}<span>${item.files.length} 个文件</span><span>${sizeLabel(item.files.reduce((sum, file) => sum + file.size, 0))}</span><time>${escapeHtml(new Date(item.createdAt).toLocaleString())}</time></small></div>
             <div class="recycle-item-body" id="recycleBody-${item.id}"${expandedItems.has(item.id) ? '' : ' hidden'}>
             ${item.kind === 'snapshot' ? '<p class="recycle-restore-note">恢复会替换全部日记和个人资料；当前数据会先存入回收站，访问密码保持不变。请单独选择此项恢复。</p>' : item.kind === 'version' ? '<p class="recycle-restore-note">恢复到原位置；被替换的当前文件也会存入回收站。</p>' : ''}
-            ${(item.records.length ? item.records : item.mediaReferences || []).map(record => `<p class="recycle-record-info">${recordLink(record, item, [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · '))}</p>`).join('')}
+            ${(item.records.length ? item.records : item.mediaReferences || []).map(record => `<p class="recycle-record-info">${recordLink(record, [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · '))}</p>`).join('')}
             ${contentsMarkup(item)}
             ${item.kind === 'files' && !item.mediaReferences?.length && item.files.some(file => mediaKind(file.path)) ? `<div class="recycle-target" data-recycle-selected-only${selected.has(item.id) ? '' : ' hidden'}><label class="field-label" for="recycleTarget-${item.id}">恢复到</label><select id="recycleTarget-${item.id}" data-custom-select data-recycle-target="${item.id}"><option value="">${item.title === '编辑日记时移除的媒体' ? '请选择原日记' : '仅恢复文件'}</option>${(report.currentRecords || []).map(record => `<option value="${escapeHtml(record.desc_md)}"${targets.get(item.id) === record.desc_md ? ' selected' : ''}>${escapeHtml([record.date, record.locality].filter(Boolean).join(' · '))}</option>`).join('')}</select><p class="recycle-restore-note">选择日记后，同时补回附件列表；其他日记信息保持不变。</p><p class="recycle-target-link" data-recycle-target-link></p></div>` : item.mediaReferences?.length ? '<p class="recycle-restore-note">恢复文件并补回原日记的附件列表，保留之后修改的内容。</p>' : ''}
             <div data-recycle-diff="${item.id}"${selected.has(item.id) ? '' : ' hidden'}>${previewMarkup(selected.get(item.id))}</div>
@@ -313,21 +310,6 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         if (recordAnchor && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.button === 0) {
             returnFocus = recordAnchor;
             suspend();
-            return;
-        }
-        const fileLink = event.target.closest('[data-recycle-file-link]');
-        if (fileLink) {
-            event.preventDefault();
-            event.stopPropagation();
-            setItemExpanded(fileLink.dataset.recycleOwner, true);
-            const row = document.getElementById(fileLink.getAttribute('href').slice(1));
-            if (row) {
-                const content = row.querySelector('details');
-                if (content) content.open = true;
-                row.tabIndex = -1;
-                row.focus({ preventScroll: true });
-                row.scrollIntoView({ block: 'nearest' });
-            }
             return;
         }
         if (event.target.closest('[data-recycle-close]')) { close(); return; }

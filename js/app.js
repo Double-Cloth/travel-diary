@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=2.1.36';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.36';
-import { createRecordEditor } from './record-editor.js?v=2.1.36';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.36';
-import { createDataTransfer } from './data-transfer.js?v=2.1.36';
-import { createMediaManager } from './media-manager.js?v=2.1.36';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.36';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.36';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.36';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.36';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.36';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.36';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.36';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.36';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.36';
-import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.36';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.36';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.36';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.37';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.37';
+import { createRecordEditor } from './record-editor.js?v=2.1.37';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.37';
+import { createDataTransfer } from './data-transfer.js?v=2.1.37';
+import { createMediaManager } from './media-manager.js?v=2.1.37';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.37';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.37';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.37';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.37';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.37';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.37';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.37';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.37';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.37';
+import { getMediaPreviewUrl, loadMediaPreview } from './media-preview.mjs?v=2.1.37';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.37';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.37';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.36';
+} from './location.mjs?v=2.1.37';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,7 +30,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.36';
+} from './photo-viewer-transform.mjs?v=2.1.37';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -1852,13 +1852,17 @@ function renderEntryRoute(params = {}) {
     if (params.from === 'recycle') lastReadingHash = '#preface?panel=recycle';
     const record = travelModel.recordsById.get(params.id);
     const returnHash = lastReadingHash || '#ledger';
-    const returnLabel = returnHash === '#preface?panel=recycle' ? '返回回收站' : '返回原处';
+    const returnRoute = parseRoute(returnHash);
+    const returnLabel = returnRoute.name === 'preface' && returnRoute.params.panel === 'recycle'
+        ? '返回回收站'
+        : ({ cover: '返回封面', preface: '返回扉页', ledger: '返回日记目录', archive: '返回日记归档',
+            place: '返回地点档案', trip: '返回行程详情', photos: '返回日记附件' }[returnRoute.name] || '返回日记目录');
 
     if (!record) {
         setPages(`
             <div class="entry-book-index">
                 <div class="entry-book-summary">
-                    <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">${returnLabel === '返回回收站' ? returnLabel : '返回旅行路径'}</a>
+                    <a class="ribbon-back entry-book-back" href="${escapeHtml(returnHash)}">${returnLabel}</a>
                     <p class="journal-label">旅行日记</p>
                     <h1>没有找到这篇日记</h1>
                 </div>

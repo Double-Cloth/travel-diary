@@ -1,5 +1,5 @@
-import { showFeedback } from './feedback-dialog.js?v=2.1.36';
-import { authenticateWriter, changeWriterPassword, initializeWriterPassword, probeWriterService } from './writer-capability.js?v=2.1.36';
+import { showFeedback } from './feedback-dialog.js?v=2.1.37';
+import { authenticateWriter, changeWriterPassword, initializeWriterPassword, probeWriterService } from './writer-capability.js?v=2.1.37';
 
 const PASSWORD_LENGTH = 6;
 let passwordGateSequence = 0;

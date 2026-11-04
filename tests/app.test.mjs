@@ -18,14 +18,15 @@ export function stubSearchNavigation(route) {
     navigateTo = (next, options) => calls.push({ next, options });
     return { calls, restore() { ({ navigateTo, activeRoute } = originals); } };
 }
-export function renderTestEntry(record, navigation) {
-    const originals = { setPages, getEntryNavigation, travelModel };
+export function renderTestEntry(record, navigation, { returnHash = '#ledger', missing = false, from } = {}) {
+    const originals = { setPages, getEntryNavigation, travelModel, lastReadingHash };
     let result;
     setPages = (left, right, mode, options = {}) => { result = { left, right, ...options }; };
     getEntryNavigation = () => navigation;
-    travelModel = { ...deriveTravelModel([record]), recordsById: new Map([[record.id, record]]) };
-    try { renderEntryRoute({ id: record.id }); return result; }
-    finally { ({ setPages, getEntryNavigation, travelModel } = originals); }
+    travelModel = { ...deriveTravelModel([record]), recordsById: new Map(missing ? [] : [[record.id, record]]) };
+    lastReadingHash = returnHash;
+    try { renderEntryRoute({ id: record.id, from }); return result; }
+    finally { ({ setPages, getEntryNavigation, travelModel, lastReadingHash } = originals); }
 }
 export function renderTestPlace(records, params, photos = false) {
     const originals = { setPages, travelModel };
@@ -419,13 +420,34 @@ test('长短篇详情正文只渲染一次，左页相邻篇目与管理入口�
         assert.match(result.pageTurns, /aria-label="上一篇：前一篇"/);
         assert.doesNotMatch(result.right, /data-action="entry-next"|data-action="entry-prev"|class="sheet-nav"/);
         const toolbar = result.left.match(/<header class="entry-book-toolbar">([\s\S]*?)<\/header>/)?.[1] || '';
-        assert.match(toolbar, /返回原处[\s\S]*data-action="edit-record"[\s\S]*data-action="delete-record"/);
+        assert.match(toolbar, /返回日记目录[\s\S]*data-action="edit-record"[\s\S]*data-action="delete-record"/);
         assert.equal((result.left.match(/data-action="edit-record"/g) || []).length, 1);
         assert.equal((result.left.match(/data-action="delete-record"/g) || []).length, 1);
         assert.doesNotMatch(result.left, /entry-management/);
         assert.doesNotMatch(result.right, /没有图片或视频附件/);
         assert.match(result.right, /02 \/ 3/);
     }
+});
+
+test('日记返回入口按来源命名，缺失日记与回收站来源保持相同返回目标', t => {
+    const previous = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = () => 1;
+    t.after(() => { globalThis.requestAnimationFrame = previous; });
+    const record = normalizeTravelLocation({ id: 'current', date: '2026-11-04', country_code: 'CN', locality: '昆明市', photos: [], videos: [] });
+    for (const [returnHash, label] of [
+        ['#ledger?view=notes&q=昆明', '返回日记目录'], ['#ledger?view=trips', '返回日记目录'],
+        ['#archive?q=云南', '返回日记归档'], ['#place?country=CN&area=云南省&locality=昆明市', '返回地点档案'],
+        ['#trip?id=trip-1', '返回行程详情'], ['#preface', '返回扉页'],
+        ['#preface?panel=recycle', '返回回收站'], ['#cover', '返回封面']
+    ]) {
+        for (const missing of [false, true]) {
+            const { left } = app.renderTestEntry(record, { index: 0, total: 1 }, { returnHash, missing });
+            assert.ok(left.includes(`href="${returnHash.replaceAll('&', '&amp;')}">${label}</a>`), `${returnHash}，缺失：${missing}`);
+            assert.doesNotMatch(left, /返回原处|返回旅行路径/);
+        }
+    }
+    const { left } = app.renderTestEntry(record, { index: 0, total: 1 }, { returnHash: '#ledger', from: 'recycle' });
+    assert.match(left, /href="#preface\?panel=recycle">返回回收站<\/a>/);
 });
 
 test('首末篇在相邻篇目中显示不可点击的边界提示', t => {
