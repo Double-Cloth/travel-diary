@@ -1060,7 +1060,7 @@ function renderPreface() {
         <section class="preface-tool-section" aria-labelledby="prefaceWritingTitle">
             <h3 id="prefaceWritingTitle">写作与资料</h3>
             <div class="preface-writing-row">
-                <p>把新的见闻，写进下一篇日记。</p>
+                <p>把新的旅途，写进下一篇日记。</p>
                 <button class="paper-button preface-write-button" type="button" data-action="add-record">新增旅行日记</button>
             </div>
             <div class="preface-profile-tools" aria-label="扉页个人资料">
@@ -1072,7 +1072,6 @@ function renderPreface() {
 
         <section class="preface-tool-section" aria-labelledby="prefaceDataTitle">
             <h3 id="prefaceDataTitle">备份与恢复</h3>
-            <p class="preface-section-note">先验证访问密码，再选择日记或备份文件；替换全部数据前会先确认风险。</p>
             <div class="preface-backup-group" role="group" aria-labelledby="prefaceExportTitle">
                 <h4 id="prefaceExportTitle">导出 · 保存备份到本机</h4>
                 <div class="preface-tool-choices">
@@ -1091,7 +1090,7 @@ function renderPreface() {
                 <div class="preface-tool-choices">
                     <button class="preface-tool-command" type="button" data-action="import-records">
                         <span class="preface-command-title">导入部分记录<span class="preface-command-kind">合并</span></span>
-                        <span class="preface-command-description">所选日记采用备份内容，其他日记、资料和密码不变。</span>
+                        <span class="preface-command-description">导入所选日记内容，其他日记、资料和密码不变。</span>
                     </button>
                     <button class="preface-tool-command" type="button" data-action="import-all-data">
                         <span class="preface-command-title">导入全部数据<span class="preface-command-kind">替换</span></span>
