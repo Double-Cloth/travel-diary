@@ -1261,7 +1261,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-file-actions svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .record-editor .media-file-drag { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 4px; color: var(--ink-soft); background: transparent; font: inherit; cursor: grab; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
 .record-editor .media-file-drag * { -webkit-user-select: none; user-select: none; pointer-events: none; }
-.record-editor [data-media-viewer-group] { position: relative; padding-right: 56px; }
+.record-editor [data-editor-existing-group] > [data-media-viewer-group] { position: relative; padding-right: 56px; }
 .record-editor-existing-media .media-file-actions { position: relative; }
 .record-editor [data-media-drag] { position: absolute; right: -56px; top: 50%; transform: translateY(-50%); }
 .record-editor [data-media-drag-group] { position: absolute; right: 0; width: 44px; }
@@ -1960,7 +1960,8 @@ dialog.feedback-dialog-with-guide.entry-sheet { width: min(560px, calc(100% - 32
 }
 
 @media (min-width: 761px) {
-    .record-editor-media-selection > [data-media-selected-count] { order: 1; }
+    .record-editor-media-selection > [data-media-selected-count],
+    .record-editor-media-selection > [data-media-restore-count] { order: 1; }
 }
 
 @media (max-width: 760px) {
