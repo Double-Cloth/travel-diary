@@ -7,6 +7,13 @@ const travelData = JSON.parse(await readFile(new URL('../data/travel_data.json',
 const countryCatalog = JSON.parse(await readFile(new URL('../assets/catalogs/countries.json', import.meta.url), 'utf8'));
 const countryCodes = new Set(countryCatalog.countries.map(country => country.code));
 
+test('日记索引按日期从早到晚排列', () => {
+    for (let index = 1; index < travelData.length; index += 1) {
+        assert.ok(travelData[index - 1].date <= travelData[index].date,
+            '日记索引未按日期升序排列，请运行 npm run data:sort 自动排序。');
+    }
+});
+
 test('Markdown 日记按年份目录存放并由元数据引用', async () => {
     assert.ok(Array.isArray(travelData));
 

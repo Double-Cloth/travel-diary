@@ -64,6 +64,17 @@ npm run data:archive
 npm run data:archive -- dist/travel-diary-backup.zip
 ```
 
+### 日记索引排序
+
+```bash
+# 每次手工修改 data/travel_data.json 后检查日期顺序，乱序时自动排序
+npm run data:sort
+# 提交前只检查；乱序时退出码为 1，不修改文件
+npm run data:sort -- --check
+```
+
+索引按日期从早到晚排列，同一天保留原有顺序；已排序时保留文件原格式。
+
 ### 媒体预览与缓存
 
 ```bash
