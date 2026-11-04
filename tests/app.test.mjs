@@ -7,7 +7,7 @@ globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
 export { parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
     renderWithPageTurn, renderWithBookCover, clearPageTurn, waitForPageTurnAssets, cloneTurningPage, cloneTransitionContent, createTransitionMediaImage, observePhotoSleeveMedia, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
-    applySearchRouteUpdate, syncPhotoSleevePreviewRows, isMobileContextPanelDismissTarget,
+    applySearchRouteUpdate, syncPhotoSleevePreviewRows, syncProfilePictureImages, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
     restoreFocus, handleDocumentKeydown, updateLedgerRoute, serializeRoute, getRememberedLedgerView, rememberLedgerView, getTripRoutePlaces,
     getInitialPhotoScale, getPhotoViewerBounds, constrainPhotoViewerTransform, getPhotoViewerBackgroundColor, updatePhotoViewerBackground, toggleViewerFullscreen, syncViewerFullscreenButton };
@@ -914,6 +914,43 @@ test('翻页等待尚无 src 和正在读取的可见缩略图，复用懒加载
     assert.equal(offscreen.dataset.src, 'offscreen.jpg');
 });
 
+test('翻页等待仍隐藏且尚无 src 的头像读取与解码，用相框判断可见性', async t => {
+    const previous = { document: globalThis.document, window: globalThis.window,
+        fetch: globalThis.fetch, getComputedStyle: globalThis.getComputedStyle };
+    t.after(() => Object.assign(globalThis, previous));
+    let finishFetch, finishDecode, startDecode;
+    const response = new Promise(resolve => { finishFetch = resolve; });
+    const decoded = new Promise(resolve => { finishDecode = resolve; });
+    const decoding = new Promise(resolve => { startDecode = resolve; });
+    globalThis.fetch = async url => url === 'index.html'
+        ? new Response(null, { headers: { 'X-Travel-Media-Cache': 'disk-v1' } }) : response;
+    globalThis.window = { innerHeight: 800, location: { href: 'http://localhost/' } };
+    globalThis.getComputedStyle = () => ({ backgroundImage: 'none' });
+    const avatar = Object.assign(new EventTarget(), {
+        dataset: { src: 'data/profile/profile-picture.png' }, isConnected: true, hidden: true,
+        hasAttribute: name => name === 'data-profile-picture-image',
+        parentElement: { getBoundingClientRect: () => ({ width: 100, height: 100, top: 40, bottom: 140 }) },
+        getBoundingClientRect: () => ({ width: 0, height: 0, top: 0, bottom: 0 }),
+        decode() { startDecode(); return decoded; }
+    });
+    const page = { querySelectorAll: () => [avatar], getBoundingClientRect: () => ({ top: 0, bottom: 800 }) };
+    globalThis.document = { querySelectorAll: () => [avatar] };
+    app.syncProfilePictureImages();
+    const ready = [];
+    app.waitForPageTurnAssets([page], value => ready.push(value));
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(ready, [], '头像仍隐藏且无 src 时也不能提前开始动画');
+    finishFetch(new Response(new Blob(['avatar-preview'], { type: 'image/jpeg' })));
+    await decoding;
+    avatar.naturalWidth = avatar.naturalHeight = 100;
+    avatar.dispatchEvent(new Event('load'));
+    assert.equal(avatar.hidden, false);
+    assert.deepEqual(ready, [], '头像读取后继续等待解码');
+    finishDecode();
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(ready, [true]);
+});
+
 test('桌面连续翻页加速落稳后衔接最新目标，取消会清理副本', async t => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const previous = { window: globalThis.window, document: globalThis.document, getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame, cancelAnimationFrame: globalThis.cancelAnimationFrame };
@@ -1115,6 +1152,30 @@ test('翻页视频画面缩为静态图片，未解码和跨源失败保留占�
     assert.equal(app.createTransitionMediaImage({ ...video, videoWidth: 0 }).src, undefined);
 });
 
+test('翻页头像共用静态快照，不复制已释放的 Blob 地址，保留缺省头像隐藏状态', t => {
+    const previous = { document: globalThis.document, window: globalThis.window };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.window = { devicePixelRatio: 1 };
+    globalThis.document = { createElement: tag => tag === 'img' ? { style: {} } : {
+        getContext: () => ({ drawImage() {} }), toDataURL: () => 'data:image/webp;base64,avatar'
+    } };
+    const copyNode = () => ({ children: [], appendChild(child) { this.children.push(child); } });
+    const avatar = { src: 'blob:already-released', hidden: false, naturalWidth: 640, naturalHeight: 640,
+        getBoundingClientRect: () => ({ width: 100, height: 100 }), closest: () => null };
+    const source = { childNodes: [avatar], cloneNode: copyNode,
+        querySelectorAll: selector => selector.includes('[data-profile-picture-image]') ? [avatar] : [] };
+    avatar.parentNode = source;
+    const copy = app.cloneTransitionContent(source, { top: 0, bottom: 800 });
+    assert.equal(copy.children[0].src, 'data:image/webp;base64,avatar');
+    assert.equal(copy.children[0].hidden, false);
+    assert.equal(avatar.src, 'blob:already-released', '真实头像不受副本处理影响');
+    avatar.hidden = true;
+    avatar.getBoundingClientRect = () => ({ width: 0, height: 0 });
+    const placeholder = app.cloneTransitionContent(source, { top: 0, bottom: 800 }).children[0];
+    assert.equal(placeholder.hidden, true);
+    assert.equal(placeholder.src, undefined);
+});
+
 test('图片与视频封面只在进入视口后读取预览缓存，换页解除旧观察', async t => {
     const previous = { document: globalThis.document, window: globalThis.window,
         IntersectionObserver: globalThis.IntersectionObserver, fetch: globalThis.fetch };
@@ -1175,7 +1236,7 @@ test('翻页方向与书签顺序及返回按钮一致', () => {
     ]) assert.equal(app.getTurnDirection({ name: from }, { name: to }), direction);
 });
 
-test('封面沿书脊翻转，合书落稳后提交且中断不重复渲染', t => {
+test('封面沿书脊翻转，合书落稳后提交且中断不重复渲染', async t => {
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const previous = { window: globalThis.window, document: globalThis.document,
         getComputedStyle: globalThis.getComputedStyle, requestAnimationFrame: globalThis.requestAnimationFrame,
@@ -1284,6 +1345,28 @@ test('封面沿书脊翻转，合书落稳后提交且中断不重复渲染', t 
     assert.equal(animations.at(-7).timing.duration, 920, '手机合书速度应保持利落');
     t.mock.timers.tick(920);
     assert.equal(renders, 5);
+
+    let finishFonts;
+    globalThis.document.fonts = { ready: new Promise(resolve => { finishFonts = resolve; }) };
+    const frameCount = frames.length;
+    const animationCount = animations.length;
+    app.renderWithBookCover(() => { renders += 1; }, 'opening');
+    assert.equal(frames.length, frameCount, '开书也要先等待页面资源再复制纸芯');
+    finishFonts();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(frames.length, frameCount + 1);
+    frames.pop()(performance.now() + 1000);
+    assert.equal(animations.length, animationCount + 7);
+    app.clearPageTurn();
+
+    globalThis.document.fonts = { ready: new Promise(resolve => { finishFonts = resolve; }) };
+    app.renderWithBookCover(() => { renders += 1; }, 'opening');
+    app.clearPageTurn();
+    finishFonts();
+    await Promise.resolve();
+    await Promise.resolve();
+    assert.equal(frames.length, frameCount, '取消开书后迟到资源不能重启动画');
 });
 
 test('卷曲从下角向内扩散，纸面共享边界且正反向准确落页', () => {

@@ -1,27 +1,27 @@
-import { createRecycleManager } from './recycle-manager.js?v=2.1.50';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.50';
-import { createRecordEditor } from './record-editor.js?v=2.1.50';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.50';
-import { createDataTransfer } from './data-transfer.js?v=2.1.50';
-import { createMediaManager } from './media-manager.js?v=2.1.50';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.50';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.50';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.50';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.50';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.50';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.50';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.50';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.50';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.50';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.50';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.50';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.50';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.51';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.51';
+import { createRecordEditor } from './record-editor.js?v=2.1.51';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.51';
+import { createDataTransfer } from './data-transfer.js?v=2.1.51';
+import { createMediaManager } from './media-manager.js?v=2.1.51';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.51';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.51';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.51';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.51';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.51';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.51';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.51';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.51';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.51';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.51';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.51';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.51';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.50';
+} from './location.mjs?v=2.1.51';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -30,7 +30,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.50';
+} from './photo-viewer-transform.mjs?v=2.1.51';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -97,7 +97,7 @@ let photoPreviewResizeTimer = null;
 let photoPreviewLateResizeTimer = null;
 let photoSleeveResizeObserver = null;
 let photoSleeveMediaObserver = null;
-const photoSleeveMediaLoads = new WeakMap();
+const pageMediaLoads = new WeakMap();
 const observedPhotoSleeves = new Set();
 const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
@@ -346,7 +346,10 @@ function syncProfilePictureImages(root = document, cacheKey = '') {
         profilePicture.addEventListener('error', () => {
             profilePicture.hidden = true;
         }, { once: true });
-        void loadMediaPreview(profilePicture, source + profilePictureUrl.search, 'image');
+        const ready = loadMediaPreview(profilePicture, source + profilePictureUrl.search, 'image')
+            .then(() => profilePicture.decode());
+        pageMediaLoads.set(profilePicture, ready);
+        void ready.catch(() => {});
     });
 }
 
@@ -3361,7 +3364,7 @@ function cloneTransitionContent(node, viewport) {
             boxSizing: 'border-box', visibility: 'hidden' });
         replace(row, copy);
     });
-    node.querySelectorAll('.photo-sleeve-button img, .photo-sleeve-button video').forEach(media => {
+    node.querySelectorAll('.photo-sleeve-button img, .photo-sleeve-button video, [data-profile-picture-image]').forEach(media => {
         if (replacements.has(media.closest('.photo-sleeve-button'))) return;
         replace(media, createTransitionMediaImage(media));
     });
@@ -3399,6 +3402,7 @@ function cloneTransitionContent(node, viewport) {
 function createTransitionMediaImage(media) {
     const image = document.createElement('img');
     image.alt = '';
+    image.hidden = Boolean(media.hidden);
     image.decoding = 'async';
     image.style.visibility = 'hidden';
     const sourceWidth = media.videoWidth || media.naturalWidth;
@@ -3512,6 +3516,7 @@ function renderWithBookCover(renderFn, mode) {
 
     let finished = false;
     let frame = null;
+    let cancelAssets = () => {};
     const animations = [];
     let finishTimer = null;
     const shellWasInert = refs.shell.inert;
@@ -3521,6 +3526,7 @@ function renderWithBookCover(renderFn, mode) {
     pageTurnCleanup = () => {
         if (finished) return;
         finished = true;
+        cancelAssets();
         cancelAnimationFrame(frame);
         clearTimeout(finishTimer);
         animations.forEach(animation => animation.cancel());
@@ -3659,7 +3665,10 @@ function renderWithBookCover(renderFn, mode) {
             frame = requestAnimationFrame(awaitPaint);
         }
     };
-    frame = requestAnimationFrame(awaitPaint);
+    cancelAssets = waitForPageTurnAssets([refs.leftPage, refs.rightPage], ready => {
+        if (!ready) { clearPageTurn(); return; }
+        frame = requestAnimationFrame(awaitPaint);
+    });
 }
 
 function cloneTurningPage(page) {
@@ -3768,11 +3777,13 @@ function waitForPageTurnAssets(pages, onReady) {
         for (const match of background.matchAll(/url\(["']?([^"')]+)["']?\)/g)) {
             backgrounds.add(match[1]);
         }
-        page.querySelectorAll('img[src], .photo-sleeve img').forEach(image => {
-            const rect = image.getBoundingClientRect();
+        page.querySelectorAll('img[src], .photo-sleeve img, [data-profile-picture-image]').forEach(image => {
+            // 头像加载前保持 hidden，用相框判断可见性，避免漏掉尚无 src 的头像。
+            const rect = image.hasAttribute?.('data-profile-picture-image')
+                ? image.parentElement.getBoundingClientRect() : image.getBoundingClientRect();
             if (!rect.width || !rect.height || rect.bottom <= top || rect.top >= bottom) return;
             // 懒加载尚未设置 src 时也要等待，避免把空白预览冻结进翻页纸带。
-            const preview = loadPhotoSleeveMedia(image);
+            const preview = pageMediaLoads.get(image) || loadPhotoSleeveMedia(image);
             if (preview) pending.push(preview);
             else if (image.decode) pending.push(image.decode());
         });
@@ -5156,17 +5167,17 @@ function getRecordMedia(record) {
 }
 
 function loadPhotoSleeveMedia(image) {
-    if (!photoSleeveMediaLoads.has(image) && image.dataset?.src) {
+    if (!pageMediaLoads.has(image) && image.dataset?.src) {
         const button = image.closest('.photo-sleeve-button');
         if (!button) return;
         // 视口检测已由调用方完成，主动解码不再等待浏览器的第二轮懒加载。
         image.loading = 'eager';
         const ready = loadMediaPreview(image, button.dataset.mediaSrc, button.dataset.mediaKind)
             .then(() => image.decode?.());
-        photoSleeveMediaLoads.set(image, ready);
+        pageMediaLoads.set(image, ready);
         delete image.dataset.src;
     }
-    return photoSleeveMediaLoads.get(image);
+    return pageMediaLoads.get(image);
 }
 
 function observePhotoSleeveMedia() {
