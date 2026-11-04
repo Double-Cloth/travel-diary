@@ -1251,7 +1251,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-file-thumbnail > span { position: absolute; inset: 0; display: grid; place-items: center; color: var(--ink-soft); font-size: 12px; }
 .media-file-thumbnail img,
 .media-file-thumbnail video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; background: var(--paper-100); }
-.media-file-play { position: absolute; right: 4px; bottom: 4px; z-index: 1; width: 20px; height: 20px; border-radius: 50%; fill: #fff7df; background: rgba(32, 21, 13, 0.86); pointer-events: none; }
+.media-file-play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1; width: 20px; height: 20px; border-radius: 50%; fill: #fff7df; background: rgba(32, 21, 13, 0.86); pointer-events: none; }
 .media-file-thumbnail [hidden] { display: none; }
 .media-file-description { display: grid; gap: 5px; min-width: 0; padding-block: 4px; }
 .media-file-name { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
