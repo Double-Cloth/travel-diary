@@ -18,6 +18,7 @@ data/
 assets/
 ├── catalogs/              # 国家与中国省市区目录
 ├── fonts/                 # TTF 源文件及 WOFF2 运行字体
+├── wasm/                  # 字体构建工具的本地 WASM、加载器、来源与许可证
 ├── images/backgrounds/    # 桌面背景
 ├── images/pages/          # 封面、纸页及页面图像
 └── textures/              # 纸纹等共用材质
@@ -49,11 +50,11 @@ HTML 和数据路径相对项目根目录；`css/` 下所有分片使用 `../ass
 
 印章字体来自 [Google Fonts 的 Cormorant SC](https://github.com/google/fonts/tree/main/ofl/cormorantsc)，采用 SIL Open Font License 1.1，许可随字体保存为 `assets/fonts/CormorantSC-OFL.txt`。只在印章使用，浏览器按需加载本地 WOFF2。
 
-`fonts` 命令默认生成完整压缩字体，并从界面与个人内容生成两种字重的 `*-core.woff2` 和 `diary-kai-core.css`，需要 Python 与 `fonttools[woff]`，普通启动不需要这些工具。生成的 CSS 先声明完整字体，再用实际 cmap 对轻量字集声明 `unicode-range`；当前界面优先加载轻量字集，新增的未覆盖字符按需加载相同字重的完整本地字体，保持字体样式与任意内容可读性。轻量字体 URL 附带内容哈希，避免重新生成后仍使用旧缓存。拼音字典和全国地点目录不纳入首屏字集；缓存、回收站、日志及测试输出目录不参与字体文字收集。
+`fonts` 命令默认生成完整压缩字体，并从界面与个人内容生成两种字重的 `*-core.woff2` 和 `diary-kai-core.css`。构建仅需 Node.js 20+，通过内置 API 加载 `assets/wasm/` 中的 HarfBuzz 与 WOFF2 WASM，无需安装 npm 依赖、外部命令或联网。生成的 CSS 先声明完整字体，再用实际 cmap 对轻量字集声明 `unicode-range`；当前界面优先加载轻量字集，新增的未覆盖字符按需加载相同字重的完整本地字体，保持字体样式与任意内容可读性。轻量字体 URL 附带内容哈希，避免重新生成后仍使用旧缓存。拼音字典和全国地点目录不纳入首屏字集；缓存、回收站、日志及测试输出目录不参与字体文字收集。
 
 只更新日记或界面文字后，可运行 `fonts:core` 刷新轻量字集，无需重新压缩完整字体；同时更新 CSS 引用版本并提交生成文件。`fonts:subset` 会替换完整字体文件为当前项目文字的子集，仍保留数字等基础字符；之后新增日记、动态署名或地点可能缺字，采用此显式模式时应重新生成并检查回退。一般内容持续增长的档案使用默认完整字体模式。
 
-字体安装与生成命令统一见 [README](../README.md#字体与地点目录)。
+字体生成命令统一见 [README](../README.md#字体与地点目录)；工具来源、固定版本、许可证与更新方法见 [WASM 说明](../assets/wasm/README.md)。`tests/build-fonts.test.mjs` 验证完整字体的全部轮廓与排版表、子集字符范围、CSS 回退和三个模式的离线构建。
 
 ## 地点目录
 

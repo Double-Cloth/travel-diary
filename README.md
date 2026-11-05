@@ -98,8 +98,7 @@ npm run cache:clear -- --help
 ### 字体与地点目录
 
 ```bash
-# 安装字体生成所需的 Python 工具，普通启动服务无需安装
-pip install "fonttools[woff]"
+# 字体构建仅需 Node.js 20+，使用仓库内 WASM，无需安装依赖或联网
 # 生成完整 WOFF2 字体，并按界面与个人内容生成轻量字集
 npm run fonts
 # 仅刷新轻量字集，适合更新文字后运行，无需重新压缩完整字体
@@ -112,3 +111,6 @@ npm run countries
 # 从脚本指定版本的数据源生成中国省市区目录，需联网获取数据
 npm run china-locations
 ```
+
+不使用 npm 时，可直接执行 `node scripts/build-fonts.mjs`，或附加 `--core` / `--subset`。
+字体工具的固定版本、来源和许可证见 [assets/wasm/README.md](assets/wasm/README.md)。

@@ -43,11 +43,8 @@ test('字体命令默认全量构建并保留显式子集模式', () => {
     assert.equal(packageJson.scripts.start, 'node js/server.js');
     assert.equal(packageJson.scripts.serve, 'node js/server.js');
     assert.match(fontBuildScript, /if \(subsetMode\)[\s\S]*buildSubsets\(\);[\s\S]*else \{[\s\S]*buildFullFont/);
-    assert.match(fontBuildScript, /'ttLib\.woff2',[\s\S]*'compress'/);
-});
-
-test('可选字体子集模式显式丢弃不需要的 meta 表', () => {
-    assert.match(fontBuildScript, /--drop-tables\+=meta/);
+    assert.match(fontBuildScript, /await compressFont\(source\)/);
+    assert.doesNotMatch(fontBuildScript, /child_process|spawnSync|fonttools|pyftsubset/);
 });
 
 test('多图预览不把 Base64 写入 DOM，并降低移动端重绘开销', () => {

@@ -7,8 +7,8 @@ const staticCapability = JSON.parse(await readFile(new URL('../api/travel-record
 
 test('GitHub Pages workflow runs tests before deployment', () => {
     assert.match(workflow, /on:\s*\n\s+push:/);
-    assert.match(workflow, /actions\/setup-python@v[0-9]+/);
-    assert.match(workflow, /pip install "fonttools\[woff\]"/);
+    assert.match(workflow, /actions\/setup-node@v[0-9]+/);
+    assert.doesNotMatch(workflow, /setup-python|pip install|fonttools/);
     assert.match(workflow, /npm run fonts/);
     assert.match(workflow, /npm test/);
     assert.doesNotMatch(workflow, /cache:\s*npm|npm ci|npm install/);

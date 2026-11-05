@@ -1,9 +1,8 @@
-import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { basename, extname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { compressFont, subsetFont, readCmap, unicodeRanges } from './font-tools.mjs';
 
 const projectRoot = fileURLToPath(new URL('../', import.meta.url));
 const subsetMode = process.argv.slice(2).includes('--subset');
@@ -49,37 +48,24 @@ if (subsetMode && coreOnlyMode) throw new Error('--subset 与 --core 不能同�
 
 if (!coreOnlyMode) {
     if (subsetMode) {
-        buildSubsets();
+        await buildSubsets();
     } else {
-        for (const job of fontJobs) buildFullFont(job);
+        for (const job of fontJobs) await buildFullFont(job);
     }
 }
-buildCoreFonts();
+await buildCoreFonts();
 
-function buildCoreFonts() {
-    const tempDir = mkdtempSync(join(tmpdir(), 'travel-diary-font-core-'));
-    const textFile = join(tempDir, 'core-text.txt');
+async function buildCoreFonts() {
     const styles = [];
-    try {
-        // 首屏字集只收集界面与个人内容；拼音字典和全国目录按需使用完整字库。
-        writeFileSync(textFile, collectProjectText(projectRoot, new Set([...excludedDirs, 'assets', 'vendor', 'tests', 'doc', 'scripts'])), 'utf8');
-        for (const job of fontJobs.filter(job => basename(job.source).startsWith('LXGWWenKaiMono-'))) {
-            const output = job.output.replace('.woff2', '-core.woff2');
-            buildSubset({ ...job, output }, textFile);
-            const cmapFile = join(tempDir, 'cmap.ttx');
-            runFontTool('fonttools', ['ttx', '-q', '-t', 'cmap', '-o', cmapFile, join(projectRoot, output)], '字集映射');
-            // 使用实际生成的 cmap，避免为字体不含的字符声明 unicode-range。
-            const codepoints = [...new Set([...readFileSync(cmapFile, 'utf8').matchAll(/code="0x([0-9a-f]+)"/gi)]
-                .map(match => Number.parseInt(match[1], 16)))].sort((a, b) => a - b);
-            const ranges = [];
-            for (let index = 0; index < codepoints.length; index += 1) {
-                const start = codepoints[index];
-                let end = start;
-                while (codepoints[index + 1] === end + 1) end = codepoints[++index];
-                ranges.push(`U+${start.toString(16).toUpperCase()}${end === start ? '' : `-${end.toString(16).toUpperCase()}`}`);
-            }
-            const weight = job.source.includes('Medium') ? 700 : 400;
-            styles.push(`@font-face {
+    // 首屏字集只收集界面与个人内容；拼音字典和全国目录按需使用完整字库。
+    const text = collectProjectText(projectRoot, new Set([...excludedDirs, 'assets', 'vendor', 'tests', 'doc', 'scripts']));
+    for (const job of fontJobs.filter(job => basename(job.source).startsWith('LXGWWenKaiMono-'))) {
+        const output = job.output.replace('.woff2', '-core.woff2');
+        const subset = await buildSubset({ ...job, output }, text);
+        // 从实际子集的 cmap 生成范围，避免声明字体不含的字符。
+        const ranges = unicodeRanges(readCmap(subset));
+        const weight = job.source.includes('Medium') ? 700 : 400;
+        styles.push(`@font-face {
     font-family: "Diary Kai";
     src: url("./${basename(job.output)}") format("woff2");
     font-weight: ${weight};
@@ -93,25 +79,15 @@ function buildCoreFonts() {
     font-weight: ${weight};
     font-style: normal;
     font-display: block;
-    unicode-range: ${ranges.join(',')};
+    unicode-range: ${ranges};
 }`);
-        }
-        writeFileSync(join(projectRoot, 'assets/fonts/diary-kai-core.css'), `/* 由 npm run fonts 生成。未覆盖字符继续使用完整本地字库。 */\n${styles.join('\n\n')}\n`, 'utf8');
-    } finally {
-        rmSync(tempDir, { recursive: true, force: true });
     }
+    writeFileSync(join(projectRoot, 'assets/fonts/diary-kai-core.css'), `/* 由 npm run fonts 生成。未覆盖字符继续使用完整本地字库。 */\n${styles.join('\n\n')}\n`, 'utf8');
 }
 
-function buildSubsets() {
-    const tempDir = mkdtempSync(join(tmpdir(), 'travel-diary-fonts-'));
-    const textFile = join(tempDir, 'subset-text.txt');
-
-    try {
-        writeFileSync(textFile, collectProjectText(projectRoot), 'utf8');
-        for (const job of fontJobs) buildSubset(job, textFile);
-    } finally {
-        rmSync(tempDir, { recursive: true, force: true });
-    }
+async function buildSubsets() {
+    const text = collectProjectText(projectRoot);
+    for (const job of fontJobs) await buildSubset(job, text);
 }
 
 function collectProjectText(directory, ignoredDirectories = excludedDirs) {
@@ -136,42 +112,18 @@ function collectTextFiles(directory, chunks, ignoredDirectories) {
     }
 }
 
-function buildFullFont({ source, output }) {
-    runFontTool('fonttools', [
-        'ttLib.woff2',
-        'compress',
-        join(projectRoot, source),
-        '-o',
-        join(projectRoot, output),
-        '--no-glyf-transform'
-    ], '完整字体');
+async function buildFullFont({ source, output }) {
+    await writeFont(output, readFileSync(join(projectRoot, source)));
 }
 
-function buildSubset({ source, output, unicodeRanges }, textFile) {
-    runFontTool('pyftsubset', [
-        join(projectRoot, source),
-        `--output-file=${join(projectRoot, output)}`,
-        '--flavor=woff2',
-        '--layout-features=*',
-        '--drop-tables+=meta',
-        // 日期会在运行时更新，子集模式下仍须保留完整数字。
-        '--text=0123456789',
-        `--text-file=${textFile}`,
-        `--unicodes=${unicodeRanges}`
-    ], '字体子集');
+async function buildSubset({ source, output, unicodeRanges: ranges }, text) {
+    const subset = await subsetFont(readFileSync(join(projectRoot, source)), text, ranges);
+    await writeFont(output, subset);
+    return subset;
 }
 
-function runFontTool(command, arguments_, label) {
-    const result = spawnSync(command, arguments_, {
-        cwd: projectRoot,
-        encoding: 'utf8',
-        stdio: 'pipe'
-    });
-
-    if (result.error || result.status !== 0) {
-        const detail = result.error?.message || result.stderr || result.stdout || `exit code ${result.status}`;
-        throw new Error(`${label}生成失败，请先安装 fonttools[woff] 后重试：${detail.trim()}`);
-    }
-
-    if (result.stderr.trim()) process.stderr.write(result.stderr);
+async function writeFont(output, source) {
+    const compressed = await compressFont(source);
+    writeFileSync(join(projectRoot, output), compressed);
+    console.log(`${output}：${compressed.length.toLocaleString('en-US')} bytes`);
 }

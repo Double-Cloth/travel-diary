@@ -26,14 +26,6 @@ jobs:
         with:
           node-version: 20
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Install font tools
-        run: pip install "fonttools[woff]"
-
       - name: Build full fonts
         run: npm run fonts
 
@@ -55,14 +47,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
-
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-
-      - name: Install font tools
-        run: pip install "fonttools[woff]"
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5

@@ -1,0 +1,45 @@
+{
+  "packages": {
+    "harfbuzzjs": {
+      "version": "1.6.4",
+      "repository": {
+        "url": "git+https://github.com/harfbuzz/harfbuzzjs.git",
+        "type": "git"
+      },
+      "gitHead": "3f162fa2c6ba68b40839fe2c11502a26632e20df",
+      "tarball": "https://registry.npmjs.org/harfbuzzjs/-/harfbuzzjs-1.6.4.tgz",
+      "integrity": "sha512-T/PyfhVt1gGR2Tkf5KJUj1DQFkVBXHw552lS1iLEEDhV1Lukb3eq1pk2ov85kgbT2YUiZtJBTak9w+M7YgzUEQ=="
+    },
+    "wawoff2": {
+      "version": "2.0.1",
+      "repository": {
+        "url": "git+https://github.com/fontello/wawoff2.git",
+        "type": "git"
+      },
+      "gitHead": "2ba75100c9ec6031a5a1d32ddd1120409aa68573",
+      "tarball": "https://registry.npmjs.org/wawoff2/-/wawoff2-2.0.1.tgz",
+      "integrity": "sha512-r0CEmvpH63r4T15ebFqeOjGqU4+EgTx4I510NtK35EMciSdcTxCw3Byy3JnBonz7iyIFZ0AbVo0bbFpEVuhCYA=="
+    }
+  },
+  "sha256": {
+    "harfbuzz-subset.wasm": "62415fe6bad92ef16f3e5d2dbed6c66a4adec7f5a59c6d27084811c92cce1ba5",
+    "woff2-compress.wasm": "0f9cbc41a9e16c777c4ce8175859d5753d7a81c1614ce7d51653e5cb381dbd58",
+    "woff2-compress.cjs": "eb131512845e63d97f17e07d02f97da36a39776841d5d4a1fd68f208f71ace36",
+    "woff2-decompress.wasm": "517f31132df89609b695b46d07c6ee1a9deb9d6d388e33d1706127e3c4543fc1",
+    "woff2-decompress.cjs": "1d7d9c0170ed6a13bb38089f7f28c4212eee278b9b82eb951ae94caff4df2854"
+  },
+  "woff2": {
+    "commit": "a0d0ed7da27b708c0a4e96ad7a998bddc933c06e",
+    "source": "https://github.com/google/woff2/tree/a0d0ed7da27b708c0a4e96ad7a998bddc933c06e",
+    "build": "https://github.com/fontello/wawoff2/blob/2ba75100c9ec6031a5a1d32ddd1120409aa68573/src/Dockerfile",
+    "emscripten": "2.0.34"
+  },
+  "harfbuzz": {
+    "commit": "35f656a1a2bab548ea7f54a6dd3fba2b09680d14",
+    "source": "https://github.com/harfbuzz/harfbuzz/tree/35f656a1a2bab548ea7f54a6dd3fba2b09680d14"
+  },
+  "brotli": {
+    "commit": "533843e3546cd24c8344eaa899c6b0b681c8d222",
+    "source": "https://github.com/google/brotli/tree/533843e3546cd24c8344eaa899c6b0b681c8d222"
+  }
+}

@@ -66,7 +66,7 @@ Node 静态服务拒绝任意层级的隐藏路径及 `.zip`、`.bak`、`.tmp` �
 
 ### 发布流程
 
-GitHub Pages 工作流在 push 或手动触发时运行：Node.js 20、Python 字体工具、完整字体构建、全部测试，然后发布 `index.html`、`api/`、`assets/`、`css/`、`doc/`、`js/` 和 `data/`。当前没有限制 push 分支；调整触发范围应修改工作流。构建会补齐缺少的空档案和头像，移除发布物中的 TTF 源文件，保留 WOFF2。
+GitHub Pages 工作流在 push 或手动触发时运行：Node.js 20、仓库内 WASM 完整字体构建、全部测试，然后发布 `index.html`、`api/`、`assets/`、`css/`、`doc/`、`js/` 和 `data/`。字体构建不需要额外安装工具或依赖。当前没有限制 push 分支；调整触发范围应修改工作流。构建会补齐缺少的空档案和头像，移除发布物中的 TTF 源文件，保留 WOFF2。
 
 发布物不包含 `.secrets/`、完整备份 ZIP 或服务端运行进程。`api/travel-records` 是静态只读标记；发布到其他静态平台时也应保留它，同时排除秘密及运行临时目录。
 
