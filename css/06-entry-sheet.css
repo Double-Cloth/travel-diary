@@ -1329,6 +1329,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-file-description { display: grid; gap: 5px; min-width: 0; padding-block: 4px; }
 .media-file-name { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .media-file-detail { color: var(--ink-soft); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.record-editor-upload-pending { display: inline-block; padding: 1px 6px; border: 1px solid currentColor; border-radius: 4px; color: var(--stamp); background: var(--paper-50); font-weight: 700; white-space: nowrap; }
 .media-file-actions { display: flex; align-items: center; gap: 4px; }
 .media-file-actions button,
 .media-file-restore { display: grid; place-items: center; flex-shrink: 0; min-width: 44px; min-height: 44px; padding: 8px 10px; border: 1px solid transparent; border-radius: 4px; color: var(--ink-soft); background: transparent; font: inherit; font-size: 13px; cursor: pointer; }

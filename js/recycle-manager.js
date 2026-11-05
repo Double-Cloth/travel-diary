@@ -1,11 +1,11 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.66';
-import { createPasswordGate } from './record-password.js?v=2.1.66';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.66';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.66';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.66';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.66';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.66';
-import { recordIdentity } from './record-identity.mjs?v=2.1.66';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.67';
+import { createPasswordGate } from './record-password.js?v=2.1.67';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.67';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.67';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.67';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.67';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.67';
+import { recordIdentity } from './record-identity.mjs?v=2.1.67';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
