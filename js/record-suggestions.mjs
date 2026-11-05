@@ -1,4 +1,4 @@
-import { defaultMarkdownPath, recordSlug } from './record-input.mjs?v=2.1.63';
+import { defaultMarkdownPath, recordSlug } from './record-input.mjs?v=2.1.64';
 
 const AUTOFILL_FIELDS = ['country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'desc_md'];
 const RECENT_TRIP_LIMIT = 5;
