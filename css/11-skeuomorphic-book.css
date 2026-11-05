@@ -1437,6 +1437,7 @@ body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padd
     .ledger-year-nav .year-bookmarks {
         display: flex;
         flex-wrap: wrap;
+        justify-content: flex-end;
         gap: 6px;
         margin: 0;
         padding: 6px;
