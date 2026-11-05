@@ -821,6 +821,8 @@ body[data-route='preface'] .paper-page {
     box-shadow: inset 0 2px 4px #80643d24, 0 1px #fff9e0;
 }
 
+.year-bookmark-buttons { display: contents; }
+
 .year-bookmark {
     min-height: 37px;
     padding: 8px 15px;
@@ -1435,16 +1437,19 @@ body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padd
         font-size: 10px;
     }
     .ledger-year-nav .year-bookmarks {
+        display: block;
+        margin: 0;
+        padding: 6px;
+        overflow: visible;
+    }
+    .ledger-year-nav .year-bookmark-buttons {
         display: flex;
         flex-wrap: wrap;
         justify-content: flex-end;
         width: max-content;
         /* 按完整按钮列收拢宽度，让首行贴左、后续行对齐首行右侧列。 */
-        max-width: calc(round(down, calc(100% - 18px), 68px) + 18px);
+        max-width: calc(round(down, calc(100% - 6px), 68px) + 6px);
         gap: 6px;
-        margin: 0;
-        padding: 6px;
-        overflow: visible;
     }
     .ledger-year-nav .year-bookmark {
         flex: 0 0 62px;
