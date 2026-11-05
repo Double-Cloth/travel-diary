@@ -211,6 +211,7 @@
     "desc_md": "data/travel-diary/2024/2024-10-18-beijing.md",
     "photo_folder": "data/photos/beijing",
     "photos": [
+      "img_20241018_181050.jpg",
       "img_20241018_232836.jpg",
       "img_20241018_232931.jpg",
       "img_20241019_000326.jpg",
@@ -261,6 +262,9 @@
       "img_20241020_175115.jpg",
       "img_20241020_175116.jpg",
       "img_20241020_175117.jpg",
+      "img_20241020_195025.jpg",
+      "img_20241020_212247.jpg",
+      "img_20241021_012530.jpg",
       "mmexport1729410816743.jpg",
       "mmexport1729410824878.jpg",
       "mmexport1729412163165.jpg",
@@ -272,6 +276,7 @@
       "vid_20241018_234934.mp4"
     ],
     "media_order": [
+      "photo:img_20241018_181050.jpg",
       "photo:img_20241018_232836.jpg",
       "photo:img_20241018_232931.jpg",
       "video:vid_20241018_234934.mp4",
@@ -323,6 +328,9 @@
       "photo:img_20241020_175115.jpg",
       "photo:img_20241020_175116.jpg",
       "photo:img_20241020_175117.jpg",
+      "photo:img_20241020_195025.jpg",
+      "photo:img_20241020_212247.jpg",
+      "photo:img_20241021_012530.jpg",
       "photo:mmexport1729410816743.jpg",
       "photo:mmexport1729410824878.jpg",
       "photo:mmexport1729412163165.jpg",
@@ -343,6 +351,8 @@
     "desc_md": "data/travel-diary/2024/2024-11-02-nanjing.md",
     "photo_folder": "data/photos/nanjing",
     "photos": [
+      "img_20241102_044316.jpg",
+      "img_20241102_052909.jpg",
       "img_20241103_091350.jpg",
       "img_20241102_110732.jpg",
       "img_20241102_115506.jpg",
@@ -367,9 +377,13 @@
     ],
     "video_folder": "data/videos/nanjing",
     "videos": [
+      "vid_20241102_043027.mp4",
       "vid_20241102_192136.mp4"
     ],
     "media_order": [
+      "video:vid_20241102_043027.mp4",
+      "photo:img_20241102_044316.jpg",
+      "photo:img_20241102_052909.jpg",
       "photo:img_20241103_091350.jpg",
       "photo:img_20241102_110732.jpg",
       "photo:img_20241102_115506.jpg",
