@@ -26,23 +26,23 @@ Travel Diary 是一本数字旅行日志。它把每一次出发整理成行程�
 
 1. 克隆仓库并进入项目目录。
 
-  ```bash
-  git clone https://github.com/Double-Cloth/travel-diary.git
-  cd travel-diary
-  ```
+```bash
+git clone https://github.com/Double-Cloth/travel-diary.git
+cd travel-diary
+```
 
 2. 可选：重新生成字体和媒体缩略图。
 
-  ```bash
-  npm run fonts
-  npm run media:previews
-  ```
+```bash
+npm run fonts
+npm run media:previews
+```
 
 3. 启动本机服务。
 
-  ```bash
-  npm start
-  ```
+```bash
+npm start
+```
 
 ## 命令
 
