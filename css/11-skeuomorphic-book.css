@@ -1435,10 +1435,21 @@ body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padd
         font-size: 10px;
     }
     .ledger-year-nav .year-bookmarks {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(48px, 1fr));
+        gap: 6px;
         margin: 0;
-        padding: 6px 0 0;
-        scroll-padding-inline: 5px;
+        padding: 6px;
+        overflow: visible;
     }
+    .ledger-year-nav .year-bookmark {
+        min-width: 0;
+        min-height: 44px;
+        padding: 8px 6px;
+    }
+    /* 窄屏统一按钮间距，移除“全部”后的额外占位与分隔线。 */
+    .ledger-year-nav .year-bookmark[data-value='all'] { margin-inline-end: 0; }
+    .ledger-year-nav .year-bookmark[data-value='all']::after { display: none; }
     .page-head h1 { text-wrap: balance; }
     .paper-page-right.context-panel .index-dashboard-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
     .paper-page-right.context-panel .index-dashboard-grid span:last-child { grid-column: 1 / -1; border-left: 0; padding: 6px 0 0; border-top: 1px solid var(--line); }

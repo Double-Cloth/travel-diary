@@ -263,11 +263,20 @@
 
 .media-overview-toggle-hint {
     color: var(--ink-soft);
-    font: 12px/1.5 var(--font-serif);
+    flex-shrink: 0;
+    font: 13px/1.5 var(--font-serif);
 }
 
-.media-overview-toggle-hint::after { content: ' · 展开'; }
-.media-overview[open] .media-overview-toggle-hint::after { content: ' · 收起'; }
+.media-overview-toggle-hint::after {
+    content: '展开';
+    margin-left: 8px;
+    color: var(--stamp);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+.media-overview[open] .media-overview-toggle-hint::after { content: '收起'; }
+.media-overview > summary:hover .media-overview-toggle-hint::after,
+.media-overview > summary:focus-visible .media-overview-toggle-hint::after { text-decoration-thickness: 2px; }
 
 .media-overview-counts {
     display: grid;
