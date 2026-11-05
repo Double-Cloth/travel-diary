@@ -1,7 +1,7 @@
-import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.60';
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.60';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.60';
-import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.60';
+import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.61';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.61';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.61';
+import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.61';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
     MAXIMUM_MEDIA_BATCH_BYTES,
@@ -9,18 +9,18 @@ import {
     MAXIMUM_VIDEO_FILE_BYTES,
     mediaBytes,
     readUploads
-} from './photo-uploads.mjs?v=2.1.60';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.60';
-import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.60';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.60';
-import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.60';
-import { orderMedia } from './media-order.mjs?v=2.1.60';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.60';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.60';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.60';
+} from './photo-uploads.mjs?v=2.1.61';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.61';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.61';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.61';
+import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.61';
+import { orderMedia } from './media-order.mjs?v=2.1.61';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.61';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.61';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.61';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
-import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.60';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.60';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.61';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.61';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;

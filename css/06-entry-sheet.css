@@ -278,6 +278,12 @@
 .media-overview > summary:hover .media-overview-toggle-hint::after,
 .media-overview > summary:focus-visible .media-overview-toggle-hint::after { text-decoration-thickness: 2px; }
 
+@media (min-width: 761px) {
+    .media-overview > summary { cursor: default; }
+    .media-overview-toggle-hint::after { content: none; }
+    .media-overview[open] .media-overview-toggle-hint::after { content: none; }
+}
+
 .media-overview-counts {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));

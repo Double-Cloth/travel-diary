@@ -204,17 +204,32 @@ test('单篇和空媒体概览不产生误导的比例或最多日记', () => {
     assert.doesNotMatch(empty, /NaN|Infinity|占|平均|暂无日期/);
 });
 
-test('媒体概览桌面默认展开、手机默认收起，同一布局内保留手动开关', t => {
+test('媒体概览桌面固定展开且禁止开合，手机默认收起并保留手动开关', t => {
     const original = globalThis.window;
     t.after(() => { globalThis.window = original; });
     let mobile = false;
     globalThis.window = { matchMedia: () => ({ matches: mobile }) };
-    const overview = { dataset: {}, open: false };
+    const attributes = {};
+    const summary = {
+        setAttribute: (key, value) => { attributes[key] = value; },
+        removeAttribute: key => { delete attributes[key]; },
+    };
+    const overview = { dataset: {}, open: false, querySelector: () => summary };
     app.syncTestMediaOverview(overview);
     assert.equal(overview.open, true);
+    assert.equal(summary.tabIndex, -1);
+    assert.equal(attributes.role, 'heading');
+    let prevented = false;
+    summary.onclick({ preventDefault: () => { prevented = true; } });
+    assert.equal(prevented, true);
     mobile = true;
     app.syncTestMediaOverview(overview);
     assert.equal(overview.open, false);
+    assert.equal(summary.tabIndex, 0);
+    assert.equal(attributes.role, undefined);
+    prevented = false;
+    summary.onclick({ preventDefault: () => { prevented = true; } });
+    assert.equal(prevented, false);
     overview.open = true;
     app.syncTestMediaOverview(overview);
     assert.equal(overview.open, true);
