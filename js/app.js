@@ -1207,7 +1207,6 @@ function renderLedger(params = {}, options = {}) {
                     </nav>
                 </div>
             </section>
-            ${ledgerParams.view === 'trips' ? '<p class="ledger-view-hint">按笔记查找所属行程，点开后阅读完整行程。</p>' : ''}
             <div class="timeline-list" id="ledgerList">
                 ${filtered.length
                     ? (ledgerParams.view === 'trips' ? renderLedgerGroups(trips, ledgerParams, renderLedgerTripEntry, '次') : renderLedgerGroups(filtered, ledgerParams))
