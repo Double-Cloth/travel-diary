@@ -1,7 +1,7 @@
-import { getMediaFileUrl } from './utils.js?v=2.1.65';
-import { getMediaPreviewUrl, observeMediaPreview } from './media-preview.mjs?v=2.1.65';
+import { getMediaFileUrl } from './utils.js?v=2.1.66';
+import { getMediaPreviewUrl, observeMediaPreview, observeMediaVisibility } from './media-preview.mjs?v=2.1.66';
 
-export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbnailSrc = getMediaPreviewUrl(src), blob, name, kind, index = 0, detail = '' }) {
+export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbnailSrc = getMediaPreviewUrl(src), loadThumbnail, blob, name, kind, index = 0, detail = '' }) {
     const link = document.createElement(src ? 'a' : 'span');
     link.className = 'media-file-link';
     if (blob) link.mediaBlob = blob;
@@ -19,7 +19,7 @@ export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbna
     const fallback = document.createElement('span');
     fallback.textContent = kind === 'video' ? '视频' : '图片';
     thumbnail.append(fallback);
-    if (thumbnailSrc) {
+    if (thumbnailSrc || loadThumbnail) {
         const media = document.createElement('img');
         media.alt = '';
         media.loading = 'lazy';
@@ -32,7 +32,14 @@ export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbna
             fallback.textContent = '无法预览';
         }, { once: true });
         thumbnail.append(media);
-        if (thumbnailSrc.startsWith('blob:')) media.src = thumbnailSrc;
+        if (loadThumbnail || thumbnailSrc.startsWith('blob:')) {
+            observeMediaVisibility(media, async () => {
+                try {
+                    const url = loadThumbnail ? await loadThumbnail() : thumbnailSrc;
+                    if (media.isConnected && url) { media.loading = 'eager'; media.src = url; }
+                } catch { if (media.isConnected) media.dispatchEvent(new Event('error')); }
+            });
+        }
         else observeMediaPreview(media, src, kind);
     }
     if (kind === 'video') {

@@ -1,7 +1,7 @@
-import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.65';
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.65';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.65';
-import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.65';
+import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.66';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.66';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.66';
+import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.66';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
     MAXIMUM_MEDIA_BATCH_BYTES,
@@ -9,18 +9,18 @@ import {
     MAXIMUM_VIDEO_FILE_BYTES,
     mediaBytes,
     readUploads
-} from './photo-uploads.mjs?v=2.1.65';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.65';
-import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.65';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.65';
-import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.65';
-import { orderMedia } from './media-order.mjs?v=2.1.65';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.65';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.65';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.65';
+} from './photo-uploads.mjs?v=2.1.66';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.66';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.66';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.66';
+import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.66';
+import { orderMedia } from './media-order.mjs?v=2.1.66';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.66';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.66';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.66';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
-import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.65';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.65';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.66';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.66';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -79,6 +79,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     let operationProgress;
     let archivePhase = '正在校验并打包媒体…';
     const photoPreviewUrls = new Map();
+    const photoPreviewTasks = new Map();
     const mediaSourceUrls = new Map();
     let trigger;
     let autocompletePointer = null;
@@ -136,7 +137,19 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function ensurePhotoPreviewUrl(media) {
-        return photoPreviewUrls.get(media.id) || '';
+        if (photoPreviewUrls.has(media.id)) return Promise.resolve(photoPreviewUrls.get(media.id));
+        if (!photoPreviewTasks.has(media.id)) {
+            const task = createLocalPreviewUrl(previewBlob(media), media.kind).then(url => {
+                if (photoPreviewTasks.get(media.id) !== task) {
+                    if (url) URL.revokeObjectURL(url);
+                    return '';
+                }
+                photoPreviewUrls.set(media.id, url);
+                return url;
+            }).finally(() => { if (photoPreviewTasks.get(media.id) === task) photoPreviewTasks.delete(media.id); });
+            photoPreviewTasks.set(media.id, task);
+        }
+        return photoPreviewTasks.get(media.id);
     }
 
     async function createLocalPreviewUrl(file, kind) {
@@ -153,6 +166,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function releasePhotoPreview(id) {
+        photoPreviewTasks.delete(id);
         const sourceUrl = mediaSourceUrls.get(id);
         if (sourceUrl) URL.revokeObjectURL(sourceUrl.url);
         mediaSourceUrls.delete(id);
@@ -163,7 +177,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     }
 
     function releasePhotoPreviews(keepIds = new Set()) {
-        for (const id of photoPreviewUrls.keys()) {
+        for (const id of new Set([...photoPreviewUrls.keys(), ...photoPreviewTasks.keys(), ...mediaSourceUrls.keys()])) {
             if (!keepIds.has(id)) releasePhotoPreview(id);
         }
     }
@@ -837,7 +851,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         }
         const source = mediaSourceUrls.get(photo.id);
         return createMediaFileLink({ src: source.url, blob: source.blob, name: photo.name, kind: photo.kind, index,
-            thumbnailSrc: ensurePhotoPreviewUrl(photo), detail: `${photo.kind === 'video' ? '视频' : '图片'} · 待上传` });
+            loadThumbnail: () => ensurePhotoPreviewUrl(photo), detail: `${photo.kind === 'video' ? '视频' : '图片'} · 待上传` });
     }
 
     function updateCountry(fillName = false) {
@@ -1122,11 +1136,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
     async function addPhotos(files) {
         if (busy || saved || readingPhotos || !files.length) return;
         readingPhotos = true;
-        startProgress('读取图片和视频', '正在准备媒体预览…');
+        startProgress('读取图片和视频', '正在校验媒体文件…');
         const saveButton = dialog.querySelector('[data-editor-save]');
         saveButton.disabled = true;
         status('正在读取图片和视频…');
-        const pendingPreviews = [];
         try {
             if (files.some(file => !file.size)) throw new Error('不能选择空媒体文件。');
             if (files.some(file => file.size > MAXIMUM_MEDIA_FILE_BYTES)) {
@@ -1149,27 +1162,16 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 data.head = await data.read(0, Math.min(16386, data.size));
                 operationProgress.throwIfCancelled();
                 const photo = readUploads([{ id, name: file.name.slice(0, 200), data }])[0];
-                let previewUrl;
-                try { previewUrl = await createLocalPreviewUrl(file, photo.kind); }
-                catch (error) {
-                    throw new Error(error.message.startsWith('无法') ? error.message : `无法解码媒体：${file.name}`);
-                }
-                pendingPreviews.push([id, previewUrl]);
                 operationProgress.throwIfCancelled();
                 pending.push(photo);
-                operationProgress.update(fileIndex + 1, files.length, '正在生成媒体预览…', 'files');
+                operationProgress.update(fileIndex + 1, files.length, '正在校验媒体文件…', 'files');
             }
-            pendingPreviews.forEach(([id, url]) => photoPreviewUrls.set(id, url));
             uploads.push(...pending);
             dirty = true;
             renderPhotos();
             updatePhotoStatus();
             operationProgress.complete(`已读取 ${files.length} 项媒体，保存记录时将一并上传。`);
         } catch (error) {
-            pendingPreviews.forEach(([id, url]) => {
-                if (photoPreviewUrls.get(id) === url) photoPreviewUrls.delete(id);
-                URL.revokeObjectURL(url);
-            });
             status(error.message);
             operationProgress.fail(error);
         }
@@ -1553,15 +1555,6 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             field('country_code').dispatchEvent(new Event('change'));
             requestId = draft.requestId;
             uploads = readUploads(draft.uploads);
-            for (const media of uploads) {
-                operationProgress.throwIfCancelled();
-                const blob = previewBlob(media);
-                try {
-                    photoPreviewUrls.set(media.id, await createLocalPreviewUrl(blob, media.kind));
-                } catch {
-                    // 草稿中的原文件不因缩略图无法解码而丢失。
-                }
-            }
             removedMedia = [];
             selectedMedia.clear();
             selectedRemovedMedia.clear();

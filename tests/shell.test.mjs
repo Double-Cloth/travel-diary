@@ -859,7 +859,7 @@ test('视频共用媒体入口并提供完整播放控制与键盘操作', () =>
     assert.match(recordEditorJs, /accept="\.mp4,\.m4v,\.mov,\.webm,\.ogv,\.ogg,[^"]*video\/quicktime/);
     assert.match(recordEditorJs, /timeout: 8 \* 60 \* 60 \* 1000/);
     assert.match(recordStoreJs, /const MAXIMUM_RECORD_BYTES = 768 \* 1024 \* 1024/);
-    assert.match(recordEditorJs, /await createLocalPreviewUrl\(file, photo\.kind\)/);
+    assert.match(recordEditorJs, /loadThumbnail: \(\) => ensurePhotoPreviewUrl\(photo\)/);
     assert.match(appJs, /data-video-action="toggle-play"/);
     assert.match(appJs, /data-video-action="rewind"/);
     assert.match(appJs, /data-video-action="forward"/);

@@ -18,6 +18,9 @@ export function stubSearchNavigation(route) {
     navigateTo = (next, options) => calls.push({ next, options });
     return { calls, restore() { ({ navigateTo, activeRoute } = originals); } };
 }
+export function stopTestPageMedia(...images) {
+    images.forEach(image => pageMediaObservers.get(image)?.());
+}
 export function renderTestEntry(record, navigation, { returnHash = '#ledger', missing = false, from } = {}) {
     const originals = { setPages, getEntryNavigation, travelModel, lastReadingHash };
     let result;
@@ -952,7 +955,7 @@ test('翻页等待尚无 src 和正在读取的可见缩略图，复用懒加载
     globalThis.getComputedStyle = () => ({ backgroundImage: 'none' });
     const visible = Object.assign(new EventTarget(), {
         dataset: { src: '.cache/media-previews/photos/trip/turn.png.jpg' }, isConnected: true,
-        closest: () => ({ dataset: { mediaSrc: 'data/photos/trip/turn.png', mediaKind: 'image' } }),
+        closest: selector => selector === '[hidden]' ? null : ({ dataset: { mediaSrc: 'data/photos/trip/turn.png', mediaKind: 'image' } }),
         getBoundingClientRect: () => ({ width: 100, height: 100, top: 40, bottom: 140 }),
         decode() { decodeCount += 1; startDecode(); return decoded; }
     });
@@ -960,6 +963,7 @@ test('翻页等待尚无 src 和正在读取的可见缩略图，复用懒加载
     const offscreen = { dataset: { src: 'offscreen.jpg' },
         getBoundingClientRect: () => ({ width: 100, height: 100, top: 900, bottom: 1000 }),
         closest() { assert.fail('屏外图片不应提前读取'); } };
+    t.after(() => app.stopTestPageMedia(visible, offscreen));
     const page = { getBoundingClientRect: () => ({ top: 0, bottom: 800 }), querySelectorAll: () => [visible, offscreen] };
     globalThis.document = { querySelectorAll: () => [visible, offscreen] };
     app.observePhotoSleeveMedia();
@@ -999,10 +1003,11 @@ test('翻页等待仍隐藏且尚无 src 的头像读取与解码，用相框判
     const avatar = Object.assign(new EventTarget(), {
         dataset: { src: 'data/profile/profile-picture.png' }, isConnected: true, hidden: true,
         hasAttribute: name => name === 'data-profile-picture-image',
-        parentElement: { getBoundingClientRect: () => ({ width: 100, height: 100, top: 40, bottom: 140 }) },
+        parentElement: { isConnected: true, getBoundingClientRect: () => ({ width: 100, height: 100, top: 40, bottom: 140 }) },
         getBoundingClientRect: () => ({ width: 0, height: 0, top: 0, bottom: 0 }),
         decode() { startDecode(); return decoded; }
     });
+    t.after(() => app.stopTestPageMedia(avatar));
     const page = { querySelectorAll: () => [avatar], getBoundingClientRect: () => ({ top: 0, bottom: 800 }) };
     globalThis.document = { querySelectorAll: () => [avatar] };
     app.syncProfilePictureImages();
@@ -1013,7 +1018,7 @@ test('翻页等待仍隐藏且尚无 src 的头像读取与解码，用相框判
     finishFetch(new Response(new Blob(['avatar-preview'], { type: 'image/jpeg' })));
     await decoding;
     avatar.naturalWidth = avatar.naturalHeight = 100;
-    avatar.dispatchEvent(new Event('load'));
+    avatar.onload();
     assert.equal(avatar.hidden, false);
     assert.deepEqual(ready, [], '头像读取后继续等待解码');
     finishDecode();
@@ -1248,10 +1253,11 @@ test('翻页头像共用静态快照，不复制已释放的 Blob 地址，保�
 
 test('图片与视频封面只在进入视口后读取预览缓存，换页解除旧观察', async t => {
     const previous = { document: globalThis.document, window: globalThis.window,
-        IntersectionObserver: globalThis.IntersectionObserver, fetch: globalThis.fetch };
+        IntersectionObserver: globalThis.IntersectionObserver, fetch: globalThis.fetch, getComputedStyle: globalThis.getComputedStyle };
     t.after(() => Object.assign(globalThis, previous));
     const observers = [];
-    globalThis.window = { IntersectionObserver: true };
+    globalThis.window = { innerWidth: 1200, innerHeight: 800 };
+    globalThis.getComputedStyle = () => ({ overflowY: 'visible', overflowX: 'visible' });
     globalThis.IntersectionObserver = class {
         constructor(callback) { this.callback = callback; this.targets = new Set(); observers.push(this); }
         observe(target) { this.targets.add(target); }
@@ -1267,7 +1273,9 @@ test('图片与视频封面只在进入视口后读取预览缓存，换页解�
     };
     const video = { dataset: { src: '.cache/media-previews/videos/trip/movie.mp4.jpg' },
         isConnected: true, addEventListener() {},
-        closest: () => ({ dataset: { mediaSrc: 'data/videos/trip/movie.mp4', mediaKind: 'video' } }) };
+        getBoundingClientRect: () => ({ width: 100, height: 100, top: 20, bottom: 120, left: 0, right: 100 }),
+        closest: selector => selector === '[hidden]' ? null : ({ dataset: { mediaSrc: 'data/videos/trip/movie.mp4', mediaKind: 'video' } }) };
+    t.after(() => app.stopTestPageMedia(video));
     globalThis.document = { querySelectorAll: () => [video] };
     app.observePhotoSleeveMedia();
     const first = observers[0];
@@ -1282,11 +1290,13 @@ test('图片与视频封面只在进入视口后读取预览缓存，换页解�
     assert.equal(requests.some(url => url.startsWith('data/')), false);
     assert.equal(video.preload, undefined);
     assert.equal(first.targets.size, 0);
-    assert.equal(video.dataset.src, undefined);
-    first.observe(video);
+    assert.ok(video.dataset.src, '保留预览来源，取消队列读取后仍可重新观察');
     app.observePhotoSleeveMedia();
-    assert.equal(first.targets.size, 0);
-    delete globalThis.window.IntersectionObserver;
+    const second = observers.at(-1);
+    second.callback([{ target: video, isIntersecting: true }]);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(second.targets.size, 0);
+    delete globalThis.IntersectionObserver;
     const fallback = { ...video, dataset: { src: 'fallback.mp4.jpg' }, closest: selector => selector === '[hidden]' ? null : video.closest() };
     globalThis.document.querySelectorAll = () => [fallback];
     app.observePhotoSleeveMedia();

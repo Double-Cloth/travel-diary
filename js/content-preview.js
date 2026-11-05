@@ -1,7 +1,7 @@
-import { escapeHtml } from './utils.js?v=2.1.65';
-import { parseMarkdown } from './data.js?v=2.1.65';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.65';
-import { createMediaPreview, getMediaPreviewBlob } from './media-preview.mjs?v=2.1.65';
+import { escapeHtml } from './utils.js?v=2.1.66';
+import { parseMarkdown } from './data.js?v=2.1.66';
+import { createMediaFileLink } from './media-file-link.js?v=2.1.66';
+import { createMediaPreview, getMediaPreviewBlob, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.66';
 import { sourceOf, readSourceText } from './zip-stream.mjs';
 
 export function markdownPreview(source) {
@@ -20,7 +20,7 @@ export function mediaKind(name) {
 export function createContentPreviewScope() {
     const urls = new Set();
     const controller = new AbortController();
-    const tasks = new Map();
+    const observations = new Set();
     const queue = [];
     let active = 0;
     let disposed = false;
@@ -37,21 +37,12 @@ export function createContentPreviewScope() {
             void task().finally(() => { active--; drain(); });
         }
     };
-    const observer = new IntersectionObserver(items => {
-        for (const item of items) if (item.isIntersecting) {
-            observer.unobserve(item.target);
-            const task = tasks.get(item.target);
-            tasks.delete(item.target);
-            if (task) queue.push(task);
-        }
-        drain();
-    });
     return {
         dispose() {
             disposed = true;
             controller.abort();
-            observer.disconnect();
-            tasks.clear();
+            observations.forEach(stop => stop());
+            observations.clear();
             queue.length = 0;
             urls.forEach(url => URL.revokeObjectURL(url));
             urls.clear();
@@ -62,20 +53,31 @@ export function createContentPreviewScope() {
                 const blob = source ? sourceOf(source).blob || new Blob([await readSourceText(sourceOf(source))]) : null;
                 const src = blob ? objectUrl(blob) : url;
                 const link = createMediaFileLink({ name: name.split('/').pop(), src, thumbnailSrc: '', blob, kind, index, detail: detail || name });
-                tasks.set(link, async () => {
+                const observe = () => {
+                    const stop = observeMediaVisibility(link, () => {
+                        observations.delete(stop);
+                        queue.push(load);
+                        drain();
+                    });
+                    observations.add(stop);
+                };
+                const load = async () => {
+                    if (disposed || !link.isConnected) return;
+                    if (!isMediaPreviewVisible(link)) { observe(); return; }
                     try {
                         // 本地文件直接压缩，远端预览复用统一缓存，缺失时只生成一次。
-                        const preview = blob ? await createMediaPreview(blob, kind) : await getMediaPreviewBlob(src, kind);
+                        const preview = blob ? await createMediaPreview(blob, kind) : await getMediaPreviewBlob(src, kind, () => !disposed && isMediaPreviewVisible(link));
                         if (disposed || !link.isConnected) return;
                         const image = document.createElement('img');
                         image.alt = '';
                         image.src = objectUrl(preview);
                         link.querySelector('.media-file-thumbnail').append(image);
-                    } catch {
+                    } catch (error) {
+                        if (error.name === 'AbortError') { if (!disposed && link.isConnected) observe(); return; }
                         if (!disposed) link.querySelector('.media-file-thumbnail > span').textContent = '无法预览';
                     }
-                });
-                observer.observe(link);
+                };
+                observe();
                 return link;
             }
             const entry = document.createElement(collapsible ? 'details' : 'div');

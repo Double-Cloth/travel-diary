@@ -6,7 +6,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, access } from 'node:f
 import { tmpdir } from 'node:os';
 import { createMediaPreviewStore, sourceForPreview, isPreviewJpeg } from '../js/media-preview-store.js';
 import { createHandler } from '../js/server.js';
-import { getMediaPreviewUrl, getMediaPreviewBlob, saveMediaPreview } from '../js/media-preview.mjs';
+import { getMediaPreviewUrl, getMediaPreviewBlob, saveMediaPreview, clearMediaPreviewCache } from '../js/media-preview.mjs';
 import { listenOnFetchSafePort } from './helpers/http.mjs';
 
 async function fixture(t) {
@@ -68,9 +68,10 @@ test('缓存缺失只生成一次并保存，重复列表共享生成任务，�
     assert.deepEqual(Buffer.from(await results[0].arrayBuffer()), jpeg);
     calls.length = 0;
     await getMediaPreviewBlob('data/photos/trip/image.png', 'image');
-    assert.deepEqual(calls, [{ url: previewPath.slice(1), method: 'GET' }]);
+    assert.deepEqual(calls, [], '已读取的缩略图直接复用内存，不再验证或请求');
     assert.equal(originals.length, 1);
     globalThis.fetch = async () => new Response('<html>错误页</html>', { headers: { 'Content-Type': 'text/html' } });
+    clearMediaPreviewCache();
     await assert.rejects(getMediaPreviewBlob('data/photos/trip/image.png', 'image'), /无法读取预览缓存/);
 });
 

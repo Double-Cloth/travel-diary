@@ -1,28 +1,28 @@
-import { orderMedia } from './media-order.mjs?v=2.1.65';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.65';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.65';
-import { createRecordEditor } from './record-editor.js?v=2.1.65';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.65';
-import { createDataTransfer } from './data-transfer.js?v=2.1.65';
-import { createMediaManager } from './media-manager.js?v=2.1.65';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.65';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.65';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.65';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.65';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.65';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.65';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.65';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.65';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.65';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.65';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.65';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.65';
+import { orderMedia } from './media-order.mjs?v=2.1.66';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.66';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.66';
+import { createRecordEditor } from './record-editor.js?v=2.1.66';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.66';
+import { createDataTransfer } from './data-transfer.js?v=2.1.66';
+import { createMediaManager } from './media-manager.js?v=2.1.66';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.66';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.66';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.66';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.66';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.66';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.66';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.66';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.66';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.66';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.66';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.66';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.66';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.65';
+} from './location.mjs?v=2.1.66';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -31,7 +31,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.65';
+} from './photo-viewer-transform.mjs?v=2.1.66';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -97,8 +97,8 @@ let mobileContextScrollY = 0;
 let photoPreviewResizeTimer = null;
 let photoPreviewLateResizeTimer = null;
 let photoSleeveResizeObserver = null;
-let photoSleeveMediaObserver = null;
 const pageMediaLoads = new WeakMap();
+const pageMediaObservers = new WeakMap();
 const observedPhotoSleeves = new Set();
 const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
@@ -120,6 +120,7 @@ function getRefreshKey() {
 }
 
 async function refreshTravelModel(cacheKey = '') {
+    if (cacheKey) clearMediaPreviewCache();
     renderedPageHash = '';
     travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData(cacheKey), cacheKey));
 }
@@ -318,6 +319,7 @@ function cacheRefs() {
 }
 
 function refreshProfilePicture() {
+    clearMediaPreviewCache();
     syncProfilePictureImages(document, getRefreshKey());
 }
 
@@ -327,7 +329,10 @@ function refreshProfileOwnerName() {
 }
 
 function resetProfilePicture() {
+    clearMediaPreviewCache();
     document.querySelectorAll('[data-profile-picture-image]').forEach((profilePicture) => {
+        pageMediaObservers.get(profilePicture)?.();
+        pageMediaLoads.delete(profilePicture);
         profilePicture.hidden = true;
         profilePicture.removeAttribute('src');
     });
@@ -338,20 +343,42 @@ function syncProfilePictureImages(root = document, cacheKey = '') {
         const source = profilePicture.dataset.src || 'data/profile/profile-picture.png';
         const profilePictureUrl = new URL(source, window.location.href);
         if (cacheKey) profilePictureUrl.searchParams.set('v', cacheKey);
+        pageMediaObservers.get(profilePicture)?.();
+        pageMediaLoads.delete(profilePicture);
+        profilePicture.dataset.previewSource = source + profilePictureUrl.search;
         profilePicture.hidden = true;
-        profilePicture.addEventListener('load', () => {
+        profilePicture.onload = () => {
             if (profilePicture.naturalWidth > 1 || profilePicture.naturalHeight > 1) {
                 profilePicture.hidden = false;
             }
-        }, { once: true });
-        profilePicture.addEventListener('error', () => {
+        };
+        profilePicture.onerror = () => {
             profilePicture.hidden = true;
-        }, { once: true });
-        const ready = loadMediaPreview(profilePicture, source + profilePictureUrl.search, 'image')
-            .then(() => profilePicture.decode());
-        pageMediaLoads.set(profilePicture, ready);
-        void ready.catch(() => {});
+        };
+        observePageMedia(profilePicture, profilePicture.parentElement, () => loadProfilePicture(profilePicture));
     });
+}
+
+function loadProfilePicture(image) {
+    if (!pageMediaLoads.has(image)) {
+        const ready = loadMediaPreview(image, image.dataset.previewSource, 'image', () => isMediaPreviewVisible(image.parentElement))
+            .then(() => image.decode());
+        pageMediaLoads.set(image, ready);
+    }
+    return pageMediaLoads.get(image);
+}
+
+function observePageMedia(image, target, load) {
+    pageMediaObservers.get(image)?.();
+    pageMediaObservers.set(image, observeMediaVisibility(target, async () => {
+        try { await load(); }
+        catch (error) {
+            if (error.name === 'AbortError' && image.isConnected) {
+                pageMediaLoads.delete(image);
+                observePageMedia(image, target, load);
+            }
+        }
+    }));
 }
 
 async function handleProfilePictureSelection(input) {
@@ -3855,7 +3882,8 @@ function waitForPageTurnAssets(pages, onReady) {
                 ? image.parentElement.getBoundingClientRect() : image.getBoundingClientRect();
             if (!rect.width || !rect.height || rect.bottom <= top || rect.top >= bottom) return;
             // 懒加载尚未设置 src 时也要等待，避免把空白预览冻结进翻页纸带。
-            const preview = pageMediaLoads.get(image) || loadPhotoSleeveMedia(image);
+            const preview = pageMediaLoads.get(image) || (image.hasAttribute?.('data-profile-picture-image')
+                ? loadProfilePicture(image) : loadPhotoSleeveMedia(image));
             if (preview) pending.push(preview);
             else if (image.decode) pending.push(image.decode());
         });
@@ -5247,33 +5275,16 @@ function loadPhotoSleeveMedia(image) {
         if (!button) return;
         // 视口检测已由调用方完成，主动解码不再等待浏览器的第二轮懒加载。
         image.loading = 'eager';
-        const ready = loadMediaPreview(image, button.dataset.mediaSrc, button.dataset.mediaKind)
+        const ready = loadMediaPreview(image, button.dataset.mediaSrc, button.dataset.mediaKind, () => isMediaPreviewVisible(image))
             .then(() => image.decode?.());
         pageMediaLoads.set(image, ready);
-        delete image.dataset.src;
     }
     return pageMediaLoads.get(image);
 }
 
 function observePhotoSleeveMedia() {
-    photoSleeveMediaObserver?.disconnect();
     const images = document.querySelectorAll('#leftPage .photo-sleeve img[data-src], #rightPage .photo-sleeve img[data-src]');
-    const load = image => {
-        void loadPhotoSleeveMedia(image)?.catch(() => {});
-    };
-    if (!('IntersectionObserver' in window)) {
-        images.forEach(image => { if (!image.closest('[hidden]')) load(image); });
-        return;
-    }
-    const observer = new IntersectionObserver(entries => {
-        entries.forEach(({ target, isIntersecting }) => {
-            if (!isIntersecting) return;
-            load(target);
-            observer.unobserve(target);
-        });
-    });
-    photoSleeveMediaObserver = observer;
-    images.forEach(image => observer.observe(image));
+    images.forEach(image => observePageMedia(image, image, () => loadPhotoSleeveMedia(image)));
 }
 
 function syncPhotoSleevePreviewRows() {
