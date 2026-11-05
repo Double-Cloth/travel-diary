@@ -1,16 +1,37 @@
 # Travel Diary
 
-> 个人旅行日记
+Personal travel diary.
 
-## 文档索引
+## 文档
 
-| 文档 | 内容 |
-| --- | --- |
-| [项目文档](doc/README.md) | 项目概览与阅读导航 |
-| [内容维护指南](doc/CONTENT_GUIDE.md) | 日记、行程、媒体、草稿与数据管理 |
-| [维护与发布指南](doc/MAINTENANCE.md) | 运行环境、认证、部署、备份恢复与故障处理 |
-| [资产管理规范](doc/ASSET_MANAGEMENT.md) | 图片、字体、地点目录与资源维护 |
-| [架构说明](doc/ARCHITECTURE.md) | 页面路由、模块职责、数据流与扩展约定 |
+全部文档索引见 [项目文档](doc/README.md)。
+
+## 项目依赖
+
+| 依赖 | 是否必需 | 用途与说明 |
+| --- | --- | --- |
+| 现代浏览器 | 必需 | 浏览页面；需支持 ES modules、Canvas、Cache Storage 等前端能力。 |
+| Node.js 20 或更新版本 | 必需 | 启动本机服务、执行测试及全部 Node.js 脚本；只使用内置模块。 |
+| npm | 可选 | 随 Node.js 提供，用于执行下方 `npm` 命令；也可直接用 `node` 运行脚本，无需 `npm install`。 |
+| 本机 Edge 或 Chrome | 可选 | `media:previews` 批量生成图片、视频和头像缩略图；可用 `--browser` 或 `TRAVEL_BROWSER_PATH` 指定。未预生成时由浏览器按需生成。 |
+| 网络连接 | 可选 | 仅 `countries` 与 `china-locations` 更新地点目录时需要；其余命令可离线运行。 |
+
+> 项目没有运行时 npm 依赖，也没有 `package-lock.json`、`node_modules` 或前端构建步骤；字体构建工具（HarfBuzz / WOFF2 WASM）、字体、拼音及地点目录随仓库分发。媒体预览不需要 FFmpeg，部署也不需要额外构建工具。
+
+## 启动流程
+
+1. 克隆仓库并进入项目目录。
+
+   ```bash
+   git clone https://github.com/Double-Cloth/travel-diary.git
+   cd travel-diary
+   ```
+
+2. 启动本机服务。
+
+   ```bash
+   npm start
+   ```
 
 ## 命令
 
@@ -40,11 +61,15 @@ npm start -- --local --write-mode=remote --allowed-origin=https://diary.example.
 node js/server.js --help
 ```
 
+不使用 npm 时，可直接执行 `node js/server.js`，启动参数相同。
+
 ### 测试与资源版本
 
 ```bash
 # 使用 Node.js 内置测试运行器执行全部测试，无需安装测试依赖
 npm test
+# 只运行指定测试文件，便于定位问题
+node --test tests/record-order.test.mjs
 
 # 更新浏览器资源引用的版本参数，避免修改后继续使用旧缓存
 npm run assets:version
@@ -98,7 +123,6 @@ npm run cache:clear -- --help
 ### 字体与地点目录
 
 ```bash
-# 字体构建仅需 Node.js 20+，使用仓库内 WASM，无需安装依赖或联网
 # 生成完整 WOFF2 字体，并按界面与个人内容生成轻量字集
 npm run fonts
 # 仅刷新轻量字集，适合更新文字后运行，无需重新压缩完整字体
@@ -112,5 +136,4 @@ npm run countries
 npm run china-locations
 ```
 
-不使用 npm 时，可直接执行 `node scripts/build-fonts.mjs`，或附加 `--core` / `--subset`。
-字体工具的固定版本、来源和许可证见 [assets/wasm/README.md](assets/wasm/README.md)。
+字体构建使用仓库内 WASM，无需安装依赖或联网。
