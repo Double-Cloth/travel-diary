@@ -231,6 +231,9 @@
         padding: clamp(16px, 4.5vw, 20px) clamp(16px, 4.5vw, 20px) 12px;
     }
 
+    .media-overview { margin-top: 16px; border-bottom: 1px solid var(--line); }
+    .media-overview[open] { padding-bottom: 16px; }
+
     body[data-route="entry"] .page-spread > .paper-page-right,
     body[data-route="trip"] .page-spread > .paper-page-right,
     body[data-route="place"] .page-spread > .paper-page-right,

@@ -1,28 +1,28 @@
-import { orderMedia } from './media-order.mjs?v=2.1.58';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.58';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.58';
-import { createRecordEditor } from './record-editor.js?v=2.1.58';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.58';
-import { createDataTransfer } from './data-transfer.js?v=2.1.58';
-import { createMediaManager } from './media-manager.js?v=2.1.58';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.58';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.58';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.58';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.58';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.58';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.58';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.58';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.58';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.58';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.58';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.58';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.58';
+import { orderMedia } from './media-order.mjs?v=2.1.59';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.59';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.59';
+import { createRecordEditor } from './record-editor.js?v=2.1.59';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.59';
+import { createDataTransfer } from './data-transfer.js?v=2.1.59';
+import { createMediaManager } from './media-manager.js?v=2.1.59';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.59';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.59';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.59';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.59';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.59';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.59';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.59';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.59';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.59';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.59';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.59';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.59';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.58';
+} from './location.mjs?v=2.1.59';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -31,7 +31,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.58';
+} from './photo-viewer-transform.mjs?v=2.1.59';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -1964,6 +1964,7 @@ function renderEntryPhotosRoute(params = {}) {
                 <p class="journal-label">媒体附件</p>
                 <h1>${escapeHtml(record.title)}</h1>
                 <p class="place-count">${escapeHtml(getLocationText(record))} · ${record.photos?.length || 0} 张图片 · ${record.videos?.length || 0} 个视频</p>
+                ${renderMediaOverview([record])}
             </div>
         </div>
     `, `
@@ -1989,6 +1990,7 @@ function renderGroupedPhotosRoute(params = {}) {
                 <p class="journal-label">媒体附件</p>
                 <h1>${escapeHtml(label)}</h1>
                 <p class="place-count">${photoCount} 张图片 · ${media.length - photoCount} 个视频</p>
+                ${renderMediaOverview(matching)}
             </div>
         </div>
     `, `
@@ -1997,6 +1999,62 @@ function renderGroupedPhotosRoute(params = {}) {
             ${media.length ? renderPhotoSleeve(matching[0], { media, groupByRecord: true }) : `<p class="photo-note">${params.trip ? '这次行程' : '这个地点'}还没有图片或视频附件。</p>`}
         </div>
     `, 'dossier-page place-detail-page');
+}
+
+function renderMediaOverview(records) {
+    const entries = records.map(record => ({ record, media: getRecordMedia(record) }))
+        .filter(entry => entry.media.length);
+    const media = entries.flatMap(entry => entry.media);
+    const photoCount = media.filter(item => item.kind === 'image').length;
+    const videoCount = media.length - photoCount;
+    const dates = [...new Set(entries.map(entry => entry.record.date).filter(Boolean))].sort();
+    const locationCount = new Set(entries.map(entry => entry.record.locationKey).filter(Boolean)).size;
+    // 同样多时沿用当前日记顺序，不影响右页的附件分组和排列。
+    const leading = entries.reduce((best, entry) => !best || entry.media.length > best.media.length ? entry : best, null);
+    const photoShare = media.length ? Math.round(photoCount / media.length * 100) : 0;
+    const dateLabel = dates.length > 1 ? `${dates[0]} — ${dates[dates.length - 1]}` : dates[0] || '暂无日期';
+
+    return `
+        <details class="media-overview" data-media-overview>
+            <summary><span>媒体概览</span><small class="media-overview-toggle-hint">统计与分析</small></summary>
+            <div class="media-overview-content">
+                ${media.length ? `
+                    <dl class="media-overview-counts" aria-label="本批媒体统计">
+                        <div><dt>附件总数</dt><dd>${media.length} 项</dd></div>
+                        <div><dt>图片</dt><dd>${photoCount} 张</dd></div>
+                        <div><dt>视频</dt><dd>${videoCount} 个</dd></div>
+                        <div><dt>所属日记</dt><dd>${entries.length} 篇</dd></div>
+                    </dl>
+                    <section class="media-overview-section" aria-labelledby="mediaOverviewDates">
+                        <h2 id="mediaOverviewDates">记录范围</h2>
+                        <p class="media-overview-date">${escapeHtml(dateLabel)}</p>
+                        <p>分布在 ${dates.length} 个记录日${locationCount ? `、${locationCount} 个地点` : ''}，日期以所属日记为准。</p>
+                    </section>
+                    <section class="media-overview-section" aria-labelledby="mediaOverviewComposition">
+                        <h2 id="mediaOverviewComposition">媒体构成</h2>
+                        <p>${photoCount && videoCount ? `图片占 ${photoShare}%，视频占 ${100 - photoShare}%。` : photoCount ? '本批附件全部为图片。' : '本批附件全部为视频。'}${entries.length > 1 ? `每篇有媒体的日记平均 ${(media.length / entries.length).toFixed(1)} 项附件。` : ''}</p>
+                        ${entries.length > 1 ? `
+                            <a class="media-overview-leading" href="${escapeHtml(serializeRoute({ name: 'entry', params: { id: leading.record.id } }))}">
+                                <span>媒体最多的一篇 · ${leading.media.length} 项</span>
+                                <strong>${escapeHtml(leading.record.title)}</strong>
+                                <small>${escapeHtml(leading.record.date || '')}</small>
+                            </a>
+                        ` : ''}
+                    </section>
+                ` : '<p class="photo-note">暂无可统计的图片或视频，添加媒体后即可查看概览。</p>'}
+            </div>
+        </details>
+    `;
+}
+
+function syncMediaOverviewDisclosure() {
+    const overview = refs.leftPage?.querySelector('[data-media-overview]');
+    if (!overview) return;
+    const layout = isMobileLayout() ? 'mobile' : 'desktop';
+    // 仅在初次渲染和跨越断点时设定默认状态，保留同一布局下的手动开关。
+    if (overview.dataset.layout === layout) return;
+    overview.dataset.layout = layout;
+    overview.open = layout === 'desktop';
 }
 
 function renderLoading() {
@@ -4660,6 +4718,7 @@ function clearSearchRouteTimer() {
 function handleViewportResize() {
     clearPageTurn();
     syncMobileContextPanelState();
+    syncMediaOverviewDisclosure();
     syncVideoMoreControlsLayout();
     syncPhotoMoreControlsLayout();
     queuePhotoSleevePreviewSync();
@@ -4859,6 +4918,7 @@ function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
     enhanceCustomSelects(refs.leftPage);
     enhanceCustomSelects(refs.rightPage);
     isMobileContextPanelOpen = keepContextPanelOpen;
+    syncMediaOverviewDisclosure();
     refs.leftPage.scrollTop = 0;
     refs.rightPage.scrollTop = 0;
     if (rightScrollTop) {

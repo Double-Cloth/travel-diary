@@ -5,7 +5,7 @@ import { normalizeTravelLocation } from '../js/location.mjs';
 
 globalThis.document = { addEventListener() {} };
 const app = await loadBrowserModule(new URL('../js/app.js', import.meta.url), `
-export { getRecordMedia, parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent,
+export { getRecordMedia, parseRoute, deriveTravelModel, normalizePhotoIndex, hasRecordNoteContent, renderMediaOverview,
     renderWithPageTurn, renderWithBookCover, clearPageTurn, waitForPageTurnAssets, cloneTurningPage, cloneTransitionContent, createTransitionMediaImage, observePhotoSleeveMedia, createPageCurlFrames, createMobilePageCurlFrames, getTurnDirection, scheduleSearchRouteUpdate, syncRouteFromHash,
     applySearchRouteUpdate, syncPhotoSleevePreviewRows, syncProfilePictureImages, isMobileContextPanelDismissTarget,
     deleteTravelRecord, renderEmptyArchiveState, matchesMediaFilter, formatMediaReferenceError, trapPanelFocus, handleDocumentClick,
@@ -47,6 +47,12 @@ export function renderTestTrip(records, params) {
     travelModel = deriveTravelModel(records);
     try { renderTrip(params); return result; }
     finally { ({ setPages, travelModel } = originals); }
+}
+export function syncTestMediaOverview(overview) {
+    const original = refs.leftPage;
+    refs.leftPage = { querySelector: () => overview };
+    try { syncMediaOverviewDisclosure(); }
+    finally { refs.leftPage = original; }
 }
 export function renderTestSummary(records, route, params = {}) {
     const originals = { setPages, travelModel };
@@ -167,6 +173,55 @@ export function stubBookReadingRoutes() {
 }
 `);
 delete globalThis.document;
+
+test('媒体概览仅统计可展示的附件，日期按日记排序并链接到媒体最多的一篇', () => {
+    const records = app.deriveTravelModel([
+        { date: '2026-10-02', descTitle: '河边 <散步>', photo_folder: 'data/photos/a', photos: ['a.jpg', 'b.jpg'], video_folder: 'data/videos/a', videos: ['a.mp4'], locality: '南京市' },
+        { date: '2026-10-01', descTitle: '园林', photo_folder: 'data/photos/b', photos: ['c.jpg'], locality: '苏州市' },
+        { date: '2026-09-01', descTitle: '无附件', photos: [], locationKey: 'CN|浙江|杭州' },
+        { date: '2026-08-01', descTitle: '缺少目录', photos: ['unavailable.jpg'] }
+    ].map(record => normalizeTravelLocation({ country_code: 'CN', admin_area: '江苏省', ...record }))).records;
+    const html = app.renderMediaOverview(records);
+    assert.match(html, /<dt>附件总数<\/dt><dd>4 项/);
+    assert.match(html, /<dt>所属日记<\/dt><dd>2 篇/);
+    assert.match(html, /2026-10-01 — 2026-10-02/);
+    assert.match(html, /2 个记录日、2 个地点/);
+    assert.match(html, /图片占 75%，视频占 25%/);
+    assert.match(html, /平均 2\.0 项附件/);
+    assert.match(html, /媒体最多的一篇 · 3 项/);
+    assert.match(html, /河边 &lt;散步&gt;/);
+    assert.match(html, new RegExp(`href="#entry\\?id=${encodeURIComponent(records.find(record => record.descTitle === '河边 <散步>').id)}"`));
+    assert.doesNotMatch(html, /2026-09-01|2026-08-01|NaN|Infinity/);
+});
+
+test('单篇和空媒体概览不产生误导的比例或最多日记', () => {
+    const html = app.renderMediaOverview([{ date: '2026-10-01', video_folder: 'data/videos/a', videos: ['a.mp4'] }]);
+    assert.match(html, /本批附件全部为视频/);
+    assert.match(html, /1 个记录日/);
+    assert.doesNotMatch(html, /平均|媒体最多的一篇|—/);
+    const empty = app.renderMediaOverview([]);
+    assert.match(empty, /暂无可统计的图片或视频/);
+    assert.doesNotMatch(empty, /NaN|Infinity|占|平均|暂无日期/);
+});
+
+test('媒体概览桌面默认展开、手机默认收起，同一布局内保留手动开关', t => {
+    const original = globalThis.window;
+    t.after(() => { globalThis.window = original; });
+    let mobile = false;
+    globalThis.window = { matchMedia: () => ({ matches: mobile }) };
+    const overview = { dataset: {}, open: false };
+    app.syncTestMediaOverview(overview);
+    assert.equal(overview.open, true);
+    mobile = true;
+    app.syncTestMediaOverview(overview);
+    assert.equal(overview.open, false);
+    overview.open = true;
+    app.syncTestMediaOverview(overview);
+    assert.equal(overview.open, true);
+    mobile = false;
+    app.syncTestMediaOverview(overview);
+    assert.equal(overview.open, true);
+});
 
 test('省份媒体汇总覆盖各篇日记，排除其他省份和同名国外行政区', t => {
     const previous = globalThis.requestAnimationFrame;

@@ -240,6 +240,64 @@
 /* 桌面端保持原有左右书页结构，移动端由响应式层把摘要和媒体网格串成连续纸面。 */
 .entry-photos-summary { display: contents; }
 
+.media-overview {
+    margin-top: 28px;
+    border-top: 1px solid var(--line);
+    color: var(--ink);
+    overflow-wrap: anywhere;
+}
+
+.media-overview > summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    padding: 12px 0;
+    list-style: none;
+    cursor: pointer;
+    font-size: 18px;
+}
+
+.media-overview > summary::-webkit-details-marker { display: none; }
+
+.media-overview-toggle-hint {
+    color: var(--ink-soft);
+    font: 12px/1.5 var(--font-serif);
+}
+
+.media-overview-toggle-hint::after { content: ' · 展开'; }
+.media-overview[open] .media-overview-toggle-hint::after { content: ' · 收起'; }
+
+.media-overview-counts {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.media-overview-counts > div { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.media-overview-counts dt { color: var(--ink-soft); font-size: 13px; }
+.media-overview-counts dd { margin: 4px 0 0; font-size: 22px; }
+.media-overview-section { margin-top: 24px; }
+.media-overview-section h2 { margin: 0 0 8px; font-size: 16px; font-weight: 500; }
+.media-overview-section p { margin: 6px 0; color: var(--ink-soft); font-size: 14px; line-height: 1.8; }
+.media-overview-section .media-overview-date { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+.media-overview-leading {
+    display: grid;
+    gap: 5px;
+    margin-top: 14px;
+    padding: 12px 0;
+    border-block: 1px solid var(--line);
+}
+
+.media-overview-leading span,
+.media-overview-leading small { color: var(--ink-soft); font-size: 12px; }
+.media-overview-leading strong { font-size: 16px; font-weight: 500; }
+.media-overview-leading:hover,
+.media-overview-leading:focus-visible { color: var(--stamp); }
+
 .media-viewer-host {
     position: fixed;
     inset: 0;
