@@ -1668,5 +1668,20 @@
       "photo:img_20261026_083810.jpg",
       "photo:img_20261026_132430_edit_96365058073759.jpg"
     ]
+  },
+  {
+    "record_id": "r-685d3dbde09c827038702da4bed4db77",
+    "date": "2026-11-06",
+    "country": "中国",
+    "country_code": "CN",
+    "admin_area": "江苏省",
+    "admin_area_type": "省",
+    "locality": "南京市",
+    "locality_type": "城市",
+    "trip_id": "2026-11-06-nanjing",
+    "desc_md": "data/travel-diary/2026/2026-11-06-nanjing.md",
+    "photo_folder": "data/photos/nanjing",
+    "photos": [],
+    "media_order": []
   }
 ]
