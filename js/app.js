@@ -1,28 +1,29 @@
-import { orderMedia } from './media-order.mjs?v=2.1.70';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.70';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.70';
-import { createRecordEditor } from './record-editor.js?v=2.1.70';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.70';
-import { createDataTransfer } from './data-transfer.js?v=2.1.70';
-import { createMediaManager } from './media-manager.js?v=2.1.70';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.70';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.70';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.70';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.70';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.70';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.70';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.70';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.70';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.70';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.70';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.70';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.70';
+import { orderMedia } from './media-order.mjs?v=2.1.71';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.71';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.71';
+import { createRecordEditor } from './record-editor.js?v=2.1.71';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.71';
+import { createDataTransfer } from './data-transfer.js?v=2.1.71';
+import { createMediaManager } from './media-manager.js?v=2.1.71';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.71';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.71';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.71';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.71';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.71';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.71';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.71';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.71';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.71';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.71';
+import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.71';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.71';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.71';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.70';
+} from './location.mjs?v=2.1.71';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -31,7 +32,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.70';
+} from './photo-viewer-transform.mjs?v=2.1.71';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -119,8 +120,13 @@ function getRefreshKey() {
     return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function clearMediaCaches() {
+    clearMediaPreviewCache();
+    clearOriginalImageCache();
+}
+
 async function refreshTravelModel(cacheKey = '') {
-    if (cacheKey) clearMediaPreviewCache();
+    if (cacheKey) clearMediaCaches();
     renderedPageHash = '';
     travelModel = deriveTravelModel(await loadTravelRecords(await loadTravelData(cacheKey), cacheKey));
 }
@@ -319,7 +325,7 @@ function cacheRefs() {
 }
 
 function refreshProfilePicture() {
-    clearMediaPreviewCache();
+    clearMediaCaches();
     syncProfilePictureImages(document, getRefreshKey());
 }
 
@@ -329,7 +335,7 @@ function refreshProfileOwnerName() {
 }
 
 function resetProfilePicture() {
-    clearMediaPreviewCache();
+    clearMediaCaches();
     document.querySelectorAll('[data-profile-picture-image]').forEach((profilePicture) => {
         pageMediaObservers.get(profilePicture)?.();
         pageMediaLoads.delete(profilePicture);
@@ -2254,7 +2260,7 @@ function renderPhotoViewer() {
                            </div>
                            <button class="video-viewer-big-play" type="button" data-video-action="toggle-play" aria-label="播放视频">${renderVideoPlaybackIcon()}</button>`
                         : `<div class="photo-viewer-media-frame photo-viewer-image-frame" data-photo-viewer-frame>
-                            <img class="photo-viewer-media photo-viewer-image" data-photo-viewer-media data-photo-viewer-image data-media-name="${escapeHtml(photo.name || '')}" src="${escapeHtml(photo.src)}" alt="${escapeHtml(photo.alt)}" decoding="async" draggable="false">
+                            <img class="photo-viewer-media photo-viewer-image" data-photo-viewer-media data-photo-viewer-image data-media-name="${escapeHtml(photo.name || '')}" alt="${escapeHtml(photo.alt)}" decoding="async" draggable="false">
                         </div>`}
                     <div class="photo-viewer-media-error" data-photo-viewer-media-error role="status" hidden></div>
                 </div>
@@ -2338,13 +2344,13 @@ function renderPhotoViewer() {
         previousFrame.style.pointerEvents = 'none';
         image.closest('[data-photo-viewer-stage]').append(previousFrame);
         const reveal = () => previousFrame.remove();
-        if (image.complete) requestAnimationFrame(reveal);
+        if (image.complete && image.naturalWidth) requestAnimationFrame(reveal);
         else {
             image.addEventListener('load', () => requestAnimationFrame(reveal), { once: true });
             image.addEventListener('error', () => previousFrame.remove(), { once: true });
         }
     }
-    if (image?.complete) {
+    if (image?.complete && image.naturalWidth) {
         fitPhotoToStage();
         updatePhotoViewerBackground(image);
     } else {
@@ -2358,6 +2364,7 @@ function renderPhotoViewer() {
         }
         updatePhotoViewerTransform();
     }
+    if (image) void loadOriginalImage(image, photo.src);
     requestAnimationFrame(() => {
         getPhotoViewerRoot()?.querySelector('.photo-viewer-panel')?.focus({ preventScroll: true });
     });
