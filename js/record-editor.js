@@ -1174,7 +1174,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 for (const existing of [...uploads, ...pending]) {
                     if (existing.kind === photo.kind && existing.size === photo.size
                         && await sameMediaContent(existing.data, photo.data, () => operationProgress.throwIfCancelled())) {
-                        throw Object.assign(new Error(`“${photo.name}”已选择过一样的文件，不能重复上传。`), { code: 'DUPLICATE_MEDIA' });
+                        throw Object.assign(new Error(`“${photo.name}”已选择过同样的文件，不能重复上传。`), { code: 'DUPLICATE_MEDIA' });
                     }
                 }
                 pending.push(photo);
