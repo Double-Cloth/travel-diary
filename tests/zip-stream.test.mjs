@@ -7,7 +7,7 @@ import http from 'node:http';
 import { Readable } from 'node:stream';
 import { createRequire } from 'node:module';
 import { createZip } from './helpers/zip-archive.mjs';
-import { ByteSource, ZIP_CHUNK_BYTES, createZipStream, createZipBlob, readZipSource, readSourceText, sourceOf, zipStreamSize } from '../js/zip-stream.mjs';
+import { ByteSource, ZIP_CHUNK_BYTES, createZipStream, createZipBlob, readZipSource, readSourceText, sourceOf, updateCrc, zipStreamSize } from '../js/zip-stream.mjs';
 import { createDraftBlob, readRecordSource } from '../js/draft-archive.mjs';
 import { installAuth } from './helpers/auth.mjs';
 
@@ -29,6 +29,46 @@ async function fixture(t) {
     await installAuth(root);
     return root;
 }
+
+test('八路 CRC32 与逐位算法一致，支持任意初值、字节偏移及不足八字节的尾部', () => {
+    assert.equal((updateCrc(0xffffffff, new TextEncoder().encode('123456789')) ^ 0xffffffff) >>> 0, 0xcbf43926);
+    const bytes = new Uint8Array(4104);
+    let random = 0x12345678;
+    for (let index = 0; index < bytes.length; index += 1) {
+        random ^= random << 13;
+        random ^= random >>> 17;
+        random ^= random << 5;
+        bytes[index] = random & 255;
+    }
+    for (const seed of [0xffffffff, 0, 0x12345678]) {
+        for (let offset = 0; offset < 8; offset += 1) {
+            for (const length of [...Array.from({ length: 81 }, (_, index) => index), 255, 256, 257, 4097]) {
+                const part = bytes.subarray(offset, offset + length);
+                let expected = seed;
+                for (const byte of part) {
+                    expected ^= byte;
+                    for (let bit = 0; bit < 8; bit += 1) {
+                        expected = expected & 1 ? 0xedb88320 ^ (expected >>> 1) : expected >>> 1;
+                    }
+                }
+                assert.equal(updateCrc(seed, part), expected >>> 0, `初值 ${seed}，偏移 ${offset}，长度 ${length}`);
+            }
+        }
+    }
+});
+
+test('CRC32 跨越 1 MiB 分块及不对齐小块时与旧 ZIP 校验值相同', () => {
+    const data = Uint8Array.from({ length: ZIP_CHUNK_BYTES + 13 }, (_, index) => (index * 31 + (index >>> 8)) & 255);
+    const archive = createZip([{ name: 'video.mp4', data }]);
+    const expected = new DataView(archive.buffer, archive.byteOffset, archive.byteLength).getUint32(14, true);
+    for (const chunkSize of [7, 13, ZIP_CHUNK_BYTES]) {
+        let crc = 0xffffffff;
+        for (let offset = 0; offset < data.length; offset += chunkSize) {
+            crc = updateCrc(crc, data.subarray(offset, offset + chunkSize));
+        }
+        assert.equal((crc ^ 0xffffffff) >>> 0, expected);
+    }
+});
 
 test('内存与磁盘字节源切片统一拒绝非整数和越界范围，支持空切片与嵌套切片', async t => {
     const root = await fixture(t);

@@ -1,5 +1,5 @@
-import { getMediaFileUrl } from './utils.js?v=2.1.72';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.72';
+import { getMediaFileUrl } from './utils.js?v=2.1.73';
+import { createMediaFileLink } from './media-file-link.js?v=2.1.73';
 
 let feedbackDialog;
 let feedbackResolver;

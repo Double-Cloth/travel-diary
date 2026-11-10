@@ -3,13 +3,28 @@ export const ZIP_CHUNK_BYTES = 1024 * 1024;
 export const MAXIMUM_ZIP_TEXT_BYTES = 16 * 1024 * 1024;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { fatal: true });
-const table = Uint32Array.from({ length: 256 }, (_, value) => {
-    for (let bit = 0; bit < 8; bit += 1) value = value & 1 ? 0xedb88320 ^ (value >>> 1) : value >>> 1;
-    return value >>> 0;
-});
+const table = new Uint32Array(8 * 256);
+for (let value = 0; value < 256; value += 1) {
+    let crc = value;
+    for (let bit = 0; bit < 8; bit += 1) crc = crc & 1 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
+    table[value] = crc >>> 0;
+}
+for (let index = 256; index < table.length; index += 1) {
+    const crc = table[index - 256];
+    table[index] = table[crc & 255] ^ (crc >>> 8);
+}
 
 export function updateCrc(crc, bytes) {
-    for (let index = 0; index < bytes.length; index += 1) crc = table[(crc ^ bytes[index]) & 255] ^ (crc >>> 8);
+    let index = 0;
+    // Slicing-by-8 将逐字节的依赖链拆成八路查表，兼容任意字节偏移和分块边界。
+    for (; index + 8 <= bytes.length; index += 8) {
+        crc ^= bytes[index] | (bytes[index + 1] << 8) | (bytes[index + 2] << 16) | (bytes[index + 3] << 24);
+        crc = table[1792 + (crc & 255)] ^ table[1536 + ((crc >>> 8) & 255)]
+            ^ table[1280 + ((crc >>> 16) & 255)] ^ table[1024 + (crc >>> 24)]
+            ^ table[768 + bytes[index + 4]] ^ table[512 + bytes[index + 5]]
+            ^ table[256 + bytes[index + 6]] ^ table[bytes[index + 7]];
+    }
+    for (; index < bytes.length; index += 1) crc = table[(crc ^ bytes[index]) & 255] ^ (crc >>> 8);
     return crc >>> 0;
 }
 
