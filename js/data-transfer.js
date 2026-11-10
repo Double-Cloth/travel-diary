@@ -1,10 +1,10 @@
-import { createPasswordGate } from './record-password.js?v=2.1.78';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.78';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.78';
+import { createPasswordGate } from './record-password.js?v=2.1.79';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.79';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.79';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=2.1.78';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.78';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.78';
+import { createRecordTransfer } from './record-transfer.js?v=2.1.79';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.79';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.79';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -92,7 +92,7 @@ export function createDataTransfer(onImported, getRecords = () => []) {
         const progress = createOperationProgress('导出全部数据');
         try {
             const capability = authenticatedCapability || await detectWriterCapability();
-            const result = await downloadWithProgress(await getExportHref(capability), downloadName, progress, { responseTimeout: 8 * 60 * 60 * 1000 });
+            const result = await downloadWithProgress(await getExportHref(capability), downloadName, progress, { responseTimeout: 8 * 60 * 60 * 1000, nativeDownloadThreshold: 256 * 1024 * 1024 });
             progress.remove();
             setStatus(result.cancelled ? '已取消导出。' : result.handedOff
                 ? '备份已交给浏览器下载，请在浏览器下载列表查看进度。'

@@ -254,6 +254,77 @@ test('下载按分块写盘，在文件关闭后才报告成功', async t => {
     assert.equal(progress.calls.at(-1)[0], 'complete');
 });
 
+test('大备份只预检响应头后交给浏览器，不创建网页文件流或读取正文', async t => {
+    const nodes = installEnvironment(t);
+    const progress = progressLog();
+    window.showSaveFilePicker = () => { throw new Error('大备份不应创建网页文件流'); };
+    globalThis.fetch = async (url, options) => {
+        assert.equal(url, '/backup?selection=test');
+        assert.equal(options.method, 'HEAD');
+        assert.equal(options.credentials, 'same-origin');
+        return { ok: true, headers: new Headers({ 'Content-Length': String(256 * 1024 ** 2) }),
+            body: { getReader() { throw new Error('预检不应读取备份正文'); } } };
+    };
+    assert.deepEqual(await downloadWithProgress('/backup?selection=test', 'backup.zip', progress,
+        { nativeDownloadThreshold: 256 * 1024 ** 2 }), { handedOff: true });
+    assert.equal(nodes[0].href, '/backup?selection=test');
+    assert.equal(nodes[0].download, 'backup.zip');
+    assert.equal(nodes[0].clicked, true);
+    assert.deepEqual(progress.calls, [['remove']]);
+});
+
+test('小备份和未知或非法预检长度仍使用原有流式保存，确认位置后才请求正文', async t => {
+    installEnvironment(t);
+    for (const length of ['4', null, 'invalid', '9007199254740992']) {
+        let selected = false;
+        let closed = false;
+        let requests = 0;
+        const progress = createOperationProgress('导出备份');
+        window.showSaveFilePicker = async () => {
+            selected = true;
+            return { createWritable: async () => ({ write() {}, close() { closed = true; } }) };
+        };
+        globalThis.fetch = async (_, options) => {
+            requests++;
+            if (options.method === 'HEAD') {
+                assert.equal(selected, false);
+                return new Response(null, { headers: length === null ? {} : { 'Content-Length': length } });
+            }
+            assert.equal(selected, true);
+            return new Response('data', { headers: { 'Content-Length': '4' } });
+        };
+        assert.deepEqual(await downloadWithProgress('/backup', 'backup.zip', progress,
+            { nativeDownloadThreshold: 256 * 1024 ** 2 }), { handedOff: false });
+        assert.equal(closed, true);
+        assert.equal(requests, 2);
+    }
+});
+
+test('大备份预检失败或取消不触发下载、不报告完成，预检可超时', async t => {
+    const nodes = installEnvironment(t);
+    for (const status of [401, 403, 409, 500]) {
+        const progress = progressLog();
+        globalThis.fetch = async () => new Response(null, { status });
+        await assert.rejects(downloadWithProgress('/backup', 'backup.zip', progress,
+            { nativeDownloadThreshold: 1 }), new RegExp(`HTTP ${status}`));
+        assert.equal(progress.calls.at(-1)[0], 'fail');
+    }
+    const controller = new AbortController();
+    globalThis.fetch = async () => {
+        controller.abort(new DOMException('取消', 'AbortError'));
+        return new Response(null, { headers: { 'Content-Length': '100' } });
+    };
+    assert.deepEqual(await downloadWithProgress('/backup', 'backup.zip', progressLog(),
+        { nativeDownloadThreshold: 1, signal: controller.signal }), { cancelled: true });
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    globalThis.fetch = () => new Promise(() => {});
+    const pending = downloadWithProgress('/backup', 'backup.zip', progressLog(),
+        { nativeDownloadThreshold: 1, responseTimeout: 100 });
+    t.mock.timers.tick(101);
+    await assert.rejects(pending, /没有传输进展/);
+    assert.equal(nodes.some(node => node.clicked), false);
+});
+
 test('下载将网络小块合并为 1 MiB 写盘，超大网络块拆分且尾块字节完整', async t => {
     installEnvironment(t);
     const size = 1024 * 1024;

@@ -248,6 +248,25 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
     const cancellation = AbortSignal.any([progress.signal, options.signal].filter(Boolean));
     try {
         cancellation.throwIfAborted();
+        if (options.nativeDownloadThreshold > 0) {
+            // 仅预检大小和权限，不读取备份正文；大备份由浏览器管理，避免网页文件流关闭时的整文件提交。
+            monitor = monitorTransfer({ ...options, signal: cancellation }, '下载准备中断，请检查网络后重新下载。', url);
+            monitor.signal.throwIfAborted();
+            monitor.touch(options.responseTimeout);
+            response = await monitor.wait(fetch(url, { ...options, credentials: 'same-origin', method: 'HEAD', signal: monitor.signal }));
+            monitor.signal.throwIfAborted();
+            if (!response.ok) throw new Error(`下载准备失败（HTTP ${response.status}），请确认登录状态后重试。`);
+            const length = response.headers.get('Content-Length');
+            if (length !== null && /^\d+$/.test(length) && Number.isSafeInteger(Number(length))
+                && Number(length) >= options.nativeDownloadThreshold) {
+                startNativeDownload(url, name);
+                progress.remove();
+                return { handedOff: true };
+            }
+            monitor.dispose();
+            monitor = undefined;
+            response = undefined;
+        }
         // 支持时直接流式写盘，大视频与备份不会在内存中累积。
         if (typeof window.showSaveFilePicker === 'function') {
             try {
