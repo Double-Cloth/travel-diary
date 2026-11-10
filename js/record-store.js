@@ -2,6 +2,7 @@ const { serializeRecords } = require('./record-order.js');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 const { createHash } = require('node:crypto');
+const { digestSource, readMediaIndex } = require('./media-index.js');
 const { fileSource, receiveArchive } = require('./file-stream.js');
 const fs = require('fs/promises');
 const { captureRecycle, discardRecycle } = require('./recycle-bin.js');
@@ -325,10 +326,6 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
 
     // 记录修改目的地后目录会变化，原目录作为回退来源，用于搬运已有媒体。
     const sourceFolders = [sourceMedia.folder, ...(options.fallbackFolders || [])].filter(Boolean);
-    if (uploads.length) {
-        await rejectDuplicateUploads(root, folder, uploads, options.syncMediaFiles === false ? [] : sourceNames,
-            sourceFolders, options.label);
-    }
 
     if (!uploads.length) {
         let present = false;
@@ -363,6 +360,14 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
     const writeMedia = async (name, content) => {
         const directory = await ensureMediaDir();
         const mediaPath = path.join(directory, name);
+        // 跨日记确认后可复用同路径同内容文件，回滚只删除本次创建的文件。
+        try {
+            await checkedFile(mediaPath);
+            const { sourceOf } = await import('./zip-stream.mjs');
+            const actual = await fileSource(mediaPath);
+            const expected = sourceOf(content);
+            if (actual.size === expected.size && await digestSource(actual) === await digestSource(expected)) return;
+        } catch (error) { if (error.code !== 'ENOENT') throw error; }
         const handle = await fs.open(mediaPath, 'wx');
         createdFiles.push(mediaPath);
         try {
@@ -521,43 +526,48 @@ async function readMediaContents(root, uploads, sourceMedia, label) {
     return sourceMedia.order ? sourceMedia.order.map(index => contents[index]) : contents;
 }
 
-async function digestSource(source) {
-    const hash = createHash('sha256');
-    for await (const chunk of source.chunks()) hash.update(chunk);
-    return hash.digest('hex');
-}
-
-async function rejectDuplicateUploads(root, folder, uploads, sourceNames, sourceFolders, label) {
+async function rejectDuplicateUploads(root, prepared, records, existing, confirmation) {
+    const { uploads, sourcePhotos, sourceVideos, record } = prepared;
+    if (!uploads.length) return;
     const { sourceOf } = await import('./zip-stream.mjs');
     const signatures = new Map();
-    const sizes = new Set(uploads.map(media => media.size));
-    const reject = name => { throw failure(409, `“${name}”已上传过一样的文件，不能重复上传。`, 'DUPLICATE_MEDIA'); };
+    const reject = name => { throw failure(409, `“${name}”已上传过一样的文件，同一篇日记不能重复上传。`, 'DUPLICATE_MEDIA'); };
     for (const media of uploads) {
-        const signature = `${media.size}:${await digestSource(sourceOf(uploadBuffer(media, label)))}`;
+        const signature = `${media.size}:${await digestSource(sourceOf(uploadBuffer(media, '媒体')))}`;
         if (signatures.has(signature)) reject(media.name);
         signatures.set(signature, media.name);
     }
-    const check = async source => {
-        if (!sizes.has(source.size)) return;
-        const signature = `${source.size}:${await digestSource(source)}`;
-        if (signatures.has(signature)) reject(signatures.get(signature));
-    };
-    let directory;
-    try { directory = await checkedDirectory(root, folder.split('/')); }
-    catch (error) { if (error.code !== 'ENOENT') throw error; }
-    if (directory) {
-        for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
-            if (!entry.isFile() || entry.name.startsWith('.')) continue;
-            const file = path.join(directory, entry.name);
-            await checkedFile(file);
-            await check(await fileSource(file));
+    const fileKey = name => process.platform === 'win32' ? name.toLowerCase() : name;
+    const { recordFilePaths } = await import('./record-backup.mjs');
+    const ownPaths = new Set([...recordFilePaths(existing ? [existing] : [])].map(fileKey));
+    for (const source of [sourcePhotos, sourceVideos]) {
+        for (const name of source.names) ownPaths.add(fileKey(`${source.folder}/${name}`));
+    }
+    const owners = new Map();
+    for (const owner of records) {
+        for (const name of recordFilePaths([owner])) {
+            const key = fileKey(name);
+            const list = owners.get(key) || [];
+            list.push({ desc_md: owner.desc_md, date: owner.date, locality: owner.locality });
+            owners.set(key, list);
         }
     }
-    // 搬入目标目录的已有附件也参与检查，旧记录自身的重复引用仍可保留。
-    for (const name of new Set(sourceNames)) {
-        const source = await findMediaContent(root, name, sourceFolders);
-        if (source) await check(source);
+    const files = await readMediaIndex(root, new Set(uploads.map(media => media.size)));
+    const duplicates = [];
+    for (const file of files) {
+        const name = signatures.get(`${file.version[0]}:${file.digest}`);
+        if (!name) continue;
+        if (ownPaths.has(fileKey(file.path))) reject(name);
+        duplicates.push({ name, path: file.path, records: owners.get(fileKey(file.path)) || [] });
     }
+    if (!duplicates.length) return;
+    duplicates.sort((a, b) => a.path.localeCompare(b.path));
+    const expected = createHash('sha256').update(JSON.stringify([existing?.desc_md, record.desc_md,
+        [...signatures].sort(), duplicates])).digest('hex');
+    if (confirmation === expected) return;
+    throw Object.assign(failure(409, '这些媒体已存在于其他日记或媒体目录，请确认是否继续保存。', 'MEDIA_DUPLICATE_WARNING'), {
+        duplicates, confirmation: expected
+    });
 }
 
 async function verifySavedMedia(root, record, contents, options) {
@@ -575,7 +585,7 @@ async function verifySavedMedia(root, record, contents, options) {
     }
 }
 
-async function saveRecord(root, payload, authorize) {
+async function saveRecord(root, payload, authorize, confirmation) {
     const { prepareRecord } = await import('./record-input.mjs');
     const catalog = JSON.parse(await fs.readFile(path.join(root, 'assets/catalogs/countries.json'), 'utf8'));
     let prepared;
@@ -618,6 +628,7 @@ async function saveRecord(root, payload, authorize) {
             await verifySavedMedia(root, record, videoContents, { label: '视频', folderField: 'video_folder', listField: 'videos' });
             return { record, alreadySaved: true };
         }
+        await rejectDuplicateUploads(root, prepared, records, null, confirmation);
         mediaStage = await stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos);
         try {
             // 先独占创建文件，只有创建成功才允许失败时回滚。
@@ -651,7 +662,7 @@ async function saveRecord(root, payload, authorize) {
     }
 }
 
-async function updateRecord(root, payload, authorize) {
+async function updateRecord(root, payload, authorize, confirmation) {
     if (!payload || typeof payload !== 'object' || Array.isArray(payload)
         || typeof payload.originalDescMd !== 'string' || payload.originalDescMd.length > 200) {
         throw failure(400, '缺少要修改的旅行记录标识。');
@@ -722,6 +733,7 @@ async function updateRecord(root, payload, authorize) {
             throw failure(409, '这条旅行记录已在其他窗口或文件中修改，未覆盖最新内容。请先导出草稿，再刷新页面并重新打开记录。');
         }
 
+        await rejectDuplicateUploads(root, prepared, records, existing, confirmation);
         if (oldMarkdown !== markdown || oldDiaryFile !== newDiaryFile) editRecycleId = await captureRecycle(root, { kind: 'version', title: '编辑前的日记正文', files: [{ path: existing.desc_md }] });
         mediaStage = await stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos, {
             photo_folder: existing.photo_folder, video_folder: existing.video_folder
@@ -1401,7 +1413,7 @@ function createRecordApi(root, options = {}) {
                 payload = await readJsonBody(req, MAXIMUM_RECORD_BYTES);
             }
             if (req.method === 'PUT') {
-                const result = await updateRecord(root, payload, () => verifyUploadSession(req, host));
+                const result = await updateRecord(root, payload, () => verifyUploadSession(req, host), req.headers['x-travel-media-confirmation']);
                 send(200, { saved: true, updated: true, ...result });
                 return;
             }
@@ -1410,12 +1422,13 @@ function createRecordApi(root, options = {}) {
                 send(200, { deleted: true, ...result });
                 return;
             }
-            const result = await saveRecord(root, payload, () => verifyUploadSession(req, host));
+            const result = await saveRecord(root, payload, () => verifyUploadSession(req, host), req.headers['x-travel-media-confirmation']);
             send(result.alreadySaved ? 200 : 201, { saved: true, ...result });
         } catch (error) {
             send(error.status || 500, {
                 error: error.status ? error.message : '文件保存失败，请检查数据文件格式及目录写入权限。草稿仍保留，可下载后重试。',
-                ...(error.code ? { code: error.code } : {})
+                ...(error.code ? { code: error.code } : {}),
+                ...(error.code === 'MEDIA_DUPLICATE_WARNING' ? { duplicates: error.duplicates, confirmation: error.confirmation } : {})
             });
         } finally {
             if (receivedArchive) await receivedArchive.cleanup();

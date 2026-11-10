@@ -1,8 +1,8 @@
 import { ByteSource, sourceOf, ZIP_CHUNK_BYTES } from './zip-stream.mjs';
-import { pinyinSlug } from './slug.mjs?v=2.1.73';
-import { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs?v=2.1.73';
+import { pinyinSlug, isSafeAsciiFileName } from './slug.mjs?v=2.1.74';
+import { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs?v=2.1.74';
 
-export { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs?v=2.1.73';
+export { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs?v=2.1.74';
 
 export function mediaBytes(data) {
     if (data instanceof Uint8Array) return data;
@@ -76,7 +76,8 @@ function detectMediaFormat(head) {
 }
 
 function safeStem(value, fallback) {
-    return pinyinSlug(value.replace(/\.[^.]*$/, ''), fallback, { keepPlaceSuffix: true }).slice(0, 160);
+    const stem = value.replace(/\.[^.]*$/, '');
+    return (isSafeAsciiFileName(stem) ? stem : pinyinSlug(stem, fallback, { keepPlaceSuffix: true })).slice(0, 160);
 }
 
 export function storedMediaNames(existingNames, uploads, fallbackPrefix = 'media') {
@@ -108,6 +109,13 @@ export function storedMediaNames(existingNames, uploads, fallbackPrefix = 'media
         return name;
     };
     const existing = existingNames.map(reserve);
-    const uploaded = uploads.map((media, index) => allocate(media.name, media.extension, `${fallbackPrefix}-${String(existing.length + index + 1).padStart(3, '0')}`));
+    const uploaded = uploads.map((media, index) => {
+        const extension = media.name.split('.').pop();
+        const compatible = extension.toLowerCase() === media.extension
+            || (media.extension === 'jpg' && extension.toLowerCase() === 'jpeg')
+            || (media.extension === 'ogv' && extension.toLowerCase() === 'ogg');
+        if (isSafeAsciiFileName(media.name) && compatible) return reserve(media.name);
+        return allocate(media.name, media.extension, `${fallbackPrefix}-${String(existing.length + index + 1).padStart(3, '0')}`);
+    });
     return [...existing, ...uploaded];
 }

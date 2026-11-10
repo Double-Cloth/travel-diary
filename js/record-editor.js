@@ -1,7 +1,7 @@
-import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.73';
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.73';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.73';
-import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.73';
+import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.74';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.74';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.74';
+import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.74';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
     MAXIMUM_MEDIA_BATCH_BYTES,
@@ -10,18 +10,18 @@ import {
     mediaBytes,
     readUploads,
     sameMediaContent
-} from './photo-uploads.mjs?v=2.1.73';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.73';
-import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.73';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.73';
-import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.73';
-import { orderMedia } from './media-order.mjs?v=2.1.73';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.73';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.73';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.73';
+} from './photo-uploads.mjs?v=2.1.74';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.74';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.74';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.74';
+import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.74';
+import { orderMedia } from './media-order.mjs?v=2.1.74';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.74';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.74';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.74';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
-import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.73';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.73';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.74';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.74';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -1670,18 +1670,36 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             } : {}, archiveProgress);
             operationProgress.throwIfCancelled();
             operationProgress.phase('正在上传旅行记录和媒体…');
-            const response = await uploadWithProgress(new URL('api/travel-records', window.location.href), {
-                method: editingRecord ? 'PUT' : 'POST', headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token },
-                credentials: 'same-origin',
-                body: archive,
-                timeout: 8 * 60 * 60 * 1000,
-                signal: operationProgress.signal,
-            }, (loaded, total) => operationProgress.update(loaded, total, '正在上传旅行记录和媒体…'),
-            () => {
+            const sendRecord = confirmation => uploadWithProgress(new URL('api/travel-records', window.location.href), {
+                method: editingRecord ? 'PUT' : 'POST', headers: {
+                    'Content-Type': 'application/zip', 'X-Travel-Token': token,
+                    ...(confirmation ? { 'X-Travel-Media-Confirmation': confirmation } : {})
+                },
+                credentials: 'same-origin', body: archive,
+                timeout: 8 * 60 * 60 * 1000, signal: operationProgress.signal
+            }, (loaded, total) => operationProgress.update(loaded, total, '正在上传旅行记录和媒体…'), () => {
                 operationProgress.setCancelable(false);
                 operationProgress.phase('上传完成，服务器正在校验并保存记录…');
             });
-            const result = await response.json();
+            let response = await sendRecord();
+            let result = await response.json();
+            while (response.status === 409 && result.code === 'MEDIA_DUPLICATE_WARNING') {
+                const details = (result.duplicates || []).map(item => {
+                    const owners = item.records.map(record => `${record.date} ${record.locality}`).join('、') || '未被日记引用';
+                    return `“${item.name}”与 ${item.path} 相同（${owners}）`;
+                }).join('\n');
+                if (!await confirmFeedback(`检测到其他日记或媒体目录中的相同文件。\n${details}\n继续后会将这些媒体保存到当前日记。`, {
+                    label: '媒体上传', title: '发现重复媒体', cancelLabel: '返回编辑', confirmLabel: '仍然保存'
+                })) {
+                    status('已取消保存，草稿仍保留，可移除重复媒体后继续。');
+                    operationProgress.remove();
+                    return;
+                }
+                operationProgress.setCancelable(true);
+                operationProgress.phase('正在提交已确认的媒体…');
+                response = await sendRecord(result.confirmation);
+                result = await response.json();
+            }
             if (!response.ok || !result.saved) throw Object.assign(new Error(result.error || '未收到服务器的成功响应。'), { code: result.code });
             saved = true;
             for (const type of ['photo', 'video']) {

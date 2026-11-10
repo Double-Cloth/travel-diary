@@ -101,6 +101,15 @@ test('自动文件路径使用日期与目的地，照片保留可读名称并�
     ], 'photo'), ['河畔.jpg', 'hubian.png', 'hubian.jpg', 'hepan.jpg']);
 });
 
+test('媒体保存保留合法 ASCII 名称大小写，碰撞忽略大小写，格式不符时修正扩展名', () => {
+    assert.deepEqual(storedMediaNames(['IMG_001.JPG'], [
+        { name: 'img_001.jpg', extension: 'jpg' },
+        { name: 'Camera_002.JPEG', extension: 'jpg' },
+        { name: 'VIDEO_003.MOV', extension: 'mov' },
+        { name: 'VIDEO_004.MOV', extension: 'mp4' }
+    ]), ['IMG_001.JPG', 'img_001-2.jpg', 'Camera_002.JPEG', 'VIDEO_003.MOV', 'VIDEO_004.mp4']);
+});
+
 test('Markdown 源码高亮转义 HTML 并标记标题、列表、链接和代码', () => {
     const html = highlightMarkdown('# 标题\n\n- **重点** [链接](note.md) `<script>`');
     assert.match(html, /class="md-marker">#<\/span>/);

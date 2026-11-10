@@ -87,15 +87,22 @@ after(async () => {
     }
 });
 
+async function sendRecord(url, options) {
+    const response = await fetch(url, options);
+    const result = await response.clone().json();
+    if (result.code !== 'MEDIA_DUPLICATE_WARNING') return response;
+    return fetch(url, { ...options, headers: { ...options.headers, 'X-Travel-Media-Confirmation': result.confirmation } });
+}
+
 const readIndex = async () => JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'));
-const post = (value, headers = {}) => fetch(`${base}/api/travel-records`, {
+const post = (value, headers = {}) => sendRecord(`${base}/api/travel-records`, {
     method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers }, body: JSON.stringify(value)
 });
-const put = (originalDescMd, value, headers = {}, expected, options = {}) => fetch(`${base}/api/travel-records`, {
+const put = (originalDescMd, value, headers = {}, expected, options = {}) => sendRecord(`${base}/api/travel-records`, {
     method: 'PUT', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers },
     body: JSON.stringify({ originalDescMd, draft: value, ...(expected ? { expected } : {}), ...options })
 });
-const remove = (descMd, headers = {}) => fetch(`${base}/api/travel-records`, {
+const remove = (descMd, headers = {}) => sendRecord(`${base}/api/travel-records`, {
     method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers },
     body: JSON.stringify({ desc_md: descMd })
 });
@@ -117,36 +124,66 @@ test('媒体内容按分块比较，改名仍判重，同名同大小但内容�
     await assert.rejects(sameMediaContent(source, bytes, () => { throw new Error('取消比较'); }), /取消比较/);
 });
 
-test('同目录拒绝重复图片与视频，改名、跨日记、ZIP、关闭同步均不可绕过', async () => {
+test('同篇拒绝改名或大小写变化的重复图片视频，跨日记必须确认且支持 ZIP', async () => {
     const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=';
     const mp4 = Buffer.from('\0\0\0\x18ftypisom\0\0\0\0isommp42', 'binary').toString('base64');
-    for (const [index, [name, data, list, folder]] of [['image.png', png, 'photos', 'photo_folder'], ['video.mp4', mp4, 'videos', 'video_folder']].entries()) {
+    for (const [index, [name, data, list, folder]] of [['IMAGE.PNG', png, 'photos', 'photo_folder'], ['VIDEO.MP4', mp4, 'videos', 'video_folder']].entries()) {
         const value = draft('a', { date: `2040-01-0${index + 1}`, locality: `重复上传-${index}` });
         value.uploads = [{ id: 'a'.repeat(32), name, data }];
         const created = (await (await post(value)).json()).record;
-        assert.ok(created);
+        assert.deepEqual(created[list], [name]);
         assert.equal((await post(value)).status, 200);
         const previous = await readIndex();
         const duplicate = { ...value, input: { ...value.input, date: `2040-02-0${index + 1}` },
-            uploads: [{ id: 'b'.repeat(32), name: `renamed-${name}`, data }] };
-        const response = await post(duplicate);
+            uploads: [{ id: 'b'.repeat(32), name: `renamed-${name.toLowerCase()}`, data }] };
+        const headers = { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base };
+        const response = await fetch(`${base}/api/travel-records`, { method: 'POST', headers, body: JSON.stringify(duplicate) });
         assert.equal(response.status, 409);
         const result = await response.json();
-        assert.equal(result.code, 'DUPLICATE_MEDIA');
-        assert.match(result.error, /已上传过一样的文件/);
+        assert.equal(result.code, 'MEDIA_DUPLICATE_WARNING');
+        assert.ok(result.duplicates.some(item => item.records.some(owner => owner.desc_md === created.desc_md)));
         assert.deepEqual(await readIndex(), previous);
-        const edited = { ...duplicate, input: { ...value.input, ...created } };
-        assert.equal((await put(created.desc_md, edited, {}, undefined, { syncMediaFiles: false })).status, 409);
+        const edited = { ...duplicate, input: { ...value.input, ...created, [list]: [] } };
+        const denied = await put(created.desc_md, edited, { 'X-Travel-Media-Confirmation': result.confirmation }, undefined, { syncMediaFiles: false });
+        assert.equal((await denied.json()).code, 'DUPLICATE_MEDIA');
         const zip = await createDraftBlob(duplicate);
-        const zipResponse = await fetch(`${base}/api/travel-records`, {
-            method: 'POST', headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Cookie: cookie, Origin: base }, body: zip
-        });
-        assert.equal(zipResponse.status, 409);
-        assert.deepEqual(await fs.readdir(path.join(root, created[folder])), created[list]);
-        assert.deepEqual(await readIndex(), previous);
+        const zipHeaders = { ...headers, 'Content-Type': 'application/zip' };
+        const zipResponse = await fetch(`${base}/api/travel-records`, { method: 'POST', headers: zipHeaders, body: zip });
+        assert.equal((await zipResponse.json()).code, 'MEDIA_DUPLICATE_WARNING');
+        const confirmed = await fetch(`${base}/api/travel-records`, { method: 'POST', headers: {
+            ...zipHeaders, 'X-Travel-Media-Confirmation': result.confirmation
+        }, body: zip });
+        assert.equal(confirmed.status, 201);
+        assert.equal((await post(duplicate)).status, 200);
+        assert.ok((await fs.readdir(path.join(root, created[folder]))).includes(name));
         const differentPlace = { ...duplicate, input: { ...duplicate.input, locality: `其他目的地-${index}` } };
+        const changed = await fetch(`${base}/api/travel-records`, { method: 'POST', headers: {
+            ...headers, 'X-Travel-Media-Confirmation': result.confirmation
+        }, body: JSON.stringify(differentPlace) });
+        assert.equal((await changed.json()).code, 'MEDIA_DUPLICATE_WARNING');
         assert.equal((await post(differentPlace)).status, 201);
     }
+});
+
+test('跨日记确认后可共用同名同内容媒体，提交失败保留共享文件，同名不同内容不覆盖', async () => {
+    const bytes = Buffer.concat([Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=', 'base64'), Buffer.from('shared-name-test')]);
+    const first = draft('c', { date: '2041-01-01', locality: '共享文件测试' });
+    first.uploads = [{ id: 'c'.repeat(32), name: 'SHARED.PNG', data: bytes.toString('base64') }];
+    const created = (await (await post(first)).json()).record;
+    const second = { ...first, requestId: 'd'.repeat(32), input: { ...first.input, date: '2041-01-02' } };
+    const rename = fs.rename;
+    fs.rename = async (source, target) => {
+        if (target === path.join(root, 'data/travel_data.json')) throw new Error('模拟共享文件提交失败');
+        return rename(source, target);
+    };
+    try { assert.equal((await post(second)).status, 500); }
+    finally { fs.rename = rename; }
+    assert.deepEqual(await fs.readFile(path.join(root, created.photo_folder, 'SHARED.PNG')), bytes);
+    assert.equal((await post(second)).status, 201);
+    const third = { ...second, requestId: 'e'.repeat(32), input: { ...second.input, date: '2041-01-03' },
+        uploads: [{ ...first.uploads[0], data: Buffer.concat([bytes, Buffer.from('changed')]).toString('base64') }] };
+    assert.equal((await post(third)).status, 409);
+    assert.deepEqual(await fs.readFile(path.join(root, created.photo_folder, 'SHARED.PNG')), bytes);
 });
 
 test('同批重复文件与搬入附件的相同内容被拒绝，失败不留下新文件', async () => {
@@ -175,7 +212,7 @@ test('ZIP 二进制媒体可新增、无损重试与修改，原快照冲突时�
     const mp4 = Buffer.from('\0\0\0\x18ftypisom\0\0\0\0isommp42', 'binary');
     const value = draft('7', { locality: 'ZIP 原始媒体', desc_md: 'data/travel-diary/2026/2026-09-10-zip-media.md' });
     value.uploads = [{ id: '1'.repeat(32), name: 'river.png', data: png }, { id: '2'.repeat(32), name: 'walk.mp4', data: mp4 }];
-    const sendZip = (method, body, overrides = {}) => fetch(`${base}/api/travel-records`, {
+    const sendZip = (method, body, overrides = {}) => sendRecord(`${base}/api/travel-records`, {
         method,
         headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...overrides },
         body
@@ -236,7 +273,7 @@ test('ZIP64 媒体 CRC 损坏会回滚文件；上传期间注销会话则拒绝
     const view = new DataView(damaged.buffer, damaged.byteOffset, damaged.length);
     const dataStart = localOffset + 30 + view.getUint16(localOffset + 26, true) + view.getUint16(localOffset + 28, true);
     damaged[dataStart + value.uploads[0].data.length - 1] ^= 255;
-    const rejected = await fetch(`${base}/api/travel-records`, {
+    const rejected = await sendRecord(`${base}/api/travel-records`, {
         method: 'POST', headers: { 'Content-Type': 'application/zip', Cookie: cookie, 'X-Travel-Token': token, Origin: base }, body: damaged
     });
     assert.equal(rejected.status, 400);
@@ -260,7 +297,7 @@ test('ZIP64 媒体 CRC 损坏会回滚文件；上传期间注销会话则拒绝
 });
 
 test('写入服务声明支持新增、修改与删除方法', async () => {
-    const response = await fetch(`${base}/api/travel-records`, { headers: { Cookie: cookie } });
+    const response = await sendRecord(`${base}/api/travel-records`, { headers: { Cookie: cookie } });
     assert.equal(response.status, 200);
     const capability = await response.json();
     assert.deepEqual(capability.methods, ['POST', 'PUT', 'DELETE']);
@@ -436,7 +473,7 @@ test('写入端点拒绝跨源请求、伪造 Host、缺失令牌及不合法数
     assert.equal((await put('missing.md', draft('b'), { 'X-Travel-Token': '' })).status, 403);
     assert.equal((await remove('missing.md', { 'X-Travel-Token': '' })).status, 403);
     assert.equal((await post(draft('b'), { 'Content-Type': 'text/plain' })).status, 415);
-    assert.equal((await fetch(`${base}/api/travel-records`, { headers: { Origin: 'https://example.com' } })).status, 403);
+    assert.equal((await sendRecord(`${base}/api/travel-records`, { headers: { Origin: 'https://example.com' } })).status, 403);
     assert.equal((await post(draft('b', { date: '2026-02-30' }))).status, 400);
     assert.equal((await post(draft('b', { body: '字'.repeat(180000) }))).status, 400);
     assert.deepEqual(await readIndex(), before);
@@ -494,9 +531,8 @@ test('上传与已有照片可以合并，索引提交失败会清理新照片�
     for (const name of record.photos) assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, name)), Buffer.from(name === 'new.png' ? newPng : png, 'base64'));
     const sameDestination = { ...draft('7', { date: '2026-09-11', locality: value.input.locality }), uploads: [{ id: '8'.repeat(32), name: 'another.png', data: png }] };
     const sameDestinationResponse = await post(sameDestination);
-    assert.equal(sameDestinationResponse.status, 409);
-    assert.match((await sameDestinationResponse.json()).error, /已上传过一样的文件/);
-    await assert.rejects(fs.stat(path.join(root, record.photo_folder, 'another.png')), { code: 'ENOENT' });
+    assert.equal(sameDestinationResponse.status, 201);
+    assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, 'another.png')), Buffer.from(png, 'base64'));
 });
 
 test('并发保存发生冲突时可重试，最终不丢失任何一条记录', async () => {
@@ -639,7 +675,7 @@ test('ZIP 保存可关闭真实文件同步，只更新删除与目录引用且�
     const value = draft('a', input);
     const created = (await (await post(value)).json()).record;
     const edited = { ...value, input: { ...value.input, photo_folder: 'data/photos/references-target', photos: ['keep.png'], video_folder: 'data/videos/references-target', videos: ['keep.mp4'] } };
-    const response = await fetch(`${base}/api/travel-records`, {
+    const response = await sendRecord(`${base}/api/travel-records`, {
         method: 'PUT', headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Cookie: cookie, Origin: base },
         body: await createDraftBlob(edited, { originalDescMd: created.desc_md, syncMediaFiles: false })
     });
@@ -674,7 +710,7 @@ test('ZIP 默认删除最后一张照片和视频，并清理空目录及空父�
     }
     const value = draft('a', input);
     const created = (await (await post(value)).json()).record;
-    const response = await fetch(`${base}/api/travel-records`, {
+    const response = await sendRecord(`${base}/api/travel-records`, {
         method: 'PUT', headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Cookie: cookie, Origin: base },
         body: await createDraftBlob({ ...value, input: { ...value.input, photos: [], videos: [] } }, { originalDescMd: created.desc_md })
     });
