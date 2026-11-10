@@ -97,7 +97,7 @@ test('模态窗口内的进度也进入悬浮顶层，完成提示仍可关闭',
     assert.equal(root.removed, true);
 });
 
-test('浏览器接管后保留不定进度与关闭提示，不伪报完成或允许网页取消下载', t => {
+test('浏览器接管后显示不定进度，6 秒后自动收起且支持提前关闭提示', t => {
     const nodes = installEnvironment(t);
     t.mock.timers.enable({ apis: ['setTimeout'] });
     const progress = createOperationProgress('导出全部数据');
@@ -117,13 +117,19 @@ test('浏览器接管后保留不定进度与关闭提示，不伪报完成或�
     progress.complete('已完成');
     progress.fail(new Error('已失败'));
     progress.update(100, 100);
-    t.mock.timers.tick(10000);
+    t.mock.timers.tick(5999);
     assert.equal(root.removed, undefined);
     assert.equal(progress.signal.aborted, false);
     assert.equal(root.querySelector('[data-progress-message]').textContent, '已交给浏览器下载');
-    root.querySelector('[data-progress-dismiss]').events.click();
+    t.mock.timers.tick(1);
     assert.equal(root.removed, true);
     assert.equal(progress.signal.aborted, false);
+    const next = createOperationProgress('下载原视频');
+    next.handOff();
+    nodes[1].querySelector('[data-progress-dismiss]').events.click();
+    assert.equal(nodes[1].removed, true);
+    t.mock.timers.tick(6000);
+    assert.equal(next.signal.aborted, false);
 });
 
 test('取消中止操作并保留取消结果，服务器提交期间不能取消', t => {

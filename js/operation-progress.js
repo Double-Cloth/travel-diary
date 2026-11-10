@@ -171,6 +171,8 @@ export function createOperationProgress(title) {
         dismiss.hidden = false;
         dismiss.textContent = '关闭提示';
         dismiss.setAttribute('aria-label', '关闭进度提示，下载仍由浏览器管理');
+        timer = setTimeout(remove, 6000);
+        timer.unref?.();
     }
     return { phase, update, handOff, complete: text => finish(text), fail: error => finish(error?.message || String(error), true), remove,
         signal: controller.signal, cancel, setCancelable, throwIfCancelled: () => controller.signal.throwIfAborted() };
