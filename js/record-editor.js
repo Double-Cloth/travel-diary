@@ -1,26 +1,27 @@
-import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.67';
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.67';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.67';
-import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.67';
+import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.68';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.68';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.68';
+import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.68';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
     MAXIMUM_MEDIA_BATCH_BYTES,
     MAXIMUM_MEDIA_FILE_BYTES,
     MAXIMUM_VIDEO_FILE_BYTES,
     mediaBytes,
-    readUploads
-} from './photo-uploads.mjs?v=2.1.67';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.67';
-import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.67';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.67';
-import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.67';
-import { orderMedia } from './media-order.mjs?v=2.1.67';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.67';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.67';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.67';
+    readUploads,
+    sameMediaContent
+} from './photo-uploads.mjs?v=2.1.68';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.68';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.68';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.68';
+import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.68';
+import { orderMedia } from './media-order.mjs?v=2.1.68';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.68';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.68';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.68';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
-import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.67';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.67';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.68';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.68';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -1170,6 +1171,12 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 operationProgress.throwIfCancelled();
                 const photo = readUploads([{ id, name: file.name.slice(0, 200), data }])[0];
                 operationProgress.throwIfCancelled();
+                for (const existing of [...uploads, ...pending]) {
+                    if (existing.kind === photo.kind && existing.size === photo.size
+                        && await sameMediaContent(existing.data, photo.data, () => operationProgress.throwIfCancelled())) {
+                        throw new Error(`“${photo.name}”已选择过一样的文件，不能重复上传。`);
+                    }
+                }
                 pending.push(photo);
                 operationProgress.update(fileIndex + 1, files.length, '正在校验媒体文件…', 'files');
             }
@@ -1672,7 +1679,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 operationProgress.phase('上传完成，服务器正在校验并保存记录…');
             });
             const result = await response.json();
-            if (!response.ok || !result.saved) throw new Error(result.error || '未收到服务器的成功响应。');
+            if (!response.ok || !result.saved) throw Object.assign(new Error(result.error || '未收到服务器的成功响应。'), { code: result.code });
             saved = true;
             for (const type of ['photo', 'video']) {
                 for (const [index, item] of orderedMedia(type).entries()) {
@@ -1694,7 +1701,8 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             catch { status(`记录已保存：${result.record.desc_md}。页面数据刷新失败，请手动刷新后查看。`); }
             operationProgress.complete('记录和媒体已保存。');
         } catch (error) {
-            status(operationProgress.signal.aborted ? '保存已取消，草稿仍在本页。' : `保存结果未确认：${error.message} 草稿仍在本页，可导出或重试。`);
+            if (error.code === 'DUPLICATE_MEDIA') status(`${error.message} 请移除重复文件后保存。`);
+            else status(operationProgress.signal.aborted ? '保存已取消，草稿仍在本页。' : `保存结果未确认：${error.message} 草稿仍在本页，可导出或重试。`);
             operationProgress.fail(error);
         } finally {
             busy = false;

@@ -1,28 +1,28 @@
-import { orderMedia } from './media-order.mjs?v=2.1.67';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.67';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.67';
-import { createRecordEditor } from './record-editor.js?v=2.1.67';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.67';
-import { createDataTransfer } from './data-transfer.js?v=2.1.67';
-import { createMediaManager } from './media-manager.js?v=2.1.67';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.67';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.67';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.67';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.67';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.67';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.67';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.67';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.67';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.67';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.67';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.67';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.67';
+import { orderMedia } from './media-order.mjs?v=2.1.68';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.68';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.68';
+import { createRecordEditor } from './record-editor.js?v=2.1.68';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.68';
+import { createDataTransfer } from './data-transfer.js?v=2.1.68';
+import { createMediaManager } from './media-manager.js?v=2.1.68';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.68';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.68';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.68';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.68';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.68';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.68';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.68';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.68';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.68';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.68';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.68';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.68';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.67';
+} from './location.mjs?v=2.1.68';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -31,7 +31,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.67';
+} from './photo-viewer-transform.mjs?v=2.1.68';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';

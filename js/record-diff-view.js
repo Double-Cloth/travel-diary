@@ -1,6 +1,6 @@
-import { escapeHtml } from './utils.js?v=2.1.67';
-import { changedTextBlocks } from './record-diff.mjs?v=2.1.67';
-import { markdownPreview } from './content-preview.js?v=2.1.67';
+import { escapeHtml } from './utils.js?v=2.1.68';
+import { changedTextBlocks } from './record-diff.mjs?v=2.1.68';
+import { markdownPreview } from './content-preview.js?v=2.1.68';
 
 export function renderRecordDifference(record, comparison, { afterLabel = '备份', note = '仅显示有变化的部分。勾选这篇日记后，将采用备份内容。', previewLabel = '预览导入后的正文', collapsible = true, mediaLink } = {}) {
     if (!comparison) return '';

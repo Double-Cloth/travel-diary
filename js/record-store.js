@@ -325,6 +325,10 @@ async function stageRecordMediaType(root, record, uploads, sourceMedia, options)
 
     // 记录修改目的地后目录会变化，原目录作为回退来源，用于搬运已有媒体。
     const sourceFolders = [sourceMedia.folder, ...(options.fallbackFolders || [])].filter(Boolean);
+    if (uploads.length) {
+        await rejectDuplicateUploads(root, folder, uploads, options.syncMediaFiles === false ? [] : sourceNames,
+            sourceFolders, options.label);
+    }
 
     if (!uploads.length) {
         let present = false;
@@ -521,6 +525,39 @@ async function digestSource(source) {
     const hash = createHash('sha256');
     for await (const chunk of source.chunks()) hash.update(chunk);
     return hash.digest('hex');
+}
+
+async function rejectDuplicateUploads(root, folder, uploads, sourceNames, sourceFolders, label) {
+    const { sourceOf } = await import('./zip-stream.mjs');
+    const signatures = new Map();
+    const sizes = new Set(uploads.map(media => media.size));
+    const reject = name => { throw failure(409, `“${name}”已上传过一样的文件，不能重复上传。`, 'DUPLICATE_MEDIA'); };
+    for (const media of uploads) {
+        const signature = `${media.size}:${await digestSource(sourceOf(uploadBuffer(media, label)))}`;
+        if (signatures.has(signature)) reject(media.name);
+        signatures.set(signature, media.name);
+    }
+    const check = async source => {
+        if (!sizes.has(source.size)) return;
+        const signature = `${source.size}:${await digestSource(source)}`;
+        if (signatures.has(signature)) reject(signatures.get(signature));
+    };
+    let directory;
+    try { directory = await checkedDirectory(root, folder.split('/')); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+    if (directory) {
+        for (const entry of await fs.readdir(directory, { withFileTypes: true })) {
+            if (!entry.isFile() || entry.name.startsWith('.')) continue;
+            const file = path.join(directory, entry.name);
+            await checkedFile(file);
+            await check(await fileSource(file));
+        }
+    }
+    // 搬入目标目录的已有附件也参与检查，旧记录自身的重复引用仍可保留。
+    for (const name of new Set(sourceNames)) {
+        const source = await findMediaContent(root, name, sourceFolders);
+        if (source) await check(source);
+    }
 }
 
 async function verifySavedMedia(root, record, contents, options) {
@@ -1376,7 +1413,10 @@ function createRecordApi(root, options = {}) {
             const result = await saveRecord(root, payload, () => verifyUploadSession(req, host));
             send(result.alreadySaved ? 200 : 201, { saved: true, ...result });
         } catch (error) {
-            send(error.status || 500, { error: error.status ? error.message : '文件保存失败，请检查数据文件格式及目录写入权限。草稿仍保留，可下载后重试。' });
+            send(error.status || 500, {
+                error: error.status ? error.message : '文件保存失败，请检查数据文件格式及目录写入权限。草稿仍保留，可下载后重试。',
+                ...(error.code ? { code: error.code } : {})
+            });
         } finally {
             if (receivedArchive) await receivedArchive.cleanup();
         }

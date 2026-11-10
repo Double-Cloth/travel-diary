@@ -1,5 +1,5 @@
-import { getMediaFileUrl } from './utils.js?v=2.1.67';
-import { getMediaPreviewUrl, observeMediaPreview, observeMediaVisibility } from './media-preview.mjs?v=2.1.67';
+import { getMediaFileUrl } from './utils.js?v=2.1.68';
+import { getMediaPreviewUrl, observeMediaPreview, observeMediaVisibility } from './media-preview.mjs?v=2.1.68';
 
 export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbnailSrc = getMediaPreviewUrl(src), loadThumbnail, blob, name, kind, index = 0, detail = '' }) {
     const link = document.createElement(src ? 'a' : 'span');

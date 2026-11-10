@@ -1,5 +1,5 @@
-import { parseMarkdown, getSafeInlineUrl } from './data.js?v=2.1.67';
-import { escapeHtml } from './utils.js?v=2.1.67';
+import { parseMarkdown, getSafeInlineUrl } from './data.js?v=2.1.68';
+import { escapeHtml } from './utils.js?v=2.1.68';
 
 export function splitMarkdown(source, fallbackTitle = '') {
     const normalized = source.replace(/\r\n?/g, '\n');

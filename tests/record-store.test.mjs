@@ -7,7 +7,8 @@ import path from 'node:path';
 import { createHandler } from '../js/server.js';
 import { DRAFT_FORMAT, prepareRecord, readDraft, recordMetadataSnapshot } from '../js/record-input.mjs';
 import { createDraftBlob } from '../js/draft-archive.mjs';
-import { readZipSource, readSourceText } from '../js/zip-stream.mjs';
+import { sameMediaContent } from '../js/photo-uploads.mjs';
+import { ByteSource, readZipSource, readSourceText, sourceOf, ZIP_CHUNK_BYTES } from '../js/zip-stream.mjs';
 import { createZip } from './helpers/zip-archive.mjs';
 import { MAXIMUM_ARCHIVE_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from '../js/file-limits.mjs';
 import { installAuth, login } from './helpers/auth.mjs';
@@ -97,6 +98,76 @@ const put = (originalDescMd, value, headers = {}, expected, options = {}) => fet
 const remove = (descMd, headers = {}) => fetch(`${base}/api/travel-records`, {
     method: 'DELETE', headers: { 'Content-Type': 'application/json', 'X-Travel-Token': token, Cookie: cookie, Origin: base, ...headers },
     body: JSON.stringify({ desc_md: descMd })
+});
+
+test('媒体内容按分块比较，改名仍判重，同名同大小但内容不同可以添加', async () => {
+    const bytes = new Uint8Array(ZIP_CHUNK_BYTES + 7).fill(42);
+    const changed = bytes.slice();
+    changed[changed.length - 1] = 43;
+    let maximumRead = 0;
+    const source = new ByteSource(bytes.length, async (offset, length) => {
+        maximumRead = Math.max(maximumRead, length);
+        return bytes.subarray(offset, offset + length);
+    });
+    assert.equal(await sameMediaContent(source, sourceOf(bytes)), true);
+    assert.equal(await sameMediaContent(source, changed), false);
+    assert.equal(await sameMediaContent(source, bytes.subarray(1)), false);
+    assert.equal(maximumRead, ZIP_CHUNK_BYTES);
+    assert.equal(await sameMediaContent('YWJj', new Uint8Array([97, 98, 99])), true);
+    await assert.rejects(sameMediaContent(source, bytes, () => { throw new Error('取消比较'); }), /取消比较/);
+});
+
+test('同目录拒绝重复图片与视频，改名、跨日记、ZIP、关闭同步均不可绕过', async () => {
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=';
+    const mp4 = Buffer.from('\0\0\0\x18ftypisom\0\0\0\0isommp42', 'binary').toString('base64');
+    for (const [index, [name, data, list, folder]] of [['image.png', png, 'photos', 'photo_folder'], ['video.mp4', mp4, 'videos', 'video_folder']].entries()) {
+        const value = draft('a', { date: `2040-01-0${index + 1}`, locality: `重复上传-${index}` });
+        value.uploads = [{ id: 'a'.repeat(32), name, data }];
+        const created = (await (await post(value)).json()).record;
+        assert.ok(created);
+        assert.equal((await post(value)).status, 200);
+        const previous = await readIndex();
+        const duplicate = { ...value, input: { ...value.input, date: `2040-02-0${index + 1}` },
+            uploads: [{ id: 'b'.repeat(32), name: `renamed-${name}`, data }] };
+        const response = await post(duplicate);
+        assert.equal(response.status, 409);
+        const result = await response.json();
+        assert.equal(result.code, 'DUPLICATE_MEDIA');
+        assert.match(result.error, /已上传过一样的文件/);
+        assert.deepEqual(await readIndex(), previous);
+        const edited = { ...duplicate, input: { ...value.input, ...created } };
+        assert.equal((await put(created.desc_md, edited, {}, undefined, { syncMediaFiles: false })).status, 409);
+        const zip = await createDraftBlob(duplicate);
+        const zipResponse = await fetch(`${base}/api/travel-records`, {
+            method: 'POST', headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Cookie: cookie, Origin: base }, body: zip
+        });
+        assert.equal(zipResponse.status, 409);
+        assert.deepEqual(await fs.readdir(path.join(root, created[folder])), created[list]);
+        assert.deepEqual(await readIndex(), previous);
+        const differentPlace = { ...duplicate, input: { ...duplicate.input, locality: `其他目的地-${index}` } };
+        assert.equal((await post(differentPlace)).status, 201);
+    }
+});
+
+test('同批重复文件与搬入附件的相同内容被拒绝，失败不留下新文件', async () => {
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=';
+    const value = draft('b', { date: '2040-03-03', locality: '同批重复上传' });
+    value.uploads = [{ id: 'a'.repeat(32), name: 'one.png', data: png }, { id: 'b'.repeat(32), name: 'two.png', data: png }];
+    const previous = await readIndex();
+    const response = await post(value);
+    assert.equal(response.status, 409);
+    assert.match((await response.json()).error, /已上传过一样的文件/);
+    assert.deepEqual(await readIndex(), previous);
+    const prepared = prepareRecord(value, countries).record;
+    await assert.rejects(fs.stat(path.join(root, prepared.photo_folder)), { code: 'ENOENT' });
+    await fs.mkdir(path.join(root, 'data/photos/duplicate-source'), { recursive: true });
+    await fs.writeFile(path.join(root, 'data/photos/duplicate-source/old.png'), Buffer.from(png, 'base64'));
+    value.uploads.pop();
+    value.input.photo_folder = 'data/photos/duplicate-source';
+    value.input.photos = ['old.png'];
+    assert.equal((await post(value)).status, 409);
+    assert.deepEqual(await readIndex(), previous);
+    await assert.rejects(fs.stat(path.join(root, prepared.photo_folder)), { code: 'ENOENT' });
 });
 
 test('ZIP 二进制媒体可新增、无损重试与修改，原快照冲突时不覆盖数据', async () => {
@@ -406,7 +477,8 @@ test('上传与已有照片可以合并，索引提交失败会清理新照片�
     const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=';
     await fs.mkdir(path.join(root, 'data/photos/legacy'), { recursive: true });
     await fs.writeFile(path.join(root, 'data/photos/legacy/old.png'), Buffer.from(png, 'base64'));
-    const value = { ...draft('5', { photo_folder: 'data/photos/legacy', photos: ['old.png'] }), uploads: [{ id: '6'.repeat(32), name: 'new.png', data: png }] };
+    const newPng = Buffer.concat([Buffer.from(png, 'base64'), Buffer.from('new')]).toString('base64');
+    const value = { ...draft('5', { photo_folder: 'data/photos/legacy', photos: ['old.png'] }), uploads: [{ id: '6'.repeat(32), name: 'new.png', data: newPng }] };
     const previous = await readIndex();
     const rename = fs.rename;
     fs.rename = async () => { throw new Error('模拟提交失败'); };
@@ -419,14 +491,12 @@ test('上传与已有照片可以合并，索引提交失败会清理新照片�
     assert.deepEqual(await fs.readFile(path.join(root, 'data/photos/legacy/old.png')), Buffer.from(png, 'base64'));
     assert.equal((await post(value)).status, 201);
     assert.deepEqual(record.photos, ['old.png', 'new.png']);
-    for (const name of record.photos) assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, name)), Buffer.from(png, 'base64'));
+    for (const name of record.photos) assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, name)), Buffer.from(name === 'new.png' ? newPng : png, 'base64'));
     const sameDestination = { ...draft('7', { date: '2026-09-11', locality: value.input.locality }), uploads: [{ id: '8'.repeat(32), name: 'another.png', data: png }] };
     const sameDestinationResponse = await post(sameDestination);
-    assert.equal(sameDestinationResponse.status, 201);
-    const sameDestinationRecord = (await sameDestinationResponse.json()).record;
-    assert.equal(sameDestinationRecord.photo_folder, record.photo_folder);
-    assert.deepEqual(sameDestinationRecord.photos, ['another.png']);
-    assert.deepEqual(await fs.readFile(path.join(root, record.photo_folder, 'another.png')), Buffer.from(png, 'base64'));
+    assert.equal(sameDestinationResponse.status, 409);
+    assert.match((await sameDestinationResponse.json()).error, /已上传过一样的文件/);
+    await assert.rejects(fs.stat(path.join(root, record.photo_folder, 'another.png')), { code: 'ENOENT' });
 });
 
 test('并发保存发生冲突时可重试，最终不丢失任何一条记录', async () => {
@@ -767,13 +837,14 @@ test('新旧图片交错排序真实落盘、重试与修改后文件内容保�
     assert.equal((await post(value)).status, 200);
     assert.equal((await post({ ...value, uploads: [{ ...value.uploads[0], data: first.toString('base64') }] })).status, 409);
 
+    const third = Buffer.concat([png, Buffer.from('third!')]);
     const edited = { ...draft('d', { date: '2038-01-01', locality: '混排测试', photo_folder: created.photo_folder, photos: created.photos }),
-        uploads: [{ id: 'b'.repeat(32), name: 'another.png', data: second.toString('base64') }], mediaOrder: { photos: [3, 0, 2, 1] } };
+        uploads: [{ id: 'b'.repeat(32), name: 'another.png', data: third.toString('base64') }], mediaOrder: { photos: [3, 0, 2, 1] } };
     const updatedResponse = await put(created.desc_md, edited);
     assert.equal(updatedResponse.status, 200);
     const updated = (await updatedResponse.json()).record;
     assert.deepEqual(updated.photos, ['another.png', 'first.png', 'second.png', 'new.png']);
-    assert.deepEqual(await fs.readFile(path.join(root, updated.photo_folder, 'another.png')), second);
+    assert.deepEqual(await fs.readFile(path.join(root, updated.photo_folder, 'another.png')), third);
     assert.deepEqual(await fs.readFile(path.join(root, updated.photo_folder, 'new.png')), png);
     assert.deepEqual(await fs.readFile(path.join(root, updated.photo_folder, 'first.png')), first);
 
@@ -786,10 +857,11 @@ test('关闭真实文件同步仍按混合顺序写入新增图片并保留已�
     const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=';
     const value = { ...draft('e', { date: '2038-02-02', locality: '关闭同步混排' }), uploads: [{ id: 'c'.repeat(32), name: 'old.png', data: png }] };
     const created = (await (await post(value)).json()).record;
+    const newPng = Buffer.concat([Buffer.from(png, 'base64'), Buffer.from('new')]).toString('base64');
     const edited = { ...draft('e', { date: '2038-02-02', locality: '关闭同步混排', photo_folder: created.photo_folder, photos: created.photos }),
-        uploads: [{ id: 'd'.repeat(32), name: 'new.png', data: png }], mediaOrder: { photos: [1, 0] } };
+        uploads: [{ id: 'd'.repeat(32), name: 'new.png', data: newPng }], mediaOrder: { photos: [1, 0] } };
     const response = await put(created.desc_md, edited, {}, undefined, { syncMediaFiles: false });
     assert.equal(response.status, 200);
     assert.deepEqual((await response.json()).record.photos, ['new.png', 'old.png']);
-    for (const name of ['old.png', 'new.png']) assert.deepEqual(await fs.readFile(path.join(root, created.photo_folder, name)), Buffer.from(png, 'base64'));
+    for (const name of ['old.png', 'new.png']) assert.deepEqual(await fs.readFile(path.join(root, created.photo_folder, name)), Buffer.from(name === 'new.png' ? newPng : png, 'base64'));
 });

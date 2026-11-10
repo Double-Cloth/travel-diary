@@ -1,4 +1,4 @@
-import { getScopedVisitKey, getVisitKey } from './visits.mjs?v=2.1.67';
+import { getScopedVisitKey, getVisitKey } from './visits.mjs?v=2.1.68';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;

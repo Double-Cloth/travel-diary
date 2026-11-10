@@ -1,13 +1,28 @@
-import { ByteSource } from './zip-stream.mjs';
-import { pinyinSlug } from './slug.mjs?v=2.1.67';
-import { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs?v=2.1.67';
+import { ByteSource, sourceOf, ZIP_CHUNK_BYTES } from './zip-stream.mjs';
+import { pinyinSlug } from './slug.mjs?v=2.1.68';
+import { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs?v=2.1.68';
 
-export { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs?v=2.1.67';
+export { MAXIMUM_IMAGE_FILE_BYTES, MAXIMUM_VIDEO_FILE_BYTES, MAXIMUM_MEDIA_FILE_BYTES, MAXIMUM_MEDIA_BATCH_BYTES } from './file-limits.mjs?v=2.1.68';
 
 export function mediaBytes(data) {
     if (data instanceof Uint8Array) return data;
     const binary = atob(data);
     return Uint8Array.from(binary, character => character.charCodeAt(0));
+}
+
+export async function sameMediaContent(left, right, checkCancelled = () => {}) {
+    const first = sourceOf(typeof left === 'string' ? mediaBytes(left) : left);
+    const second = sourceOf(typeof right === 'string' ? mediaBytes(right) : right);
+    if (first.size !== second.size) return false;
+    for (let offset = 0; offset < first.size; offset += ZIP_CHUNK_BYTES) {
+        checkCancelled();
+        const length = Math.min(ZIP_CHUNK_BYTES, first.size - offset);
+        const a = await first.read(offset, length);
+        const b = await second.read(offset, length);
+        checkCancelled();
+        if (a.some((byte, index) => byte !== b[index])) return false;
+    }
+    return true;
 }
 
 export function readUploads(value = []) {
