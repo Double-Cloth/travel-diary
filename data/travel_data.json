@@ -556,8 +556,8 @@
       "img_20250405_141740_edit_98879076790872.jpg",
       "img_20250405_214434.jpg",
       "img_20250405_214436.jpg",
-      "renshengnanbeiduoqilu.jpg",
-      "img_20250405_230538.jpg"
+      "img_20250405_230538.jpg",
+      "renshengnanbeiduoqilu.jpg"
     ],
     "video_folder": "data/videos/nanchang",
     "videos": [
@@ -604,8 +604,8 @@
       "photo:img_20250405_141740_edit_98879076790872.jpg",
       "photo:img_20250405_214434.jpg",
       "photo:img_20250405_214436.jpg",
-      "photo:renshengnanbeiduoqilu.jpg",
-      "photo:img_20250405_230538.jpg"
+      "photo:img_20250405_230538.jpg",
+      "photo:renshengnanbeiduoqilu.jpg"
     ]
   },
   {
@@ -744,12 +744,11 @@
     ],
     "video_folder": "data/videos/luoyang",
     "videos": [
-      "hnvideoeditor_2025_05_05_185548373.mp4",
       "vid_20250505_093709.mp4",
+      "hnvideoeditor_2025_05_05_185548373.mp4",
       "vid_20250505_105508.mp4"
     ],
     "media_order": [
-      "video:hnvideoeditor_2025_05_05_185548373.mp4",
       "photo:img_20250502_092628_edit_216546360331038.jpg",
       "photo:img_20250502_092643_edit_216601078313726.jpg",
       "photo:img_20250502_094106.jpg",
@@ -831,6 +830,7 @@
       "video:vid_20250505_093709.mp4",
       "photo:img_20250505_093713_edit_282110580634049.jpg",
       "photo:img_20250505_093949_edit_282143178229192.jpg",
+      "video:hnvideoeditor_2025_05_05_185548373.mp4",
       "photo:img_20250505_102730.jpg",
       "photo:img_20250505_102749.jpg",
       "video:vid_20250505_105508.mp4",
@@ -1145,14 +1145,13 @@
     ],
     "video_folder": "data/videos/dali",
     "videos": [
-      "hnvideoeditor_2025_08_10_220509470.mp4",
       "vid_20250809_160149.mp4",
       "vid_20250809_160214.mp4",
       "vid_20250809_160401.mp4",
+      "hnvideoeditor_2025_08_10_220509470.mp4",
       "mmexport1754831836444.mp4"
     ],
     "media_order": [
-      "video:hnvideoeditor_2025_08_10_220509470.mp4",
       "photo:img_20250808_155602.jpg",
       "photo:img_20250808_155606.jpg",
       "photo:img_20250808_155631.jpg",
@@ -1190,6 +1189,7 @@
       "photo:img_20250810_125432.jpg",
       "photo:img_20250810_130910.jpg",
       "photo:img_20250810_132246.jpg",
+      "video:hnvideoeditor_2025_08_10_220509470.mp4",
       "photo:img_20250810_142808.jpg",
       "photo:img_20250810_162436_edit_301090476254829.jpg",
       "photo:img_20250810_182447.jpg",
