@@ -1,4 +1,4 @@
-import { OWNER_NAME_MAX_LENGTH, normalizeOwnerName } from './profile-owner.js?v=2.1.77';
+import { OWNER_NAME_MAX_LENGTH, normalizeOwnerName } from './profile-owner.js?v=2.1.78';
 
 let ownerDialog;
 let ownerResolver;

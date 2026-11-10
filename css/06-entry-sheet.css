@@ -542,19 +542,20 @@
 .photo-viewer-loading {
     position: absolute;
     left: 50%;
-    bottom: 20px;
+    top: 50%;
     z-index: 2;
-    padding: 8px 16px;
-    border: 1px solid var(--hairline);
+    padding: 20px 32px;
+    border: 1px solid var(--stamp);
     border-radius: 3px;
     color: var(--ink);
     background: var(--paper-50);
-    box-shadow: 0 3px 8px #4a301b30;
-    font-size: 14px;
+    box-shadow: 0 8px 24px #21150c66, 0 0 0 100vmax #21150c66;
+    font-size: 18px;
+    font-weight: 700;
     line-height: 1.5;
     white-space: nowrap;
     pointer-events: none;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
 }
 
 .photo-viewer-loading[hidden] { display: none; }
