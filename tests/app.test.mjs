@@ -81,6 +81,21 @@ export function stubViewerNavigation(state) {
         restore() { ({ photoViewerState, renderPhotoViewer, resetPhotoTransform } = originals); }
     };
 }
+export function stubViewerImageReveal(image) {
+    const originals = { getViewerMedia, getPhotoViewerRoot, fitPhotoToStage, updatePhotoViewerBackground, showViewerMediaError };
+    const calls = [];
+    let current = image;
+    getViewerMedia = () => current;
+    getPhotoViewerRoot = () => ({ querySelector: () => ({ remove: () => calls.push('remove-previous') }) });
+    fitPhotoToStage = () => calls.push('fit');
+    updatePhotoViewerBackground = () => calls.push('background');
+    showViewerMediaError = () => calls.push('error');
+    image.closest = () => ({ style: { set visibility(value) { calls.push(['visibility', value]); } } });
+    return {
+        calls, reveal: () => revealPhotoViewerImage(image), change: value => { current = value; },
+        restore() { ({ getViewerMedia, getPhotoViewerRoot, fitPhotoToStage, updatePhotoViewerBackground, showViewerMediaError } = originals); }
+    };
+}
 export function stubReadingRoutes() {
     const originals = { renderLedger, renderCover, renderEntryRoute, renderEntryPhotosRoute,
         renderWithPageTurn, clearPageTurn, updateChapterTabs, restoreFocus,
@@ -850,6 +865,69 @@ test('单项图片和视频切换保留媒体及查看状态，不重新渲染�
             assert.deepEqual(state, original);
         } finally { viewer.restore(); }
     }
+});
+
+test('新图完成解码后在同一帧先适配、取色，再显示并移除旧图', async t => {
+    let finishDecode;
+    const frames = [];
+    const previousFrame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = callback => frames.push(callback);
+    t.after(() => { globalThis.requestAnimationFrame = previousFrame; });
+    const viewer = app.stubViewerImageReveal({ decode: () => new Promise(resolve => { finishDecode = resolve; }) });
+    t.after(() => viewer.restore());
+    const reveal = viewer.reveal();
+    assert.deepEqual(viewer.calls, []);
+    assert.equal(frames.length, 0);
+    finishDecode();
+    await reveal;
+    assert.deepEqual(viewer.calls, []);
+    frames.shift()();
+    assert.deepEqual(viewer.calls, ['fit', 'background', ['visibility', ''], 'remove-previous']);
+});
+
+test('切图或关闭后，解码等待和绘制等待中的旧任务不能改变当前画面', async t => {
+    const frames = [];
+    const previousFrame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = callback => frames.push(callback);
+    t.after(() => { globalThis.requestAnimationFrame = previousFrame; });
+    for (const duringDecode of [true, false]) {
+        let finishDecode;
+        const viewer = app.stubViewerImageReveal({ decode: () => new Promise(resolve => { finishDecode = resolve; }) });
+        try {
+            const reveal = viewer.reveal();
+            if (duringDecode) viewer.change(null);
+            finishDecode();
+            await reveal;
+            if (!duringDecode) {
+                viewer.change({});
+                frames.shift()();
+            }
+            assert.equal(frames.length, 0);
+            assert.deepEqual(viewer.calls, []);
+        } finally { viewer.restore(); }
+    }
+});
+
+test('不支持 decode 时仍先适配再显示，解码失败只提示当前图片错误', async t => {
+    const frames = [];
+    const previousFrame = globalThis.requestAnimationFrame;
+    globalThis.requestAnimationFrame = callback => frames.push(callback);
+    t.after(() => { globalThis.requestAnimationFrame = previousFrame; });
+    for (const current of [true, false]) {
+        const viewer = app.stubViewerImageReveal({ decode: async () => { throw new Error('图片解码失败'); } });
+        try {
+            if (!current) viewer.change(null);
+            await viewer.reveal();
+            assert.deepEqual(viewer.calls, current ? ['error'] : []);
+            assert.equal(frames.length, 0);
+        } finally { viewer.restore(); }
+    }
+    const viewer = app.stubViewerImageReveal({});
+    try {
+        await viewer.reveal();
+        frames.shift()();
+        assert.deepEqual(viewer.calls, ['fit', 'background', ['visibility', ''], 'remove-previous']);
+    } finally { viewer.restore(); }
 });
 
 test('多项媒体继续循环切换，归一化后仍是当前项时不重新加载', () => {

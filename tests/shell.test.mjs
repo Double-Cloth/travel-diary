@@ -1014,7 +1014,7 @@ test('图片与视频初始居中适配舞台且平移不会完全移出屏幕',
     assert.match(appJs, /function getPhotoViewerBounds\(\)/);
     assert.match(photoViewerTransformJs, /function getPhotoViewerAxisTranslateLimit/);
     assert.match(photoViewerTransformJs, /function getPhotoViewerRenderMetrics/);
-    assert.match(appJs, /image\.addEventListener\('load', \(\) => \{\s*if \(image === getPhotoViewerRoot\(\)\?\.querySelector\('\[data-photo-viewer-image\]'\)\) \{\s*fitPhotoToStage\(\);\s*updatePhotoViewerBackground\(image\);\s*\}\s*\}, \{ once: true \}\)/);
+    assert.match(appJs, /image\.addEventListener\('load', \(\) => \{ void revealPhotoViewerImage\(image\); \}, \{ once: true \}\)/);
     assert.match(photoViewerTransformJs, /const fitScale = Math\.min\(stageWidth \/ naturalWidth, stageHeight \/ naturalHeight\);/);
     assert.match(photoViewerTransformJs, /const containedScale = allowUpscale \? fitScale : Math\.min\(1, fitScale\);/);
     assert.match(appJs, /allowUpscale: media\.matches\('\[data-video-viewer-video\]'\)/);
