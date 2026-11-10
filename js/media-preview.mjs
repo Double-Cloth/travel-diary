@@ -22,14 +22,22 @@ let active = 0;
 let staticHost;
 const CACHE_NAME = 'travel-media-previews-canvas-v1';
 
+function releasePreviewUrl(blob) {
+    const entry = previewUrls.get(blob);
+    if (!entry) return;
+    entry.cached = false;
+    if (!entry.users) {
+        URL.revokeObjectURL(entry.url);
+        previewUrls.delete(blob);
+    }
+}
+
 // 保留压缩结果和 Blob URL，页面重绘与列表筛选无需再次请求或生成缩略图。
 function rememberPreview(key, blob) {
     const previous = previews.get(key);
     if (previous) {
         previewBytes -= previous.size;
-        const url = previewUrls.get(previous);
-        if (url) URL.revokeObjectURL(url);
-        previewUrls.delete(previous);
+        releasePreviewUrl(previous);
         previews.delete(key);
     }
     previews.set(key, blob);
@@ -38,9 +46,7 @@ function rememberPreview(key, blob) {
         const [oldest, value] = previews.entries().next().value;
         previews.delete(oldest);
         previewBytes -= value.size;
-        const url = previewUrls.get(value);
-        if (url) URL.revokeObjectURL(url);
-        previewUrls.delete(value);
+        releasePreviewUrl(value);
     }
     return blob;
 }
@@ -49,9 +55,7 @@ export function clearMediaPreviewCache() {
     cacheGeneration++;
     pending.clear();
     for (const blob of previews.values()) {
-        const url = previewUrls.get(blob);
-        if (url) URL.revokeObjectURL(url);
-        previewUrls.delete(blob);
+        releasePreviewUrl(blob);
     }
     previews.clear();
     previewBytes = 0;
@@ -113,7 +117,7 @@ function checkVisibleTasks() {
         if (!target.isConnected) {
             visibilityObserver?.unobserve(target);
             visibleTasks.delete(target);
-        } else if (!visibilityObserver && isMediaPreviewVisible(target)) start();
+        } else if (isMediaPreviewVisible(target)) start();
     }
     releaseVisibilityObservers();
 }
@@ -146,7 +150,8 @@ export function observeMediaVisibility(target, task) {
         addEventListener('resize', checkVisibleTasks);
         addEventListener('toggle', checkVisibleTasks, true);
     }
-    if (!visibilityObserver) scheduleVisibilityCheck();
+    // 取消后重新观察时目标可能一直处于相交状态，主动检查保证它能恢复加载。
+    scheduleVisibilityCheck();
     return stop;
 }
 
@@ -326,30 +331,42 @@ export async function saveMediaPreview(source, blob) {
 export function loadMediaPreview(image, source, kind, isNeeded = () => image.isConnected) {
     const previous = imageRequests.get(image);
     if (previous?.source === source && previous.kind === kind && previous.generation === cacheGeneration) return previous.promise;
+    previous?.release?.();
     const request = { source, kind, generation: cacheGeneration };
     imageRequests.set(image, request);
     request.promise = (async () => {
         try {
             const blob = await getMediaPreviewBlob(source, kind, isNeeded);
             if (!image.isConnected || imageRequests.get(image) !== request || request.generation !== cacheGeneration) return;
-            let url = previewUrls.get(blob);
-            if (!url) {
-                url = URL.createObjectURL(blob);
-                previewUrls.set(blob, url);
+            let entry = previewUrls.get(blob);
+            if (!entry) {
+                entry = { url: URL.createObjectURL(blob), users: 0, cached: previews.get(`${kind}:${source}`) === blob };
+                previewUrls.set(blob, entry);
             }
+            // 缓存淘汰不能撤销尚未完成解码的 URL，同一路径的并发图片各自持有引用。
+            entry.users++;
+            let released = false;
+            const release = () => {
+                if (released) return;
+                released = true;
+                image.removeEventListener?.('load', release);
+                image.removeEventListener?.('error', failed);
+                entry.users--;
+                if (!entry.cached && !entry.users) {
+                    URL.revokeObjectURL(entry.url);
+                    previewUrls.delete(blob);
+                }
+            };
+            const failed = () => {
+                release();
+                if (imageRequests.get(image) === request) imageRequests.delete(image);
+            };
+            request.release = release;
+            image.addEventListener?.('load', release, { once: true });
+            image.addEventListener?.('error', failed, { once: true });
             // 已经通过可见性检测，避免原生 lazy 再延迟 Blob 解码。
             image.loading = 'eager';
-            image.src = url;
-            if (previews.get(`${kind}:${source}`) !== blob) {
-                const release = () => {
-                    image.removeEventListener('load', release);
-                    image.removeEventListener('error', release);
-                    URL.revokeObjectURL(url);
-                    previewUrls.delete(blob);
-                };
-                image.addEventListener('load', release, { once: true });
-                image.addEventListener('error', release, { once: true });
-            }
+            image.src = entry.url;
         } catch (error) {
             const current = imageRequests.get(image) === request && request.generation === cacheGeneration;
             if (current) imageRequests.delete(image);
@@ -358,6 +375,12 @@ export function loadMediaPreview(image, source, kind, isNeeded = () => image.isC
         }
     })();
     return request.promise;
+}
+
+export function releaseMediaPreview(image) {
+    const request = imageRequests.get(image);
+    imageRequests.delete(image);
+    request?.release?.();
 }
 
 export function observeMediaPreview(image, source, kind, target = image) {

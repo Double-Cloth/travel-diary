@@ -190,3 +190,56 @@ test('异步创建的列表项在挂载前不会被误清理，挂载后正常�
     await new Promise(resolve => setTimeout(resolve, 5));
     assert.equal(loads, 1);
 });
+
+test('重新观察仍在视口内的媒体，即使没有新的相交回调也会启动', async t => {
+    const preview = await previewModule(t, {
+        innerWidth: 1200, innerHeight: 800,
+        IntersectionObserver: class { observe() {} unobserve() {} disconnect() {} }
+    });
+    const target = { isConnected: true, getBoundingClientRect: () => ({ width: 80, height: 60, top: 100, bottom: 160 }) };
+    let loads = 0;
+    preview.observeMediaVisibility(target, () => loads++);
+    await new Promise(resolve => setTimeout(resolve, 5));
+    assert.equal(loads, 1);
+    preview.observeMediaVisibility(target, () => loads++);
+    await new Promise(resolve => setTimeout(resolve, 5));
+    assert.equal(loads, 2);
+});
+
+test('缓存淘汰保留并发解码使用的 URL，最后一个图片加载或卸载后才释放', async t => {
+    const revoked = [];
+    const nativeURL = globalThis.URL;
+    const preview = await previewModule(t, {
+        URL: { createObjectURL: blob => nativeURL.createObjectURL(blob), revokeObjectURL: url => { revoked.push(url); nativeURL.revokeObjectURL(url); } },
+        fetch: async url => url === 'index.html' ? hostResponse() : imageResponse()
+    });
+    const first = Object.assign(new EventTarget(), { isConnected: true });
+    const second = Object.assign(new EventTarget(), { isConnected: true });
+    await preview.loadMediaPreview(first, 'data/photos/shared.jpg', 'image');
+    await preview.loadMediaPreview(second, 'data/photos/shared.jpg', 'image');
+    assert.equal(first.src, second.src);
+    for (let index = 0; index < 256; index++) await preview.getMediaPreviewBlob(`data/photos/${index}.jpg`, 'image');
+    assert.equal(revoked.includes(first.src), false, '淘汰不能提前撤销正在解码的地址');
+    preview.releaseMediaPreview(first);
+    assert.equal(revoked.includes(first.src), false, '另一个图片仍持有地址');
+    second.dispatchEvent(new Event('load'));
+    assert.equal(revoked.filter(url => url === first.src).length, 1);
+    preview.releaseMediaPreview(second);
+    assert.equal(revoked.filter(url => url === first.src).length, 1, '重复清理不会重复释放');
+});
+
+test('虚拟行卸载后旧请求不会回填，再挂载可以共享尚未完成的请求', async t => {
+    let finish;
+    const preview = await previewModule(t, { fetch: async url => url === 'index.html' ? hostResponse() : new Promise(resolve => { finish = resolve; }) });
+    const old = Object.assign(new EventTarget(), { isConnected: true });
+    const next = Object.assign(new EventTarget(), { isConnected: true });
+    const request = preview.loadMediaPreview(old, 'data/photos/recycled.jpg', 'image');
+    await tick();
+    preview.releaseMediaPreview(old);
+    const replacement = preview.loadMediaPreview(next, 'data/photos/recycled.jpg', 'image');
+    finish(imageResponse());
+    await Promise.all([request, replacement]);
+    assert.equal(old.src, undefined);
+    assert.match(next.src, /^blob:/);
+    next.dispatchEvent(new Event('load'));
+});

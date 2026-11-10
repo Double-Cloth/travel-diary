@@ -1,29 +1,30 @@
-import { orderMedia } from './media-order.mjs?v=2.1.74';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.74';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.74';
-import { createRecordEditor } from './record-editor.js?v=2.1.74';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.74';
-import { createDataTransfer } from './data-transfer.js?v=2.1.74';
-import { createMediaManager } from './media-manager.js?v=2.1.74';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.74';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.74';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.74';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.74';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.74';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.74';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.74';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.74';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.74';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.74';
-import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.74';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.74';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.74';
+import { orderMedia } from './media-order.mjs?v=2.1.75';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.75';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.75';
+import { createRecordEditor } from './record-editor.js?v=2.1.75';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.75';
+import { createDataTransfer } from './data-transfer.js?v=2.1.75';
+import { createMediaManager } from './media-manager.js?v=2.1.75';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.75';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.75';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.75';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.75';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.75';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.75';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.75';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.75';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.75';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.75';
+import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.75';
+import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.75';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.75';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.75';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.74';
+} from './location.mjs?v=2.1.75';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -32,7 +33,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.74';
+} from './photo-viewer-transform.mjs?v=2.1.75';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -100,6 +101,10 @@ let photoPreviewLateResizeTimer = null;
 let photoSleeveResizeObserver = null;
 const pageMediaLoads = new WeakMap();
 const pageMediaObservers = new WeakMap();
+const pendingPhotoSleeves = new Map();
+const photoSleeveMedia = new WeakMap();
+let photoSleeveSequence = 0;
+let disposePhotoSleeves = [];
 const observedPhotoSleeves = new Set();
 const PHOTO_ROTATION_ANIMATION_MS = 220;
 let photoViewerState = null;
@@ -2451,6 +2456,8 @@ function getPhotoViewerRoot() {
 }
 
 function getPhotoViewerItems(button) {
+    const media = photoSleeveMedia.get(button.closest('.photo-sleeve'));
+    if (media) return media;
     const buttons = Array.from(button.closest('.photo-sleeve, [data-media-viewer-group]')?.querySelectorAll('[data-action="open-media-viewer"]:not([hidden])') || [button]);
     return buttons.map(item => ({
         kind: item.dataset.mediaKind === 'video' ? 'video' : 'image',
@@ -3478,7 +3485,10 @@ function cloneTransitionContent(node, viewport) {
         if (replacements.has(source)) return replacements.get(source);
         if (!branches.has(source)) return source.cloneNode(true);
         const copy = source.cloneNode(false);
-        source.childNodes.forEach(child => copy.appendChild(clone(child)));
+        source.childNodes.forEach(child => {
+            const childCopy = clone(child);
+            if (childCopy) copy.appendChild(childCopy);
+        });
         return copy;
     };
     // 附件网格固定为原尺寸，只复制可见子项；屏外几百项不再进入每条纸带。
@@ -4954,6 +4964,9 @@ function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
     const rightScrollTop = options.preserveRightScroll ? refs.rightPage.scrollTop : 0;
     const keepContextPanelOpen = Boolean(options.keepContextPanelOpen && isMobileContextPanelOpen);
 
+    disposePhotoSleeves.forEach(dispose => dispose());
+    disposePhotoSleeves = [];
+    document.querySelectorAll('#leftPage .photo-sleeve img, #rightPage .photo-sleeve img').forEach(releasePhotoSleeveMedia);
     refs.leftPage.innerHTML = leftHtml;
     refs.rightPage.className = ['paper-page', 'paper-page-right', rightPageMode].filter(Boolean).join(' ');
     refs.rightPage.innerHTML = rightHtml;
@@ -4973,6 +4986,16 @@ function setPages(leftHtml, rightHtml, rightPageMode = '', options = {}) {
         refs.rightPage.scrollTop = rightScrollTop;
     }
     syncMobileContextPanelState();
+    document.querySelectorAll('#leftPage [data-virtual-photos], #rightPage [data-virtual-photos]').forEach(sleeve => {
+        const { media, grouped } = pendingPhotoSleeves.get(sleeve.dataset.virtualPhotos);
+        photoSleeveMedia.set(sleeve, media);
+        disposePhotoSleeves.push(mountVirtualPhotoSleeve(sleeve, {
+            media, grouped, renderItem: renderPhotoSleeveItem, renderHeading: renderPhotoSleeveHeading,
+            mountMedia: image => observePageMedia(image, image, () => loadPhotoSleeveMedia(image)),
+            releaseMedia: releasePhotoSleeveMedia
+        }));
+    });
+    pendingPhotoSleeves.clear();
     observePhotoSleeveMedia();
 
     if (isMobileContextPanelOpen) {
@@ -5240,21 +5263,17 @@ function renderPhotoSleeve(record, options = {}) {
     const shouldRenderViewAll = showViewAll && isPreview && media.length > previewRows;
     const viewAllHref = options.viewAllHref || serializeRoute({ name: 'photos', params: { id: record.id } });
 
+    if (!isPreview && media.length > 60) {
+        const key = String(++photoSleeveSequence);
+        pendingPhotoSleeves.set(key, { media, grouped: groupByRecord });
+        return `<div class="photo-sleeve photo-sleeve-virtual" data-virtual-photos="${key}" aria-label="图片与视频附件"></div>`;
+    }
+
     return `
         <div class="photo-sleeve${isPreview ? ' photo-sleeve-preview' : ''}"${isPreview ? ` data-preview-rows="${previewRows}"` : ''} aria-label="图片与视频附件">
             ${media.map((item, index) => `
-                ${groupByRecord && (index === 0 || item.recordId !== media[index - 1].recordId) ? `
-                    <div class="photo-sleeve-group-heading">
-                        <time datetime="${escapeHtml(item.recordDate)}">${escapeHtml(item.recordDate)}</time>
-                        <h2>${escapeHtml(item.recordTitle)}</h2>
-                    </div>
-                ` : ''}
-                <button class="photo-sleeve-button${item.kind === 'video' ? ' photo-sleeve-video' : ''}" type="button" data-action="open-media-viewer" data-media-index="${index}" data-media-kind="${item.kind}" data-media-name="${escapeHtml(item.name)}" data-media-src="${escapeHtml(item.src)}" data-media-alt="${escapeHtml(item.alt)}" aria-label="打开${item.kind === 'video' ? '视频' : '图片'} ${escapeHtml(item.name)}">
-                    <img data-src="${escapeHtml(getMediaPreviewUrl(item.src))}" alt="${escapeHtml(item.alt)}" loading="lazy" decoding="async" fetchpriority="low">
-                    ${item.kind === 'video' ? '<span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>' : ''}
-                    <span class="photo-sleeve-media-error" role="status" hidden><strong>预览不可用</strong><span>${escapeHtml(item.name)}</span><small>点击查看原文件</small></span>
-                    <span class="photo-sleeve-index">${escapeHtml(String(index + 1).padStart(2, '0'))}</span>
-                </button>
+                ${groupByRecord && (index === 0 || item.recordId !== media[index - 1].recordId) ? renderPhotoSleeveHeading(item, index) : ''}
+                ${renderPhotoSleeveItem(item, index)}
             `).join('')}
             ${shouldRenderViewAll ? `
                 <a class="paper-button photo-sleeve-action" href="${escapeHtml(viewAllHref)}" data-action="view-all-photos">
@@ -5262,6 +5281,23 @@ function renderPhotoSleeve(record, options = {}) {
                 </a>
             ` : ''}
         </div>
+    `;
+}
+
+function renderPhotoSleeveHeading(item, index) {
+    return `<div class="photo-sleeve-group-heading"${index === 0 ? ' data-first-group' : ''}>
+        <time datetime="${escapeHtml(item.recordDate)}">${escapeHtml(item.recordDate)}</time>
+        <h2>${escapeHtml(item.recordTitle)}</h2>
+    </div>`;
+}
+
+function renderPhotoSleeveItem(item, index) {
+    return `<button class="photo-sleeve-button${item.kind === 'video' ? ' photo-sleeve-video' : ''}" type="button" data-action="open-media-viewer" data-media-index="${index}" data-media-kind="${item.kind}" data-media-name="${escapeHtml(item.name)}" data-media-src="${escapeHtml(item.src)}" data-media-alt="${escapeHtml(item.alt)}" aria-label="打开${item.kind === 'video' ? '视频' : '图片'} ${escapeHtml(item.name)}">
+        <img data-src="${escapeHtml(getMediaPreviewUrl(item.src))}" alt="${escapeHtml(item.alt)}" loading="lazy" decoding="async" fetchpriority="low">
+        ${item.kind === 'video' ? '<span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>' : ''}
+        <span class="photo-sleeve-media-error" role="status" hidden><strong>预览不可用</strong><span>${escapeHtml(item.name)}</span><small>点击查看原文件</small></span>
+        <span class="photo-sleeve-index">${escapeHtml(String(index + 1).padStart(2, '0'))}</span>
+    </button>
     `;
 }
 
@@ -5276,14 +5312,28 @@ function getRecordMedia(record) {
         ...videos.map(item => ({ ...item, type: 'video' }))], record.media_order);
 }
 
-function loadPhotoSleeveMedia(image) {
+function loadPhotoSleeveMedia(image, retry = true) {
     if (!pageMediaLoads.has(image) && image.dataset?.src) {
         const button = image.closest('.photo-sleeve-button');
         if (!button) return;
         // 视口检测已由调用方完成，主动解码不再等待浏览器的第二轮懒加载。
         image.loading = 'eager';
         const ready = loadMediaPreview(image, button.dataset.mediaSrc, button.dataset.mediaKind, () => isMediaPreviewVisible(image))
-            .then(() => image.decode?.());
+            .then(() => image.decode?.())
+            .catch(async error => {
+                if (error.name === 'AbortError' || !retry || !image.isConnected) throw error;
+                await new Promise(resolve => setTimeout(resolve, 250));
+                button.classList.remove('is-media-error');
+                button.removeAttribute('title');
+                button.setAttribute('aria-label', `打开${button.dataset.mediaKind === 'video' ? '视频' : '图片'} ${button.dataset.mediaName}`);
+                button.querySelector('.photo-sleeve-media-error')?.setAttribute('hidden', '');
+                if (!image.isConnected || !isMediaPreviewVisible(button)) {
+                    throw new DOMException('预览已离开可见区域', 'AbortError');
+                }
+                releaseMediaPreview(image);
+                pageMediaLoads.delete(image);
+                return loadPhotoSleeveMedia(image, false);
+            });
         pageMediaLoads.set(image, ready);
     }
     return pageMediaLoads.get(image);
@@ -5292,6 +5342,12 @@ function loadPhotoSleeveMedia(image) {
 function observePhotoSleeveMedia() {
     const images = document.querySelectorAll('#leftPage .photo-sleeve img[data-src], #rightPage .photo-sleeve img[data-src]');
     images.forEach(image => observePageMedia(image, image, () => loadPhotoSleeveMedia(image)));
+}
+
+function releasePhotoSleeveMedia(image) {
+    pageMediaObservers.get(image)?.();
+    pageMediaLoads.delete(image);
+    releaseMediaPreview(image);
 }
 
 function syncPhotoSleevePreviewRows() {
