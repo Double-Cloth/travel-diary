@@ -539,6 +539,26 @@
 
 .photo-viewer-stage.is-media-error { cursor: default; }
 
+.photo-viewer-loading {
+    position: absolute;
+    left: 50%;
+    bottom: 20px;
+    z-index: 2;
+    padding: 8px 16px;
+    border: 1px solid var(--hairline);
+    border-radius: 3px;
+    color: var(--ink);
+    background: var(--paper-50);
+    box-shadow: 0 3px 8px #4a301b30;
+    font-size: 14px;
+    line-height: 1.5;
+    white-space: nowrap;
+    pointer-events: none;
+    transform: translateX(-50%);
+}
+
+.photo-viewer-loading[hidden] { display: none; }
+
 .photo-viewer-media-error {
     position: absolute;
     left: 50%;

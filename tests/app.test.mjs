@@ -82,7 +82,7 @@ export function stubViewerNavigation(state) {
     };
 }
 export function stubViewerImageReveal(image) {
-    const originals = { getViewerMedia, getPhotoViewerRoot, fitPhotoToStage, updatePhotoViewerBackground, showViewerMediaError };
+    const originals = { getViewerMedia, getPhotoViewerRoot, fitPhotoToStage, updatePhotoViewerBackground, showViewerMediaError, clearPhotoViewerLoading };
     const calls = [];
     let current = image;
     getViewerMedia = () => current;
@@ -90,10 +90,11 @@ export function stubViewerImageReveal(image) {
     fitPhotoToStage = () => calls.push('fit');
     updatePhotoViewerBackground = () => calls.push('background');
     showViewerMediaError = () => calls.push('error');
+    clearPhotoViewerLoading = () => calls.push('clear-loading');
     image.closest = () => ({ style: { set visibility(value) { calls.push(['visibility', value]); } } });
     return {
         calls, reveal: () => revealPhotoViewerImage(image), change: value => { current = value; },
-        restore() { ({ getViewerMedia, getPhotoViewerRoot, fitPhotoToStage, updatePhotoViewerBackground, showViewerMediaError } = originals); }
+        restore() { ({ getViewerMedia, getPhotoViewerRoot, fitPhotoToStage, updatePhotoViewerBackground, showViewerMediaError, clearPhotoViewerLoading } = originals); }
     };
 }
 export function stubReadingRoutes() {
@@ -882,7 +883,7 @@ test('新图完成解码后在同一帧先适配、取色，再显示并移除�
     await reveal;
     assert.deepEqual(viewer.calls, []);
     frames.shift()();
-    assert.deepEqual(viewer.calls, ['fit', 'background', ['visibility', ''], 'remove-previous']);
+    assert.deepEqual(viewer.calls, ['fit', 'background', ['visibility', ''], 'clear-loading', 'remove-previous']);
 });
 
 test('切图或关闭后，解码等待和绘制等待中的旧任务不能改变当前画面', async t => {
@@ -926,7 +927,7 @@ test('不支持 decode 时仍先适配再显示，解码失败只提示当前图
     try {
         await viewer.reveal();
         frames.shift()();
-        assert.deepEqual(viewer.calls, ['fit', 'background', ['visibility', ''], 'remove-previous']);
+        assert.deepEqual(viewer.calls, ['fit', 'background', ['visibility', ''], 'clear-loading', 'remove-previous']);
     } finally { viewer.restore(); }
 });
 
