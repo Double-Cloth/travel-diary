@@ -54,15 +54,14 @@ test('固定标识不随路径变化，兼容旧备份并拒绝重复标识及�
     assert.throws(() => matchRecord({ ...first, record_id: `r-${'a'.repeat(32)}` }, identified), /另一篇记录/);
 });
 
-test('导出准备内容指纹失败时释放数据锁，不阻塞后续写入', async t => {
+test('导出准备读取索引失败时释放数据锁，不阻塞后续写入', async t => {
     const root = await fixture(t);
-    const nativeFs = require('node:fs');
-    const original = nativeFs.createReadStream;
-    const mocked = t.mock.method(nativeFs, 'createReadStream', function (file, options) {
-        if (file.endsWith('shared.png')) throw new Error('模拟读取媒体失败');
+    const original = fs.readFile;
+    const mocked = t.mock.method(fs, 'readFile', function (file, options) {
+        if (file.endsWith('travel_data.json')) throw new Error('模拟读取索引失败');
         return original.call(this, file, options);
     });
-    try { await assert.rejects(exportDataArchive(root), /模拟读取媒体失败/); }
+    try { await assert.rejects(exportDataArchive(root), /模拟读取索引失败/); }
     finally { mocked.mock.restore(); }
     await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
     const exported = await exportDataArchive(root);
@@ -91,7 +90,7 @@ test('差异预览区分相同、新增、正文及媒体变化，输出字段�
     assert.deepEqual((await describeRecords([reversed], currentEntries)).fingerprints, (await describeRecords([records[0]], currentEntries)).fingerprints);
 });
 
-test('备份准备期间取消会停止媒体指纹读取并释放锁', async t => {
+test('备份传输期间取消会停止媒体读取，不生成快照且可释放锁重试', async t => {
     const root = await fixture(t);
     const large = await fs.open(path.join(root, 'data/photos/trip/shared.png'), 'w');
     try { await large.truncate(16 * 1024 * 1024); } finally { await large.close(); }
@@ -107,9 +106,60 @@ test('备份准备期间取消会停止媒体指纹读取并释放锁', async t 
         });
         return stream;
     });
-    try { await assert.rejects(exportDataArchive(root, null, { signal: controller.signal }), /下载连接已关闭/); }
-    finally { mocked.mock.restore(); }
+    const exported = await exportDataArchive(root, null, { signal: controller.signal });
+    try {
+        await assert.rejects(async () => { for await (const chunk of exported.stream) {} }, /下载连接已关闭/);
+        assert.deepEqual(exported.snapshot, {});
+    } finally { mocked.mock.restore(); await exported.release(); }
     assert.equal(chunks, 1, '取消后不继续扫描整段媒体');
+    await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
+    const retry = await exportDataArchive(root);
+    await retry.release();
+});
+
+test('完整及部分备份准备不扫描附件，单次读取生成相同指纹并保留缺失引用', async t => {
+    const root = await fixture(t);
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify([
+        { ...first, photos: [...first.photos, 'missing.png'] }, second
+    ]));
+    const expected = await inventory(root);
+    const nativeFs = require('node:fs');
+    const original = nativeFs.createReadStream;
+    let reads = 0;
+    t.mock.method(nativeFs, 'createReadStream', function (file, options) {
+        if (file.endsWith('shared.png')) reads += 1;
+        return original.call(this, file, options);
+    });
+    for (const selection of [null, [first.desc_md]]) {
+        reads = 0;
+        const exported = await exportDataArchive(root, selection);
+        try {
+            assert.equal(reads, 0, '准备阶段只读取文件元数据');
+            assert.deepEqual(exported.snapshot, {});
+            const parts = [];
+            for await (const chunk of exported.stream) parts.push(chunk);
+            assert.equal(reads, 1, '共享附件只读取一次');
+            const entries = await readZipSource(Buffer.concat(parts));
+            const records = selection ? [expected.records[0]] : expected.records;
+            assert.deepEqual(exported.snapshot, (await describeRecords(records, entries)).fingerprints);
+            for (const record of records) assert.equal(exported.snapshot[record.record_id], expected.fingerprints[record.record_id]);
+        } finally { await exported.release(); }
+    }
+});
+
+test('导出流读取媒体失败不生成快照，释放数据锁后可重新导出', async t => {
+    const root = await fixture(t);
+    const nativeFs = require('node:fs');
+    const original = nativeFs.createReadStream;
+    const mocked = t.mock.method(nativeFs, 'createReadStream', function (file, options) {
+        if (file.endsWith('shared.png')) throw new Error('模拟读取媒体失败');
+        return original.call(this, file, options);
+    });
+    const exported = await exportDataArchive(root);
+    try {
+        await assert.rejects(async () => { for await (const chunk of exported.stream) {} }, /模拟读取媒体失败/);
+        assert.deepEqual(exported.snapshot, {});
+    } finally { mocked.mock.restore(); await exported.release(); }
     await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
     const retry = await exportDataArchive(root);
     await retry.release();

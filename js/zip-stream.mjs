@@ -152,22 +152,26 @@ export function zipStreamSize(entries) {
 }
 
 // 数据描述符使导出只需顺序读取一次，pipeline 会将网络背压传到文件读取。
-export async function* createZipStream(entries) {
+export async function* createZipStream(entries, { signal, onEntry } = {}) {
     checkEntries(entries);
     const central = [];
     const seen = new Set();
     let offset = 0;
     for (const entry of entries) {
+        signal?.throwIfAborted();
         const name = safeName(entry.name, seen);
         const source = sourceOf(entry.data);
         const local = localHeader(name, source.size, 0, true);
         for (const part of local) yield part;
         let crc = 0xffffffff;
         for await (const bytes of source.chunks()) {
+            signal?.throwIfAborted();
             crc = updateCrc(crc, bytes);
             yield bytes;
         }
         crc = (crc ^ 0xffffffff) >>> 0;
+        await onEntry?.({ name: entry.name, size: source.size, checksum: crc });
+        signal?.throwIfAborted();
         const descriptor = header(24, 0x08074b50);
         descriptor.view.setUint32(4, crc, true);
         descriptor.view.setBigUint64(8, BigInt(source.size), true);

@@ -142,12 +142,26 @@ async function exportDataArchive(root, selectedPaths = null, { signal } = {}) {
         const size = zipStreamSize(entries);
         const { MAXIMUM_ARCHIVE_BYTES } = await import('./file-limits.mjs');
         if (size > MAXIMUM_ARCHIVE_BYTES) throw failure(413, '备份不能超过 100 GiB。');
-        const { describeRecords } = await import('./record-diff.mjs');
+        const { recordFingerprint } = await import('./record-diff.mjs');
         const { readBackupRecords } = await import('./record-backup.mjs');
-        const snapshot = await describeRecords(await readBackupRecords(entries), entries, { signal });
+        const records = await readBackupRecords(entries);
+        const signatures = {};
+        const snapshot = {};
+        let completed = 0;
+        // 复用打包时的 CRC，不在下载前再次扫描全部媒体；快照在流结束前补齐。
+        const stream = createZipStream(entries, { signal, onEntry: async ({ name, size, checksum }) => {
+            signatures[name] = `${size}:${checksum}`;
+            completed += 1;
+            if (completed === entries.length) {
+                for (const record of records) {
+                    signal?.throwIfAborted();
+                    snapshot[record.record_id] = await recordFingerprint(record, signatures);
+                }
+            }
+        } });
         signal?.throwIfAborted();
         handedOff = true;
-        return { stream: createZipStream(entries), size, release, snapshot: snapshot.fingerprints };
+        return { stream, size, release, snapshot };
     } finally {
         if (!handedOff) await release();
     }

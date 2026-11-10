@@ -186,7 +186,7 @@ test('取消下载停止网络和后续保存，放弃已写入的临时文件',
     globalThis.fetch = async (_, options) => {
         fetchedSignal = options.signal;
         return new Response(new ReadableStream({
-            pull(controller) { controller.enqueue(Uint8Array.of(1)); },
+            pull(controller) { controller.enqueue(new Uint8Array(1024 * 1024)); },
             cancel() { sourceCancelled = true; }
         }));
     };
@@ -252,6 +252,56 @@ test('下载按分块写盘，在文件关闭后才报告成功', async t => {
     assert.deepEqual(written, [1, 2, 3, 4]);
     assert.deepEqual(progress.calls.filter(call => call[0] === 'update').map(call => call.slice(1, 3)), [[0, 4], [2, 4], [4, 4]]);
     assert.equal(progress.calls.at(-1)[0], 'complete');
+});
+
+test('下载将网络小块合并为 1 MiB 写盘，超大网络块拆分且尾块字节完整', async t => {
+    installEnvironment(t);
+    const size = 1024 * 1024;
+    const bytes = Uint8Array.from({ length: size * 3 + 37 }, (_, index) => index % 251);
+    const written = [];
+    let writing = false;
+    window.showSaveFilePicker = async () => ({ createWritable: async () => ({
+        async write(chunk) {
+            assert.equal(writing, false, '写入串行执行，保留磁盘背压');
+            writing = true;
+            await new Promise(resolve => setImmediate(resolve));
+            written.push(Buffer.from(chunk));
+            writing = false;
+        },
+        async close() { assert.equal(writing, false); }
+    }) });
+    for (const chunkSize of [16 * 1024, size + 113]) {
+        written.length = 0;
+        let offset = 0;
+        globalThis.fetch = async () => new Response(new ReadableStream({ pull(controller) {
+            if (offset === bytes.length) { controller.close(); return; }
+            const end = Math.min(offset + chunkSize, bytes.length);
+            controller.enqueue(bytes.subarray(offset, end));
+            offset = end;
+        } }), { headers: { 'Content-Length': String(bytes.length) } });
+        await downloadWithProgress('/backup.zip', 'backup.zip', progressLog());
+        assert.deepEqual(written.map(chunk => chunk.length), [size, size, size, 37]);
+        assert.deepEqual(Buffer.concat(written), Buffer.from(bytes));
+    }
+});
+
+test('批量写盘及尾块写入失败都会放弃临时文件，不报告成功', async t => {
+    installEnvironment(t);
+    for (const size of [1024 * 1024, 37]) {
+        let aborted = false;
+        let closed = false;
+        const progress = progressLog();
+        window.showSaveFilePicker = async () => ({ createWritable: async () => ({
+            async write() { throw new Error('磁盘空间不足'); },
+            async close() { closed = true; },
+            async abort() { aborted = true; }
+        }) });
+        globalThis.fetch = async () => new Response(new Uint8Array(size));
+        await assert.rejects(downloadWithProgress('/backup.zip', 'backup.zip', progress), /磁盘空间不足/);
+        assert.equal(aborted, true);
+        assert.equal(closed, false);
+        assert.equal(progress.calls.some(call => call[0] === 'complete'), false);
+    }
 });
 
 test('选择下载保存位置时不显示进度，确认后开始传输，取消选择不显示浮层', async t => {

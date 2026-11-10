@@ -294,6 +294,9 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
         if (!response.body?.getReader) throw new Error('当前浏览器不支持流式下载，请使用较新的浏览器。');
         reader = response.body.getReader();
         const parts = [];
+        // 合并网络小块，减少 File System Access 跨进程写盘次数，并保持固定内存占用。
+        const writeBuffer = writable ? new Uint8Array(1024 * 1024) : null;
+        let buffered = 0;
         let loaded = 0;
         progress.update(0, total, '正在下载…');
         while (true) {
@@ -304,7 +307,19 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
             if (done) break;
             loaded += value.byteLength;
             if (expected !== null && loaded > expected) throw new Error('下载长度与服务器声明不符，文件未保存。请重新下载。');
-            if (writable) await writable.write(value);
+            if (writable) {
+                for (let offset = 0; offset < value.byteLength;) {
+                    signal.throwIfAborted();
+                    const length = Math.min(writeBuffer.byteLength - buffered, value.byteLength - offset);
+                    writeBuffer.set(value.subarray(offset, offset + length), buffered);
+                    buffered += length;
+                    offset += length;
+                    if (buffered === writeBuffer.byteLength) {
+                        await writable.write(writeBuffer);
+                        buffered = 0;
+                    }
+                }
+            }
             else {
                 if (loaded > MEMORY_DOWNLOAD_LIMIT) return await handOff();
                 parts.push(value);
@@ -312,6 +327,8 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
             progress.update(loaded, total, '正在下载…');
         }
         if (expected !== null && loaded !== expected) throw new Error('下载不完整，文件未保存。请检查网络后重新下载。');
+        signal.throwIfAborted();
+        if (buffered) await writable.write(writeBuffer.subarray(0, buffered));
         signal.throwIfAborted();
         monitor.dispose();
         progress.setCancelable?.(false, '文件正在保存，暂不能取消。');
