@@ -135,7 +135,9 @@ async function movieTime(source) {
                 const data = viewOf(bytes);
                 const seconds = bytes[0] === 1 && length >= 20 ? Number(data.getBigUint64(4))
                     : bytes[0] === 0 ? data.getUint32(4) : 0;
-                const time = seconds * 1000 + Date.UTC(1904, 0, 1);
+                let time = seconds * 1000 + Date.UTC(1904, 0, 1);
+                // 部分剪辑软件误用 Unix 纪元，落在 1970 年之前的容器时间按 Unix 秒数兼容。
+                if (time < 0) time = seconds * 1000;
                 if (seconds > 0 && Number.isFinite(new Date(time).getTime())) fallback ??= time;
             } else if (['moov', 'udta'].includes(kind)) await atoms(payload, offset + size, depth + 1);
             else if (kind === 'meta' && length >= 4) await atoms(payload + 4, offset + size, depth + 1);

@@ -36,13 +36,24 @@ test('MP4 / MOV 的 32 位和 64 位时间使用 1904 纪元，空创建时间�
     assert.equal(await readMediaTime(movie('1904-01-01T00:00:00Z')), null);
 });
 
+test('兼容误用 Unix 纪元的 32 位和 64 位视频创建时间，零值仍表示无时间', async () => {
+    for (const version of [0, 1]) {
+        const date = '2025-08-10T05:54:16Z';
+        assert.equal(await readMediaTime(movie(date, version, 0)), Date.parse(date));
+        assert.equal(await readMediaTime(movie('1970-01-01T00:00:00Z', version)), 0);
+        assert.equal(await readMediaTime(movie('1970-01-01T00:00:00Z', version, 0)), null);
+    }
+});
+
 test('QuickTime 拍摄日期优先于容器创建时间', async () => {
     const key = atom('mdta', Buffer.from('com.apple.quicktime.creationdate'));
     const keys = atom('keys', Buffer.from([0, 0, 0, 0, 0, 0, 0, 1]), key);
     const item = atom('\0\0\0\x01', atom('data', Buffer.alloc(8), Buffer.from('2020-01-02T03:04:05+08:00')));
     const meta = atom('meta', Buffer.alloc(4), keys, atom('ilst', item));
-    const bytes = Buffer.concat([movie(), atom('moov', meta)]);
-    assert.equal(await readMediaTime(bytes), Date.parse('2020-01-02T03:04:05+08:00'));
+    for (const epoch of [Date.UTC(1904, 0, 1), 0]) {
+        const bytes = Buffer.concat([movie('2026-11-03T12:30:00Z', 0, epoch), atom('moov', meta)]);
+        assert.equal(await readMediaTime(bytes), Date.parse('2020-01-02T03:04:05+08:00'));
+    }
 });
 
 test('大型视频跳过 mdat 内容，支持扩展长度和位于尾部的 moov', async () => {

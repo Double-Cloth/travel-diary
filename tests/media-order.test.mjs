@@ -28,3 +28,13 @@ test('统一顺序兼容旧记录、缺失引用、新附件、同名跨类型�
     assert.deepEqual(orderMedia(items, ['photo:missing.png', 'photo:same.png', 'video:same.png', 'photo:same.png']),
         [items[0], items[3], items[1], items[2]]);
 });
+
+test('误用 Unix 纪元的剪辑视频按真实时间插入照片和标准视频之间', async () => {
+    const items = [
+        { key: 'edited', name: 'edited.mp4', bytes: movie('2025-08-10T05:54:16Z', 0, 0) },
+        { key: 'late', name: 'late.mp4', bytes: movie('2025-08-10T06:00:00Z') },
+        { key: 'early', name: 'early.jpg', bytes: jpeg(exif('2025:08:10 13:00:00', { offset: '+08:00' })) }
+    ];
+    const times = new Map(await Promise.all(items.map(async item => [item.key, await readMediaTime(item.bytes)])));
+    assert.deepEqual(sortMediaByTime(items, times).map(item => item.key), ['early', 'edited', 'late']);
+});

@@ -31,10 +31,10 @@ export function atom(kind, ...contents) {
     return Buffer.concat([header, payload]);
 }
 
-export function movie(date = '2026-11-03T12:30:00Z', version = 0) {
+export function movie(date = '2026-11-03T12:30:00Z', version = 0, epoch = Date.UTC(1904, 0, 1)) {
     const header = Buffer.alloc(24);
     header[0] = version;
-    const seconds = (Date.parse(date) - Date.UTC(1904, 0, 1)) / 1000;
+    const seconds = (Date.parse(date) - epoch) / 1000;
     if (version === 1) header.writeBigUInt64BE(BigInt(seconds), 4);
     else header.writeUInt32BE(seconds, 4);
     return Buffer.concat([atom('ftyp', Buffer.from('isom0000')), atom('moov', atom('mvhd', header))]);
