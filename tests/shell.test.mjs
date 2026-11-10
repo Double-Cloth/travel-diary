@@ -368,7 +368,7 @@ test('切换记录先确认丢弃未保存内容，再验证密码，确认时�
 });
 
 test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () => {
-    assert.match(recordEditorJs, /import \{ confirmFeedback \} from '\.\/feedback-dialog\.js\?v=[^']+';/);
+    assert.match(recordEditorJs, /import \{ confirmFeedback, showFeedback \} from '\.\/feedback-dialog\.js\?v=[^']+';/);
     assert.match(recordEditorJs, /data-editor-clear>清空编辑器/);
     assert.match(recordEditorJs, /confirmFeedback\('当前编辑器中的表单、正文和待保存图片、视频都会被清除/);
     assert.match(recordEditorJs, /releasePhotoPreviews\(\);\s*uploads = \[\];/);

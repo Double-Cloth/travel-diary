@@ -1,7 +1,7 @@
-import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.68';
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.68';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.68';
-import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.68';
+import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.69';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.69';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.69';
+import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.69';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
     MAXIMUM_MEDIA_BATCH_BYTES,
@@ -10,18 +10,18 @@ import {
     mediaBytes,
     readUploads,
     sameMediaContent
-} from './photo-uploads.mjs?v=2.1.68';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.68';
-import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.68';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.68';
-import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.68';
-import { orderMedia } from './media-order.mjs?v=2.1.68';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.68';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.68';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.68';
+} from './photo-uploads.mjs?v=2.1.69';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.69';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.69';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.69';
+import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.69';
+import { orderMedia } from './media-order.mjs?v=2.1.69';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.69';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.69';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.69';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
-import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.68';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.68';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.69';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.69';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -1174,7 +1174,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 for (const existing of [...uploads, ...pending]) {
                     if (existing.kind === photo.kind && existing.size === photo.size
                         && await sameMediaContent(existing.data, photo.data, () => operationProgress.throwIfCancelled())) {
-                        throw new Error(`“${photo.name}”已选择过一样的文件，不能重复上传。`);
+                        throw Object.assign(new Error(`“${photo.name}”已选择过一样的文件，不能重复上传。`), { code: 'DUPLICATE_MEDIA' });
                     }
                 }
                 pending.push(photo);
@@ -1187,7 +1187,10 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             operationProgress.complete(`已读取 ${files.length} 项媒体，保存记录时将一并上传。`);
         } catch (error) {
             status(error.message);
-            operationProgress.fail(error);
+            if (error.code === 'DUPLICATE_MEDIA') {
+                operationProgress.remove();
+                showFeedback(error.message, { label: '媒体上传', title: '文件重复' });
+            } else operationProgress.fail(error);
         }
         finally { readingPhotos = false; saveButton.disabled = saved || !token; }
     }
@@ -1701,9 +1704,15 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
             catch { status(`记录已保存：${result.record.desc_md}。页面数据刷新失败，请手动刷新后查看。`); }
             operationProgress.complete('记录和媒体已保存。');
         } catch (error) {
-            if (error.code === 'DUPLICATE_MEDIA') status(`${error.message} 请移除重复文件后保存。`);
-            else status(operationProgress.signal.aborted ? '保存已取消，草稿仍在本页。' : `保存结果未确认：${error.message} 草稿仍在本页，可导出或重试。`);
-            operationProgress.fail(error);
+            if (error.code === 'DUPLICATE_MEDIA') {
+                const message = `${error.message} 请移除重复文件后保存。`;
+                status(message);
+                operationProgress.remove();
+                showFeedback(message, { label: '媒体上传', title: '文件重复' });
+            } else {
+                status(operationProgress.signal.aborted ? '保存已取消，草稿仍在本页。' : `保存结果未确认：${error.message} 草稿仍在本页，可导出或重试。`);
+                operationProgress.fail(error);
+            }
         } finally {
             busy = false;
             dialog.querySelectorAll('[name]').forEach(control => { control.disabled = saved; });

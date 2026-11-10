@@ -1,16 +1,16 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.68';
-import { createPasswordGate } from './record-password.js?v=2.1.68';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.68';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.68';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.69';
+import { createPasswordGate } from './record-password.js?v=2.1.69';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.69';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.69';
 import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.68';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.68';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.68';
-import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.68';
-import { recordIdentity } from './record-identity.mjs?v=2.1.68';
-import { createContentPreviewScope } from './content-preview.js?v=2.1.68';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.69';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.69';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.69';
+import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.69';
+import { recordIdentity } from './record-identity.mjs?v=2.1.69';
+import { createContentPreviewScope } from './content-preview.js?v=2.1.69';
 
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.68';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.69';
 
 export function createRecordTransfer(onImported, getRecords) {
     const dialog = document.createElement('dialog');
