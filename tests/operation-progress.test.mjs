@@ -30,7 +30,7 @@ function installEnvironment(t) {
 
 function progressLog() {
     const calls = [];
-    return Object.fromEntries(['phase', 'update', 'complete', 'fail', 'remove'].map(name => [name, (...args) => calls.push([name, ...args])]).concat([['calls', calls]]));
+    return Object.fromEntries(['phase', 'update', 'handOff', 'complete', 'fail', 'remove'].map(name => [name, (...args) => calls.push([name, ...args])]).concat([['calls', calls]]));
 }
 
 test('准备阶段不挂载进度，实际处理时选择当前模态窗口，移除后不会重新出现', t => {
@@ -95,6 +95,35 @@ test('模态窗口内的进度也进入悬浮顶层，完成提示仍可关闭',
     assert.equal(dismiss.hidden, false);
     dismiss.events.click();
     assert.equal(root.removed, true);
+});
+
+test('浏览器接管后保留不定进度与关闭提示，不伪报完成或允许网页取消下载', t => {
+    const nodes = installEnvironment(t);
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const progress = createOperationProgress('导出全部数据');
+    progress.update(50, 100, '正在下载…');
+    progress.handOff();
+    const root = nodes[0];
+    const bar = root.querySelector('[data-progress-bar]');
+    assert.equal(root.parentNode, document.body);
+    assert.equal(root.popoverShown, true);
+    assert.equal(root.attributes['data-state'], 'browser-managed');
+    assert.equal(bar.value, undefined);
+    assert.equal(bar.hidden, false);
+    assert.equal(root.querySelector('[data-progress-cancel]').hidden, true);
+    assert.equal(root.querySelector('[data-progress-dismiss]').hidden, false);
+    assert.match(root.querySelector('[data-progress-detail]').textContent, /浏览器下载列表/);
+    progress.cancel();
+    progress.complete('已完成');
+    progress.fail(new Error('已失败'));
+    progress.update(100, 100);
+    t.mock.timers.tick(10000);
+    assert.equal(root.removed, undefined);
+    assert.equal(progress.signal.aborted, false);
+    assert.equal(root.querySelector('[data-progress-message]').textContent, '已交给浏览器下载');
+    root.querySelector('[data-progress-dismiss]').events.click();
+    assert.equal(root.removed, true);
+    assert.equal(progress.signal.aborted, false);
 });
 
 test('取消中止操作并保留取消结果，服务器提交期间不能取消', t => {
@@ -270,7 +299,7 @@ test('大备份只预检响应头后交给浏览器，不创建网页文件流�
     assert.equal(nodes[0].href, '/backup?selection=test');
     assert.equal(nodes[0].download, 'backup.zip');
     assert.equal(nodes[0].clicked, true);
-    assert.deepEqual(progress.calls, [['remove']]);
+    assert.deepEqual(progress.calls, [['handOff']]);
 });
 
 test('小备份和未知或非法预检长度仍使用原有流式保存，确认位置后才请求正文', async t => {
@@ -427,6 +456,7 @@ test('不支持直接写盘时，超大下载交给浏览器且不缓存整份�
     assert.equal(cancelled, true);
     assert.equal(nodes[0].href, '/backup.zip');
     assert.equal(nodes[0].clicked, true);
+    assert.equal(progress.calls.at(-1)[0], 'handOff');
     assert.equal(progress.calls.some(call => call[0] === 'complete'), false);
 });
 

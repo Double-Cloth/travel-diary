@@ -161,7 +161,18 @@ export function createOperationProgress(title) {
             timer.unref?.();
         }
     }
-    return { phase, update, complete: text => finish(text), fail: error => finish(error?.message || String(error), true), remove,
+    function handOff() {
+        if (finished || controller.signal.aborted) return;
+        phase('已交给浏览器下载');
+        finished = true;
+        root.setAttribute('data-state', 'browser-managed');
+        detail.textContent = '请在浏览器下载列表查看进度、取消下载或确认保存结果。';
+        cancelButton.hidden = true;
+        dismiss.hidden = false;
+        dismiss.textContent = '关闭提示';
+        dismiss.setAttribute('aria-label', '关闭进度提示，下载仍由浏览器管理');
+    }
+    return { phase, update, handOff, complete: text => finish(text), fail: error => finish(error?.message || String(error), true), remove,
         signal: controller.signal, cancel, setCancelable, throwIfCancelled: () => controller.signal.throwIfAborted() };
 }
 
@@ -260,7 +271,7 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
             if (length !== null && /^\d+$/.test(length) && Number.isSafeInteger(Number(length))
                 && Number(length) >= options.nativeDownloadThreshold) {
                 startNativeDownload(url, name);
-                progress.remove();
+                progress.handOff();
                 return { handedOff: true };
             }
             monitor.dispose();
@@ -305,7 +316,7 @@ export async function downloadWithProgress(url, name, progress, options = {}) {
                 nativeHref = nativeUrl.href;
             }
             startNativeDownload(nativeHref, name);
-            progress.remove();
+            progress.handOff();
             // 浏览器接管后，网页无法观测其落盘进度，不能宣称已下载完成。
             return { handedOff: true, ...(backupReceipt ? { backupReceipt } : {}) };
         }

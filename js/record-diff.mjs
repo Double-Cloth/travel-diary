@@ -1,5 +1,5 @@
-import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.79';
-import { recordFilePaths } from './record-backup.mjs?v=2.1.79';
+import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.80';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.80';
 import { sourceOf, updateCrc, readSourceText } from './zip-stream.mjs';
 
 export function canonical(value) {

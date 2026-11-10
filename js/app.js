@@ -1,30 +1,30 @@
-import { orderMedia } from './media-order.mjs?v=2.1.79';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.79';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.79';
-import { createRecordEditor } from './record-editor.js?v=2.1.79';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.79';
-import { createDataTransfer } from './data-transfer.js?v=2.1.79';
-import { createMediaManager } from './media-manager.js?v=2.1.79';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.79';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.79';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.79';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.79';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.79';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.79';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.79';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.79';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.79';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.79';
-import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.79';
-import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.79';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.79';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.79';
+import { orderMedia } from './media-order.mjs?v=2.1.80';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.80';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.80';
+import { createRecordEditor } from './record-editor.js?v=2.1.80';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.80';
+import { createDataTransfer } from './data-transfer.js?v=2.1.80';
+import { createMediaManager } from './media-manager.js?v=2.1.80';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.80';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.80';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.80';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.80';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.80';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.80';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.80';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.80';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.80';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.80';
+import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.80';
+import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.80';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.80';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.80';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.79';
+} from './location.mjs?v=2.1.80';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -33,7 +33,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.79';
+} from './photo-viewer-transform.mjs?v=2.1.80';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -4205,14 +4205,10 @@ async function downloadViewerMedia() {
     try {
         if (media.blob) {
             saveBlobDownload(media.blob, name);
-            progress.remove();
+            progress.handOff();
             return;
         }
-        const result = await downloadWithProgress(media.src, name, progress);
-        if (result.handedOff) {
-            progress.remove();
-            void showFeedback('文件已交给浏览器下载，请在浏览器下载列表查看进度。');
-        }
+        await downloadWithProgress(media.src, name, progress);
     } catch { /* 下载组件保留具体错误与重试提示。 */ }
     finally { downloadingMedia = false; }
 }
