@@ -231,7 +231,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                                     <label>旅行日期 <span>必填</span><input name="date" type="date" value="${date}" required></label>
                                     <label>旅行标识 <span>选填</span><span class="record-editor-autocomplete"><input name="trip_id" maxlength="200" data-editor-autocomplete="trip_id" placeholder="填写地点后自动生成" aria-describedby="${editorId('TripHelp')}" aria-autocomplete="list" aria-controls="${editorId('TripOptions')}" aria-expanded="false" autocomplete="off"><span class="record-editor-autocomplete-chevron" aria-hidden="true"></span><span class="record-editor-autocomplete-menu" id="${editorId('TripOptions')}" role="listbox" data-editor-autocomplete-menu hidden></span></span></label>
                                 </div>
-                                <p class="record-editor-note" id="${editorId('TripHelp')}">按日期与地点自动生成；同一次旅行可沿用下拉列表中的已有标识。</p>
+                                <p class="record-editor-note" id="${editorId('TripHelp')}">按日期与地点自动生成，空白时按 Tab 填入灰色建议值。同一次旅行可沿用下拉列表中的已有标识。</p>
                                 <div class="record-editor-grid">
                                     <label>国家 / 地区 <span>必填</span><span class="custom-select"><select name="country_code" data-custom-select aria-label="国家 / 地区" required>
                                         ${countries.map(country => `<option value="${escapeHtml(country.code)}" ${country.code === 'CN' ? 'selected' : ''}>${escapeHtml(country.code)} · ${escapeHtml(country.name_zh)}</option>`).join('')}
@@ -866,6 +866,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         const country = countries.find(item => item.code === field('country_code').value);
         dialog.querySelector('[data-editor-area]').textContent = country?.admin_area_label || '一级行政区';
         field('country').placeholder = country?.name_zh ? `留空使用${country.name_zh}` : '留空使用目录名称';
+        field('country').dataset.editorSuggestion = country?.name_zh || '';
         if (fillName) field('country').value = country?.name_zh || '';
     }
 
@@ -877,9 +878,15 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         field('desc_md').placeholder = markdownPath;
         field('photo_folder').placeholder = photoPath;
         field('video_folder').placeholder = videoPath;
+        const hasLocality = Boolean(field('locality').value.trim());
+        field('desc_md').dataset.editorSuggestion = hasLocality ? suggestedMarkdownPath(getDraft().input) : '';
+        field('photo_folder').dataset.editorSuggestion = hasLocality ? photoPath : '';
+        field('video_folder').dataset.editorSuggestion = hasLocality ? videoPath : '';
         dialog.querySelector('[data-editor-photo-path-preview]').textContent = photoPath;
         dialog.querySelector('[data-editor-video-path-preview]').textContent = videoPath;
-        field('trip_id').placeholder = suggestedTripId(getDraft().input) || '填写地点后自动生成';
+        const tripId = suggestedTripId(getDraft().input);
+        field('trip_id').placeholder = tripId || '填写地点后自动生成';
+        field('trip_id').dataset.editorSuggestion = tripId;
     }
 
     function derivedLocationChanged() {
@@ -1259,6 +1266,17 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         }, 0);
     });
     dialog.addEventListener('keydown', event => {
+        const suggestionInput = event.target.closest('input[data-editor-suggestion]');
+        if (event.key === 'Tab' && !event.shiftKey && !event.ctrlKey && !event.altKey && !event.metaKey
+            && !event.isComposing && !event.defaultPrevented && !saved && !busy && !readingPhotos
+            && suggestionInput && !suggestionInput.disabled && !suggestionInput.readOnly
+            && !suggestionInput.value && suggestionInput.dataset.editorSuggestion) {
+            event.preventDefault();
+            suggestionInput.value = suggestionInput.dataset.editorSuggestion;
+            suggestionInput.dispatchEvent(new Event('input', { bubbles: true }));
+            closeOtherAutocompletes(null);
+            return;
+        }
         const input = event.target.closest('[data-editor-autocomplete]');
         if (!input) return;
         if (event.key === 'ArrowDown') {
