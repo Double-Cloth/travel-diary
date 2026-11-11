@@ -1,7 +1,7 @@
-import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.81';
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.81';
-import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.81';
-import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.81';
+import { createMediaPreview, saveMediaPreview } from './media-preview.mjs?v=2.1.82';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.82';
+import { createMediaFileLink, mediaOrderIcon } from './media-file-link.js?v=2.1.82';
+import { highlightMarkdown, splitMarkdown, previewHtml, previewToMarkdown } from './markdown-editor.js?v=2.1.82';
 import {
     MAXIMUM_IMAGE_FILE_BYTES,
     MAXIMUM_MEDIA_BATCH_BYTES,
@@ -10,18 +10,18 @@ import {
     mediaBytes,
     readUploads,
     sameMediaContent
-} from './photo-uploads.mjs?v=2.1.81';
-import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.81';
-import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.81';
-import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.81';
-import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.81';
-import { orderMedia } from './media-order.mjs?v=2.1.81';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.81';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.81';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.81';
+} from './photo-uploads.mjs?v=2.1.82';
+import { DRAFT_FORMAT, RECORD_FIELDS, buildMarkdown, defaultMarkdownPath, prepareRecord, readDraft, recordSlug } from './record-input.mjs?v=2.1.82';
+import { getRecordAutofill, getRecordOptions, suggestedMarkdownPath, suggestedTripId } from './record-suggestions.mjs?v=2.1.82';
+import { createDraftBlob, readRecordSource } from './draft-archive.mjs?v=2.1.82';
+import { fetchMediaTime, readMediaTime, sortMediaByTime } from './media-time.mjs?v=2.1.82';
+import { orderMedia } from './media-order.mjs?v=2.1.82';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.82';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.82';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.82';
 import { ByteSource, sourceOf } from './zip-stream.mjs';
-import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.81';
-import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.81';
+import { MAXIMUM_JSON_DRAFT_BYTES, MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.82';
+import { createOperationProgress, saveBlobDownload, uploadWithProgress } from './operation-progress.js?v=2.1.82';
 
 const POINTER_MOVE_TOLERANCE = 8;
 const PHOTO_PREVIEW_WIDTH = 320;
@@ -1209,7 +1209,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
 
     function download(content, name, type) {
         operationProgress?.throwIfCancelled();
-        saveBlobDownload(new Blob([content], { type }), name);
+        saveBlobDownload(new Blob([content], { type }), name, operationProgress);
     }
 
     function close() {
@@ -1511,8 +1511,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
                 const draft = getDraft();
                 const input = draft.input;
                 download(await createDraftBlob(draft, {}, archiveProgress), `travel-diary-draft-${input.date || 'undated'}-${recordSlug(input.locality || 'destination')}.zip`, 'application/zip');
-                status('草稿已开始下载，所选图片和视频已一并打包。');
-                operationProgress.complete('草稿已打包，已交给浏览器保存。');
+                status('草稿已打包并交给浏览器下载，请查看下载列表。');
             } catch (error) {
                 status(operationProgress.signal.aborted ? '草稿导出已取消。' : `草稿导出失败：${error.message}`);
                 operationProgress.fail(error);

@@ -1,16 +1,16 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.81';
-import { createPasswordGate } from './record-password.js?v=2.1.81';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.81';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.81';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.82';
+import { createPasswordGate } from './record-password.js?v=2.1.82';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.82';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.82';
 import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.81';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.81';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.81';
-import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.81';
-import { recordIdentity } from './record-identity.mjs?v=2.1.81';
-import { createContentPreviewScope } from './content-preview.js?v=2.1.81';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.82';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.82';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.82';
+import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.82';
+import { recordIdentity } from './record-identity.mjs?v=2.1.82';
+import { createContentPreviewScope } from './content-preview.js?v=2.1.82';
 
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.81';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.82';
 
 export function createRecordTransfer(onImported, getRecords) {
     const dialog = document.createElement('dialog');
@@ -161,8 +161,8 @@ export function createRecordTransfer(onImported, getRecords) {
             url.search = '';
             url.searchParams.set('selection', result.selection);
             const date = new Date().toLocaleDateString('sv-SE');
-            const download = await downloadWithProgress(url, `travel-diary-records-${date}.zip`, progress, { responseTimeout: 8 * 60 * 60 * 1000, nativeDownloadThreshold: 256 * 1024 * 1024 });
-            status(download.cancelled ? '已取消导出。' : download.handedOff ? '所选记录备份已交给浏览器下载，请查看下载列表。' : `已导出 ${paths.length} 条记录及其媒体文件。`);
+            const download = await downloadWithProgress(url, `travel-diary-records-${date}.zip`, progress, { responseTimeout: 8 * 60 * 60 * 1000 });
+            status(download.cancelled ? '已取消导出。' : '所选记录备份已交给浏览器下载，请查看下载列表。');
         } catch (failure) { progress.fail(failure); throw failure; }
     }
 

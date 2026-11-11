@@ -1,8 +1,9 @@
+import { resolveObjectURL } from 'node:buffer';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { loadBrowserModule } from './helpers/browser-modules.mjs';
 
-const { createOperationProgress, uploadWithProgress, downloadWithProgress } = await loadBrowserModule(new URL('../js/operation-progress.js', import.meta.url));
+const { createOperationProgress, uploadWithProgress, downloadWithProgress, saveBlobDownload } = await loadBrowserModule(new URL('../js/operation-progress.js', import.meta.url));
 
 function installEnvironment(t) {
     const previous = { document: globalThis.document, window: globalThis.window, fetch: globalThis.fetch, XMLHttpRequest: globalThis.XMLHttpRequest };
@@ -206,34 +207,6 @@ test('上传取消会真正中止 XHR，已取消的上传不发送，完成后�
     assert.equal(aborted, 1);
 });
 
-test('取消下载停止网络和后续保存，放弃已写入的临时文件', async t => {
-    const nodes = installEnvironment(t);
-    const progress = createOperationProgress('下载视频');
-    let fetchedSignal;
-    let discarded = false;
-    let closed = false;
-    let sourceCancelled = false;
-    window.showSaveFilePicker = async () => ({ createWritable: async () => ({
-        write: async () => progress.cancel(),
-        close: async () => { closed = true; },
-        abort: async () => { discarded = true; }
-    }) });
-    globalThis.fetch = async (_, options) => {
-        fetchedSignal = options.signal;
-        return new Response(new ReadableStream({
-            pull(controller) { controller.enqueue(new Uint8Array(1024 * 1024)); },
-            cancel() { sourceCancelled = true; }
-        }));
-    };
-    assert.deepEqual(await downloadWithProgress('/video', 'video.mp4', progress), { cancelled: true });
-    assert.equal(fetchedSignal.aborted, true);
-    assert.equal(sourceCancelled, true);
-    assert.equal(discarded, true);
-    assert.equal(closed, false);
-    assert.equal(nodes[0].attributes['data-state'], 'cancelled');
-    assert.equal(nodes.some(node => node.clicked), false);
-});
-
 test('上传使用原始文件和认证头，上传完成与服务器返回成功分开', async t => {
     installEnvironment(t);
     let xhr;
@@ -268,212 +241,6 @@ test('上传使用原始文件和认证头，上传完成与服务器返回成�
     const timeout = uploadWithProgress('/api/test', { body: file });
     xhr.ontimeout();
     await assert.rejects(timeout, /传输超时/);
-});
-
-test('下载按分块写盘，在文件关闭后才报告成功', async t => {
-    installEnvironment(t);
-    const progress = progressLog();
-    const written = [];
-    window.showSaveFilePicker = async () => ({ createWritable: async () => ({
-        write: async chunk => { written.push(...chunk); },
-        close: async () => { assert.equal(progress.calls.some(call => call[0] === 'complete'), false); }
-    }) });
-    globalThis.fetch = async () => new Response(new ReadableStream({ start(controller) {
-        controller.enqueue(Uint8Array.of(1, 2));
-        controller.enqueue(Uint8Array.of(3, 4));
-        controller.close();
-    } }), { headers: { 'Content-Length': '4' } });
-    await downloadWithProgress('/media.mp4', 'media.mp4', progress);
-    assert.deepEqual(written, [1, 2, 3, 4]);
-    assert.deepEqual(progress.calls.filter(call => call[0] === 'update').map(call => call.slice(1, 3)), [[0, 4], [2, 4], [4, 4]]);
-    assert.equal(progress.calls.at(-1)[0], 'complete');
-});
-
-test('大备份只预检响应头后交给浏览器，不创建网页文件流或读取正文', async t => {
-    const nodes = installEnvironment(t);
-    const progress = progressLog();
-    window.showSaveFilePicker = () => { throw new Error('大备份不应创建网页文件流'); };
-    globalThis.fetch = async (url, options) => {
-        assert.equal(url, '/backup?selection=test');
-        assert.equal(options.method, 'HEAD');
-        assert.equal(options.credentials, 'same-origin');
-        return { ok: true, headers: new Headers({ 'Content-Length': String(256 * 1024 ** 2) }),
-            body: { getReader() { throw new Error('预检不应读取备份正文'); } } };
-    };
-    assert.deepEqual(await downloadWithProgress('/backup?selection=test', 'backup.zip', progress,
-        { nativeDownloadThreshold: 256 * 1024 ** 2 }), { handedOff: true });
-    assert.equal(nodes[0].href, '/backup?selection=test');
-    assert.equal(nodes[0].download, 'backup.zip');
-    assert.equal(nodes[0].clicked, true);
-    assert.deepEqual(progress.calls, [['handOff']]);
-});
-
-test('小备份和未知或非法预检长度仍使用原有流式保存，确认位置后才请求正文', async t => {
-    installEnvironment(t);
-    for (const length of ['4', null, 'invalid', '9007199254740992']) {
-        let selected = false;
-        let closed = false;
-        let requests = 0;
-        const progress = createOperationProgress('导出备份');
-        window.showSaveFilePicker = async () => {
-            selected = true;
-            return { createWritable: async () => ({ write() {}, close() { closed = true; } }) };
-        };
-        globalThis.fetch = async (_, options) => {
-            requests++;
-            if (options.method === 'HEAD') {
-                assert.equal(selected, false);
-                return new Response(null, { headers: length === null ? {} : { 'Content-Length': length } });
-            }
-            assert.equal(selected, true);
-            return new Response('data', { headers: { 'Content-Length': '4' } });
-        };
-        assert.deepEqual(await downloadWithProgress('/backup', 'backup.zip', progress,
-            { nativeDownloadThreshold: 256 * 1024 ** 2 }), { handedOff: false });
-        assert.equal(closed, true);
-        assert.equal(requests, 2);
-    }
-});
-
-test('大备份预检失败或取消不触发下载、不报告完成，预检可超时', async t => {
-    const nodes = installEnvironment(t);
-    for (const status of [401, 403, 409, 500]) {
-        const progress = progressLog();
-        globalThis.fetch = async () => new Response(null, { status });
-        await assert.rejects(downloadWithProgress('/backup', 'backup.zip', progress,
-            { nativeDownloadThreshold: 1 }), new RegExp(`HTTP ${status}`));
-        assert.equal(progress.calls.at(-1)[0], 'fail');
-    }
-    const controller = new AbortController();
-    globalThis.fetch = async () => {
-        controller.abort(new DOMException('取消', 'AbortError'));
-        return new Response(null, { headers: { 'Content-Length': '100' } });
-    };
-    assert.deepEqual(await downloadWithProgress('/backup', 'backup.zip', progressLog(),
-        { nativeDownloadThreshold: 1, signal: controller.signal }), { cancelled: true });
-    t.mock.timers.enable({ apis: ['setTimeout'] });
-    globalThis.fetch = () => new Promise(() => {});
-    const pending = downloadWithProgress('/backup', 'backup.zip', progressLog(),
-        { nativeDownloadThreshold: 1, responseTimeout: 100 });
-    t.mock.timers.tick(101);
-    await assert.rejects(pending, /没有传输进展/);
-    assert.equal(nodes.some(node => node.clicked), false);
-});
-
-test('下载将网络小块合并为 1 MiB 写盘，超大网络块拆分且尾块字节完整', async t => {
-    installEnvironment(t);
-    const size = 1024 * 1024;
-    const bytes = Uint8Array.from({ length: size * 3 + 37 }, (_, index) => index % 251);
-    const written = [];
-    let writing = false;
-    window.showSaveFilePicker = async () => ({ createWritable: async () => ({
-        async write(chunk) {
-            assert.equal(writing, false, '写入串行执行，保留磁盘背压');
-            writing = true;
-            await new Promise(resolve => setImmediate(resolve));
-            written.push(Buffer.from(chunk));
-            writing = false;
-        },
-        async close() { assert.equal(writing, false); }
-    }) });
-    for (const chunkSize of [16 * 1024, size + 113]) {
-        written.length = 0;
-        let offset = 0;
-        globalThis.fetch = async () => new Response(new ReadableStream({ pull(controller) {
-            if (offset === bytes.length) { controller.close(); return; }
-            const end = Math.min(offset + chunkSize, bytes.length);
-            controller.enqueue(bytes.subarray(offset, end));
-            offset = end;
-        } }), { headers: { 'Content-Length': String(bytes.length) } });
-        await downloadWithProgress('/backup.zip', 'backup.zip', progressLog());
-        assert.deepEqual(written.map(chunk => chunk.length), [size, size, size, 37]);
-        assert.deepEqual(Buffer.concat(written), Buffer.from(bytes));
-    }
-});
-
-test('批量写盘及尾块写入失败都会放弃临时文件，不报告成功', async t => {
-    installEnvironment(t);
-    for (const size of [1024 * 1024, 37]) {
-        let aborted = false;
-        let closed = false;
-        const progress = progressLog();
-        window.showSaveFilePicker = async () => ({ createWritable: async () => ({
-            async write() { throw new Error('磁盘空间不足'); },
-            async close() { closed = true; },
-            async abort() { aborted = true; }
-        }) });
-        globalThis.fetch = async () => new Response(new Uint8Array(size));
-        await assert.rejects(downloadWithProgress('/backup.zip', 'backup.zip', progress), /磁盘空间不足/);
-        assert.equal(aborted, true);
-        assert.equal(closed, false);
-        assert.equal(progress.calls.some(call => call[0] === 'complete'), false);
-    }
-});
-
-test('选择下载保存位置时不显示进度，确认后开始传输，取消选择不显示浮层', async t => {
-    const nodes = installEnvironment(t);
-    const progress = createOperationProgress('下载备份');
-    let choose;
-    let fetched = false;
-    window.showSaveFilePicker = () => new Promise(resolve => { choose = resolve; });
-    globalThis.fetch = async () => { fetched = true; return new Response('backup'); };
-    const pending = downloadWithProgress('/backup.zip', 'backup.zip', progress);
-    assert.equal(nodes[0].parentNode, undefined);
-    assert.equal(fetched, false);
-    choose({ createWritable: async () => ({ write() {}, close() {} }) });
-    await pending;
-    assert.equal(fetched, true);
-    assert.equal(nodes[0].popoverShown, true);
-    assert.equal(nodes[0].attributes['data-state'], 'complete');
-    fetched = false;
-    const cancelled = createOperationProgress('取消下载');
-    window.showSaveFilePicker = async () => { throw new DOMException('取消', 'AbortError'); };
-    assert.deepEqual(await downloadWithProgress('/backup.zip', 'backup.zip', cancelled), { cancelled: true });
-    assert.equal(fetched, false);
-    assert.equal(nodes[1].parentNode, undefined);
-    assert.equal(nodes[1].popoverShown, undefined);
-});
-
-test('下载中断会放弃未完成文件，取消保存对话框不发起请求', async t => {
-    installEnvironment(t);
-    let aborted = false;
-    let fetched = false;
-    const progress = progressLog();
-    window.showSaveFilePicker = async () => ({ createWritable: async () => ({ abort: async () => { aborted = true; } }) });
-    globalThis.fetch = async () => { fetched = true; return new Response(new ReadableStream({ start(controller) { controller.error(new Error('连接中断')); } })); };
-    await assert.rejects(downloadWithProgress('/media.mp4', 'media.mp4', progress), /连接中断/);
-    assert.equal(aborted, true);
-    assert.equal(progress.calls.some(call => call[0] === 'complete'), false);
-    assert.equal(progress.calls.at(-1)[0], 'fail');
-    fetched = false;
-    window.showSaveFilePicker = async () => { throw new DOMException('取消', 'AbortError'); };
-    assert.deepEqual(await downloadWithProgress('/media.mp4', 'media.mp4', progress), { cancelled: true });
-    assert.equal(fetched, false);
-});
-
-test('不支持直接写盘时，超大下载交给浏览器且不缓存整份文件或伪报成功', async t => {
-    const nodes = installEnvironment(t);
-    let cancelled = false;
-    const progress = progressLog();
-    globalThis.fetch = async () => ({ ok: true, headers: new Headers({ 'Content-Length': String(40 * 1024 ** 3) }),
-        body: { cancel: async () => { cancelled = true; }, getReader: () => { throw new Error('不应读取巨大文件'); } }
-    });
-    assert.deepEqual(await downloadWithProgress('/backup.zip', 'backup.zip', progress), { handedOff: true });
-    assert.equal(cancelled, true);
-    assert.equal(nodes[0].href, '/backup.zip');
-    assert.equal(nodes[0].clicked, true);
-    assert.equal(progress.calls.at(-1)[0], 'handOff');
-    assert.equal(progress.calls.some(call => call[0] === 'complete'), false);
-});
-
-test('未知长度下载在流结束前不虚构百分比，HTTP 错误保留服务端说明', async t => {
-    installEnvironment(t);
-    const progress = progressLog();
-    globalThis.fetch = async () => new Response('image');
-    await downloadWithProgress('/image.jpg', 'image.jpg', progress);
-    assert.equal(progress.calls.filter(call => call[0] === 'update').every(call => call[2] === 0), true);
-    globalThis.fetch = async () => new Response('{"error":"会话已失效"}', { status: 401 });
-    await assert.rejects(downloadWithProgress('/backup.zip', 'backup.zip', progressLog()), /会话已失效/);
 });
 
 function installNetworkEvents() {
@@ -552,40 +319,6 @@ test('已离线不发送上传，总时限仍限制服务器响应等待', async
     await assert.rejects(pending, /传输超时.*另开页面核对/);
 });
 
-test('下载停滞或突然离线会停止网络、丢弃临时文件并解除监听', async t => {
-    installEnvironment(t);
-    const listeners = installNetworkEvents();
-    t.mock.timers.enable({ apis: ['setTimeout'] });
-    for (const offline of [false, true]) {
-        let aborted = false;
-        let closed = false;
-        let sourceCancelled = false;
-        let signal;
-        const progress = progressLog();
-        window.showSaveFilePicker = async () => ({ createWritable: async () => ({
-            write() {}, close() { closed = true; }, abort() { aborted = true; }
-        }) });
-        globalThis.fetch = async (_, options) => {
-            signal = options.signal;
-            return new Response(new ReadableStream({
-                start(controller) { controller.enqueue(Uint8Array.of(1)); },
-                cancel() { sourceCancelled = true; }
-            }), { headers: { 'Content-Length': '100' } });
-        };
-        const pending = downloadWithProgress('/video', 'video.mp4', progress, { idleTimeout: 100 });
-        await new Promise(resolve => setImmediate(resolve));
-        if (offline) listeners.get('offline')();
-        else t.mock.timers.tick(101);
-        await assert.rejects(pending, offline ? /下载连接中断/ : /没有传输进展/);
-        assert.equal(signal.aborted, true);
-        assert.equal(sourceCancelled, true);
-        assert.equal(aborted, true);
-        assert.equal(closed, false);
-        assert.equal(listeners.size, 0);
-        assert.equal(progress.calls.some(call => call[0] === 'complete'), false);
-    }
-});
-
 test('下载等待响应头也检测停滞，取消与超时分别保留结果', async t => {
     installEnvironment(t);
     const listeners = installNetworkEvents();
@@ -600,45 +333,6 @@ test('下载等待响应头也检测停滞，取消与超时分别保留结果',
     controller.abort(new DOMException('操作已取消。', 'AbortError'));
     assert.deepEqual(await cancelled, { cancelled: true });
     assert.equal(listeners.size, 0);
-});
-
-test('长度不足或超出声明的下载不提交文件，压缩响应按解码后的流处理', async t => {
-    const nodes = installEnvironment(t);
-    let aborted = 0;
-    let closed = 0;
-    window.showSaveFilePicker = async () => ({ createWritable: async () => ({
-        write() {}, close() { closed += 1; }, abort() { aborted += 1; }
-    }) });
-    for (const length of ['2', '10', '0']) {
-        globalThis.fetch = async () => new Response('video', { headers: { 'Content-Length': length } });
-        const progress = progressLog();
-        await assert.rejects(downloadWithProgress('/video', 'video.mp4', progress), /下载不完整|下载长度/);
-        assert.equal(progress.calls.some(call => call[0] === 'complete'), false);
-    }
-    assert.equal(aborted, 3);
-    assert.equal(closed, 0);
-    assert.equal(nodes.some(node => node.clicked), false);
-    globalThis.fetch = async () => new Response('video', { headers: { 'Content-Length': '2', 'Content-Encoding': 'gzip' } });
-    await downloadWithProgress('/video', 'video.mp4', progressLog());
-    assert.equal(closed, 1);
-});
-
-test('备份允许较长的服务端准备，收到响应后仍检测传输停滞', async t => {
-    installEnvironment(t);
-    t.mock.timers.enable({ apis: ['setTimeout'] });
-    let respond;
-    let signal;
-    globalThis.fetch = (_, options) => {
-        signal = options.signal;
-        return new Promise(resolve => { respond = resolve; });
-    };
-    const pending = downloadWithProgress('/backup', 'backup.zip', progressLog(), { idleTimeout: 100, responseTimeout: 1000 });
-    t.mock.timers.tick(500);
-    assert.equal(signal.aborted, false, '准备阶段不受传输停滞时限限制');
-    respond(new Response(new ReadableStream({ start(controller) { controller.enqueue(Uint8Array.of(1)); } })));
-    await new Promise(resolve => setImmediate(resolve));
-    t.mock.timers.tick(101);
-    await assert.rejects(pending, /没有传输进展/);
 });
 
 test('外网离线不阻止回环地址的本机上传，远程地址仍拒绝发送', async t => {
@@ -660,4 +354,94 @@ test('外网离线不阻止回环地址的本机上传，远程地址仍拒绝�
     }
     await assert.rejects(uploadWithProgress('https://diary.example/backup', {}), /网络连接中断/);
     assert.equal(sent, 3);
+});
+
+test('所有 URL 下载无论大小均只预检 HEAD 后交给浏览器，保留文件名和查询参数', async t => {
+    const nodes = installEnvironment(t);
+    window.showSaveFilePicker = () => { throw new Error('下载不应创建网页文件流'); };
+    for (const length of ['4', String(256 * 1024 ** 2), null, 'invalid']) {
+        const progress = progressLog();
+        let requests = 0;
+        globalThis.fetch = async (url, options) => {
+            requests++;
+            assert.equal(url, '/backup?selection=test');
+            assert.equal(options.method, 'HEAD');
+            assert.equal(options.credentials, 'same-origin');
+            return { ok: true, headers: new Headers(length === null ? {} : { 'Content-Length': length }),
+                body: { getReader() { throw new Error('预检不应读取正文'); } } };
+        };
+        assert.deepEqual(await downloadWithProgress('/backup?selection=test', 'backup.zip', progress), { handedOff: true });
+        assert.equal(requests, 1);
+        assert.equal(nodes.at(-1).href, '/backup?selection=test');
+        assert.equal(nodes.at(-1).download, 'backup.zip');
+        assert.equal(nodes.at(-1).clicked, true);
+        assert.equal(nodes.at(-1).removed, true);
+        assert.deepEqual(progress.calls, [['handOff']]);
+    }
+});
+
+test('预检失败、断网或取消不触发浏览器下载，也不报告完成', async t => {
+    const nodes = installEnvironment(t);
+    const listeners = installNetworkEvents();
+    for (const status of [401, 403, 404, 409, 500]) {
+        const progress = progressLog();
+        globalThis.fetch = async () => new Response(null, { status });
+        await assert.rejects(downloadWithProgress('/backup', 'backup.zip', progress), new RegExp(`HTTP ${status}`));
+        assert.equal(progress.calls.at(-1)[0], 'fail');
+    }
+    globalThis.fetch = () => new Promise(() => {});
+    const offline = downloadWithProgress('/backup', 'backup.zip', progressLog());
+    listeners.get('offline')();
+    await assert.rejects(offline, /下载准备中断/);
+    const controller = new AbortController();
+    controller.abort();
+    assert.deepEqual(await downloadWithProgress('/backup', 'backup.zip', progressLog(), { signal: controller.signal }), { cancelled: true });
+    assert.equal(nodes.some(node => node.clicked), false);
+    assert.equal(listeners.size, 0);
+});
+
+test('备份预检允许较长准备，浏览器接管后释放网页监听及计时器', async t => {
+    const nodes = installEnvironment(t);
+    const listeners = installNetworkEvents();
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    let respond;
+    let signal;
+    globalThis.fetch = (_, options) => {
+        signal = options.signal;
+        return new Promise(resolve => { respond = resolve; });
+    };
+    const progress = progressLog();
+    const pending = downloadWithProgress('/backup', 'backup.zip', progress, { idleTimeout: 100, responseTimeout: 1000 });
+    t.mock.timers.tick(500);
+    assert.equal(signal.aborted, false);
+    respond(new Response(null));
+    assert.deepEqual(await pending, { handedOff: true });
+    assert.equal(listeners.size, 0);
+    t.mock.timers.tick(8 * 60 * 60 * 1000);
+    assert.equal(signal.aborted, false);
+    assert.equal(nodes[0].clicked, true);
+    assert.deepEqual(progress.calls, [['handOff']]);
+});
+
+test('本地 Blob 下载也统一显示浏览器接管提示，延迟释放 URL 且取消不下载', t => {
+    const nodes = installEnvironment(t);
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const blob = new Blob(['草稿与原媒体']);
+    const progress = createOperationProgress('导出草稿');
+    saveBlobDownload(blob, 'draft.zip', progress);
+    const url = nodes[1].href;
+    assert.equal(nodes[1].download, 'draft.zip');
+    assert.equal(nodes[1].clicked, true);
+    assert.equal(nodes[0].attributes['data-state'], 'browser-managed');
+    assert.ok(resolveObjectURL(url));
+    t.mock.timers.tick(6000);
+    assert.equal(nodes[0].removed, true);
+    assert.ok(resolveObjectURL(url));
+    t.mock.timers.tick(54000);
+    assert.equal(resolveObjectURL(url), undefined);
+    const cancelled = createOperationProgress('取消导出');
+    cancelled.cancel();
+    const count = nodes.length;
+    assert.throws(() => saveBlobDownload(blob, 'cancelled.zip', cancelled), /取消/);
+    assert.equal(nodes.length, count);
 });

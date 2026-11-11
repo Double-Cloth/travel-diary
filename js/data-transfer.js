@@ -1,10 +1,10 @@
-import { createPasswordGate } from './record-password.js?v=2.1.81';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.81';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.81';
+import { createPasswordGate } from './record-password.js?v=2.1.82';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.82';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.82';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=2.1.81';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.81';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.81';
+import { createRecordTransfer } from './record-transfer.js?v=2.1.82';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.82';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.82';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -92,10 +92,8 @@ export function createDataTransfer(onImported, getRecords = () => []) {
         const progress = createOperationProgress('导出全部数据');
         try {
             const capability = authenticatedCapability || await detectWriterCapability();
-            const result = await downloadWithProgress(await getExportHref(capability), downloadName, progress, { responseTimeout: 8 * 60 * 60 * 1000, nativeDownloadThreshold: 256 * 1024 * 1024 });
-            setStatus(result.cancelled ? '已取消导出。' : result.handedOff
-                ? '备份已交给浏览器下载，请在浏览器下载列表查看进度。'
-                : '全部数据备份已传输完成，请查看保存的文件。');
+            const result = await downloadWithProgress(await getExportHref(capability), downloadName, progress, { responseTimeout: 8 * 60 * 60 * 1000 });
+            setStatus(result.cancelled ? '已取消导出。' : '备份已交给浏览器下载，请在浏览器下载列表查看进度。');
         } catch (error) {
             progress.fail(error);
             setStatus(`导出失败：${error.message}`);

@@ -1,4 +1,3 @@
-const MEMORY_DOWNLOAD_LIMIT = 256 * 1024 * 1024;
 const TRANSFER_TIMEOUT = 8 * 60 * 60 * 1000;
 const TRANSFER_IDLE_TIMEOUT = 2 * 60 * 1000;
 
@@ -236,9 +235,17 @@ export function uploadWithProgress(url, options, onProgress, onUploaded = () => 
     });
 }
 
-export function saveBlobDownload(blob, name) {
+export function saveBlobDownload(blob, name, progress) {
+    progress?.throwIfCancelled();
     const url = URL.createObjectURL(blob);
-    startNativeDownload(url, name);
+    try {
+        startNativeDownload(url, name);
+        progress?.handOff();
+    } catch (error) {
+        URL.revokeObjectURL(url);
+        progress?.fail(error);
+        throw error;
+    }
     const timer = setTimeout(() => URL.revokeObjectURL(url), 60000);
     timer.unref?.();
 }
@@ -254,133 +261,28 @@ function startNativeDownload(url, name) {
 }
 
 export async function downloadWithProgress(url, name, progress, options = {}) {
-    let writable;
-    let reader;
-    let response;
     let monitor;
     const cancellation = AbortSignal.any([progress.signal, options.signal].filter(Boolean));
     try {
         cancellation.throwIfAborted();
-        if (options.nativeDownloadThreshold > 0) {
-            // 仅预检大小和权限，不读取备份正文；大备份由浏览器管理，避免网页文件流关闭时的整文件提交。
-            monitor = monitorTransfer({ ...options, signal: cancellation }, '下载准备中断，请检查网络后重新下载。', url);
-            monitor.signal.throwIfAborted();
-            monitor.touch(options.responseTimeout);
-            response = await monitor.wait(fetch(url, { ...options, credentials: 'same-origin', method: 'HEAD', signal: monitor.signal }));
-            monitor.signal.throwIfAborted();
-            if (!response.ok) throw new Error(`下载准备失败（HTTP ${response.status}），请确认登录状态后重试。`);
-            const length = response.headers.get('Content-Length');
-            if (length !== null && /^\d+$/.test(length) && Number.isSafeInteger(Number(length))
-                && Number(length) >= options.nativeDownloadThreshold) {
-                startNativeDownload(url, name);
-                progress.handOff();
-                return { handedOff: true };
-            }
-            monitor.dispose();
-            monitor = undefined;
-            response = undefined;
-        }
-        // 支持时直接流式写盘，大视频与备份不会在内存中累积。
-        if (typeof window.showSaveFilePicker === 'function') {
-            try {
-                const handle = await window.showSaveFilePicker({ suggestedName: name });
-                cancellation.throwIfAborted();
-                writable = await handle.createWritable();
-            } catch (error) {
-                if (error.name === 'AbortError' && !cancellation.aborted) { progress.remove(); return { cancelled: true }; }
-                if (error.name !== 'SecurityError') throw error;
-            }
-        }
-        monitor = monitorTransfer({ ...options, signal: cancellation }, '下载连接中断，请检查网络后重新下载；未完成的文件不会保存。', url);
-        const { signal } = monitor;
-        progress.phase('正在连接并准备下载…');
-        signal.throwIfAborted();
+        // 仅预检权限和文件是否可用，正文统一由浏览器下载管理器接收及保存。
+        monitor = monitorTransfer({ ...options, signal: cancellation }, '下载准备中断，请检查网络后重新下载。', url);
+        monitor.signal.throwIfAborted();
         monitor.touch(options.responseTimeout);
-        response = await monitor.wait(fetch(url, { credentials: 'same-origin', ...options, signal }));
-        if (!response.ok) {
-            let result;
-            try { result = await monitor.wait(response.json()); } catch { signal.throwIfAborted(); /* 非 JSON 响应使用通用提示。 */ }
-            throw new Error(result?.error || `下载失败（HTTP ${response.status}）。`);
-        }
-        const length = response.headers.get('Content-Encoding') ? null : response.headers.get('Content-Length');
-        const expected = length !== null && /^\d+$/.test(length) && Number.isSafeInteger(Number(length)) ? Number(length) : null;
-        const total = expected ?? 0;
-        const backupReceipt = response.headers.get('X-Travel-Backup-Receipt');
-        async function handOff() {
-            monitor.pause();
-            if (reader) await reader.cancel();
-            else await response.body?.cancel();
-            signal.throwIfAborted();
-            let nativeHref = url;
-            if (backupReceipt) {
-                const nativeUrl = new URL(url, window.location.href);
-                nativeUrl.searchParams.set('backupReceipt', backupReceipt);
-                nativeHref = nativeUrl.href;
-            }
-            startNativeDownload(nativeHref, name);
-            progress.handOff();
-            // 浏览器接管后，网页无法观测其落盘进度，不能宣称已下载完成。
-            return { handedOff: true, ...(backupReceipt ? { backupReceipt } : {}) };
-        }
-        if (!writable && total > MEMORY_DOWNLOAD_LIMIT) return await handOff();
-        if (!response.body?.getReader) throw new Error('当前浏览器不支持流式下载，请使用较新的浏览器。');
-        reader = response.body.getReader();
-        const parts = [];
-        // 合并网络小块，减少 File System Access 跨进程写盘次数，并保持固定内存占用。
-        const writeBuffer = writable ? new Uint8Array(1024 * 1024) : null;
-        let buffered = 0;
-        let loaded = 0;
-        progress.update(0, total, '正在下载…');
-        while (true) {
-            monitor.touch();
-            const { done, value } = await monitor.wait(reader.read());
-            monitor.pause();
-            signal.throwIfAborted();
-            if (done) break;
-            loaded += value.byteLength;
-            if (expected !== null && loaded > expected) throw new Error('下载长度与服务器声明不符，文件未保存。请重新下载。');
-            if (writable) {
-                for (let offset = 0; offset < value.byteLength;) {
-                    signal.throwIfAborted();
-                    const length = Math.min(writeBuffer.byteLength - buffered, value.byteLength - offset);
-                    writeBuffer.set(value.subarray(offset, offset + length), buffered);
-                    buffered += length;
-                    offset += length;
-                    if (buffered === writeBuffer.byteLength) {
-                        await writable.write(writeBuffer);
-                        buffered = 0;
-                    }
-                }
-            }
-            else {
-                if (loaded > MEMORY_DOWNLOAD_LIMIT) return await handOff();
-                parts.push(value);
-            }
-            progress.update(loaded, total, '正在下载…');
-        }
-        if (expected !== null && loaded !== expected) throw new Error('下载不完整，文件未保存。请检查网络后重新下载。');
-        signal.throwIfAborted();
-        if (buffered) await writable.write(writeBuffer.subarray(0, buffered));
-        signal.throwIfAborted();
-        monitor.dispose();
-        progress.setCancelable?.(false, '文件正在保存，暂不能取消。');
-        progress.phase('下载传输完成，正在保存文件…');
-        if (writable) { await writable.close(); writable = null; }
-        else saveBlobDownload(new Blob(parts, { type: response.headers.get('Content-Type') || 'application/octet-stream' }), name);
-        progress.complete(writable === null ? '文件已保存。' : '文件已传输完成，已交给浏览器保存。');
-        return { handedOff: false, ...(backupReceipt ? { backupReceipt } : {}) };
+        const response = await monitor.wait(fetch(url, { ...options, credentials: 'same-origin', method: 'HEAD', signal: monitor.signal }));
+        monitor.signal.throwIfAborted();
+        if (!response.ok) throw new Error(`下载准备失败（HTTP ${response.status}），请确认文件可用及登录状态后重试。`);
+        startNativeDownload(url, name);
+        progress.handOff();
+        return { handedOff: true };
     } catch (error) {
         if (monitor?.signal.aborted) error = monitor.signal.reason;
-        else if (error instanceof TypeError) error = new Error('下载连接中断，请检查网络后重新下载；未完成的文件不会保存。', { cause: error });
+        else if (error instanceof TypeError) error = new Error('下载准备中断，请检查网络后重新下载。', { cause: error });
         monitor?.abort(error);
-        try { await reader?.cancel(); } catch { /* 保留原始错误。 */ }
-        if (!reader) { try { await response?.body?.cancel(); } catch { /* 保留原始错误。 */ } }
-        try { await writable?.abort(); } catch { /* 保留原始错误。 */ }
         progress.fail(error);
-        if (progress.signal?.aborted || options.signal?.aborted) return { cancelled: true };
+        if (cancellation.aborted) return { cancelled: true };
         throw error;
     } finally {
         monitor?.dispose();
-        reader?.releaseLock();
     }
 }
