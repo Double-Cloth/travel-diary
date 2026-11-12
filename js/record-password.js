@@ -1,5 +1,5 @@
-import { showFeedback } from './feedback-dialog.js?v=2.1.121';
-import { authenticateWriter, changeWriterPassword, initializeWriterPassword, probeWriterService } from './writer-capability.js?v=2.1.121';
+import { showFeedback } from './feedback-dialog.js?v=2.1.122';
+import { authenticateWriter, changeWriterPassword, initializeWriterPassword, probeWriterService } from './writer-capability.js?v=2.1.122';
 
 const PASSWORD_LENGTH = 6;
 let passwordGateSequence = 0;
@@ -173,9 +173,6 @@ export function createPasswordGate(onVerified, options = {}) {
                 updatePrompt();
             }
             showError(error?.message || '访问密码验证失败。');
-            if (error?.code === 'WRITER_UNAVAILABLE') {
-                void showFeedback(error.message, { label: '访问验证', title: '当前站点为只读模式' });
-            }
             return;
         } finally {
             verifying = false;

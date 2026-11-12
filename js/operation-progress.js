@@ -180,12 +180,34 @@ export function createOperationProgress(title) {
 // Fetch 尚不提供普遍可用的上传进度事件；原生 XHR 保留同源 Cookie、令牌和 HTTP 错误响应。
 export function uploadWithProgress(url, options, onProgress, onUploaded = () => {}) {
     const interruptionMessage = '网络连接中断，操作结果尚未确认。请恢复网络后另开页面核对，再决定是否重试。';
+    async function readResult(read) {
+        try {
+            const result = await read();
+            if (!result || typeof result !== 'object' || Array.isArray(result)) throw new Error('响应格式无效。');
+            return result;
+        } catch (error) {
+            throw new Error(`服务器响应中断或无法识别。${interruptionMessage}`, { cause: error });
+        }
+    }
     if (typeof XMLHttpRequest === 'undefined') {
         const monitor = monitorTransfer(options, interruptionMessage, url);
         // 无上传进度事件时无法区分慢速上传与停滞，仅使用断网检测和总时限。
         if (monitor.signal.aborted) { monitor.dispose(); return Promise.reject(monitor.signal.reason); }
-        return monitor.wait(fetch(url, { ...options, signal: monitor.signal }))
-            .finally(() => monitor.dispose());
+        return (async () => {
+            try {
+                const response = await monitor.wait(fetch(url, { ...options, signal: monitor.signal }));
+                monitor.signal.throwIfAborted();
+                // 收到响应头后进入服务端处理阶段，监测持续到完整结果读取结束。
+                onUploaded();
+                const result = await monitor.wait(readResult(() => response.json()));
+                monitor.signal.throwIfAborted();
+                return { ok: response.ok, status: response.status, json: async () => result };
+            } catch (error) {
+                if (monitor.signal.aborted) throw monitor.signal.reason;
+                if (error instanceof TypeError) throw new Error(interruptionMessage, { cause: error });
+                throw error;
+            } finally { monitor.dispose(); }
+        })();
     }
     return new Promise((resolve, reject) => {
         const xhr = new XMLHttpRequest();
@@ -209,17 +231,20 @@ export function uploadWithProgress(url, options, onProgress, onUploaded = () => 
             onProgress?.(event.loaded, event.lengthComputable ? event.total : 0);
         };
         xhr.upload.onload = () => {
-            if (settled) return;
+            if (settled || uploaded) return;
             uploaded = true;
             // 服务端校验大备份期间可能没有响应字节，继续使用总时限和断网监听。
             monitor.pause();
             onUploaded();
         };
-        xhr.onload = () => settle(resolve, {
-            ok: xhr.status >= 200 && xhr.status < 300,
-            status: xhr.status,
-            json: async () => JSON.parse(xhr.responseText)
-        });
+        xhr.onload = () => {
+            if (!xhr.status) { settle(reject, new Error(interruptionMessage)); return; }
+            settle(resolve, {
+                ok: xhr.status >= 200 && xhr.status < 300,
+                status: xhr.status,
+                json: () => readResult(() => JSON.parse(xhr.responseText))
+            });
+        };
         xhr.onerror = () => settle(reject, new Error(interruptionMessage));
         xhr.ontimeout = () => settle(reject, new Error(`传输超时。${interruptionMessage}`));
         xhr.onabort = () => settle(reject, signal?.reason || new DOMException('传输已取消。', 'AbortError'));

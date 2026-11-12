@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import { loadBrowserModule } from './helpers/browser-modules.mjs';
+import { listenOnFetchSafePort } from './helpers/http.mjs';
 
-const { changeWriterPassword, initializeWriterPassword, probeWriterService } = await loadBrowserModule(new URL('../js/writer-capability.js', import.meta.url));
+const { authenticateWriter, changeWriterPassword, initializeWriterPassword, probeWriterService } = await loadBrowserModule(new URL('../js/writer-capability.js', import.meta.url));
+const { verifyBackupPassword } = await loadBrowserModule(new URL('../js/backup-password.js', import.meta.url));
 
 test('清空回收站仅接受服务明确声明的支持状态', async t => {
     const previous = { window: globalThis.window, fetch: globalThis.fetch };
@@ -172,4 +175,64 @@ test('修改密码使用现有会话令牌并接收更新后的写入能力', as
     assert.equal(request.options.credentials, 'same-origin');
     assert.deepEqual(JSON.parse(request.options.body), { password: '590247' });
     assert.equal(capability.token, 'b'.repeat(64));
+});
+
+test('认证及备份验证遇到中断、网关错误和无效响应时保留服务故障信息', async t => {
+    const previous = { window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.window = { location: { href: 'http://localhost:9000/' } };
+    const capability = { authenticated: true, token: 'test-token' };
+    const entries = [{ name: '.secrets/auth.json', data: '{}' }];
+    const requests = [
+        () => probeWriterService(),
+        () => authenticateWriter('483920'),
+        () => initializeWriterPassword('483920'),
+        () => changeWriterPassword('590247', capability),
+        () => verifyBackupPassword(entries, capability, '483920')
+    ];
+    for (const request of requests) {
+        globalThis.fetch = async () => { throw new TypeError('fetch failed'); };
+        await assert.rejects(request(), error => error.code === 'WRITER_UNREACHABLE');
+        globalThis.fetch = async () => ({ ok: true, status: 200, json: async () => { throw new TypeError('terminated'); } });
+        await assert.rejects(request(), error => error.code === 'WRITER_UNREACHABLE');
+        globalThis.fetch = async () => new Response('<html>Bad Gateway</html>', { status: 502 });
+        await assert.rejects(request(), error => error.code === 'WRITER_UNAVAILABLE');
+        globalThis.fetch = async () => Response.json({ error: '服务维护中。' }, { status: 503 });
+        await assert.rejects(request(), { code: 'WRITER_UNAVAILABLE', message: '服务维护中。' });
+        for (const value of [null, [], 'ok']) {
+            globalThis.fetch = async () => Response.json(value);
+            await assert.rejects(request(), error => error.code === 'WRITER_INVALID_RESPONSE');
+        }
+    }
+});
+
+test('服务端明确返回的认证错误码在登录和备份预验证中保留', async t => {
+    const previous = { window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    globalThis.window = { location: { href: 'http://localhost:9000/' } };
+    for (const code of ['AUTH_INVALID', 'AUTH_RATE_LIMITED', 'AUTH_CONFIG_INVALID']) {
+        globalThis.fetch = async () => Response.json({ error: '验证未通过。', code }, { status: 503 });
+        await assert.rejects(authenticateWriter('483920'), { code });
+    }
+    globalThis.fetch = async () => Response.json({ error: '备份密码不正确。', code: 'BACKUP_PASSWORD_INVALID' }, { status: 403 });
+    await assert.rejects(verifyBackupPassword([{ name: '.secrets/auth.json', data: '{}' }], { token: 'test' }, '483920'),
+        { code: 'BACKUP_PASSWORD_INVALID' });
+});
+
+test('认证响应体停滞同样受请求超时限制，服务恢复后可重新验证', async t => {
+    const previous = globalThis.window;
+    t.after(() => { globalThis.window = previous; });
+    let stalled = true;
+    const server = createServer((request, response) => {
+        request.resume();
+        response.setHeader('Content-Type', 'application/json');
+        if (stalled) response.write('{"service":');
+        else response.end(JSON.stringify({ service: 'travel-diary-writer-v1', authenticated: true, token: 'restored' }));
+    });
+    const base = await listenOnFetchSafePort(server);
+    t.after(() => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)); });
+    globalThis.window = { location: { href: `${base}/` } };
+    await assert.rejects(authenticateWriter('483920', 100), { code: 'WRITER_UNREACHABLE' });
+    stalled = false;
+    assert.equal((await authenticateWriter('483920')).token, 'restored');
 });

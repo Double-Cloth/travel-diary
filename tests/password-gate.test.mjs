@@ -43,6 +43,40 @@ async function enterPassword(dialog) {
     await new Promise(resolve => setImmediate(resolve));
 }
 
+test('验证中服务中断或返回网关错误时可在原窗口重试并保留操作上下文', async t => {
+    const nodes = installDialogEnvironment(t);
+    let failure = 'interrupted';
+    let calls = 0;
+    const context = { desc_md: 'data/travel-diary/2026/test.md' };
+    globalThis.fetch = async (_, options) => {
+        if (options.method === 'POST' && failure === 'interrupted') {
+            return { ok: true, status: 200, json: async () => { throw new TypeError('terminated'); } };
+        }
+        if (options.method === 'POST' && failure === 'gateway') return new Response('Bad Gateway', { status: 502 });
+        return Response.json({ service: 'travel-diary-writer-v1',
+            authenticated: options.method === 'POST', token: options.method === 'POST' ? 'restored' : undefined });
+    };
+    const open = createPasswordGate((capability, verifiedContext) => {
+        calls += 1;
+        assert.equal(capability.token, 'restored');
+        assert.equal(verifiedContext, context);
+    });
+    const dialog = nodes.at(-1);
+    await open(context);
+    const count = nodes.length;
+    for (failure of ['interrupted', 'gateway']) {
+        await enterPassword(dialog);
+        assert.equal(dialog.open, true);
+        assert.equal(calls, 0);
+        assert.equal(nodes.length, count);
+        assert.match(dialog.querySelector('[data-password-status]').textContent, /连接中断/);
+    }
+    failure = '';
+    await enterPassword(dialog);
+    assert.equal(calls, 1);
+    assert.equal(dialog.open, false);
+});
+
 test('标准登录不把记录上下文传作超时时间，验证成功后仍传回原记录', async t => {
     const nodes = installDialogEnvironment(t);
     const requests = [];

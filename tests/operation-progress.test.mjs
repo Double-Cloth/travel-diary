@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 import { loadBrowserModule } from './helpers/browser-modules.mjs';
 
 const { createOperationProgress, uploadWithProgress, downloadWithProgress, saveBlobDownload } = await loadBrowserModule(new URL('../js/operation-progress.js', import.meta.url));
+const { uploadProfilePicture } = await loadBrowserModule(new URL('../js/profile-picture.js', import.meta.url));
 
 function installEnvironment(t) {
     const previous = { document: globalThis.document, window: globalThis.window, fetch: globalThis.fetch, XMLHttpRequest: globalThis.XMLHttpRequest };
@@ -241,6 +242,113 @@ test('上传使用原始文件和认证头，上传完成与服务器返回成�
     const timeout = uploadWithProgress('/api/test', { body: file });
     xhr.ontimeout();
     await assert.rejects(timeout, /传输超时/);
+});
+
+test('XHR 零状态和损坏的响应提示核对结果，服务端业务错误仍可读取', async t => {
+    installEnvironment(t);
+    let xhr;
+    let uploaded = 0;
+    globalThis.XMLHttpRequest = class {
+        constructor() { xhr = this; this.upload = {}; }
+        open() {} setRequestHeader() {} send() {}
+    };
+    const interrupted = uploadWithProgress('/backup', {}, undefined, () => uploaded += 1);
+    xhr.upload.onload();
+    xhr.upload.onload();
+    assert.equal(uploaded, 1);
+    xhr.status = 0;
+    xhr.onload();
+    await assert.rejects(interrupted, /操作结果尚未确认.*另开页面核对/);
+    for (const body of ['{"saved":', '<html>Bad Gateway</html>', 'null', '[]']) {
+        const pending = uploadWithProgress('/backup', {});
+        xhr.status = 200;
+        xhr.responseText = body;
+        xhr.onload();
+        await assert.rejects((await pending).json(), /响应中断或无法识别.*另开页面核对/);
+    }
+    const rejected = uploadWithProgress('/backup', {});
+    xhr.status = 403;
+    xhr.responseText = '{"error":"备份密码不正确。","code":"BACKUP_PASSWORD_INVALID"}';
+    xhr.onload();
+    assert.equal((await (await rejected).json()).code, 'BACKUP_PASSWORD_INVALID');
+});
+
+test('Fetch 上传持续监测响应体，断网后清理监听且恢复后可重试', async t => {
+    installEnvironment(t);
+    const listeners = installNetworkEvents();
+    globalThis.XMLHttpRequest = undefined;
+    let signal;
+    let finishBody;
+    let uploaded = 0;
+    globalThis.fetch = async (_, options) => {
+        signal = options.signal;
+        return { ok: true, status: 200, json: () => new Promise(resolve => { finishBody = resolve; }) };
+    };
+    const pending = uploadWithProgress('/backup', {}, undefined, () => uploaded += 1);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(uploaded, 1);
+    assert.equal(listeners.size, 1);
+    listeners.get('offline')();
+    await assert.rejects(pending, /操作结果尚未确认.*另开页面核对/);
+    assert.equal(signal.aborted, true);
+    assert.equal(listeners.size, 0);
+    finishBody({ imported: true });
+    globalThis.fetch = async () => Response.json({ imported: true });
+    const retry = await uploadWithProgress('/backup', {}, undefined, () => uploaded += 1);
+    assert.deepEqual(await retry.json(), { imported: true });
+    assert.equal(uploaded, 2);
+    assert.equal(listeners.size, 0);
+});
+
+test('Fetch 上传的响应体超时和异常响应保留中断提示，取消保留 AbortError', async t => {
+    installEnvironment(t);
+    const listeners = installNetworkEvents();
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    globalThis.XMLHttpRequest = undefined;
+    globalThis.fetch = async () => ({ ok: true, status: 200, json: () => new Promise(() => {}) });
+    const pending = uploadWithProgress('/backup', { timeout: 100 });
+    await new Promise(resolve => setImmediate(resolve));
+    t.mock.timers.tick(101);
+    await assert.rejects(pending, /传输超时.*另开页面核对/);
+    assert.equal(listeners.size, 0);
+    const controller = new AbortController();
+    const cancelled = uploadWithProgress('/backup', { signal: controller.signal });
+    await new Promise(resolve => setImmediate(resolve));
+    controller.abort(new DOMException('操作已取消。', 'AbortError'));
+    await assert.rejects(cancelled, { name: 'AbortError' });
+    assert.equal(listeners.size, 0);
+    globalThis.fetch = async () => { throw new TypeError('fetch failed'); };
+    await assert.rejects(uploadWithProgress('/backup', {}), /另开页面核对/);
+    globalThis.fetch = async () => new Response('<html>Bad Gateway</html>', { status: 502 });
+    await assert.rejects(uploadWithProgress('/backup', {}), /响应中断或无法识别.*另开页面核对/);
+    assert.equal(listeners.size, 0);
+});
+
+test('头像上传保留中断及无法确认结果的提示，超时和主动取消各自恢复', async t => {
+    installEnvironment(t);
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    window.location = { href: 'http://localhost:9000/' };
+    let xhr;
+    globalThis.XMLHttpRequest = class {
+        constructor() { xhr = this; this.upload = {}; }
+        open() {} setRequestHeader() {} send() {} abort() { this.onabort(); }
+    };
+    const capability = { token: 'test', methods: new Set(['PUT']) };
+    const interrupted = uploadProfilePicture({ data: 'png' }, capability);
+    xhr.onerror();
+    await assert.rejects(interrupted, /操作结果尚未确认.*另开页面核对/);
+    const invalid = uploadProfilePicture({ data: 'png' }, capability);
+    xhr.status = 502;
+    xhr.responseText = '<html>Bad Gateway</html>';
+    xhr.onload();
+    await assert.rejects(invalid, /响应中断或无法识别.*另开页面核对/);
+    const timedOut = uploadProfilePicture({ data: 'png' }, capability);
+    t.mock.timers.tick(30001);
+    await assert.rejects(timedOut, /传输超时.*另开页面核对/);
+    const controller = new AbortController();
+    const cancelled = uploadProfilePicture({ data: 'png' }, capability, undefined, undefined, controller.signal);
+    controller.abort();
+    await assert.rejects(cancelled, { name: 'AbortError' });
 });
 
 function installNetworkEvents() {

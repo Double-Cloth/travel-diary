@@ -1,10 +1,10 @@
-import { createPasswordGate } from './record-password.js?v=2.1.121';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.121';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.121';
+import { createPasswordGate } from './record-password.js?v=2.1.122';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.122';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.122';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=2.1.121';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.121';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.121';
+import { createRecordTransfer } from './record-transfer.js?v=2.1.122';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.122';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.122';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -248,9 +248,7 @@ export function createDataTransfer(onImported, getRecords = () => []) {
                 progress.setCancelable(false);
                 progress.phase('备份上传完成，服务器正在校验并恢复数据，请勿关闭页面…');
             });
-            let result;
-            try { result = await response.json(); }
-            catch { throw new Error('全部数据导入返回了无法识别的结果。'); }
+            const result = await response.json();
             if (!response.ok || !result.imported) throw Object.assign(new Error(result.error || '全部数据导入失败。'), { code: result.code });
             progress.complete('备份已校验并导入。');
             return result;

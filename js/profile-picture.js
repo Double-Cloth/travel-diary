@@ -1,5 +1,5 @@
-import { MAXIMUM_PROFILE_SOURCE_BYTES } from './file-limits.mjs?v=2.1.121';
-import { uploadWithProgress } from './operation-progress.js?v=2.1.121';
+import { MAXIMUM_PROFILE_SOURCE_BYTES } from './file-limits.mjs?v=2.1.122';
+import { uploadWithProgress } from './operation-progress.js?v=2.1.122';
 const MAXIMUM_EDGE = 1024;
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
@@ -96,26 +96,18 @@ export async function uploadProfilePicture(picture, capability, onProgress, onUp
         throw new Error('当前服务不支持更新头像。');
     }
     const endpoint = new URL('api/travel-profile', window.location.href);
-    let response;
-    try {
-        response = await uploadWithProgress(endpoint, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-Travel-Token': capability.token
-            },
-            body: JSON.stringify(picture),
-            credentials: 'same-origin',
-            timeout: 30000,
-            signal: AbortSignal.any([AbortSignal.timeout(30000), ...[signal].filter(Boolean)])
-        }, onProgress, onUploaded);
-    } catch (error) {
-        if (signal?.aborted) throw error;
-        throw new Error('头像上传服务暂时无法连接，请稍后重试。');
-    }
-    let result = {};
-    try { result = await response.json(); }
-    catch {}
+    const response = await uploadWithProgress(endpoint, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Travel-Token': capability.token
+        },
+        body: JSON.stringify(picture),
+        credentials: 'same-origin',
+        timeout: 30000,
+        signal
+    }, onProgress, onUploaded);
+    const result = await response.json();
     if (!response.ok || result.saved !== true) {
         throw new Error(result.error || '头像上传失败，请稍后重试。');
     }
