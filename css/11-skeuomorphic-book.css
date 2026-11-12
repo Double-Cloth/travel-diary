@@ -567,6 +567,41 @@ body[data-route='preface'] .paper-page {
     gap: 8px 12px;
 }
 
+.preface-backup-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-rows: auto 1fr auto 1fr;
+    gap: 10px 12px;
+}
+.preface-backup-heading { grid-column: 1 / -1; margin: 0; color: #71583e; font-size: 12px; line-height: 1.6; }
+.preface-backup-heading:not(:first-child) { margin-top: 8px; }
+.preface-button.preface-backup-button {
+    position: relative;
+    align-items: flex-start;
+    justify-content: flex-start;
+    gap: 8px;
+    min-height: 118px;
+    padding: 12px 14px;
+    text-align: left;
+}
+.preface-backup-button::after {
+    content: '';
+    position: absolute;
+    top: 18px;
+    right: 14px;
+    width: 6px;
+    height: 6px;
+    border-top: 1px solid currentColor;
+    border-right: 1px solid currentColor;
+    transform: rotate(45deg);
+}
+.preface-backup-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; padding-right: 14px; }
+.preface-backup-mode { color: #8b4d3c; font-size: 11px; font-weight: 400; }
+.preface-backup-button .preface-button-note { color: #69513a; font-size: 12px; line-height: 1.7; }
+.preface-backup-button.preface-button-danger { background-color: #f2dfb780; }
+.preface-backup-button.preface-button-danger:hover { background-color: #f0c7ae; }
+.preface-backup-button.preface-button-danger:active { background-color: #e8b99d; }
+
 .preface-utility-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .preface-utility-actions .preface-button { width: auto; }
 .preface-utility-actions .preface-utility-end { margin-left: auto; }

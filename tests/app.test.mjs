@@ -646,7 +646,7 @@ test('扉页右页按三个默认展开模块组织操作，黄铜与扁平按�
     assert.deepEqual([...right.matchAll(/<h3[^>]*>(.*?)<\/h3>/g)].map(match => match[1]), ['日记资料管理', '备份与恢复', '数据管理']);
     const expectedActions = [
         ['add-record', 'upload-profile-picture', 'edit-owner-name', 'delete-records'],
-        ['export-all-data', 'import-all-data', 'export-records', 'import-records'],
+        ['export-records', 'export-all-data', 'import-records', 'import-all-data'],
         ['media-health', 'recycle-bin', 'change-password', 'password-reset-help', 'clear-all-data']
     ];
     const brassActions = ['add-record', 'media-health', 'recycle-bin'];
@@ -666,10 +666,15 @@ test('扉页右页按三个默认展开模块组织操作，黄铜与扁平按�
             }
         }
     });
-    for (const note of ['ImportAll', 'ImportRecords', 'Media', 'Recycle', 'Clear']) {
+    for (const note of ['ExportRecords', 'ExportAll', 'ImportAll', 'ImportRecords', 'Media', 'Recycle', 'Clear']) {
         assert.match(right, new RegExp(`aria-labelledby="preface${note}Label" aria-describedby="preface${note}Note"`));
         assert.match(right, new RegExp(`<span class="preface-button-note" id="preface${note}Note">[^<]+</span>`));
     }
+    assert.match(modules[1], /class="preface-backup-grid"/);
+    assert.deepEqual([...modules[1].matchAll(/<p class="preface-backup-heading"[^>]*>(.*?)<\/p>/g)].map(match => match[1]), ['导出 · 保存备份到本机', '导入 · 使用已有备份']);
+    assert.equal(modules[1].match(/<button class="[^"]*preface-backup-button/g)?.length, 4);
+    assert.match(modules[1], /class="preface-backup-mode" aria-hidden="true">合并/);
+    assert.match(modules[1], /class="preface-backup-mode" aria-hidden="true">替换/);
     assert.match(modules[2], /class="preface-password-actions"[^>]*>[\s\S]*data-action="change-password"[\s\S]*data-action="password-reset-help" aria-haspopup="dialog" aria-label="忘记密码？查看重置方法"/);
     assert.match(modules[2], /<svg class="password-reset-help-mark"[^>]*aria-hidden="true"/);
     assert.doesNotMatch(right, /prefacePasswordNote|preface-tool-note|npm run auth:set|<h4/);
