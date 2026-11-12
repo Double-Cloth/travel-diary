@@ -435,6 +435,8 @@ async function restoreSelected(root, report, selections) {
         if (await restoreToken(root, item, selection.targetDescMd, report.revision) !== selection.previewToken) throw failure('预览后内容已变化，请重新预览再恢复，未覆盖任何内容。');
         plans.push({ item, targetDescMd: selection.targetDescMd });
     }
+    const { recycleRestoreConflicts } = await import('./recycle-tree.mjs');
+    if (recycleRestoreConflicts(report.items, report.currentRecords, selections).length) throw failure('同一篇日记每次只能恢复一个版本，请保留一个勾选项后重试。');
     if (plans.length === 1 && (plans[0].item.kind === 'snapshot' || plans[0].item.kind === 'version')) {
         const { item } = plans[0];
         if (item.kind === 'snapshot') await restoreSnapshot(root, item);

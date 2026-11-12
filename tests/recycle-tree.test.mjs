@@ -1,6 +1,39 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRecordLabel } from '../js/recycle-tree.mjs';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel } from '../js/recycle-tree.mjs';
+
+test('恢复冲突识别同篇改名正文与旧标识，多篇混合批次也检测且不修改输入', () => {
+    const saved = { record_id: `r-${'a'.repeat(32)}`, desc_md: 'data/old.md' };
+    const current = { ...saved, desc_md: 'data/new.md' };
+    const legacy = { desc_md: saved.desc_md };
+    const another = { record_id: `r-${'b'.repeat(32)}`, desc_md: 'data/b.md' };
+    const items = [
+        { id: 'first', kind: 'version', displayRecords: [legacy], files: [{ path: saved.desc_md }] },
+        { id: 'second', kind: 'version', displayRecords: [saved], files: [{ path: current.desc_md }] },
+        { id: 'mixed', kind: 'record', records: [current, another], files: [] },
+        { id: 'other', kind: 'version', files: [{ path: another.desc_md }] }
+    ];
+    const before = structuredClone(items);
+    const conflict = ids => recycleRestoreConflicts(items, [current, another], ids.map(id => ({ id })));
+    assert.deepEqual(conflict(['first', 'second'])[0].items.map(item => item.id), ['first', 'second']);
+    assert.equal(conflict(['second', 'other']).length, 0);
+    assert.equal(conflict(['first']).length, 0);
+    assert.equal(conflict(['mixed', 'second', 'other']).length, 2);
+    assert.deepEqual(items, before);
+});
+
+test('附件目标切换参与版本冲突判断，同篇独立附件仍可一起恢复', () => {
+    const record = { desc_md: 'data/a.md', photo_folder: 'data/photos/a', photos: ['one.jpg', 'two.jpg'] };
+    const items = [
+        { id: 'body', kind: 'version', files: [{ path: record.desc_md }] },
+        { id: 'media', kind: 'files', files: [{ path: 'data/photos/unknown.jpg' }] },
+        { id: 'one', kind: 'files', mediaReferences: [record], files: [{ path: 'data/photos/a/one.jpg' }] },
+        { id: 'two', kind: 'files', mediaReferences: [record], files: [{ path: 'data/photos/a/two.jpg' }] }
+    ];
+    assert.equal(recycleRestoreConflicts(items, [record], [{ id: 'body' }, { id: 'media', targetDescMd: record.desc_md }]).length, 1);
+    assert.equal(recycleRestoreConflicts(items, [record], [{ id: 'one' }, { id: 'two' }]).length, 0);
+    assert.equal(recycleRestoreConflicts(items, [record], []).length, 0);
+});
 
 test('恢复变化按日记和信息、正文、附件分层，共用附件仅展示一次', () => {
     const records = ['a', 'b'].map(name => ({ date: '2026-11-12', locality: name, desc_md: `data/travel-diary/2026/${name}.md`, photo_folder: 'data/photos/trip', photos: ['shared.jpg', `${name}.jpg`] }));

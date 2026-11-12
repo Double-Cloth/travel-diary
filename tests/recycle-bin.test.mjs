@@ -829,7 +829,7 @@ test('所选文件版本冲突或整站混选在写入前拒绝，整站单选�
     await write(root, note.desc_md, '# 版本二');
     const second = await captureRecycle(root, { kind: 'version', title: '版本二', files: [{ path: note.desc_md }] });
     await write(root, note.desc_md, '# 当前正文');
-    await assert.rejects(selectedRestore(root, await selectionsFor(root, [first, second])), /同一文件的不同版本/);
+    await assert.rejects(selectedRestore(root, await selectionsFor(root, [first, second])), /同一篇日记每次只能恢复一个版本/);
     assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 当前正文');
     const snapshot = await captureRecycle(root, { kind: 'snapshot', title: '整站备份' });
     await write(root, note.desc_md, '# 之后修改');
@@ -837,6 +837,32 @@ test('所选文件版本冲突或整站混选在写入前拒绝，整站单选�
     assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 之后修改');
     await selectedRestore(root, await selectionsFor(root, [snapshot]));
     assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 当前正文');
+});
+
+test('同篇日记内容相同的两次回收也禁止一起恢复，拒绝后当前内容和回收记录完整', async t => {
+    const root = await fixture(t);
+    const ids = [];
+    for (let index = 0; index < 2; index++) ids.push(await captureRecycle(root, { kind: 'version', title: '编辑前正文', files: [{ path: note.desc_md }] }));
+    await write(root, note.desc_md, '# 当前正文');
+    await assert.rejects(selectedRestore(root, await selectionsFor(root, ids)), /同一篇日记每次只能恢复一个版本/);
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 当前正文');
+    assert.deepEqual(new Set((await readRecycleBin(root)).items.map(item => item.id)), new Set(ids));
+    await selectedRestore(root, await selectionsFor(root, [ids[0]]));
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 标题\n\n原正文');
+});
+
+test('同篇固定标识的正文改名后禁止同时恢复两份历史正文', async t => {
+    const root = await fixture(t);
+    const original = { ...note, record_id: `r-${'a'.repeat(32)}` };
+    const current = { ...original, desc_md: 'data/travel-diary/2026/renamed.md' };
+    const first = await captureRecycle(root, { kind: 'version', title: '旧路径正文', displayRecords: [original], files: [{ path: original.desc_md }] });
+    await write(root, current.desc_md, '# 改名后正文');
+    const second = await captureRecycle(root, { kind: 'version', title: '新路径正文', displayRecords: [current], files: [{ path: current.desc_md }] });
+    await write(root, 'data/travel_data.json', JSON.stringify([current, other]));
+    await write(root, current.desc_md, '# 最新正文');
+    await assert.rejects(selectedRestore(root, await selectionsFor(root, [first, second])), /同一篇日记每次只能恢复一个版本/);
+    assert.equal(await fs.readFile(path.join(root, current.desc_md), 'utf8'), '# 最新正文');
+    assert.equal((await readRecycleBin(root)).items.length, 2);
 });
 
 test('同篇日记的完整记录与附件混选被拒绝，不互相覆盖', async t => {

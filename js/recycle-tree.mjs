@@ -1,5 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.91';
-import { recordIdentity } from './record-identity.mjs?v=2.1.91';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.92';
+import { recordIdentity } from './record-identity.mjs?v=2.1.92';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
@@ -15,20 +15,24 @@ export function recycleFileType(path, mediaKind = () => '') {
     return '其他文件';
 }
 
-// 展示关联与恢复关联独立保存，旧文件的归属提示不参与恢复决策。
-export function groupRecycleItems(items, currentRecords = []) {
-    const candidates = [...currentRecords, ...items.flatMap(item => [...(item.records || []), ...(item.mediaReferences || []), ...(item.displayRecords || [])])]
-        .filter(record => record?.desc_md);
+function recordIdentityResolver(candidates) {
     const identitiesByPath = new Map();
     for (const record of candidates) {
         if (!identitiesByPath.has(record.desc_md)) identitiesByPath.set(record.desc_md, new Set());
         if (record.record_id && !record.record_id.startsWith('legacy:')) identitiesByPath.get(record.desc_md).add(record.record_id);
     }
-    const identity = record => {
+    return record => {
         const identities = identitiesByPath.get(record.desc_md);
         if (recordIdentity(record).startsWith('legacy:') && identities?.size === 1) return identities.values().next().value;
         return recordIdentity(record);
     };
+}
+
+// 展示关联与恢复关联独立保存，旧文件的归属提示不会改变恢复目标与写入内容。
+export function groupRecycleItems(items, currentRecords = []) {
+    const candidates = [...currentRecords, ...items.flatMap(item => [...(item.records || []), ...(item.mediaReferences || []), ...(item.displayRecords || [])])]
+        .filter(record => record?.desc_md);
+    const identity = recordIdentityResolver(candidates);
     const diaries = new Map();
     const owners = new Map();
     const folders = new Map();
@@ -67,6 +71,28 @@ export function groupRecycleItems(items, currentRecords = []) {
         groups.get(key).items.push(item);
     }
     return { groups: [...groups.values()], recordsByItem };
+}
+
+// 同篇日记的完整记录或旧版本需要单独恢复，互不覆盖的附件批次仍可合并恢复。
+export function recycleRestoreConflicts(items, currentRecords, selections) {
+    if (selections.length < 2) return [];
+    const selected = new Map(selections.map(selection => [selection.id, selection]));
+    const candidates = items.map(item => {
+        const target = selected.get(item.id)?.targetDescMd;
+        return target ? { ...item, mediaReferences: currentRecords.filter(record => record.desc_md === target), displayRecords: [] } : item;
+    });
+    const { recordsByItem } = groupRecycleItems(candidates, currentRecords);
+    const records = [...currentRecords, ...[...recordsByItem.values()].flat()];
+    const identity = recordIdentityResolver(records);
+    const conflicts = new Map();
+    for (const item of candidates.filter(item => selected.has(item.id) && item.kind !== 'snapshot')) {
+        for (const record of recordsByItem.get(item.id)) {
+            const key = identity(record);
+            if (!conflicts.has(key)) conflicts.set(key, { record: currentRecords.find(current => identity(current) === key) || record, items: [] });
+            conflicts.get(key).items.push(item);
+        }
+    }
+    return [...conflicts.values()].filter(group => group.items.length > 1 && group.items.some(item => item.kind === 'version' || item.kind === 'record'));
 }
 
 // 逻辑目录只负责展示归属，文件保留原始对象供预览和恢复使用。
