@@ -120,8 +120,8 @@ test('日记信息差异复用正文的双侧行号并保留数组顺序、转�
     assert.match(html, /@@ −4,2 \+4,2 @@/);
     assert.match(html, /&lt;新标题&gt;/);
     assert.doesNotMatch(html, /<新标题>|<dl>/);
-    assert.match(html, /图片列表 \[1\]  &quot;b.png&quot;/);
-    assert.match(html, /图片列表 \[2\]  &quot;a.png&quot;/);
+    assert.match(html, /<code>\[1\]  &quot;b.png&quot;<\/code>/);
+    assert.match(html, /<code>\[2\]  &quot;a.png&quot;<\/code>/);
     const groups = [...html.matchAll(/<section class="record-diff-field-group"><h4>(.*?)<\/h4>[\s\S]*?<\/section>/g)];
     assert.deepEqual(groups.map(group => group[1]), ['基本信息', '图片列表']);
     for (const [group] of groups) {
@@ -139,33 +139,33 @@ test('日记信息差异复用正文的双侧行号并保留数组顺序、转�
     assert.match(renderRecordDifference(record, comparison), /<dl>/);
 });
 
-test('文件列表和附件顺序逐项显示位置、类型及特殊文件名，增删后保持双侧行号', () => {
+test('文件列表和附件顺序省略重复前缀，保留位置、类型、转义及双侧行号', () => {
     const previous = { desc_md: 'data/a.md', photos: ['<a>.png'], videos: [], media_order: ['photo:<a>.png'] };
     const record = { ...previous, photos: ['b.png', '<a>.png'], videos: ['clip.mp4'], media_order: ['video:clip.mp4', 'photo:b.png', 'photo:<a>.png'] };
     const comparison = { status: 'changed', previous, fields: ['photos', 'videos', 'media_order'], media: [], markdownChanged: false };
     const html = renderRecordDifference(record, comparison, { numberedFields: true });
-    assert.match(html, /图片列表 \[1\]  &quot;b.png&quot;/);
-    assert.match(html, /图片列表 \[2\]  &quot;&lt;a&gt;.png&quot;/);
-    assert.match(html, /视频列表  \[\]/);
-    assert.match(html, /视频列表 \[1\]  &quot;clip.mp4&quot;/);
-    assert.match(html, /附件顺序 \[1\]  视频  &quot;clip.mp4&quot;/);
-    assert.match(html, /附件顺序 \[2\]  图片  &quot;b.png&quot;/);
-    assert.match(html, /附件顺序 \[3\]  图片  &quot;&lt;a&gt;.png&quot;/);
-    assert.doesNotMatch(html, /<a>|photo:|video:/);
+    assert.match(html, /<code>\[1\]  &quot;b.png&quot;<\/code>/);
+    assert.match(html, /<code>\[2\]  &quot;&lt;a&gt;.png&quot;<\/code>/);
+    assert.match(html, /<code>\[\]<\/code>/);
+    assert.match(html, /<code>\[1\]  &quot;clip.mp4&quot;<\/code>/);
+    assert.match(html, /<code>\[1\]  视频  &quot;clip.mp4&quot;<\/code>/);
+    assert.match(html, /<code>\[2\]  图片  &quot;b.png&quot;<\/code>/);
+    assert.match(html, /<code>\[3\]  图片  &quot;&lt;a&gt;.png&quot;<\/code>/);
+    assert.doesNotMatch(html, /<a>|photo:|video:|<code>(图片列表|视频列表|附件顺序)/);
     assert.match(html, /record-diff-line-number">4<\/span>/);
     assert.match(html, /record-diff-line-number">7<\/span>/);
     const groups = [...html.matchAll(/<section class="record-diff-field-group"><h4>(.*?)<\/h4>([\s\S]*?)<\/section>/g)];
     assert.deepEqual(groups.map(group => group[1]), ['图片列表', '视频列表', '附件顺序']);
-    assert.match(groups[0][2], /图片列表 \[2\]/);
+    assert.match(groups[0][2], /<code>\[2\]  &quot;&lt;a&gt;.png&quot;<\/code>/);
     assert.doesNotMatch(groups[0][2], /视频列表|附件顺序/);
-    assert.match(groups[1][2], /视频列表 \[1\]/);
+    assert.match(groups[1][2], /<code>\[1\]  &quot;clip.mp4&quot;<\/code>/);
     assert.doesNotMatch(groups[1][2], /图片列表|附件顺序/);
-    assert.match(groups[2][2], /附件顺序 \[3\]/);
+    assert.match(groups[2][2], /<code>\[3\]  图片  &quot;&lt;a&gt;.png&quot;<\/code>/);
     assert.doesNotMatch(groups[2][2], /图片列表|视频列表/);
     assert.equal((html.match(/class="record-diff-legend"/g) || []).length, 1);
     const removed = renderRecordDifference({ ...record, photos: [], media_order: [] }, { ...comparison, previous: record }, { numberedFields: true });
-    assert.match(removed, /图片列表  \[\]/);
-    assert.match(removed, /附件顺序  \[\]/);
+    assert.equal((removed.match(/<code>\[\]<\/code>/g) || []).length, 2);
+    assert.doesNotMatch(removed, /<code>(图片列表|视频列表|附件顺序)/);
 });
 
 test('恢复结果复用直接内容预览，空正文和空索引同样保留文件标题', async t => {

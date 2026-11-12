@@ -1,6 +1,6 @@
-import { escapeHtml } from './utils.js?v=2.1.109';
-import { changedTextBlocks } from './record-diff.mjs?v=2.1.109';
-import { markdownPreview } from './content-preview.js?v=2.1.109';
+import { escapeHtml } from './utils.js?v=2.1.110';
+import { changedTextBlocks } from './record-diff.mjs?v=2.1.110';
+import { markdownPreview } from './content-preview.js?v=2.1.110';
 
 export function renderRecordDifference(record, comparison, { afterLabel = '备份', note = '仅显示有变化的部分。勾选这篇日记后，将采用备份内容。', previewLabel = '预览导入后的正文', textLabel = '正文', collapsible = true, numberedFields = false, mediaLink } = {}) {
     if (!comparison) return '';
@@ -46,12 +46,14 @@ export function renderRecordDifference(record, comparison, { afterLabel = '备�
         .flatMap(key => {
             const label = labels[key] || key;
             const items = value[key];
-            if (!Array.isArray(items) || !items.length) return `${label}  ${JSON.stringify(items)}`;
+            if (!Array.isArray(items)) return `${label}  ${JSON.stringify(items)}`;
+            const prefix = ['photos', 'videos', 'media_order'].includes(key) ? '' : `${label} `;
+            if (!items.length) return `${prefix}[]`;
             // 每项单独占行，位置序号让顺序变化也能直接对照。
             return items.map((item, index) => {
                 const type = key === 'media_order' && typeof item === 'string' ? /^(photo|video):/.exec(item) : null;
                 const text = type ? `${type[1] === 'photo' ? '图片' : '视频'}  ${JSON.stringify(item.slice(type[0].length))}` : JSON.stringify(item);
-                return `${label} [${index + 1}]  ${text}`;
+                return `${prefix}[${index + 1}]  ${text}`;
             });
         });
     let lineBefore = 0;
