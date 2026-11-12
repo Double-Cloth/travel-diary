@@ -1,30 +1,30 @@
-import { orderMedia } from './media-order.mjs?v=2.1.116';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.116';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.116';
-import { createRecordEditor } from './record-editor.js?v=2.1.116';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.116';
-import { createDataTransfer } from './data-transfer.js?v=2.1.116';
-import { createMediaManager } from './media-manager.js?v=2.1.116';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.116';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.116';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.116';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.116';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.116';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.116';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.116';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.116';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.116';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.116';
-import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.116';
-import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.116';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.116';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.116';
+import { orderMedia } from './media-order.mjs?v=2.1.117';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.117';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.117';
+import { createRecordEditor } from './record-editor.js?v=2.1.117';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.117';
+import { createDataTransfer } from './data-transfer.js?v=2.1.117';
+import { createMediaManager } from './media-manager.js?v=2.1.117';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.117';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.117';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.117';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.117';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.117';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.117';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.117';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.117';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.117';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.117';
+import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.117';
+import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.117';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.117';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.117';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.116';
+} from './location.mjs?v=2.1.117';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -33,7 +33,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.116';
+} from './photo-viewer-transform.mjs?v=2.1.117';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -1152,7 +1152,7 @@ function renderPreface() {
                         <span class="preface-backup-title"><span id="prefaceImportRecordsLabel">导入部分记录</span><span class="preface-backup-mode" aria-hidden="true">合并</span></span>
                         <span class="preface-button-note" id="prefaceImportRecordsNote">合并所选日记，有差异时采用备份。</span>
                     </button>
-                    <button class="preface-button preface-button-danger preface-backup-button" type="button" data-action="import-all-data" aria-labelledby="prefaceImportAllLabel" aria-describedby="prefaceImportAllNote">
+                    <button class="preface-button preface-backup-button" type="button" data-action="import-all-data" aria-labelledby="prefaceImportAllLabel" aria-describedby="prefaceImportAllNote">
                         <span class="preface-backup-title"><span id="prefaceImportAllLabel">导入全部数据</span><span class="preface-backup-mode" aria-hidden="true">替换</span></span>
                         <span class="preface-button-note" id="prefaceImportAllNote">用完整备份替换当前数据，密码也恢复为备份时的密码。</span>
                     </button>
@@ -1174,7 +1174,7 @@ function renderPreface() {
                         <span class="preface-button-note" id="prefaceRecycleNote">恢复或永久删除已移除内容</span>
                     </button>
                 </div>
-                <div class="preface-utility-actions">
+                <div class="preface-utility-actions preface-data-actions">
                     <div class="preface-password-actions" role="group" aria-label="访问密码">
                         <button class="preface-button" type="button" data-action="change-password">修改访问密码</button>
                         <button class="password-reset-help" type="button" data-action="password-reset-help" aria-haspopup="dialog" aria-label="忘记密码？查看重置方法" title="忘记密码？查看重置方法">

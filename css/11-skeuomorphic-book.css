@@ -556,7 +556,7 @@ body[data-route='preface'] .paper-page {
 .preface-tool-section h3 {
     margin: 0;
     color: #793e30;
-    font-size: 18px;
+    font-size: 20px;
     font-weight: 400;
     letter-spacing: .04em;
 }
@@ -595,17 +595,17 @@ body[data-route='preface'] .paper-page {
     border-right: 1px solid currentColor;
     transform: rotate(45deg);
 }
-.preface-backup-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; padding-right: 14px; }
-.preface-backup-mode { color: #8b4d3c; font-size: 11px; font-weight: 400; }
+.preface-backup-title { display: flex; align-items: baseline; flex-wrap: wrap; gap: 2px 8px; padding-right: 14px; font-size: 16px; }
+.preface-backup-mode { color: #69513a; font-size: 11px; font-weight: 400; }
 .preface-backup-button .preface-button-note { color: #69513a; font-size: 12px; line-height: 1.7; }
-.preface-backup-button.preface-button-danger { background-color: #f2dfb780; }
-.preface-backup-button.preface-button-danger:hover { background-color: #f0c7ae; }
-.preface-backup-button.preface-button-danger:active { background-color: #e8b99d; }
 
 .preface-utility-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .preface-utility-actions .preface-button { width: auto; }
 .preface-utility-actions .preface-utility-end { margin-left: auto; }
 .preface-password-actions { display: flex; align-items: center; min-width: 0; }
+.preface-data-actions { align-items: stretch; }
+.preface-data-actions .preface-password-actions { align-items: stretch; }
+.preface-data-actions .preface-button { min-height: 64px; }
 .password-reset-help {
     display: inline-flex;
     align-items: center;

@@ -650,7 +650,7 @@ test('扉页右页按三个默认展开模块组织操作，黄铜与扁平按�
         ['media-health', 'recycle-bin', 'change-password', 'password-reset-help', 'clear-all-data']
     ];
     const brassActions = ['add-record', 'media-health', 'recycle-bin'];
-    const dangerActions = ['delete-records', 'import-all-data', 'clear-all-data'];
+    const dangerActions = ['delete-records', 'clear-all-data'];
     modules.forEach((markup, index) => {
         assert.match(markup, /<summary class="preface-module-heading"><h3/);
         assert.deepEqual([...markup.matchAll(/data-action="([^"]+)"/g)].map(match => match[1]), expectedActions[index]);
@@ -676,6 +676,7 @@ test('扉页右页按三个默认展开模块组织操作，黄铜与扁平按�
     assert.match(modules[1], /class="preface-backup-mode" aria-hidden="true">合并/);
     assert.match(modules[1], /class="preface-backup-mode" aria-hidden="true">替换/);
     assert.match(modules[2], /class="preface-password-actions"[^>]*>[\s\S]*data-action="change-password"[\s\S]*data-action="password-reset-help" aria-haspopup="dialog" aria-label="忘记密码？查看重置方法"/);
+    assert.match(modules[2], /class="preface-utility-actions preface-data-actions"/);
     assert.match(modules[2], /<svg class="password-reset-help-mark"[^>]*aria-hidden="true"/);
     assert.doesNotMatch(right, /prefacePasswordNote|preface-tool-note|npm run auth:set|<h4/);
 });
