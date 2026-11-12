@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.86';
-import { createPasswordGate } from './record-password.js?v=2.1.86';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.86';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.86';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.86';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.86';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.86';
-import { recordIdentity } from './record-identity.mjs?v=2.1.86';
-import { buildRecycleTree } from './recycle-tree.mjs?v=2.1.86';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.87';
+import { createPasswordGate } from './record-password.js?v=2.1.87';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.87';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.87';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.87';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.87';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.87';
+import { recordIdentity } from './record-identity.mjs?v=2.1.87';
+import { buildRecycleTree, recycleRecordLabel, recycleFileType } from './recycle-tree.mjs?v=2.1.87';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -68,7 +68,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
     function filteredItems() {
         const query = dialog.querySelector('[data-recycle-search]').value.trim().toLowerCase();
         return (report?.items || []).filter(item => [item.title, types[item.kind], new Date(item.createdAt).toLocaleString(),
-            ...item.files.map(file => file.path), ...(item.records.length ? item.records : item.mediaReferences || []).flatMap(record => [record.date, record.country, record.admin_area, record.locality])]
+            ...item.files.flatMap(file => [file.path, recycleFileType(file.path, mediaKind)]), ...(item.records.length ? item.records : item.mediaReferences || []).flatMap(record => [record.date, record.country, record.admin_area, record.locality])]
             .some(value => String(value || '').toLowerCase().includes(query)));
     }
     function syncControls() {
@@ -136,7 +136,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         const item = report.items.find(item => item.id === id);
         const list = dialog.querySelector(`[data-recycle-item="${id}"] [data-recycle-files]`);
         if (!list) return;
-        if (!trees.has(id)) trees.set(id, buildRecycleTree(item.files, dialog.querySelector('[data-recycle-search]').value));
+        if (!trees.has(id)) trees.set(id, buildRecycleTree(item.files, dialog.querySelector('[data-recycle-search]').value, { records: item.records, mediaReferences: item.mediaReferences, mediaKind }));
         void loadContents(list, item, previews);
     }
     async function loadContents(list, item, scope) {
@@ -147,8 +147,8 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const row = document.createElement('li');
             const open = directoryStates.get(directoryKey(item.id, child.path)) ?? (child.depth <= 2 || child.matches);
             row.innerHTML = `<details class="recycle-directory" data-recycle-folder="${escapeHtml(child.path)}"${open ? ' open' : ''}>
-                <summary title="${escapeHtml(child.path)}"><svg class="recycle-node-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M3 9h18"/></svg><span>${escapeHtml(child.name)}</span><small><span>${child.count} 个文件</span><span>${sizeLabel(child.totalBytes)}</span></small></summary>
-                <ul class="recycle-tree" data-recycle-files="${item.id}" data-recycle-directory="${escapeHtml(child.path)}" style="--recycle-depth: ${Math.min(child.depth, 4)}" aria-label="${escapeHtml(child.path)}"></ul></details>`;
+                <summary title="${escapeHtml(child.name)}"><svg class="recycle-node-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M3 9h18"/></svg><span>${escapeHtml(child.name)}</span><small><span>${child.count} 个文件</span><span>${sizeLabel(child.totalBytes)}</span></small></summary>
+                <ul class="recycle-tree" data-recycle-files="${item.id}" data-recycle-directory="${escapeHtml(child.path)}" style="--recycle-depth: ${Math.min(child.depth, 4)}" aria-label="${escapeHtml(child.name)}"></ul></details>`;
             list.append(row);
         }
         // 每层独立加载，深目录不会递归占用调用栈，折叠的目录无需创建文件预览。
@@ -207,10 +207,10 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             <div class="recycle-item-header">
             <label class="recycle-item-choice"><input type="checkbox" data-recycle-select value="${item.id}" aria-label="选择 ${escapeHtml(item.title)}"><strong>${escapeHtml(item.title)}</strong></label>
             <button class="media-text-button recycle-item-toggle" type="button" data-recycle-toggle="${item.id}" aria-controls="recycleBody-${item.id}" aria-expanded="${expandedItems.has(item.id)}" aria-label="${expandedItems.has(item.id) ? '收起' : '展开'} ${escapeHtml(item.title)}">${expandedItems.has(item.id) ? '收起' : '展开'}</button>
-            <small class="recycle-item-meta"><span>${types[item.kind] || '文件'}</span>${item.records.length ? `<span>${item.records.length} 篇日记</span>` : ''}<span>${item.files.length} 个文件</span><span>${sizeLabel(item.files.reduce((sum, file) => sum + file.size, 0))}</span><time>${escapeHtml(new Date(item.createdAt).toLocaleString())}</time></small></div>
+            <small class="recycle-item-meta"><span>${types[item.kind] || '文件'}</span>${item.records.length ? `<span>${item.records.length} 篇日记</span>` : ''}<span>${item.files.length} 个文件</span><span>${sizeLabel(item.files.reduce((sum, file) => sum + file.size, 0))}</span><time>${escapeHtml(new Date(item.createdAt).toLocaleString())}</time></small>
+            ${(item.records.length ? item.records : item.mediaReferences || []).map(record => `<p class="recycle-record-info">${recordLink(record, recycleRecordLabel(record))}</p>`).join('')}</div>
             <div class="recycle-item-body" id="recycleBody-${item.id}"${expandedItems.has(item.id) ? '' : ' hidden'}>
             ${item.kind === 'snapshot' ? '<p class="recycle-restore-note">恢复会替换全部日记和个人资料；当前数据会先存入回收站，访问密码保持不变。请单独选择此项恢复。</p>' : item.kind === 'version' ? '<p class="recycle-restore-note">恢复到原位置；被替换的当前文件也会存入回收站。</p>' : ''}
-            ${(item.records.length ? item.records : item.mediaReferences || []).map(record => `<p class="recycle-record-info">${recordLink(record, [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · '))}</p>`).join('')}
             ${contentsMarkup(item)}
             ${item.kind === 'files' && !item.mediaReferences?.length && item.files.some(file => mediaKind(file.path)) ? `<div class="recycle-target" data-recycle-selected-only${selected.has(item.id) ? '' : ' hidden'}><label class="field-label" for="recycleTarget-${item.id}">恢复到</label><select id="recycleTarget-${item.id}" data-custom-select data-recycle-target="${item.id}"><option value="">${item.title === '编辑日记时移除的媒体' ? '请选择原日记' : '仅恢复文件'}</option>${(report.currentRecords || []).map(record => `<option value="${escapeHtml(record.desc_md)}"${targets.get(item.id) === record.desc_md ? ' selected' : ''}>${escapeHtml([record.date, record.locality].filter(Boolean).join(' · '))}</option>`).join('')}</select><p class="recycle-restore-note">选择日记后，同时补回附件列表；其他日记信息保持不变。</p><p class="recycle-target-link" data-recycle-target-link></p></div>` : item.mediaReferences?.length ? '<p class="recycle-restore-note">恢复文件并补回原日记的附件列表，保留之后修改的内容。</p>' : ''}
             <div data-recycle-diff="${item.id}"${selected.has(item.id) ? '' : ' hidden'}>${previewMarkup(selected.get(item.id))}</div>
