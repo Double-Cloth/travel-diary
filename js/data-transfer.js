@@ -1,10 +1,10 @@
-import { createPasswordGate } from './record-password.js?v=2.1.82';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.82';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.82';
+import { createPasswordGate } from './record-password.js?v=2.1.83';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.83';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.83';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=2.1.82';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.82';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.82';
+import { createRecordTransfer } from './record-transfer.js?v=2.1.83';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.83';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.83';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -80,10 +80,6 @@ export function createDataTransfer(onImported, getRecords = () => []) {
     function writerToken(capability) {
         if (!capability?.authenticated || !capability.token) throw new Error('登录会话已失效，请重新输入访问密码。');
         return capability.token;
-    }
-
-    function noteExportStarted() {
-        setStatus('全部数据备份已开始下载。');
     }
 
     async function exportAll(downloadName = 'travel-diary-data.zip', authenticatedCapability = null) {
@@ -354,6 +350,6 @@ export function createDataTransfer(onImported, getRecords = () => []) {
         }
     });
 
-    return { chooseImport, clearAll, exportAll, getExportHref, noteExportStarted,
+    return { chooseImport, clearAll, exportAll, getExportHref,
         chooseRecordExport: paths => partialTransfer().chooseExport(paths), chooseRecordImport: () => partialTransfer().chooseImport() };
 }

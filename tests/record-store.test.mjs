@@ -107,6 +107,34 @@ const remove = (descMd, headers = {}) => sendRecord(`${base}/api/travel-records`
     body: JSON.stringify({ desc_md: descMd })
 });
 
+test('媒体数量限制合并已有引用与新上传，图片和视频分别计算', async () => {
+    const image = { id: 'c'.repeat(32), name: 'new.png', data: 'iVBORw0KGgo=' };
+    const video = { id: 'd'.repeat(32), name: 'new.webm', data: 'GkXfow==' };
+    const photos = Array.from({ length: 1000 }, (_, index) => `photo-${index}.png`);
+    const videos = Array.from({ length: 1000 }, (_, index) => `video-${index}.webm`);
+    const value = draft('e', { photo_folder: 'data/photos/test', photos, video_folder: 'data/videos/test', videos });
+    assert.equal(readDraft(value).input.photos.length, 1000);
+    assert.throws(() => readDraft({ ...value, uploads: [image] }), /图片已有引用与待上传文件合计不能超过 1000 项/);
+    assert.throws(() => readDraft({ ...value, uploads: [video] }), /视频已有引用与待上传文件合计不能超过 1000 项/);
+    const accepted = readDraft({
+        ...value,
+        input: { ...value.input, photos: photos.slice(1), videos: videos.slice(1) },
+        uploads: [image, video]
+    });
+    assert.equal(accepted.uploads.length, 2);
+    assert.throws(() => readDraft({
+        ...value,
+        input: { ...value.input, photos: photos.slice(1) },
+        uploads: [image],
+        mediaOrder: { photos: [] }
+    }), /媒体顺序必须完整/);
+
+    const previous = await readIndex();
+    const response = await post({ ...value, uploads: [image] });
+    assert.equal(response.status, 400);
+    assert.match((await response.json()).error, /合计不能超过 1000 项/);
+    assert.deepEqual(await readIndex(), previous);
+});
 test('媒体内容按分块比较，改名仍判重，同名同大小但内容不同可以添加', async () => {
     const bytes = new Uint8Array(ZIP_CHUNK_BYTES + 7).fill(42);
     const changed = bytes.slice();

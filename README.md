@@ -86,6 +86,9 @@ node --test tests/record-order.test.mjs
 npm run assets:version
 # 只检查资源版本是否同步，不修改文件
 npm run assets:version -- --check
+# 只检查日记索引顺序及补丁中的空白错误
+npm run data:sort -- --check
+git diff --check
 ```
 
 ### 认证与备份

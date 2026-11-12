@@ -16,7 +16,7 @@ async function clearCache(root) {
         throw new Error('.cache 必须是项目内的普通目录，不能是符号链接或 junction。');
     }
     for (const name of await fs.readdir(cachePath)) {
-        if (name === 'recycle-bin') continue;
+        if (name.toLowerCase() === 'recycle-bin') continue;
         const target = path.resolve(cachePath, name);
         if (path.dirname(target) !== cachePath) throw new Error('缓存路径无效。');
         await fs.rm(target, { recursive: true, force: true });

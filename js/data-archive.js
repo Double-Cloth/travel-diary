@@ -168,8 +168,8 @@ async function exportDataArchive(root, selectedPaths = null, { signal } = {}) {
 }
 
 async function validateImportedRecords(entries) {
-    const [{ isValidDateString }, { isSafeAsciiFileName }] = await Promise.all([
-        import('./analytics.mjs'), import('./slug.mjs')
+    const [{ isValidDateString }, { isSafeAsciiFileName }, { MAXIMUM_RECORD_MEDIA_ITEMS }] = await Promise.all([
+        import('./analytics.mjs'), import('./slug.mjs'), import('./file-limits.mjs')
     ]);
     const files = new Map(entries.map(entry => [entry.name, entry.data]));
     const index = files.get('data/travel_data.json');
@@ -226,7 +226,7 @@ async function validateImportedRecords(entries) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项照片目录无效。`);
         }
         const photos = record.photos == null ? [] : record.photos;
-        if (!Array.isArray(photos) || photos.length > 1000) {
+        if (!Array.isArray(photos) || photos.length > MAXIMUM_RECORD_MEDIA_ITEMS) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项照片列表无效。`);
         }
         if (photos.length && !photoFolder) {
@@ -245,7 +245,7 @@ async function validateImportedRecords(entries) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项视频目录无效。`);
         }
         const videos = record.videos == null ? [] : record.videos;
-        if (!Array.isArray(videos) || videos.length > 1000) {
+        if (!Array.isArray(videos) || videos.length > MAXIMUM_RECORD_MEDIA_ITEMS) {
             throw failure(400, `备份中的旅行记录第 ${recordNumber} 项视频列表无效。`);
         }
         if (videos.length && !videoFolder) {

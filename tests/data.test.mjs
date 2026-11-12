@@ -90,6 +90,20 @@ test('旅行索引不存在时按首次使用的空档案加载', async (t) => {
     assert.deepEqual(await loadTravelData(), []);
 });
 
+test('重复的固定标识和旧版正文身份在创建页面路由前被拒绝', async t => {
+    let data;
+    mockRequests(t, async url => Response.json(url.endsWith('countries.json') ? { countries: [] } : data));
+    const identity = `r-${'a'.repeat(32)}`;
+    const first = { ...record, record_id: identity };
+    const second = { ...record, desc_md: 'data/another-note.md' };
+    data = [first, { ...second, record_id: identity }];
+    await assert.rejects(loadTravelData(), /第 2 项的固定标识重复/);
+    data = [record, { ...record, locality: '杭州市' }];
+    await assert.rejects(loadTravelData(), /第 2 项的固定标识重复/);
+    data = [first, second];
+    assert.deepEqual((await loadTravelData()).map(item => item.record_id), [identity, `legacy:${second.desc_md}`]);
+});
+
 test('批量正文加载限制并发且保留输入顺序，个别失败不影响其他记录', async t => {
     let active = 0;
     let maximum = 0;

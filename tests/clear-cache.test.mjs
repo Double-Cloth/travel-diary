@@ -60,3 +60,17 @@ test('帮助与无效参数不执行清理', async t => {
     await assert.rejects(execute(process.execPath, [script, '--dir', root, '--invalid']), error => error.code === 1);
     await access(cache);
 });
+
+test('清理缓存保留大小写不同的回收站目录及其内容', async t => {
+    const root = await fixture(t);
+    const recycleFile = path.join(root, '.cache/Recycle-Bin/record/keep.txt');
+    await mkdir(path.dirname(recycleFile), { recursive: true });
+    await writeFile(recycleFile, '可恢复的个人数据');
+    await writeFile(path.join(root, '.cache/backup-state.json'), '{}');
+
+    await clearCache(root);
+    assert.equal(await readFile(recycleFile, 'utf8'), '可恢复的个人数据');
+    await assert.rejects(access(path.join(root, '.cache/backup-state.json')), { code: 'ENOENT' });
+    await clearCache(root);
+    assert.equal(await readFile(recycleFile, 'utf8'), '可恢复的个人数据');
+});

@@ -12,7 +12,10 @@ data/
 ├── videos/                # 原始旅行视频
 └── profile/               # profile-picture.png、owner-name.txt
 .cache/
-└── media-previews/        # 自动生成的压缩图片与视频封面，不属于个人数据
+├── media-previews/        # 自动生成的压缩图片与视频封面
+├── media-index.json       # 媒体重复检测指纹
+├── backup-state.json      # 最近导出的记录比较基准
+└── recycle-bin/           # 可恢复的日记、媒体及整站快照，清理缓存时保留
 .secrets/
 └── auth.json              # 服务端认证哈希
 assets/

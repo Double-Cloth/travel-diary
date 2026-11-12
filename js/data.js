@@ -1,11 +1,11 @@
-import { buildFallbackTitle, escapeHtml } from './utils.js?v=2.1.82';
-import { isValidDateString } from './analytics.mjs?v=2.1.82';
-import { recordIdentity, validRecordIdentity } from './record-identity.mjs?v=2.1.82';
+import { buildFallbackTitle, escapeHtml } from './utils.js?v=2.1.83';
+import { isValidDateString } from './analytics.mjs?v=2.1.83';
+import { recordIdentity, validRecordIdentity } from './record-identity.mjs?v=2.1.83';
 import {
     configureCountryCatalog,
     getLocationSearchValues,
     normalizeTravelLocation
-} from './location.mjs?v=2.1.82';
+} from './location.mjs?v=2.1.83';
 
 const LOAD_TIMEOUT_MS = 20000;
 const MARKDOWN_CONCURRENCY = 8;
@@ -42,6 +42,7 @@ export async function loadTravelData(cacheKey = '') {
         throw new Error('Travel data file must contain an array.');
     }
 
+    const recordIds = new Set();
     return data.map((record, index) => {
         if (!record || typeof record !== 'object' || Array.isArray(record)) {
             throw new Error(`旅行记录第 ${index + 1} 项必须是对象。`);
@@ -53,9 +54,14 @@ export async function loadTravelData(cacheKey = '') {
             throw new Error(`旅行记录第 ${index + 1} 项的 desc_md 必须是字符串。`);
         }
         if (record.record_id != null && !validRecordIdentity(record.record_id)) throw new Error(`旅行记录第 ${index + 1} 项的固定标识无效。`);
+        const identity = recordIdentity(record);
+        if (recordIds.has(identity)) {
+            throw new Error(`旅行记录第 ${index + 1} 项的固定标识重复，请检查 record_id 和 desc_md。`);
+        }
+        recordIds.add(identity);
         return normalizeTravelLocation({
             ...record,
-            record_id: recordIdentity(record),
+            record_id: identity,
             sourceRecord: { ...record },
             photo_folder: typeof record.photo_folder === 'string' ? record.photo_folder.trim() : '',
             photos: Array.isArray(record.photos)
