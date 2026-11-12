@@ -1770,6 +1770,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-filter-field .field-label { margin: 0; color: var(--ink-soft); font-size: 12px; line-height: 1.6; }
 .media-manager .custom-select-menu { min-width: 100%; }
 .media-manager .media-filter-hint { margin: 12px 0; font-size: 13px; overflow-wrap: anywhere; }
+.media-manager .media-diary-list .media-file-list { min-height: 0; max-height: none; overflow: visible; }
 .media-manager .media-file-list > .media-health-file { grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; }
 .media-manager .media-file-list > .media-health-file-readonly { grid-template-columns: minmax(0, 1fr); }
 .media-manager [data-media-path]:disabled { accent-color: var(--ink-soft); cursor: not-allowed; }
@@ -1796,6 +1797,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
     .media-manager .record-transfer-card { max-height: none; }
     .media-manager .media-files-section { flex-shrink: 0; min-height: 0; }
     .media-manager .media-file-list { overflow-y: visible; }
+    .media-manager .media-diary-list { overflow-y: visible; }
 }
 @media (max-width: 760px) {
     .record-diff { margin-left: 0; }
