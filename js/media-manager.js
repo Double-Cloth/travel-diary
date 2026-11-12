@@ -1,8 +1,8 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.122';
-import { createPasswordGate } from './record-password.js?v=2.1.122';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.122';
-import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.122';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.122';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.123';
+import { createPasswordGate } from './record-password.js?v=2.1.123';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.123';
+import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.123';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.123';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -22,7 +22,7 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
         <div class="media-manager-navigation"><h3 id="mediaFilesTitle">文件检查</h3><button class="media-text-button" type="button" data-media-refresh>重新检查</button></div>
         <section id="mediaFilesPanel" class="media-files-section" aria-labelledby="mediaFilesTitle">
         <div class="media-manager-filters">
-            <div class="media-filter-field"><label for="mediaFilterButton" class="field-label">查看</label><select id="mediaFilter" data-custom-select data-media-filter aria-label="文件分类"><option value="unused">未被日记使用</option><option value="missing">日记中的缺失文件</option><option value="shared">多篇日记共用</option><option value="all">全部现有文件</option></select></div>
+            <div class="media-filter-field"><label for="mediaFilterButton" class="field-label">查看</label><select id="mediaFilter" data-custom-select data-media-filter aria-label="文件分类"><option value="unused">未被日记使用</option><option value="used">被日记使用</option><option value="missing">日记中的缺失文件</option><option value="shared">多篇日记共用</option><option value="all">全部现有文件</option></select></div>
             <div class="media-filter-field"><label class="field-label" for="mediaSearch">搜索文件名、路径或日记地点</label><div class="management-search"><input id="mediaSearch" type="search" autocomplete="off" data-media-search placeholder="筛选当前分类的文件"><button class="media-text-button" type="button" data-media-reset hidden>清除搜索</button></div></div>
         </div>
         <p class="media-filter-hint" data-media-hint></p>
@@ -53,7 +53,11 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
         if (!report) return [];
         const filter = dialog.querySelector('[data-media-filter]').value;
         const query = dialog.querySelector('[data-media-search]').value.trim().toLowerCase();
-        return (filter === 'missing' ? report.missing : report.files.filter(file => filter === 'all' || (filter === 'shared' ? file.records.length > 1 : !file.records.length)))
+        return (filter === 'missing' ? report.missing : report.files.filter(file => {
+            if (filter === 'used') return file.records.length > 0;
+            if (filter === 'shared') return file.records.length > 1;
+            return filter === 'all' || !file.records.length;
+        }))
             .filter(file => [file.path, ...file.records.flatMap(record => [record.date, record.locality])].some(value => String(value || '').toLowerCase().includes(query)));
     }
 
@@ -92,8 +96,8 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
         const space = dialog.querySelector('[data-media-space]');
         space.hidden = false;
         space.innerHTML = [['媒体文件占用', report.totalBytes], ['可整理的未使用文件', report.unusedBytes]].map(([label, bytes]) => `<div><dt>${label}</dt><dd>${sizeLabel(bytes)}</dd></div>`).join('');
-        const counts = { unused: report.files.filter(file => !file.records.length).length, missing: report.missing.length, shared: report.files.filter(file => file.records.length > 1).length, all: report.files.length };
-        const labels = { unused: '未被日记使用', missing: '日记中的缺失文件', shared: '多篇日记共用', all: '全部现有文件' };
+        const counts = { unused: report.files.filter(file => !file.records.length).length, used: report.files.filter(file => file.records.length).length, missing: report.missing.length, shared: report.files.filter(file => file.records.length > 1).length, all: report.files.length };
+        const labels = { unused: '未被日记使用', used: '被日记使用', missing: '日记中的缺失文件', shared: '多篇日记共用', all: '全部现有文件' };
         for (const option of dialog.querySelector('[data-media-filter]').options) option.textContent = `${labels[option.value]}（${counts[option.value]}）`;
         renderFiles();
         count();
@@ -104,6 +108,7 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
         const filter = dialog.querySelector('[data-media-filter]').value;
         dialog.querySelector('[data-media-hint]').textContent = {
             unused: `以下文件没有被任何日记使用，共 ${sizeLabel(report.unusedBytes)}。`,
+            used: '这些文件仍被日记使用，不能清理。',
             missing: '日记引用了这些文件，但文件已不存在。'
                 + (capability?.mediaReferenceRemoval ? '' : '请重启日记服务以启用删除引用。'),
             shared: '这些文件仍被多篇日记使用，不能清理。',
@@ -141,7 +146,7 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
                 const mediaRows = group.files.map(file => {
                     const row = document.createElement('li');
                     row.className = 'media-health-file';
-                    if (filter === 'shared') row.classList.add('media-health-file-readonly');
+                    if (filter === 'used' || filter === 'shared') row.classList.add('media-health-file-readonly');
                     else {
                         const selection = document.createElement('label');
                         const available = selectable(file);
@@ -176,8 +181,17 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
             return row;
         });
         list.replaceChildren(...rows);
-        if (!files.length) list.innerHTML = `<li class="media-empty">${dialog.querySelector('[data-media-search]').value.trim() ? '没有匹配的文件，请清除搜索或切换分类。' : filter === 'unused' ? '没有未被日记使用的文件，无需清理。' : filter === 'missing' ? '没有缺失文件。' : filter === 'shared' ? '没有多篇共用的文件。' : '还没有图片或视频。'}</li>`;
-        const canSelect = filter !== 'shared' && (currentSelection().size > 0 || files.some(selectable));
+        if (!files.length) {
+            const emptyMessage = {
+                unused: '没有未被日记使用的文件，无需清理。',
+                used: '没有被日记使用的现有文件。',
+                missing: '没有缺失文件。',
+                shared: '没有多篇共用的文件。',
+                all: '还没有图片或视频。'
+            }[filter];
+            list.innerHTML = `<li class="media-empty">${dialog.querySelector('[data-media-search]').value.trim() ? '没有匹配的文件，请清除搜索或切换分类。' : emptyMessage}</li>`;
+        }
+        const canSelect = filter !== 'used' && filter !== 'shared' && (currentSelection().size > 0 || files.some(selectable));
         dialog.querySelector('[data-media-selection]').hidden = !canSelect;
         dialog.querySelector('[data-media-select-tools]').hidden = !canSelect;
         count();
@@ -259,7 +273,15 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
         if (event.target.closest('[data-media-refresh]')) { await request(); return; }
         if (!report) return;
         if (event.target.closest('[data-media-reset]')) { dialog.querySelector('[data-media-search]').value = ''; renderFiles(); dialog.querySelector('[data-media-search]').focus(); }
-        if (event.target.closest('[data-media-all]') && !stale) { filteredFiles().filter(selectable).forEach(file => currentSelection().add(file.path)); renderFiles(); count(); }
+        if (event.target.closest('[data-media-all]') && !stale) {
+            filteredFiles().filter(selectable).forEach(file => {
+                currentSelection().add(file.path);
+                if (!file.records.length) expandedGroups.add('unused');
+                file.records.forEach(record => expandedGroups.add(record.desc_md || record.record_id));
+            });
+            renderFiles();
+            count();
+        }
         if (event.target.closest('[data-media-clear]')) { selected.clear(); selectedMissing.clear(); renderFiles(); count(); }
         let payload;
         if (event.target.closest('[data-media-trash]') && currentSelection().size && !stale) {
