@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.87';
-import { createPasswordGate } from './record-password.js?v=2.1.87';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.87';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.87';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.87';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.87';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.87';
-import { recordIdentity } from './record-identity.mjs?v=2.1.87';
-import { buildRecycleTree, recycleRecordLabel, recycleFileType } from './recycle-tree.mjs?v=2.1.87';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.88';
+import { createPasswordGate } from './record-password.js?v=2.1.88';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.88';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.88';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.88';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.88';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.88';
+import { recordIdentity } from './record-identity.mjs?v=2.1.88';
+import { buildRecycleTree, groupRecycleItems, recycleRecordLabel, recycleFileType } from './recycle-tree.mjs?v=2.1.88';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -46,6 +46,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         <footer class="management-footer recycle-selection"><p data-recycle-count role="status" aria-live="polite">尚未选择内容</p><div class="recycle-selection-actions"><button class="paper-button" type="button" data-recycle-restore disabled>恢复所选内容</button><button class="paper-button recycle-purge" type="button" data-recycle-purge-selected disabled>清除所选内容</button></div><p class="recycle-selection-note" data-recycle-selection-note>恢复前可展开预览；清除所选内容后无法找回。</p></footer></div>`;
     document.body.append(dialog);
     let report;
+    let grouping = { groups: [], recordsByItem: new Map() };
     let busy = false;
     let stale = true;
     let clearSupported = false;
@@ -68,7 +69,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
     function filteredItems() {
         const query = dialog.querySelector('[data-recycle-search]').value.trim().toLowerCase();
         return (report?.items || []).filter(item => [item.title, types[item.kind], new Date(item.createdAt).toLocaleString(),
-            ...item.files.flatMap(file => [file.path, recycleFileType(file.path, mediaKind)]), ...(item.records.length ? item.records : item.mediaReferences || []).flatMap(record => [record.date, record.country, record.admin_area, record.locality])]
+            ...item.files.flatMap(file => [file.path, recycleFileType(file.path, mediaKind)]), ...(grouping.recordsByItem.get(item.id) || []).flatMap(record => [record.title, record.date, record.country, record.admin_area, record.locality])]
             .some(value => String(value || '').toLowerCase().includes(query)));
     }
     function syncControls() {
@@ -136,7 +137,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         const item = report.items.find(item => item.id === id);
         const list = dialog.querySelector(`[data-recycle-item="${id}"] [data-recycle-files]`);
         if (!list) return;
-        if (!trees.has(id)) trees.set(id, buildRecycleTree(item.files, dialog.querySelector('[data-recycle-search]').value, { records: item.records, mediaReferences: item.mediaReferences, mediaKind }));
+        if (!trees.has(id)) trees.set(id, buildRecycleTree(item.files, dialog.querySelector('[data-recycle-search]').value, { records: item.records, mediaReferences: item.mediaReferences, displayRecords: grouping.recordsByItem.get(id), mediaKind }));
         void loadContents(list, item, previews);
     }
     async function loadContents(list, item, scope) {
@@ -203,18 +204,31 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         const items = filteredItems();
         dialog.querySelector('[data-recycle-status]').textContent = `显示 ${items.length} / ${report.items.length} 个回收项目 · 共 ${sizeLabel(report.totalBytes)}`;
         dialog.querySelector('[data-recycle-reset]').hidden = !dialog.querySelector('[data-recycle-search]').value;
-        dialog.querySelector('[data-recycle-list]').innerHTML = items.length ? items.map(item => `<li data-recycle-item="${item.id}">
+        const itemMarkup = item => {
+            const records = grouping.recordsByItem.get(item.id) || [];
+            const summaries = records.length > 1 && item.files.length ? [] : records;
+            return `<li data-recycle-item="${item.id}">
             <div class="recycle-item-header">
             <label class="recycle-item-choice"><input type="checkbox" data-recycle-select value="${item.id}" aria-label="选择 ${escapeHtml(item.title)}"><strong>${escapeHtml(item.title)}</strong></label>
             <button class="media-text-button recycle-item-toggle" type="button" data-recycle-toggle="${item.id}" aria-controls="recycleBody-${item.id}" aria-expanded="${expandedItems.has(item.id)}" aria-label="${expandedItems.has(item.id) ? '收起' : '展开'} ${escapeHtml(item.title)}">${expandedItems.has(item.id) ? '收起' : '展开'}</button>
             <small class="recycle-item-meta"><span>${types[item.kind] || '文件'}</span>${item.records.length ? `<span>${item.records.length} 篇日记</span>` : ''}<span>${item.files.length} 个文件</span><span>${sizeLabel(item.files.reduce((sum, file) => sum + file.size, 0))}</span><time>${escapeHtml(new Date(item.createdAt).toLocaleString())}</time></small>
-            ${(item.records.length ? item.records : item.mediaReferences || []).map(record => `<p class="recycle-record-info">${recordLink(record, recycleRecordLabel(record))}</p>`).join('')}</div>
+            </div>
             <div class="recycle-item-body" id="recycleBody-${item.id}"${expandedItems.has(item.id) ? '' : ' hidden'}>
+            ${summaries.map(record => `<p class="recycle-record-info">${recordLink(record, recycleRecordLabel(record))}</p>`).join('')}
             ${item.kind === 'snapshot' ? '<p class="recycle-restore-note">恢复会替换全部日记和个人资料；当前数据会先存入回收站，访问密码保持不变。请单独选择此项恢复。</p>' : item.kind === 'version' ? '<p class="recycle-restore-note">恢复到原位置；被替换的当前文件也会存入回收站。</p>' : ''}
             ${contentsMarkup(item)}
             ${item.kind === 'files' && !item.mediaReferences?.length && item.files.some(file => mediaKind(file.path)) ? `<div class="recycle-target" data-recycle-selected-only${selected.has(item.id) ? '' : ' hidden'}><label class="field-label" for="recycleTarget-${item.id}">恢复到</label><select id="recycleTarget-${item.id}" data-custom-select data-recycle-target="${item.id}"><option value="">${item.title === '编辑日记时移除的媒体' ? '请选择原日记' : '仅恢复文件'}</option>${(report.currentRecords || []).map(record => `<option value="${escapeHtml(record.desc_md)}"${targets.get(item.id) === record.desc_md ? ' selected' : ''}>${escapeHtml([record.date, record.locality].filter(Boolean).join(' · '))}</option>`).join('')}</select><p class="recycle-restore-note">选择日记后，同时补回附件列表；其他日记信息保持不变。</p><p class="recycle-target-link" data-recycle-target-link></p></div>` : item.mediaReferences?.length ? '<p class="recycle-restore-note">恢复文件并补回原日记的附件列表，保留之后修改的内容。</p>' : ''}
             <div data-recycle-diff="${item.id}"${selected.has(item.id) ? '' : ' hidden'}>${previewMarkup(selected.get(item.id))}</div>
-            </div></li>`).join('') : `<li class="media-empty">${report.items.length ? '没有匹配的回收项目，清除搜索后可查看全部内容。' : '回收站为空。删除的内容会显示在这里。'}</li>`;
+            </div></li>`;
+        };
+        const visible = new Set(items.map(item => item.id));
+        dialog.querySelector('[data-recycle-list]').innerHTML = items.length ? grouping.groups.map(group => {
+            const history = group.items.filter(item => visible.has(item.id));
+            if (!history.length) return '';
+            if (!group.record) return history.map(itemMarkup).join('');
+            const label = group.record.title || [group.record.date, group.record.locality || group.record.admin_area || group.record.country].filter(Boolean).join(' · ') || '日记';
+            return `<li class="recycle-diary-group" data-recycle-diary="${escapeHtml(group.key)}"><h3>${escapeHtml(label)}<small>${history.length} 次回收${history.length !== group.items.length ? ` / 共 ${group.items.length} 次` : ''}</small></h3><ul class="recycle-list recycle-history" aria-label="${escapeHtml(label)}的回收记录">${history.map(itemMarkup).join('')}</ul></li>`;
+        }).join('') : `<li class="media-empty">${report.items.length ? '没有匹配的回收项目，清除搜索后可查看全部内容。' : '回收站为空。删除的内容会显示在这里。'}</li>`;
         expandedItems.forEach(loadItemContents);
         syncControls();
     }
@@ -301,6 +315,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             catch { throw new Error('回收站返回了无法识别的结果，请刷新后重试。'); }
             if (!response.ok || !Array.isArray(result.items)) throw new Error(result.error || '无法读取回收站，请刷新后重试。');
             report = result;
+            grouping = groupRecycleItems(report.items, report.currentRecords);
             stale = false;
             render();
             notice(payload?.action === 'clear' ? '回收站已清空。' : payload?.action === 'purge-selected' ? '所选内容已永久清除。' : payload?.action === 'restore-selected' ? '所选内容已恢复。' : selectionSupported ? '' : '请重启日记服务以启用选择恢复。');

@@ -1508,6 +1508,10 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list { list-style: none; padding: 0; margin: 0; }
 .recycle-list > li { padding: 20px 12px; border-bottom: 1px solid var(--hairline); overflow-wrap: anywhere; }
 .recycle-list > li.is-selected { background: var(--paper-100); }
+.recycle-list > .recycle-diary-group { padding: 20px 0 0; }
+.recycle-diary-group > h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 0; padding-inline: 12px; color: var(--ink); font-size: 16px; line-height: 1.6; }
+.recycle-diary-group > h3 > small { color: var(--ink-soft); font-size: 12px; font-weight: 400; }
+.recycle-history > li:last-child { border-bottom: 0; }
 .recycle-item-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 0 12px; }
 .recycle-item-choice { display: flex; min-width: 0; align-items: start; gap: 12px; min-height: 44px; padding: 8px 0; cursor: pointer; }
 .recycle-item-choice input { flex: 0 0 auto; width: 18px; height: 18px; margin: 4px 0 0; accent-color: var(--stamp); }
@@ -1588,10 +1592,9 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .content-preview-list > li { grid-template-columns: minmax(0, 1fr); }
 .recycle-list .content-file-preview { margin: 0; }
 .recycle-list .recycle-record-info {
-    grid-column: 1 / -1;
     min-width: 0;
-    margin: 6px 0 0 30px;
-    color: var(--ink);
+    margin: 0 0 12px;
+    color: var(--stamp);
     font-size: 14px;
     font-weight: 600;
     line-height: 1.65;
@@ -1623,8 +1626,9 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
     .recycle-manager .recycle-selection { grid-template-columns: minmax(0, 1fr); }
     .recycle-manager .recycle-selection-actions > button { padding-inline: 8px; font-size: 13px; }
     .recycle-list > li { padding: 16px 4px; }
+    .recycle-list > .recycle-diary-group { padding: 16px 0 0; }
+    .recycle-diary-group > h3 { padding-inline: 4px; }
     .recycle-item-meta time { flex-basis: 100%; }
-    .recycle-list .recycle-record-info { margin-left: 0; }
     .recycle-item-body { margin-left: 0; }
     .recycle-tree .recycle-directory > summary { grid-template-columns: 10px 18px minmax(0, 1fr); gap: 2px 8px; }
     .recycle-tree .recycle-directory > summary > small { grid-column: 3; justify-content: flex-start; gap: 10px; text-align: start; }

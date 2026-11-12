@@ -1,4 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.87';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.88';
+import { recordIdentity } from './record-identity.mjs?v=2.1.88';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
@@ -14,14 +15,68 @@ export function recycleFileType(path, mediaKind = () => '') {
     return '其他文件';
 }
 
+// 展示关联与恢复关联独立保存，旧文件的归属提示不参与恢复决策。
+export function groupRecycleItems(items, currentRecords = []) {
+    const candidates = [...currentRecords, ...items.flatMap(item => [...(item.records || []), ...(item.mediaReferences || []), ...(item.displayRecords || [])])]
+        .filter(record => record?.desc_md);
+    const identitiesByPath = new Map();
+    for (const record of candidates) {
+        if (!identitiesByPath.has(record.desc_md)) identitiesByPath.set(record.desc_md, new Set());
+        if (record.record_id && !record.record_id.startsWith('legacy:')) identitiesByPath.get(record.desc_md).add(record.record_id);
+    }
+    const identity = record => {
+        const identities = identitiesByPath.get(record.desc_md);
+        if (recordIdentity(record).startsWith('legacy:') && identities?.size === 1) return identities.values().next().value;
+        return recordIdentity(record);
+    };
+    const diaries = new Map();
+    const owners = new Map();
+    const folders = new Map();
+    const addOwner = (index, name, key) => {
+        if (!index.has(name)) index.set(name, new Set());
+        index.get(name).add(key);
+    };
+    for (const record of candidates) {
+        const key = identity(record);
+        if (!diaries.has(key)) diaries.set(key, record);
+        for (const name of recordFilePaths([record])) addOwner(owners, name, key);
+        for (const [folder, prefix] of [[record.photo_folder, 'data/photos/'], [record.video_folder, 'data/videos/']]) {
+            if (folder?.startsWith(prefix) && !folder.endsWith('/')) addOwner(folders, folder, key);
+        }
+    }
+    const groups = new Map();
+    const recordsByItem = new Map();
+    for (const item of items) {
+        const explicit = [...(item.records || []), ...(item.mediaReferences || []), ...(item.displayRecords || [])].filter(record => record?.desc_md);
+        const related = new Map();
+        for (const record of explicit) if (!related.has(identity(record))) related.set(identity(record), record);
+        let unassigned = false;
+        if (!related.size) {
+            for (const file of item.files) {
+                const matches = owners.get(file.path) || folders.get(file.path.slice(0, file.path.lastIndexOf('/')));
+                if (!matches?.size) unassigned = true;
+                for (const key of matches || []) related.set(key, diaries.get(key));
+            }
+        }
+        const records = [...related.values()];
+        recordsByItem.set(item.id, records);
+        // 整站、多篇日记和混合文件保留完整批次，避免产生重复恢复入口。
+        const single = item.kind !== 'snapshot' && related.size === 1 && !unassigned;
+        const key = single ? `diary:${related.keys().next().value}` : `batch:${item.id}`;
+        if (!groups.has(key)) groups.set(key, { key, record: single ? diaries.get(related.keys().next().value) : null, items: [] });
+        groups.get(key).items.push(item);
+    }
+    return { groups: [...groups.values()], recordsByItem };
+}
+
 // 逻辑目录只负责展示归属，文件保留原始对象供预览和恢复使用。
-export function buildRecycleTree(files, query = '', { records = [], mediaReferences = [], mediaKind = () => '' } = {}) {
+export function buildRecycleTree(files, query = '', { records = [], mediaReferences = [], displayRecords = [], mediaKind = () => '' } = {}) {
     const directories = new Map();
     const root = { path: '', name: '', depth: 0, directories: [], files: [], count: 0, totalBytes: 0, matches: false };
     directories.set('', root);
     const diaries = new Map();
     const owners = new Map();
-    for (const record of [...records, ...mediaReferences]) {
+    for (const record of [...records, ...mediaReferences, ...displayRecords]) {
         if (!record?.desc_md) continue;
         if (!diaries.has(record.desc_md)) diaries.set(record.desc_md, record);
         for (const name of recordFilePaths([record])) {

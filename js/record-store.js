@@ -734,7 +734,7 @@ async function updateRecord(root, payload, authorize, confirmation) {
         }
 
         await rejectDuplicateUploads(root, prepared, records, existing, confirmation);
-        if (oldMarkdown !== markdown || oldDiaryFile !== newDiaryFile) editRecycleId = await captureRecycle(root, { kind: 'version', title: '编辑前的日记正文', files: [{ path: existing.desc_md }] });
+        if (oldMarkdown !== markdown || oldDiaryFile !== newDiaryFile) editRecycleId = await captureRecycle(root, { kind: 'version', title: '编辑前的日记正文', displayRecords: [existing], files: [{ path: existing.desc_md }] });
         mediaStage = await stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos, {
             photo_folder: existing.photo_folder, video_folder: existing.video_folder
         }, syncMediaFiles);

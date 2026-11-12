@@ -43,6 +43,32 @@ async function api(t, root) {
     return { base, headers };
 }
 
+test('展示关联独立留存，正文改名后仍可定位日记且恢复不会还原旧索引信息', async t => {
+    const root = await fixture(t);
+    const id = await captureRecycle(root, { kind: 'version', title: '编辑前正文', displayRecords: [note], files: [{ path: note.desc_md }] });
+    const current = { ...note, desc_md: 'data/travel-diary/2026/2026-11-03-new.md', locality: '新地点' };
+    await write(root, 'data/travel_data.json', JSON.stringify([current, other]));
+    const item = (await readRecycleBin(root)).items.find(item => item.id === id);
+    assert.deepEqual(item.records, []);
+    assert.deepEqual(item.displayRecords, [note]);
+    assert.deepEqual(item.mediaReferences, []);
+    await action(root, id);
+    assert.equal(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')))[0].locality, '新地点');
+});
+
+test('整站回收从归档索引提取展示信息，旧清单和无效索引仍可列出', async t => {
+    const root = await fixture(t);
+    const id = await captureRecycle(root, { kind: 'snapshot', title: '整站历史' });
+    await write(root, 'data/travel_data.json', '[]');
+    let report = await readRecycleBin(root);
+    assert.deepEqual(report.items[0].records, []);
+    assert.deepEqual(report.items[0].displayRecords, [note, other]);
+    await write(root, `.cache/recycle-bin/${id}/data/travel_data.json`, '{');
+    report = await readRecycleBin(root);
+    assert.equal(report.items.length, 1);
+    assert.equal(report.items[0].displayRecords, undefined);
+});
+
 test('删除日记将正文和独占媒体移入回收站，共用媒体保留，恢复后索引与文件完整', async t => {
     const root = await fixture(t);
     const { base, headers } = await api(t, root);

@@ -63,12 +63,13 @@ async function discardRecycle(root, id) {
 }
 
 // 调用方持有数据锁，先完整留存，再提交删除；失败时可以丢弃本次留存。
-async function captureRecycle(root, { title, kind = 'files', records = [], mediaReferences = [], files }) {
+async function captureRecycle(root, { title, kind = 'files', records = [], mediaReferences = [], displayRecords = [], files }) {
     await migrateLegacyTrash(root);
     if (kind === 'snapshot') files = await dataFiles(root);
     const id = randomBytes(16).toString('hex');
     const prefix = `${BASE}/${id}`;
     const manifest = { id, kind, title, records, mediaReferences, createdAt: new Date().toISOString(), files: [] };
+    if (displayRecords.length) manifest.displayRecords = displayRecords;
     try {
         await ensureParent(root, `${prefix}/manifest.json`);
         for (const file of files || []) {
@@ -100,7 +101,8 @@ async function readRecycleBin(root) {
         if (!value || !Array.isArray(value.files) || value.files.some(file => !file || typeof file.path !== 'string')
             || value.files.length > 50000 || new Set(value.files.map(file => file.path.toLowerCase())).size !== value.files.length
             || (value.kind && !['files', 'record', 'snapshot', 'version'].includes(value.kind)) || (value.records && !Array.isArray(value.records))
-            || (value.mediaReferences && (!Array.isArray(value.mediaReferences) || value.mediaReferences.some(record => !record || typeof record.desc_md !== 'string')))) throw failure('回收站清单无效。');
+            || (value.mediaReferences && (!Array.isArray(value.mediaReferences) || value.mediaReferences.some(record => !record || typeof record.desc_md !== 'string')))
+            || (value.displayRecords && (!Array.isArray(value.displayRecords) || value.displayRecords.some(record => !record || typeof record.desc_md !== 'string')))) throw failure('回收站清单无效。');
         for (const file of value.files) {
             safeDataPath(file.path);
             let source;
@@ -113,6 +115,14 @@ async function readRecycleBin(root) {
         items.push({ ...value, id, kind: value.kind || 'files', title: value.title || '清理的媒体', records: value.records || [] });
     }
     items.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    // 整站批次从自身的索引读取展示归属，清空当前数据后仍可按日记浏览。
+    for (const item of items.filter(item => item.files.some(file => file.path === 'data/travel_data.json'))) {
+        const source = await fs.readFile(await ordinaryPath(root, `${BASE}/${item.id}/data/travel_data.json`), 'utf8');
+        let index;
+        try { index = JSON.parse(source); }
+        catch (error) { if (error instanceof SyntaxError) continue; throw error; }
+        if (Array.isArray(index)) item.displayRecords = index.filter(record => record && typeof record.desc_md === 'string');
+    }
     return { items, currentRecords: await readRecords(root), totalBytes: items.flatMap(item => item.files).reduce((sum, file) => sum + file.size, 0),
         revision: createHash('sha256').update(JSON.stringify(items)).digest('hex') };
 }
@@ -236,7 +246,10 @@ async function restoreVersion(root, item, records, sources = new Map()) {
         try { await ordinaryPath(root, file.path); files.push({ path: file.path }); }
         catch (error) { if (error.code !== 'ENOENT') throw error; }
     }
-    const protection = files.length ? await captureRecycle(root, { kind: 'version', title: '恢复前的文件', files }) : null;
+    const { recordFilePaths } = await import('./record-backup.mjs');
+    const paths = new Set(files.map(file => file.path));
+    const displayRecords = (await readRecords(root)).filter(record => [...recordFilePaths([record])].some(name => paths.has(name)));
+    const protection = files.length ? await captureRecycle(root, { kind: 'version', title: '恢复前的文件', displayRecords, files }) : null;
     const moved = [];
     const created = [];
     try {
