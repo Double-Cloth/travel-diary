@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.89';
-import { createPasswordGate } from './record-password.js?v=2.1.89';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.89';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.89';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.89';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.89';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.89';
-import { recordIdentity } from './record-identity.mjs?v=2.1.89';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRecordLabel, recycleFileType } from './recycle-tree.mjs?v=2.1.89';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.90';
+import { createPasswordGate } from './record-password.js?v=2.1.90';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.90';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.90';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.90';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.90';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.90';
+import { recordIdentity } from './record-identity.mjs?v=2.1.90';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRecordLabel, recycleFileType } from './recycle-tree.mjs?v=2.1.90';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -121,7 +121,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         const node = state.tree.get(list.dataset.recycleDirectory);
         for (const child of node.directories) {
             const row = document.createElement('li');
-            row.innerHTML = `<details class="recycle-directory" data-recycle-restore-directory open><summary>${folderIcon}<span>${escapeHtml(child.name)}</span><small>${child.count} 项变化</small></summary><ul class="recycle-tree" data-recycle-restore-files data-recycle-directory="${escapeHtml(child.path)}" style="--recycle-depth: ${Math.min(child.depth, 4)}" aria-label="${escapeHtml(child.name)}"></ul></details>`;
+            row.innerHTML = `<details class="recycle-directory" data-recycle-restore-directory><summary>${folderIcon}<span>${escapeHtml(child.name)}</span><small>${child.count} 项变化</small></summary><ul class="recycle-tree" data-recycle-restore-files data-recycle-directory="${escapeHtml(child.path)}" style="--recycle-depth: ${Math.min(child.depth, 4)}" aria-label="${escapeHtml(child.name)}"></ul></details>`;
             list.append(row);
         }
         for (const [index, file] of node.files.entries()) {
@@ -168,7 +168,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         const directory = trees.get(item.id).get(list.dataset.recycleDirectory);
         for (const child of directory.directories) {
             const row = document.createElement('li');
-            const open = directoryStates.get(directoryKey(item.id, child.path)) ?? (child.depth <= 2 || child.matches);
+            const open = directoryStates.get(directoryKey(item.id, child.path)) ?? false;
             row.innerHTML = `<details class="recycle-directory" data-recycle-folder="${escapeHtml(child.path)}"${open ? ' open' : ''}>
                 <summary title="${escapeHtml(child.name)}">${folderIcon}<span>${escapeHtml(child.name)}</span><small><span>${child.count} 个文件</span><span>${sizeLabel(child.totalBytes)}</span></small></summary>
                 <ul class="recycle-tree" data-recycle-files="${item.id}" data-recycle-directory="${escapeHtml(child.path)}" style="--recycle-depth: ${Math.min(child.depth, 4)}" aria-label="${escapeHtml(child.name)}"></ul></details>`;
@@ -184,7 +184,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             row.className = 'recycle-file';
             row.title = file.path;
             const kind = mediaKind(file.path);
-            try { row.append(await scope.file({ name: file.path, url: recycleUrl(item.id, file.path), detail: kind ? `${kind === 'image' ? '图片' : '视频'} · ${sizeLabel(file.size)}` : '', collapsible: true })); }
+            try { row.append(await scope.file({ name: file.path, url: recycleUrl(item.id, file.path), size: file.size, detail: kind ? `${kind === 'image' ? '图片' : '视频'} · ${sizeLabel(file.size)}` : '', collapsible: true })); }
             catch (failure) { row.textContent = `${file.path}：${failure.message}`; }
             if (scope !== previews || !list.isConnected || (!dialog.open && !suspended)) return;
             const summary = row.querySelector('.content-file-preview > summary');
@@ -195,6 +195,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
                 size.textContent = sizeLabel(file.size);
                 summary.append(size);
             }
+            row.querySelector('.content-file-empty')?.insertAdjacentHTML('afterbegin', fileIcon);
             row.querySelector('a.media-file-link')?.setAttribute('aria-label', `查看文件：${file.path}`);
             list.append(row);
         }
@@ -279,7 +280,8 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             body.innerHTML = renderRecordDifference(file.record, file.comparison, { afterLabel: '恢复后', note: '', previewLabel: '预览恢复后的正文', collapsible: false, mediaLink: (name, side) => mediaLink(name, side, state) });
             const scope = previews;
             await loadDifferenceMedia(body.querySelector('[data-diff-record]'), file.comparison, scope, (name, side) => ({
-                url: side === 'after' && state.savedPaths.has(name) ? recycleUrl(id, state.savedFiles.get(name) || name) : getMediaFileUrl(name)
+                url: side === 'after' && state.savedPaths.has(name) ? recycleUrl(id, state.savedFiles.get(name) || name) : getMediaFileUrl(name),
+                size: file.comparison.mediaSizes?.[side]?.[name]
             }), () => scope === previews && state === selected.get(id));
             return;
         }

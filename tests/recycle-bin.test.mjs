@@ -639,6 +639,26 @@ test('旧正文与未引用文件复用恢复差异，正文缺失的其他日�
     assert.deepEqual(await fs.readFile(path.join(root, 'data/travel_data.json')), index);
 });
 
+test('恢复预览保留空文件的存在状态及附件两侧的字节数', async t => {
+    const root = await fixture(t);
+    await write(root, note.desc_md, '');
+    const name = 'data/photos/empty.png';
+    await write(root, name, '');
+    const id = await captureRecycle(root, { kind: 'version', title: '空文件', files: [{ path: note.desc_md }, { path: name }] });
+    await fs.unlink(path.join(root, note.desc_md));
+    await write(root, name, 'current');
+    const plan = await preview(root, id);
+    const body = plan.changes.find(change => change.record.desc_md === note.desc_md).comparison;
+    assert.equal(body.markdown, '');
+    assert.deepEqual(body.markdownExists, { before: false, after: true });
+    const image = plan.changes.find(change => change.comparison.media.includes(name)).comparison;
+    assert.equal(image.mediaSizes.before[name], 7);
+    assert.equal(image.mediaSizes.after[name], 0);
+    await confirmRestore(root, id, plan);
+    assert.equal((await fs.stat(path.join(root, note.desc_md))).size, 0);
+    assert.equal((await fs.stat(path.join(root, name))).size, 0);
+});
+
 test('确认冲突恢复时索引提交失败，撤回附件覆盖并保留原回收项目', async t => {
     const root = await fixture(t);
     const name = 'data/photos/trip/unique.png';

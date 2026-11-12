@@ -1,13 +1,13 @@
-import { escapeHtml } from './utils.js?v=2.1.89';
-import { parseMarkdown } from './data.js?v=2.1.89';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.89';
-import { createMediaPreview, getMediaPreviewBlob, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.89';
+import { escapeHtml } from './utils.js?v=2.1.90';
+import { parseMarkdown } from './data.js?v=2.1.90';
+import { createMediaFileLink } from './media-file-link.js?v=2.1.90';
+import { createMediaPreview, getMediaPreviewBlob, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.90';
 import { sourceOf, readSourceText } from './zip-stream.mjs';
 
 export function markdownPreview(source) {
     const parsed = parseMarkdown(source);
     const title = source.match(/^#\s+(.+)$/m)?.[1];
-    return `<div class="content-preview-markdown markdown-content">${title ? `<h3>${escapeHtml(title)}</h3>` : ''}${parsed.bodyHtml || '<p class="record-diff-empty">无内容</p>'}</div>`;
+    return `<div class="content-preview-markdown markdown-content">${title ? `<h3>${escapeHtml(title)}</h3>` : ''}${parsed.bodyHtml || (title ? '' : `<p class="content-preview-empty">${source.length ? '文件仅含空白字符' : '空文件'}</p>`)}</div>`;
 }
 
 export function mediaKind(name) {
@@ -47,7 +47,20 @@ export function createContentPreviewScope() {
             urls.forEach(url => URL.revokeObjectURL(url));
             urls.clear();
         },
-        async file({ name, url, source, detail = '', index = 0, collapsible = true }) {
+        async file({ name, url, source, size, detail = '', index = 0, collapsible = true }) {
+            const fileSource = source == null ? null : sourceOf(source);
+            const sourceSize = fileSource?.size ?? size;
+            if (sourceSize === 0) {
+                if (fileSource) await readSourceText(fileSource);
+                const entry = document.createElement('div');
+                entry.className = 'content-file-preview content-file-empty';
+                const label = document.createElement('span');
+                label.textContent = name.split('/').pop();
+                const status = document.createElement('small');
+                status.textContent = '空文件 · 0 B';
+                entry.append(label, status);
+                return entry;
+            }
             const kind = mediaKind(name);
             if (kind) {
                 const blob = source ? sourceOf(source).blob || new Blob([await readSourceText(sourceOf(source))]) : null;
@@ -109,11 +122,12 @@ export function createContentPreviewScope() {
                     }
                     if (disposed) return;
                     const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-                    if (/\.md$/i.test(name)) content.innerHTML = markdownPreview(text);
+                    if (!text.trim()) content.innerHTML = `<p class="content-preview-empty">${text.length ? '文件仅含空白字符' : '空文件'}</p>`;
+                    else if (/\.md$/i.test(name)) content.innerHTML = markdownPreview(text);
                     else if (name === 'data/travel_data.json') {
                         const records = JSON.parse(text);
                         if (!Array.isArray(records)) throw new Error('日记目录格式无效。');
-                        content.innerHTML = `<ul class="content-record-list">${records.map(record => `<li><strong>${escapeHtml([record.date, record.locality].filter(Boolean).join(' · ') || '未命名日记')}</strong><small>${escapeHtml([record.country, record.admin_area, record.trip_id].filter(Boolean).join(' · '))}</small><small>${(record.photos || []).length} 张图片 · ${(record.videos || []).length} 个视频</small></li>`).join('')}</ul>`;
+                        content.innerHTML = records.length ? `<ul class="content-record-list">${records.map(record => `<li><strong>${escapeHtml([record.date, record.locality].filter(Boolean).join(' · ') || '未命名日记')}</strong><small>${escapeHtml([record.country, record.admin_area, record.trip_id].filter(Boolean).join(' · '))}</small><small>${(record.photos || []).length} 张图片 · ${(record.videos || []).length} 个视频</small></li>`).join('')}</ul>` : '<p class="content-preview-empty">日记目录为空</p>';
                     } else {
                         const pre = document.createElement('pre');
                         pre.textContent = /\.json$/i.test(name) ? JSON.stringify(JSON.parse(text), null, 2) : text;

@@ -1,6 +1,6 @@
-import { escapeHtml } from './utils.js?v=2.1.89';
-import { changedTextBlocks } from './record-diff.mjs?v=2.1.89';
-import { markdownPreview } from './content-preview.js?v=2.1.89';
+import { escapeHtml } from './utils.js?v=2.1.90';
+import { changedTextBlocks } from './record-diff.mjs?v=2.1.90';
+import { markdownPreview } from './content-preview.js?v=2.1.90';
 
 export function renderRecordDifference(record, comparison, { afterLabel = '备份', note = '仅显示有变化的部分。勾选这篇日记后，将采用备份内容。', previewLabel = '预览导入后的正文', collapsible = true, mediaLink } = {}) {
     if (!comparison) return '';
@@ -15,7 +15,15 @@ export function renderRecordDifference(record, comparison, { afterLabel = '备�
         return changed.length || removed ? changed.join('、') || '无' : `顺序：${value.join('、') || '无'}`;
     };
     const blocks = comparison.markdownChanged ? changedTextBlocks(comparison.currentMarkdown, comparison.markdown) : [];
-    const sections = [comparison.fields.length ? `${comparison.fields.length} 项信息` : '', blocks.length ? '正文' : '', comparison.media.length ? `${comparison.media.length} 个附件` : ''].filter(Boolean);
+    const sections = [comparison.fields.length ? `${comparison.fields.length} 项信息` : '', comparison.markdownChanged ? '正文' : '', comparison.media.length ? `${comparison.media.length} 个附件` : ''].filter(Boolean);
+    const textStates = comparison.markdownChanged ? ['before', 'after'].map(side => {
+        const exists = comparison.markdownExists?.[side] ?? (side === 'before' ? comparison.status !== 'added' : comparison.status !== 'removed');
+        const text = String((side === 'before' ? comparison.currentMarkdown : comparison.markdown) ?? '');
+        if (exists && text.trim()) return '';
+        const label = side === 'before' ? '当前' : afterLabel;
+        const state = !exists ? '无此文件' : text.length ? '文件仅含空白字符' : '空文件';
+        return `<p class="content-preview-empty">${escapeHtml(label)} · ${state}</p>`;
+    }).join('') : '';
     const diffLines = (block, side) => {
         const removed = side === 'before';
         const count = removed ? block.countBefore : block.countAfter;
@@ -24,12 +32,21 @@ export function renderRecordDifference(record, comparison, { afterLabel = '备�
         return block[side].split('\n').map((line, index) => `<div class="record-diff-line record-diff-${removed ? 'removed' : 'added'}"><span class="record-diff-line-number">${removed ? start + index : ''}</span><span class="record-diff-line-number">${removed ? '' : start + index}</span><span class="record-diff-line-sign" aria-label="${removed ? '删除' : '新增'}">${removed ? '−' : '+'}</span><code>${escapeHtml(line) || '&#8203;'}</code></div>`).join('');
     };
     return `<${collapsible ? 'details' : 'section'} class="record-diff" data-diff-record="${escapeHtml(record.desc_md)}">${collapsible ? `<summary><span>${comparison.status === 'added' ? '预览新增内容' : comparison.status === 'removed' ? '预览移除内容' : '查看差异'}</span><small>${escapeHtml(sections.join(' · '))}</small></summary>` : ''}
-        <div class="record-diff-body"><p class="record-diff-note">${escapeHtml(note)}</p>
+        <div class="record-diff-body">${note ? `<p class="record-diff-note">${escapeHtml(note)}</p>` : ''}
         ${comparison.fields.length ? `<section class="record-diff-section"><h3>记录信息</h3><dl>${comparison.fields.map(key => `<div><dt>${escapeHtml(labels[key] || key)}</dt><dd><span class="record-diff-value record-diff-before"><small>当前</small>${escapeHtml(formatValue(previous[key], record[key]))}</span><span class="record-diff-value record-diff-after"><small>${escapeHtml(afterLabel)}</small>${escapeHtml(formatValue(record[key], previous[key]))}</span></dd></div>`).join('')}</dl></section>` : ''}
-        ${blocks.length ? `<section class="record-diff-section record-diff-text"><h3>正文改动 <small>${blocks.length} 处</small></h3><p class="record-diff-legend"><span class="record-diff-removed">− 删除</span><span class="record-diff-added">+ 新增</span></p><div class="record-diff-unified" role="group" aria-label="正文差异，左侧为当前行号，右侧为${escapeHtml(afterLabel)}行号">${blocks.map(block => `<div class="record-diff-hunk"><p class="record-diff-range">@@ −${block.lineBefore - (block.countBefore ? 0 : 1)},${block.countBefore} +${block.lineAfter - (block.countAfter ? 0 : 1)},${block.countAfter} @@</p>${diffLines(block, 'before')}${diffLines(block, 'after')}</div>`).join('')}</div><details class="content-preview-source"><summary>${escapeHtml(previewLabel)}</summary>${markdownPreview(comparison.markdown)}</details></section>` : ''}
+        ${comparison.markdownChanged ? `<section class="record-diff-section record-diff-text">
+            <h3>正文改动${blocks.length ? ` <small>${blocks.length} 处</small>` : ''}</h3>
+            ${textStates}
+            ${blocks.length ? `<p class="record-diff-legend"><span class="record-diff-removed">− 删除</span><span class="record-diff-added">+ 新增</span></p>
+            <div class="record-diff-unified" role="group" aria-label="正文差异，左侧为当前行号，右侧为${escapeHtml(afterLabel)}行号">${blocks.map(block => `<div class="record-diff-hunk">
+                <p class="record-diff-range">@@ −${block.lineBefore - (block.countBefore ? 0 : 1)},${block.countBefore} +${block.lineAfter - (block.countAfter ? 0 : 1)},${block.countAfter} @@</p>
+                ${diffLines(block, 'before')}${diffLines(block, 'after')}</div>`).join('')}</div>` : ''}
+            ${comparison.status !== 'removed' && comparison.markdown?.trim() ? `<details class="content-preview-source"><summary>${escapeHtml(previewLabel)}</summary>${markdownPreview(comparison.markdown)}</details>` : ''}
+        </section>` : ''}
         ${comparison.media.length ? `<section class="record-diff-section"><h3>附件改动</h3><ul class="record-diff-media">${comparison.media.map((name, index) => {
             const action = !comparison.previousMediaPaths?.has(name) ? '新增' : !comparison.incomingMediaPaths?.has(name) ? '移除' : '内容变化';
-            return `<li><p class="record-diff-media-heading" data-media-viewer-group><span>${action}</span> ${mediaLink ? mediaLink(name, comparison.incomingMediaPaths?.has(name) ? 'after' : 'before') : escapeHtml(name)}</p><div class="record-diff-columns"><div class="record-diff-before"><h4>当前</h4><div data-diff-media-before="${index}" data-media-viewer-group>${comparison.previousMediaPaths?.has(name) ? '正在准备预览…' : '<p class="record-diff-empty">无此附件</p>'}</div></div><div class="record-diff-after"><h4>${escapeHtml(afterLabel)}</h4><div data-diff-media-after="${index}" data-media-viewer-group>${comparison.incomingMediaPaths?.has(name) ? '正在准备预览…' : '<p class="record-diff-empty">无此附件</p>'}</div></div></div></li>`;
+            const side = comparison.incomingMediaPaths?.has(name) ? 'after' : 'before';
+            return `<li><p class="record-diff-media-heading" data-media-viewer-group><span>${action}</span> ${mediaLink && comparison.mediaSizes?.[side]?.[name] !== 0 ? mediaLink(name, side) : escapeHtml(name)}</p><div class="record-diff-columns"><div class="record-diff-before"><h4>当前</h4><div data-diff-media-before="${index}" data-media-viewer-group>${comparison.previousMediaPaths?.has(name) ? '正在准备预览…' : '<p class="record-diff-empty">无此附件</p>'}</div></div><div class="record-diff-after"><h4>${escapeHtml(afterLabel)}</h4><div data-diff-media-after="${index}" data-media-viewer-group>${comparison.incomingMediaPaths?.has(name) ? '正在准备预览…' : '<p class="record-diff-empty">无此附件</p>'}</div></div></div></li>`;
         }).join('')}</ul></section>` : ''}</div>
     </${collapsible ? 'details' : 'section'}>`;
 }

@@ -1489,6 +1489,10 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .content-preview-source > summary, .content-file-preview > summary { min-height: 44px; padding: 10px 12px; color: var(--stamp); cursor: pointer; font-size: 12px; overflow-wrap: anywhere; }
 .content-file-preview { width: 100%; min-width: 0; }
 .content-file-body { min-width: 0; }
+.content-preview-empty { margin: 0; padding: 12px; color: var(--ink-soft); font-size: 13px; line-height: 1.8; }
+.content-file-empty { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; padding: 10px 12px; color: var(--ink); font-size: 13px; overflow-wrap: anywhere; }
+.content-file-empty > small { color: var(--ink-soft); font-size: 12px; }
+.record-diff-text > .content-preview-empty { margin: 4px 0; padding: 0; }
 .content-record-list { list-style: none; margin: 0; padding: 0; }
 .content-record-list > li { display: grid; gap: 4px; padding: 12px; border-bottom: 1px solid var(--hairline); }
 .content-record-list strong { color: var(--ink); font-size: 15px; }
@@ -1561,6 +1565,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-tree > .recycle-file > .content-file-preview > summary:hover { background: rgba(142, 102, 52, 0.06); }
 .recycle-tree > .recycle-file { padding: 4px 8px 4px calc(var(--recycle-depth) * 16px + 26px); overflow-wrap: anywhere; }
 .recycle-tree > .recycle-file:has(> .content-file-preview) { padding: 0; }
+.recycle-tree > .recycle-file > .content-file-empty { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; min-height: 44px; padding: 8px 8px 8px calc(var(--recycle-depth) * 16px + 26px); }
 .recycle-tree > .recycle-file > .content-file-preview > summary { color: var(--ink); }
 .recycle-tree > .recycle-file > .content-file-preview > summary > small { font-variant-numeric: tabular-nums; }
 .recycle-tree > .recycle-file > .content-file-preview > .content-file-body { margin-inline-start: min(calc(var(--recycle-depth) * 16px + 26px), 56px); padding-block: 12px; }

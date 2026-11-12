@@ -393,7 +393,12 @@ async function previewRestore(root, item, targetDescMd, revision) {
     }
     // Sets 必须显式序列化；after 中未被回收文件覆盖的附件仍从当前位置读取。
     return { previewToken, changes: changes.map(({ record, comparison }) => ({ record, comparison: {
-        ...comparison, previousMediaPaths: [...comparison.previousMediaPaths], incomingMediaPaths: [...comparison.incomingMediaPaths]
+        ...comparison, previousMediaPaths: [...comparison.previousMediaPaths], incomingMediaPaths: [...comparison.incomingMediaPaths],
+        markdownExists: { before: before.has(comparison.previous?.desc_md || record.desc_md), after: after.has(record.desc_md) },
+        mediaSizes: {
+            before: Object.fromEntries(comparison.media.filter(name => before.has(name)).map(name => [name, before.get(name).size])),
+            after: Object.fromEntries(comparison.media.filter(name => after.has(name)).map(name => [name, after.get(name).size]))
+        }
     } })), savedPaths: files.map(file => file.path), savedFiles: files.map(({ path, sourcePath }) => ({ path, sourcePath })) };
 }
 
