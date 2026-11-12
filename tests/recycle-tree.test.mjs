@@ -338,7 +338,7 @@ test('日记索引始终直接展示，混合目录和恢复预览只统计一�
         const tree = buildRecycleTree(files, '日记索引');
         const root = tree.get('');
         assert.equal(tree.has('type:4'), false);
-        assert.equal(root.files[0], index);
+        assert.ok(root.files.includes(index));
         assert.equal(root.count, files.length);
         assert.equal(root.totalBytes, files.length === 1 ? 0 : 8);
         assert.equal(root.matches, true);
@@ -351,6 +351,37 @@ test('日记索引始终直接展示，混合目录和恢复预览只统计一�
     assert.equal(tree.get('').files[0].path, index.path);
     assert.equal(tree.get('').count, 2);
     assert.ok(tree.get('').directories.every(node => node.name !== '日记索引'));
+});
+
+test('索引旁仅剩一个分类时继续压扁，归档和恢复预览保留全部文件及统计', () => {
+    const files = [
+        { path: 'data/travel_data.json', size: 0 },
+        { path: 'data/profile/owner-name.txt', size: 8 },
+        { path: 'data/profile/profile-picture.png', size: 12 }
+    ];
+    const before = structuredClone(files);
+    const tree = buildRecycleTree(files, '个人资料');
+    const root = tree.get('');
+    assert.equal(tree.size, 1);
+    assert.deepEqual(root.directories, []);
+    assert.equal(root.count, 3);
+    assert.equal(root.totalBytes, 20);
+    assert.equal(root.matches, true);
+    assert.equal(root.files.length, 3);
+    for (const file of files) assert.ok(root.files.includes(file));
+    assert.deepEqual(files, before);
+    const comparison = { status: 'changed', fields: [], markdownChanged: true, media: [] };
+    const preview = buildRestorePreviewTree(files.slice(0, 2).map(file => ({ record: { desc_md: file.path }, comparison })));
+    assert.equal(preview.size, 1);
+    assert.equal(preview.get('').count, 2);
+    assert.deepEqual(preview.get('').directories, []);
+    assert.deepEqual(preview.get('').files.map(file => file.path).sort(), files.slice(0, 2).map(file => file.path).sort());
+    const mixed = buildRecycleTree([...files, { path: 'data/a.md', size: 1 }]);
+    assert.deepEqual(mixed.get('').directories.map(node => node.name), ['正文', '个人资料']);
+    const record = { date: '2026-11-12', desc_md: 'data/a.md' };
+    const diary = buildRecycleTree([files[0], { path: record.desc_md, size: 1 }], '', { records: [record], groupSingleRecord: true });
+    assert.equal(diary.get('').directories[0].record, record);
+    assert.equal(diary.get('').files[0], files[0]);
 });
 
 test('单篇日记的单一分类压扁后仍保留按篇选择入口，多分类继续分层', () => {

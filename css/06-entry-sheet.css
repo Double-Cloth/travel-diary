@@ -1589,7 +1589,9 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-directory-record a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .recycle-directory-record a:hover { text-decoration-thickness: 2px; }
 .recycle-directory-record a:focus-visible { outline: 2px solid var(--stamp); outline-offset: 4px; }
-.recycle-tree .recycle-directory > summary > span { font-size: 13px; font-weight: 600; }
+.recycle-tree .recycle-directory > summary > span,
+.recycle-tree > .recycle-file > .content-file-preview > summary > span,
+.recycle-tree > .recycle-file > .content-file-empty > span { font-size: 13px; font-weight: 600; }
 .recycle-tree .recycle-directory > summary > small { display: flex; gap: 12px; text-align: end; font-variant-numeric: tabular-nums; }
 .recycle-tree .recycle-directory > summary > small > span:first-child { min-width: 60px; }
 .recycle-tree .recycle-directory > summary > small > span:last-child { min-width: 68px; }

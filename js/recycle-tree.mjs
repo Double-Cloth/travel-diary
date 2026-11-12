@@ -1,5 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.98';
-import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.98';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.99';
+import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.99';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
@@ -266,11 +266,11 @@ export function buildRecycleTree(files, query = '', {
     const compare = (a, b) => collator.compare(a.path, b.path) || a.path.localeCompare(b.path);
     // 从内向外移除单一分类层，日记选择与共用归属仍有独立入口。
     for (const node of [...directories.values()].reverse()) {
-        if (node.files.length || node.directories.length !== 1) continue;
+        if (node.directories.length !== 1) continue;
         const child = node.directories[0];
         if (child.record || child.path === 'shared') continue;
         node.directories = child.directories;
-        node.files = child.files;
+        node.files = node.files.concat(child.files);
         directories.delete(child.path);
     }
     for (const node of directories.values()) {
