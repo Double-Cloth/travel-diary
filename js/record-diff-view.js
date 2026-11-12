@@ -1,13 +1,13 @@
-import { escapeHtml } from './utils.js?v=2.1.100';
-import { changedTextBlocks } from './record-diff.mjs?v=2.1.100';
-import { markdownPreview } from './content-preview.js?v=2.1.100';
+import { escapeHtml } from './utils.js?v=2.1.101';
+import { changedTextBlocks } from './record-diff.mjs?v=2.1.101';
+import { markdownPreview } from './content-preview.js?v=2.1.101';
 
 export function renderRecordDifference(record, comparison, { afterLabel = '备份', note = '仅显示有变化的部分。勾选这篇日记后，将采用备份内容。', previewLabel = '预览导入后的正文', collapsible = true, mediaLink } = {}) {
     if (!comparison) return '';
     if (comparison.status === 'conflict') return `<p role="status">${escapeHtml(comparison.message)}</p>`;
     if (!['changed', 'added', 'removed'].includes(comparison.status)) return '';
     const previous = comparison.previous || {};
-    const labels = { date: '日期', country: '国家 / 地区', country_code: '国家代码', admin_area: '行政区', admin_area_type: '行政区类型', locality: '目的地', locality_type: '目的地类型', trip_id: '行程', desc_md: '正文路径', photo_folder: '图片目录', photos: '图片列表', video_folder: '视频目录', videos: '视频列表' };
+    const labels = { title: '标题', date: '日期', country: '国家 / 地区', country_code: '国家代码', admin_area: '行政区', admin_area_type: '行政区类型', locality: '目的地', locality_type: '目的地类型', trip_id: '行程', desc_md: '正文路径', photo_folder: '图片目录', photos: '图片列表', video_folder: '视频目录', videos: '视频列表', media_order: '附件顺序' };
     const formatValue = (value, other) => {
         if (!Array.isArray(value)) return String(value ?? '').trim() || '未设置';
         const changed = value.filter(item => !Array.isArray(other) || !other.includes(item));

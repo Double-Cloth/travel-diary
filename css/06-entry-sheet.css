@@ -1615,7 +1615,17 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-directory > summary:focus-visible,
 .recycle-tree .recycle-directory > summary.recycle-diary-choice:focus-visible,
 .recycle-tree .content-file-preview > summary:focus-visible { outline: 2px solid var(--stamp); outline-offset: -2px; }
-.recycle-list .content-file-heading { margin: 0; padding: 12px 0; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
+.recycle-list .content-file-heading { margin: 0 0 12px; padding: 0; color: var(--stamp); font-size: 13px; overflow-wrap: anywhere; }
+.recycle-list .content-file-heading a { text-decoration-thickness: 1px; }
+.recycle-list .recycle-change-details { margin-top: 12px; }
+.recycle-list .recycle-change-details > summary { width: fit-content; min-height: 44px; padding: 8px 0; color: var(--ink-soft); }
+.recycle-list .recycle-change-details > summary:hover { color: var(--stamp); }
+.recycle-list .recycle-change-details > summary:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+.recycle-list .recycle-change-details > div { padding-top: 12px; border-top: 1px dashed var(--hairline); }
+.recycle-tree > .recycle-file > .recycle-change-details { margin-top: 0; padding-left: 54px; }
+.recycle-tree > .recycle-file > .recycle-change-details > summary { font-size: 12px; }
+.recycle-tree .media-file-name { font-weight: 600; }
+.recycle-tree .media-file-detail { overflow-wrap: anywhere; }
 .recycle-list a:not(.media-file-link) { color: var(--stamp); text-decoration: underline; text-underline-offset: 3px; }
 .recycle-list a:focus-visible, .recycle-contents li:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
 .recycle-list .record-diff { margin: 0; }
@@ -1628,6 +1638,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list .content-file-body,
 .recycle-list .content-preview-source > .content-preview-markdown { padding: 12px 0; }
 .recycle-list .content-file-body > .content-preview-markdown { padding: 0; }
+.recycle-list .content-file-body > .content-file-preview > .content-file-body { padding: 0; }
 .recycle-list .content-preview-markdown > :last-child { margin-bottom: 0; }
 .content-preview-list > li { grid-template-columns: minmax(0, 1fr); }
 .recycle-list .content-file-preview { margin: 0; }

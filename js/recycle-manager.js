@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.100';
-import { createPasswordGate } from './record-password.js?v=2.1.100';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.100';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.100';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.100';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.100';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.100';
-import { recordIdentity } from './record-identity.mjs?v=2.1.100';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleDiaryGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.100';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.101';
+import { createPasswordGate } from './record-password.js?v=2.1.101';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.101';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.101';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.101';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.101';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.101';
+import { recordIdentity } from './record-identity.mjs?v=2.1.101';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleDiaryGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.101';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -35,6 +35,10 @@ function restoreChangeTitle(record, comparison) {
 
 const folderIcon = '<svg class="recycle-node-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M3 9h18"/></svg>';
 const fileIcon = '<svg class="recycle-node-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 3H5v18h14V8Z"/><path d="M14 3v5h5M8 12h8M8 16h6"/></svg>';
+
+function fileDisplayName(name) {
+    return ({ 'data/travel_data.json': '日记索引', 'data/profile/owner-name.txt': '个人署名', 'data/profile/profile-picture.png': '个人头像' })[name] || name.split('/').pop();
+}
 
 export function createRecycleManager(onRestored, { onClose, isActive = () => true } = {}) {
     const dialog = document.createElement('dialog');
@@ -145,13 +149,14 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         if (!state) return '';
         if (state.phase === 'pending') return '<p class="recycle-preview-status" role="status">正在生成恢复预览…</p>';
         if (state.phase === 'error') return `<p class="recycle-preview-status" role="alert">${escapeHtml(state.message)}</p><button class="media-text-button" type="button" data-recycle-retry="${state.id}">重试预览</button>`;
-        return `<details class="recycle-restore-preview"><summary>预览恢复后的变化 <small>${state.changes.length ? `${state.changes.length} 项内容` : '内容相同'}</small></summary><div class="recycle-preview-body">${state.changes.length ? '<p class="recycle-restore-note">以下为这个项目恢复后的变化。确认恢复后才会写入。</p><ul class="recycle-tree" data-recycle-restore-files data-recycle-directory="" style="--recycle-depth: 0" aria-label="恢复变化目录"></ul>' : '<p class="recycle-restore-note">回收内容与当前内容一致，无需恢复。</p>'}</div></details>`;
+        return `<details class="recycle-restore-preview"><summary>预览恢复后的变化 <small>${state.changes.length ? `${state.changes.length} 项内容` : '内容相同'}</small></summary><div class="recycle-preview-body recycle-contents" data-media-viewer-group>${state.changes.length ? '<p class="recycle-restore-note">以下为这个项目恢复后的变化。确认恢复后才会写入。</p><ul class="recycle-tree" data-recycle-restore-files data-recycle-directory="" style="--recycle-depth: 0" aria-label="恢复变化目录"></ul>' : '<p class="recycle-restore-note">回收内容与当前内容一致，无需恢复。</p>'}</div></details>`;
     }
-    function loadRestoreContents(list, state) {
+    async function loadRestoreContents(list, state) {
         if (!list || list.dataset.loaded) return;
         list.dataset.loaded = 'true';
         state.tree ||= buildRestorePreviewTree(state.changes, mediaKind, { groupSingleRecord: !grouping.groups.some(group => group.record && group.items.some(item => item.id === state.id)) });
         const node = state.tree.get(list.dataset.recycleDirectory);
+        const scope = previews;
         const singleBody = node.name !== '正文' && node.files.filter(file => recycleFileType(file.path, mediaKind) === '正文' && file.comparison.markdownChanged).length === 1;
         for (const child of node.directories) {
             const row = document.createElement('li');
@@ -160,16 +165,55 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             list.append(row);
         }
         for (const [index, file] of node.files.entries()) {
+            if (!list.isConnected || scope !== previews || selected.get(state.id) !== state) return;
             const row = document.createElement('li');
             row.className = 'recycle-file';
             const comparison = file.comparison;
             let action = { added: '新增', removed: '移除', changed: '修改' }[comparison.status];
             if (comparison.media.length) action = !comparison.previousMediaPaths.has(file.path) ? '新增' : !comparison.incomingMediaPaths.has(file.path) ? '移除' : '内容变化';
-            const label = singleBody && file.comparison.markdownChanged && recycleFileType(file.path, mediaKind) === '正文' ? '正文' : file.label || (file.path === 'data/travel_data.json' ? '日记索引' : file.path === 'data/profile/owner-name.txt' ? '个人署名' : file.path === 'data/profile/profile-picture.png' ? '个人头像' : file.path.split('/').pop());
+            const label = singleBody && file.comparison.markdownChanged && recycleFileType(file.path, mediaKind) === '正文' ? '正文' : file.label || fileDisplayName(file.path);
+            if (comparison.media.length && comparison.incomingMediaPaths.has(file.path) && mediaKind(file.path)) {
+                const url = state.savedPaths.has(file.path) ? recycleUrl(state.id, state.savedFiles.get(file.path) || file.path) : getMediaFileUrl(file.path);
+                row.append(await filePreview(file, scope, { url, size: comparison.mediaSizes?.after?.[file.path], detail: action }));
+                if (scope !== previews || !list.isConnected || selected.get(state.id) !== state) return;
+                row.insertAdjacentHTML('beforeend', `<details class="recycle-change-details" data-recycle-difference="${index}"><summary>查看差异</summary><div></div></details>`);
+                list.append(row);
+                continue;
+            }
             row.innerHTML = `<details class="content-file-preview" data-recycle-restore-file="${index}" title="${escapeHtml(file.path)}"><summary aria-label="${escapeHtml(`${restoreChangeTitle(file.record, comparison)} · ${label} · ${action}`)}">${fileIcon}<span>${escapeHtml(label)}</span><small>${action}</small></summary><div class="content-file-body"></div></details>`;
-            if (label === '正文') list.prepend(row);
+            if (label === '正文' || file.category === '日记信息') list.prepend(row);
             else list.append(row);
         }
+    }
+    async function filePreview(file, scope, { url, size = file.size, detail = '', label = '' }) {
+        const kind = mediaKind(file.path);
+        const name = fileDisplayName(file.path);
+        const metadata = [kind ? kind === 'image' ? '图片' : '视频' : '', Number.isFinite(size) ? sizeLabel(size) : '', detail].filter(Boolean).join(' · ');
+        const preview = await scope.file({ name: file.path, url, size, detail: kind ? metadata : '', label,
+            filenameUrl: /\.md$/i.test(file.path) ? url : '' });
+        if (kind && name !== file.path.split('/').pop()) {
+            const heading = preview.querySelector('.media-file-name');
+            if (heading) heading.textContent = name;
+            const note = preview.querySelector('.media-file-detail');
+            if (note) note.textContent = `${file.path.split('/').pop()} · ${metadata}`;
+        }
+        const summary = preview.querySelector('summary');
+        if (summary) {
+            if (!label) summary.querySelector('span').textContent = name;
+            if (/\.md$/i.test(file.path) && !label) summary.querySelector('span').innerHTML = recordLink({ desc_md: file.path }, name);
+            summary.insertAdjacentHTML('afterbegin', fileIcon);
+            const sizeNote = document.createElement('small');
+            sizeNote.textContent = Number.isFinite(size) ? sizeLabel(size) : '';
+            summary.append(sizeNote);
+        }
+        const empty = preview.matches('.content-file-empty') ? preview : null;
+        if (empty) {
+            empty.querySelector('span').textContent = name;
+            if (detail) empty.querySelector('small').textContent += ` · ${detail}`;
+            empty.insertAdjacentHTML('afterbegin', fileIcon);
+        }
+        if (preview.matches('a.media-file-link')) preview.setAttribute('aria-label', `查看文件：${file.path}`);
+        return preview;
     }
     function currentRecord(record, previous) {
         return report.currentRecords?.find(candidate => [record, previous].some(value => value && (recordIdentity(value) === recordIdentity(candidate) || value.desc_md === candidate.desc_md)));
@@ -240,25 +284,10 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const row = document.createElement('li');
             row.className = 'recycle-file';
             row.title = file.path;
-            const kind = mediaKind(file.path);
             const bodyLabel = singleBody && recycleFileType(file.path, mediaKind) === '正文' ? '正文' : '';
-            try { row.append(await scope.file({ name: file.path, url: recycleUrl(item.id, file.path), size: file.size, detail: kind ? `${kind === 'image' ? '图片' : '视频'} · ${sizeLabel(file.size)}` : '', collapsible: true, label: bodyLabel })); }
+            try { row.append(await filePreview(file, scope, { url: recycleUrl(item.id, file.path), label: bodyLabel })); }
             catch (failure) { row.textContent = `${file.path}：${failure.message}`; }
             if (scope !== previews || !list.isConnected || (!dialog.open && !suspended)) return;
-            if (file.path === 'data/travel_data.json') {
-                const label = row.querySelector('.content-file-preview > summary > span, .content-file-empty > span');
-                if (label) label.textContent = '日记索引';
-            }
-            const summary = row.querySelector('.content-file-preview > summary');
-            if (summary) {
-                if (/\.md$/i.test(file.path) && !bodyLabel) summary.querySelector('span').innerHTML = recordLink({ desc_md: file.path }, file.path.split('/').pop());
-                summary.insertAdjacentHTML('afterbegin', fileIcon);
-                const size = document.createElement('small');
-                size.textContent = sizeLabel(file.size);
-                summary.append(size);
-            }
-            row.querySelector('.content-file-empty')?.insertAdjacentHTML('afterbegin', fileIcon);
-            row.querySelector('a.media-file-link')?.setAttribute('aria-label', `查看文件：${file.path}`);
             if (bodyLabel) list.prepend(row);
             else list.append(row);
         }
@@ -334,13 +363,30 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             else expandedGroups.delete(details.dataset.recycleHistory);
             return;
         }
+        if (details.matches('[data-recycle-difference]')) {
+            if (!details.open || details.dataset.loaded) return;
+            const state = selected.get(details.closest('[data-recycle-item]').dataset.recycleItem);
+            if (state?.phase !== 'ready') return;
+            details.dataset.loaded = 'true';
+            const list = details.closest('[data-recycle-restore-files]');
+            const file = state.tree.get(list.dataset.recycleDirectory).files[Number(details.dataset.recycleDifference)];
+            const body = details.querySelector('div');
+            body.innerHTML = renderRecordDifference(file.record, file.comparison, { afterLabel: '恢复后', note: '', collapsible: false, mediaLink: (name, side) => mediaLink(name, side, state) });
+            body.querySelector('.content-preview-source')?.remove();
+            const scope = previews;
+            await loadDifferenceMedia(body.querySelector('[data-diff-record]'), file.comparison, scope, (name, side) => ({
+                url: side === 'after' && state.savedPaths.has(name) ? recycleUrl(state.id, state.savedFiles.get(name) || name) : getMediaFileUrl(name),
+                size: file.comparison.mediaSizes?.[side]?.[name]
+            }), () => scope === previews && state === selected.get(state.id));
+            return;
+        }
         if (details.matches('.recycle-restore-preview, [data-recycle-restore-directory], [data-recycle-restore-file]')) {
             if (!details.open) return;
             const id = details.closest('[data-recycle-item]').dataset.recycleItem;
             const state = selected.get(id);
             if (state?.phase !== 'ready') return;
             if (!details.matches('[data-recycle-restore-file]')) {
-                loadRestoreContents(details.querySelector('[data-recycle-restore-files]'), state);
+                void loadRestoreContents(details.querySelector('[data-recycle-restore-files]'), state);
                 return;
             }
             if (details.dataset.loaded) return;
@@ -348,13 +394,21 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const list = details.closest('[data-recycle-restore-files]');
             const file = state.tree.get(list.dataset.recycleDirectory).files[Number(details.dataset.recycleRestoreFile)];
             const body = details.querySelector('.content-file-body');
-            body.innerHTML = renderRecordDifference(file.record, file.comparison, { afterLabel: '恢复后', note: '', previewLabel: '预览恢复后的正文', collapsible: false, mediaLink: (name, side) => mediaLink(name, side, state) });
-            if (file.comparison.markdownChanged && recycleFileType(file.path, mediaKind) === '正文') body.insertAdjacentHTML('afterbegin', `<p class="content-file-heading">${escapeHtml(file.path.split('/').pop())}</p>`);
             const scope = previews;
-            await loadDifferenceMedia(body.querySelector('[data-diff-record]'), file.comparison, scope, (name, side) => ({
-                url: side === 'after' && state.savedPaths.has(name) ? recycleUrl(id, state.savedFiles.get(name) || name) : getMediaFileUrl(name),
-                size: file.comparison.mediaSizes?.[side]?.[name]
-            }), () => scope === previews && state === selected.get(id));
+            if (file.comparison.fields.length) {
+                body.innerHTML = renderRecordDifference(file.record, file.comparison, { afterLabel: '恢复后', note: '', collapsible: false });
+                body.querySelector('.record-diff-section > h3')?.remove();
+                return;
+            }
+            const exists = file.comparison.markdownChanged ? file.comparison.markdownExists?.after ?? file.comparison.status !== 'removed' : file.comparison.incomingMediaPaths.has(file.path);
+            if (exists && file.comparison.markdownChanged) {
+                const url = state.savedPaths.has(file.path) ? recycleUrl(id, state.savedFiles.get(file.path) || file.path) : getMediaFileUrl(file.path);
+                const preview = await scope.file({ name: file.path, source: new TextEncoder().encode(file.comparison.markdown ?? ''), collapsible: false,
+                    filenameUrl: /\.md$/i.test(file.path) ? url : '' });
+                if (scope !== previews || state !== selected.get(id) || !details.isConnected) return;
+                body.replaceChildren(preview);
+            } else body.innerHTML = `<p class="content-preview-empty">恢复后${exists ? '文件暂不支持预览' : '无此文件'}</p>`;
+            body.insertAdjacentHTML('beforeend', `<details class="recycle-change-details" data-recycle-difference="${details.dataset.recycleRestoreFile}"><summary>查看差异</summary><div></div></details>`);
             return;
         }
         if (details.matches('[data-recycle-folder]')) {

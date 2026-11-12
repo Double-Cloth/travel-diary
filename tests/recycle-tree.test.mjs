@@ -41,9 +41,9 @@ test('恢复变化按日记和信息、正文、附件分层，共用附件仅�
     const original = structuredClone(changes);
     const tree = buildRestorePreviewTree(changes);
     assert.equal(tree.get('').count, 7);
-    assert.deepEqual(tree.get(`record:${records[0].desc_md}`).directories.map(node => node.name), ['日记信息', '图片']);
+    assert.deepEqual(tree.get(`record:${records[0].desc_md}`).directories.map(node => node.name), ['图片']);
     assert.deepEqual(tree.get('shared').files.map(file => file.path), ['data/photos/trip/shared.jpg']);
-    const info = tree.get(`record:${records[0].desc_md}/type:0`).files[0];
+    const info = tree.get(`record:${records[0].desc_md}`).files.find(file => file.label === '日记信息');
     assert.deepEqual(info.comparison.fields, ['locality']);
     assert.equal(info.comparison.markdownChanged, false);
     assert.deepEqual(info.comparison.media, []);
@@ -467,6 +467,20 @@ test('恢复预览同步压扁单一分类且保留差异数据、日记链接�
     assert.equal(single.size, 1);
     assert.equal(single.get('').files[0].path, changes[0].record.desc_md);
     const info = buildRestorePreviewTree([{ ...changes[0], comparison: { status: 'changed', fields: ['title'], markdownChanged: false, media: [] } }]);
-    assert.equal(info.get(`record:${changes[0].record.desc_md}`).files[0].label, '记录信息');
+    assert.equal(info.get(`record:${changes[0].record.desc_md}`).files[0].label, '日记信息');
     assert.deepEqual(changes, before);
+});
+
+test('日记信息始终合并为一个入口，与正文和多种媒体并存时仍直接显示', () => {
+    const record = { date: '2026-11-12', desc_md: 'data/a.md', photo_folder: 'data/photos/a', photos: ['a.jpg'], video_folder: 'data/videos/a', videos: ['a.mp4'] };
+    for (const markdownChanged of [true, false]) {
+        const comparison = { status: 'changed', fields: ['locality'], markdownChanged, media: ['data/photos/a/a.jpg', 'data/videos/a/a.mp4'] };
+        const tree = buildRestorePreviewTree([{ record, comparison }], name => name.endsWith('.jpg') ? 'image' : name.endsWith('.mp4') ? 'video' : '');
+        const diary = tree.get(`record:${record.desc_md}`);
+        assert.deepEqual(diary.directories.map(node => node.name), ['图片', '视频']);
+        assert.equal(diary.files.filter(file => file.label === '日记信息').length, 1);
+        assert.equal(tree.has(`${diary.path}/type:0`), false);
+        assert.equal(diary.count, markdownChanged ? 4 : 3);
+        assert.equal(tree.get('').count, diary.count);
+    }
 });

@@ -96,3 +96,34 @@ test('正文入口展开后直接显示文件名和内容，零字节正文保�
         assert.doesNotMatch(content.innerHTML, /<details/);
     }
 });
+
+test('恢复结果复用直接内容预览，空正文和空索引同样保留文件标题', async t => {
+    const original = globalThis.document;
+    t.after(() => { globalThis.document = original; });
+    globalThis.document = {
+        createElement(tag) {
+            return { tagName: tag.toUpperCase(), children: [], events: {},
+                append(...children) { this.children.push(...children); },
+                querySelector() { return null; },
+                addEventListener(name, callback) { this.events[name] = callback; }
+            };
+        }
+    };
+    const scope = createContentPreviewScope();
+    t.after(() => scope.dispose());
+    for (const [name, text, expected] of [
+        ['data/empty.md', '', '空文件'], ['data/space.md', ' \n', '文件仅含空白字符'],
+        ['data/diary.md', '# 北京\n\n旅行正文', '旅行正文'], ['data/travel_data.json', '[]', '日记目录为空'],
+        ['data/profile/owner-name.txt', '旅行者', '']
+    ]) {
+        const entry = await scope.file({ name, source: new TextEncoder().encode(text), collapsible: false,
+            filenameUrl: name.endsWith('.md') ? '/preview?file=a&name="北京"' : '' });
+        await new Promise(resolve => setImmediate(resolve));
+        assert.equal(entry.tagName, 'DIV');
+        assert.equal(entry.events.toggle, undefined);
+        assert.equal(entry.children[0].className, 'content-file-heading');
+        assert.equal(entry.children[1].className, 'content-file-body');
+        if (expected) assert.match(entry.children[1].innerHTML, new RegExp(expected));
+        if (name.endsWith('.md')) assert.match(entry.children[0].children[0].innerHTML, /href="\/preview\?file=a&amp;name=&quot;北京&quot;"/);
+    }
+});
