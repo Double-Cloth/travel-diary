@@ -1,8 +1,8 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.124';
-import { createPasswordGate } from './record-password.js?v=2.1.124';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.124';
-import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.124';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.124';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.125';
+import { createPasswordGate } from './record-password.js?v=2.1.125';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.125';
+import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.125';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.125';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -128,12 +128,19 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
                 let order = 2;
                 if (!file.records.length) order = 0;
                 else if (file.records.length > 1) order = 1;
-                groups.set(key, { records: file.records, files: [], order });
+                const records = filter === 'all'
+                    ? [...file.records].sort((a, b) => a.date.localeCompare(b.date))
+                    : file.records;
+                groups.set(key, { records, files: [], order });
             }
             groups.get(key).files.push(file);
         }
         const list = dialog.querySelector('[data-media-list]');
-        const rows = [...groups].sort((a, b) => a[1].order - b[1].order).map(([key, group]) => {
+        const rows = [...groups].sort((a, b) => {
+            const priority = a[1].order - b[1].order;
+            if (priority || filter !== 'all') return priority;
+            return (a[1].records[0]?.date || '').localeCompare(b[1].records[0]?.date || '');
+        }).map(([key, group]) => {
             const row = document.createElement('li');
             row.className = 'recycle-diary-group';
             if (group.records.length !== 1) row.classList.add('media-special-group');
