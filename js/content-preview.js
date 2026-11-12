@@ -1,7 +1,7 @@
-import { escapeHtml } from './utils.js?v=2.1.102';
-import { parseMarkdown } from './data.js?v=2.1.102';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.102';
-import { createMediaPreview, getMediaPreviewBlob, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.102';
+import { escapeHtml } from './utils.js?v=2.1.103';
+import { parseMarkdown } from './data.js?v=2.1.103';
+import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.103';
+import { createMediaPreview, getMediaPreviewBlob, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.103';
 import { sourceOf, readSourceText } from './zip-stream.mjs';
 
 export function markdownPreview(source) {
@@ -83,11 +83,12 @@ export function createContentPreviewScope() {
                         if (disposed || !link.isConnected) return;
                         const image = document.createElement('img');
                         image.alt = '';
+                        image.addEventListener('error', () => showMediaFilePreviewError(link), { once: true });
                         image.src = objectUrl(preview);
                         link.querySelector('.media-file-thumbnail').append(image);
                     } catch (error) {
                         if (error.name === 'AbortError') { if (!disposed && link.isConnected) observe(); return; }
-                        if (!disposed) link.querySelector('.media-file-thumbnail > span').textContent = '无法预览';
+                        if (!disposed) showMediaFilePreviewError(link);
                     }
                 };
                 observe();

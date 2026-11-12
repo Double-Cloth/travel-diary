@@ -1,5 +1,5 @@
-import { getMediaFileUrl } from './utils.js?v=2.1.102';
-import { getMediaPreviewUrl, observeMediaPreview, observeMediaVisibility } from './media-preview.mjs?v=2.1.102';
+import { getMediaFileUrl } from './utils.js?v=2.1.103';
+import { getMediaPreviewUrl, observeMediaPreview, observeMediaVisibility } from './media-preview.mjs?v=2.1.103';
 
 export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbnailSrc = getMediaPreviewUrl(src), loadThumbnail, blob, name, kind, index = 0, detail = '' }) {
     const link = document.createElement(src ? 'a' : 'span');
@@ -28,15 +28,15 @@ export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbna
         media.width = 84;
         media.height = 64;
         media.addEventListener('error', () => {
-            media.hidden = true;
-            fallback.textContent = '无法预览';
+            showMediaFilePreviewError(link);
         }, { once: true });
         thumbnail.append(media);
         if (loadThumbnail || thumbnailSrc.startsWith('blob:')) {
             observeMediaVisibility(media, async () => {
                 try {
                     const url = loadThumbnail ? await loadThumbnail() : thumbnailSrc;
-                    if (media.isConnected && url) { media.loading = 'eager'; media.src = url; }
+                    if (!url) throw new Error('无法生成预览。');
+                    if (media.isConnected) { media.loading = 'eager'; media.src = url; }
                 } catch { if (media.isConnected) media.dispatchEvent(new Event('error')); }
             });
         }
@@ -62,7 +62,15 @@ export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbna
     note.textContent = src ? detail : '路径无效，请检查高级设置';
     text.append(filename, note);
     link.append(thumbnail, text);
+    if (!src && !blob) showMediaFilePreviewError(link);
     return link;
+}
+
+export function showMediaFilePreviewError(link, message = '无法预览') {
+    const thumbnail = link.querySelector('.media-file-thumbnail');
+    thumbnail.classList.add('is-media-error');
+    thumbnail.querySelector('span').textContent = message;
+    link.title = message;
 }
 
 export function mediaOrderIcon(direction) {

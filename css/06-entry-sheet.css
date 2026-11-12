@@ -184,25 +184,46 @@
 }
 
 .photo-sleeve-media-error {
-    display: grid;
-    align-content: center;
-    gap: 6px;
+    position: relative;
+    display: block;
     width: 100%;
     aspect-ratio: 4 / 3;
-    padding: 12px;
     overflow: hidden;
-    border: 1px dashed rgba(134, 54, 39, 0.42);
     border-radius: 3px;
-    color: #713428;
-    background: rgba(255, 242, 218, 0.8);
-    text-align: left;
-    word-break: break-word;
+    background: var(--paper-100);
 }
 
 .photo-sleeve-media-error[hidden] { display: none; }
-.photo-sleeve-media-error strong { font-size: 14px; }
-.photo-sleeve-media-error span { font: 12px/1.35 var(--font-code); }
-.photo-sleeve-media-error small { color: var(--ink-muted); font-size: 11px; }
+
+.photo-sleeve-media-error,
+.media-file-thumbnail.is-media-error { color: #777; }
+
+.photo-sleeve-media-error::before,
+.photo-sleeve-media-error::after,
+.media-file-thumbnail.is-media-error::before,
+.media-file-thumbnail.is-media-error::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 28px;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+}
+
+.photo-sleeve-media-error::before,
+.media-file-thumbnail.is-media-error::before {
+    height: 28px;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+}
+
+.photo-sleeve-media-error::after,
+.media-file-thumbnail.is-media-error::after {
+    height: 2px;
+    background: currentColor;
+    transform: translate(-50%, -50%) rotate(45deg);
+}
 
 .photo-sleeve-index {
     position: absolute;
@@ -1365,6 +1386,10 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-file-thumbnail video { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: cover; background: var(--paper-100); }
 .media-file-play { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); z-index: 1; width: 26px; height: 26px; border-radius: 50%; fill: #fff7df; background: rgba(32, 21, 13, 0.86); pointer-events: none; }
 .media-file-thumbnail [hidden] { display: none; }
+.media-file-thumbnail.is-media-error > span,
+.media-file-thumbnail.is-media-error > img,
+.media-file-thumbnail.is-media-error > video,
+.media-file-thumbnail.is-media-error > .media-file-play { display: none; }
 .media-file-description { display: grid; gap: 5px; min-width: 0; padding-block: 4px; }
 .media-file-name { font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
 .media-file-detail { color: var(--ink-soft); font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
