@@ -66,3 +66,33 @@ test('空正文差异区分文件不存在、零字节与空白内容，空预�
     assert.match(cleared, /恢复后 · 空文件/);
     assert.match(cleared, /record-diff-removed/);
 });
+
+test('正文入口展开后直接显示文件名和内容，零字节正文保持同样结构', async t => {
+    const original = globalThis.document;
+    t.after(() => { globalThis.document = original; });
+    globalThis.document = {
+        createElement(tag) {
+            return { tagName: tag.toUpperCase(), children: [], events: {},
+                append(...children) { this.children.push(...children); },
+                prepend(...children) { this.children.unshift(...children); },
+                querySelector() { return null; },
+                addEventListener(name, callback) { this.events[name] = callback; }
+            };
+        }
+    };
+    const scope = createContentPreviewScope();
+    t.after(() => scope.dispose());
+    for (const text of ['', ' \n', '# 黄山\n\n旅行正文']) {
+        const entry = await scope.file({ name: 'data/huangshan.md', source: new TextEncoder().encode(text), label: '正文' });
+        assert.equal(entry.tagName, 'DETAILS');
+        assert.equal(Boolean(entry.open), false);
+        assert.equal(entry.children[0].children[0].textContent, '正文');
+        assert.equal(entry.children.length, 1);
+        entry.open = true;
+        await entry.events.toggle();
+        const content = entry.children[1];
+        assert.equal(content.children[0].textContent, 'huangshan.md');
+        assert.match(content.innerHTML, new RegExp(!text ? '空文件' : !text.trim() ? '文件仅含空白字符' : '旅行正文'));
+        assert.doesNotMatch(content.innerHTML, /<details/);
+    }
+});

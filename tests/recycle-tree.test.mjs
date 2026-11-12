@@ -41,7 +41,7 @@ test('恢复变化按日记和信息、正文、附件分层，共用附件仅�
     const original = structuredClone(changes);
     const tree = buildRestorePreviewTree(changes);
     assert.equal(tree.get('').count, 7);
-    assert.deepEqual(tree.get(`record:${records[0].desc_md}`).directories.map(node => node.name), ['日记信息', '正文', '图片']);
+    assert.deepEqual(tree.get(`record:${records[0].desc_md}`).directories.map(node => node.name), ['日记信息', '图片']);
     assert.deepEqual(tree.get('shared').files.map(file => file.path), ['data/photos/trip/shared.jpg']);
     const info = tree.get(`record:${records[0].desc_md}/type:0`).files[0];
     assert.deepEqual(info.comparison.fields, ['locality']);
@@ -73,10 +73,11 @@ test('回收目录按内容类型展示，保留原文件并汇总大小', () =>
     const tree = buildRecycleTree(files);
     assert.equal(tree.get('').count, 5);
     assert.equal(tree.get('').totalBytes, 100);
-    assert.deepEqual(tree.get('').directories.map(node => node.name), ['正文', '图片', '视频']);
+    assert.deepEqual(tree.get('').directories.map(node => node.name), ['图片', '视频']);
     assert.equal(tree.get('type:1').count, 2);
     assert.equal(tree.get('type:1').totalBytes, 50);
-    assert.equal(tree.get('').files[0], files[4]);
+    assert.ok(tree.get('').files.includes(files[4]));
+    assert.ok(tree.get('').files.includes(files[0]));
     assert.equal(tree.get('type:1').files[0], files[1]);
     assert.equal(tree.get('type:1').files[1], files[2]);
     assert.equal(tree.has('data'), false);
@@ -145,7 +146,7 @@ test('单篇关联日记省略重复目录，媒体分类复用调用方能力�
     const record = { desc_md: 'data/a.md', photo_folder: 'data/photos/a', photos: ['missing.jpg'] };
     const files = ['data/profile/avatar.jpg', 'data/old/image.HEIC', 'data/old/video.MOV', 'data/a.md'].map(path => ({ path, size: 0 }));
     const tree = buildRecycleTree(files, '', { mediaReferences: [record], mediaKind: name => name.endsWith('.HEIC') || name.endsWith('.jpg') ? 'image' : name.endsWith('.MOV') ? 'video' : '' });
-    assert.deepEqual(tree.get('').directories.map(node => node.name), ['正文', '图片', '视频', '个人资料']);
+    assert.deepEqual(tree.get('').directories.map(node => node.name), ['图片', '视频', '个人资料']);
     assert.equal(tree.get('type:3').files[0], files[0]);
     assert.equal(tree.get('').count, 4);
     assert.equal(tree.get('').directories.some(node => node.path.startsWith('record:')), false);
@@ -331,6 +332,22 @@ test('单一分类直接展示全部文件，保留排序、搜索、零字节�
     assert.deepEqual(files, before);
 });
 
+test('单个正文与文件合并入口，多正文继续保留文件区分且统计搜索不变', () => {
+    const body = { path: 'data/a.md', size: 0 };
+    const photo = { path: 'data/photos/a.jpg', size: 8 };
+    const tree = buildRecycleTree([body, photo], '正文');
+    assert.deepEqual(tree.get('').files, [body]);
+    assert.deepEqual(tree.get('').directories.map(node => node.name), ['图片']);
+    assert.equal(tree.has('type:0'), false);
+    assert.equal(tree.get('').count, 2);
+    assert.equal(tree.get('').totalBytes, 8);
+    assert.equal(tree.get('').matches, true);
+    const second = { path: 'data/b.md', size: 3 };
+    const multiple = buildRecycleTree([body, second, photo]);
+    assert.deepEqual(multiple.get('type:0').files, [body, second]);
+    assert.equal(multiple.get('').count, 3);
+});
+
 test('日记索引始终直接展示，混合目录和恢复预览只统计一次且保留搜索', () => {
     const index = { path: 'data/travel_data.json', size: 0 };
     const body = { path: 'data/a.md', size: 8 };
@@ -377,7 +394,7 @@ test('索引旁仅剩一个分类时继续压扁，归档和恢复预览保留�
     assert.deepEqual(preview.get('').directories, []);
     assert.deepEqual(preview.get('').files.map(file => file.path).sort(), files.slice(0, 2).map(file => file.path).sort());
     const mixed = buildRecycleTree([...files, { path: 'data/a.md', size: 1 }]);
-    assert.deepEqual(mixed.get('').directories.map(node => node.name), ['正文', '个人资料']);
+    assert.deepEqual(mixed.get('').directories.map(node => node.name), ['个人资料']);
     const record = { date: '2026-11-12', desc_md: 'data/a.md' };
     const diary = buildRecycleTree([files[0], { path: record.desc_md, size: 1 }], '', { records: [record], groupSingleRecord: true });
     assert.equal(diary.get('').directories[0].record, record);
@@ -399,7 +416,7 @@ test('单篇日记的单一分类压扁后仍保留按篇选择入口，多分�
     assert.equal(diary.matches, true);
     assert.equal(tree.size, 2);
     const mixed = buildRecycleTree([body, photo], '', options).get(diary.path);
-    assert.deepEqual(mixed.directories.map(node => node.name), ['正文', '图片']);
+    assert.deepEqual(mixed.directories.map(node => node.name), ['图片']);
     assert.ok(mixed.directories.every(node => node.depth === 2));
     assert.equal(mixed.count, 2);
     assert.equal(mixed.totalBytes, 8);

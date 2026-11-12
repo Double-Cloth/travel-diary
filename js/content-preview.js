@@ -1,7 +1,7 @@
-import { escapeHtml } from './utils.js?v=2.1.99';
-import { parseMarkdown } from './data.js?v=2.1.99';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.99';
-import { createMediaPreview, getMediaPreviewBlob, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.99';
+import { escapeHtml } from './utils.js?v=2.1.100';
+import { parseMarkdown } from './data.js?v=2.1.100';
+import { createMediaFileLink } from './media-file-link.js?v=2.1.100';
+import { createMediaPreview, getMediaPreviewBlob, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.100';
 import { sourceOf, readSourceText } from './zip-stream.mjs';
 
 export function markdownPreview(source) {
@@ -47,10 +47,10 @@ export function createContentPreviewScope() {
             urls.forEach(url => URL.revokeObjectURL(url));
             urls.clear();
         },
-        async file({ name, url, source, size, detail = '', index = 0, collapsible = true }) {
+        async file({ name, url, source, size, detail = '', index = 0, collapsible = true, label = '' }) {
             const fileSource = source == null ? null : sourceOf(source);
             const sourceSize = fileSource?.size ?? size;
-            if (sourceSize === 0) {
+            if (sourceSize === 0 && !label) {
                 if (fileSource) await readSourceText(fileSource);
                 const entry = document.createElement('div');
                 entry.className = 'content-file-preview content-file-empty';
@@ -97,11 +97,11 @@ export function createContentPreviewScope() {
             entry.className = 'content-file-preview';
             const summary = document.createElement(collapsible ? 'summary' : 'p');
             if (!collapsible) summary.className = 'content-file-heading';
-            const label = document.createElement('span');
-            label.textContent = `${name.split('/').pop()}${detail ? ` · ${detail}` : ''}`;
-            summary.append(label);
+            const heading = document.createElement('span');
+            heading.textContent = `${label || name.split('/').pop()}${detail ? ` · ${detail}` : ''}`;
+            summary.append(heading);
             entry.append(summary);
-            if (!/\.(md|json|txt)$/i.test(name)) { label.textContent += ' · 暂不支持预览'; return entry; }
+            if (!/\.(md|json|txt)$/i.test(name)) { heading.textContent += ' · 暂不支持预览'; return entry; }
             let loaded = false;
             const load = async () => {
                 if ((collapsible && !entry.open) || loaded) return;
@@ -113,7 +113,8 @@ export function createContentPreviewScope() {
                 entry.append(content);
                 try {
                     let bytes;
-                    if (source) bytes = await readSourceText(sourceOf(source));
+                    if (sourceSize === 0) bytes = fileSource ? await readSourceText(fileSource) : new Uint8Array();
+                    else if (source) bytes = await readSourceText(sourceOf(source));
                     else {
                         const response = await fetch(url, { cache: 'no-store', credentials: 'same-origin', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]) });
                         if (!response.ok) throw new Error('内容已变化或不可用，请刷新后重试。');
@@ -145,6 +146,12 @@ export function createContentPreviewScope() {
                         retry.addEventListener('click', load);
                         content.append(retry);
                     }
+                }
+                if (label && !disposed) {
+                    const filename = document.createElement('p');
+                    filename.className = 'content-file-heading';
+                    filename.textContent = name.split('/').pop();
+                    content.prepend(filename);
                 }
             };
             if (collapsible) entry.addEventListener('toggle', load);

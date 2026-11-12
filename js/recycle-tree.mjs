@@ -1,5 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.99';
-import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.99';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.100';
+import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.100';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
@@ -272,6 +272,14 @@ export function buildRecycleTree(files, query = '', {
         node.directories = child.directories;
         node.files = node.files.concat(child.files);
         directories.delete(child.path);
+    }
+    // 单个正文直接作为展开入口，避免正文分类与文件重复折叠。
+    for (const node of [...directories.values()]) {
+        const body = node.directories.find(child => child.name === '正文' && child.files.length === 1 && !child.directories.length);
+        if (!body) continue;
+        node.files = node.files.concat(body.files);
+        node.directories = node.directories.filter(child => child !== body);
+        directories.delete(body.path);
     }
     for (const node of directories.values()) {
         for (const child of node.directories) child.depth = node.depth + 1;
