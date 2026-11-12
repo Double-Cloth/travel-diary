@@ -1,8 +1,8 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.118';
-import { createPasswordGate } from './record-password.js?v=2.1.118';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.118';
-import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.118';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.118';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.119';
+import { createPasswordGate } from './record-password.js?v=2.1.119';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.119';
+import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.119';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.119';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -131,40 +131,47 @@ export function createMediaManager(onReferencesRemoved = async () => {}) {
             media.className = 'record-transfer-list media-file-list recycle-history';
             media.setAttribute('data-media-viewer-group', '');
             media.setAttribute('aria-label', `${label}的媒体文件`);
-            let mediaIndex = 0;
-            const mediaRows = group.files.map(file => {
-                const row = document.createElement('li');
-                row.className = 'media-health-file';
-                if (filter === 'shared') row.classList.add('media-health-file-readonly');
-                else {
-                    const selection = document.createElement('label');
-                    const available = selectable(file);
-                    selection.innerHTML = `<input type="checkbox" data-media-path data-media-unavailable="${!available}" value="${escapeHtml(file.path)}"${currentSelection().has(file.path) ? ' checked' : ''}${available ? '' : ' disabled'}><span class="sr-only">${available ? '选择' : '不可选择'} ${escapeHtml(file.path)}</span>`;
-                    if (!available) selection.title = filter === 'missing' ? '请重启日记服务以启用删除引用' : '文件仍被日记使用，不能清理';
-                    row.append(selection);
-                }
-                const content = document.createElement('div');
-                const missing = filter === 'missing';
-                const url = missing ? '' : getMediaFileUrl(file.path);
-                const link = createMediaFileLink({
-                    path: file.path, src: url, name: file.path.split('/').at(-1),
-                    kind: file.path.startsWith('data/videos/') ? 'video' : 'image', index: mediaIndex,
-                    detail: missing ? `${file.path} · 文件缺失` : `${file.path} · ${sizeLabel(file.size)}`
+            // 首次展开才创建文件行，避免折叠目录中的大量缩略图参与布局和观察。
+            const renderMedia = () => {
+                if (!details.open || media.childElementCount) return;
+                let mediaIndex = 0;
+                const mediaRows = group.files.map(file => {
+                    const row = document.createElement('li');
+                    row.className = 'media-health-file';
+                    if (filter === 'shared') row.classList.add('media-health-file-readonly');
+                    else {
+                        const selection = document.createElement('label');
+                        const available = selectable(file);
+                        selection.innerHTML = `<input type="checkbox" data-media-path data-media-unavailable="${!available}" value="${escapeHtml(file.path)}"${currentSelection().has(file.path) ? ' checked' : ''}${available ? '' : ' disabled'}><span class="sr-only">${available ? '选择' : '不可选择'} ${escapeHtml(file.path)}</span>`;
+                        if (!available) selection.title = filter === 'missing' ? '请重启日记服务以启用删除引用' : '文件仍被日记使用，不能清理';
+                        row.append(selection);
+                    }
+                    const content = document.createElement('div');
+                    const missing = filter === 'missing';
+                    const url = missing ? '' : getMediaFileUrl(file.path);
+                    const link = createMediaFileLink({
+                        path: file.path, src: url, name: file.path.split('/').at(-1),
+                        kind: file.path.startsWith('data/videos/') ? 'video' : 'image', index: mediaIndex,
+                        detail: missing ? `${file.path} · 文件缺失` : `${file.path} · ${sizeLabel(file.size)}`
+                    });
+                    if (url) mediaIndex++;
+                    else {
+                        link.querySelector('.media-file-detail').textContent = `${file.path} · ${missing ? '文件缺失' : '路径无效'}`;
+                        showMediaFilePreviewError(link, missing ? '文件缺失' : '无法预览');
+                    }
+                    const references = document.createElement('small');
+                    references.innerHTML = file.records.length ? owners(file) : '未被日记使用';
+                    content.append(link, references);
+                    row.append(content);
+                    return row;
                 });
-                if (url) mediaIndex++;
-                else {
-                    link.querySelector('.media-file-detail').textContent = `${file.path} · ${missing ? '文件缺失' : '路径无效'}`;
-                    showMediaFilePreviewError(link, missing ? '文件缺失' : '无法预览');
-                }
-                const references = document.createElement('small');
-                references.innerHTML = file.records.length ? owners(file) : '未被日记使用';
-                content.append(link, references);
-                row.append(content);
-                return row;
-            });
-            media.replaceChildren(...mediaRows);
+                media.replaceChildren(...mediaRows);
+                if (details.isConnected) syncControls();
+            };
             details.append(summary, media);
             row.append(details);
+            renderMedia();
+            details.addEventListener('toggle', renderMedia);
             return row;
         });
         list.replaceChildren(...rows);

@@ -163,6 +163,54 @@ test('共用观察器只启动可见项，删除旧 DOM 后解除观察，空闲
     stop();
 });
 
+test('折叠内容即使有有效布局矩形也不加载，summary 内的预览仍可显示', async t => {
+    const preview = await previewModule(t, { innerWidth: 1200, innerHeight: 800, getComputedStyle: () => ({}) });
+    const target = { isConnected: true, closest: () => null,
+        getBoundingClientRect: () => ({ width: 80, height: 60, top: 100, bottom: 160, left: 100, right: 180 }) };
+    let inSummary = false;
+    const details = { tagName: 'DETAILS', open: false, querySelector: () => ({ contains: () => inSummary }) };
+    target.parentElement = details;
+    assert.equal(preview.isMediaPreviewVisible(target), false);
+    details.open = true;
+    assert.equal(preview.isMediaPreviewVisible(target), true);
+    details.open = false;
+    inSummary = true;
+    assert.equal(preview.isMediaPreviewVisible(target), true);
+    details.parentElement = { tagName: 'DETAILS', open: false, querySelector: () => ({ contains: () => false }) };
+    assert.equal(preview.isMediaPreviewVisible(target), false, '内层 summary 仍受外层折叠控制');
+    target.parentElement = { tagName: 'DIALOG', open: false };
+    assert.equal(preview.isMediaPreviewVisible(target), false);
+    target.parentElement.open = true;
+    assert.equal(preview.isMediaPreviewVisible(target), true);
+});
+
+test('折叠时暂停缩略图，展开后恢复，滚动检测不会读取已收起的文件', async t => {
+    const events = new EventTarget();
+    const preview = await previewModule(t, {
+        IntersectionObserver: undefined, innerWidth: 1200, innerHeight: 800, getComputedStyle: () => ({}),
+        addEventListener: events.addEventListener.bind(events), removeEventListener: events.removeEventListener.bind(events)
+    });
+    const details = { tagName: 'DETAILS', open: false, querySelector: () => ({ contains: () => false }) };
+    const target = { isConnected: true, parentElement: details,
+        getBoundingClientRect: () => ({ width: 80, height: 60, top: 100, bottom: 160, left: 100, right: 180 }) };
+    let loads = 0;
+    preview.observeMediaVisibility(target, () => loads++);
+    await new Promise(resolve => setTimeout(resolve, 5));
+    events.dispatchEvent(new Event('scroll'));
+    assert.equal(loads, 0);
+    details.open = true;
+    events.dispatchEvent(new Event('toggle'));
+    assert.equal(loads, 1);
+    preview.observeMediaVisibility(target, () => loads++);
+    details.open = false;
+    await new Promise(resolve => setTimeout(resolve, 5));
+    events.dispatchEvent(new Event('scroll'));
+    assert.equal(loads, 1);
+    details.open = true;
+    events.dispatchEvent(new Event('toggle'));
+    assert.equal(loads, 2);
+});
+
 test('不支持 IntersectionObserver 时仍等待滚动显示，不回退为全量加载', async t => {
     const events = new EventTarget();
     const preview = await previewModule(t, {

@@ -1,5 +1,5 @@
-import { MAXIMUM_PROFILE_SOURCE_BYTES } from './file-limits.mjs?v=2.1.118';
-import { uploadWithProgress } from './operation-progress.js?v=2.1.118';
+import { MAXIMUM_PROFILE_SOURCE_BYTES } from './file-limits.mjs?v=2.1.119';
+import { uploadWithProgress } from './operation-progress.js?v=2.1.119';
 const MAXIMUM_EDGE = 1024;
 const SUPPORTED_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 

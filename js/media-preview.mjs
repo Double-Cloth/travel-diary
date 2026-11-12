@@ -70,6 +70,9 @@ export function isMediaPreviewVisible(target) {
         || rect.right <= 0 || rect.left >= width) return false;
     // 独立滚动纸页、折叠区和对话框的裁切也属于不可见区域。
     for (let parent = target.parentElement; parent; parent = parent.parentElement) {
+        // 折叠内容仍可能返回有效矩形，只有 summary 内的预览保持可见。
+        if (parent.tagName === 'DETAILS' && !parent.open && !parent.querySelector(':scope > summary')?.contains(target)) return false;
+        if (parent.tagName === 'DIALOG' && !parent.open) return false;
         const style = getComputedStyle(parent);
         if (style.visibility === 'hidden' || style.display === 'none') return false;
         if (/(auto|scroll|hidden|clip)/.test(style.overflowY + style.overflowX)) {
