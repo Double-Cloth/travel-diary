@@ -1,10 +1,10 @@
-import { createPasswordGate } from './record-password.js?v=2.1.110';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.110';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.110';
+import { createPasswordGate } from './record-password.js?v=2.1.111';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.111';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.111';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=2.1.110';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.110';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.110';
+import { createRecordTransfer } from './record-transfer.js?v=2.1.111';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.111';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.111';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');

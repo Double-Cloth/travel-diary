@@ -1,30 +1,30 @@
-import { orderMedia } from './media-order.mjs?v=2.1.110';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.110';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.110';
-import { createRecordEditor } from './record-editor.js?v=2.1.110';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.110';
-import { createDataTransfer } from './data-transfer.js?v=2.1.110';
-import { createMediaManager } from './media-manager.js?v=2.1.110';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.110';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.110';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.110';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.110';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.110';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.110';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.110';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.110';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.110';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.110';
-import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.110';
-import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.110';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.110';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.110';
+import { orderMedia } from './media-order.mjs?v=2.1.111';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.111';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.111';
+import { createRecordEditor } from './record-editor.js?v=2.1.111';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.111';
+import { createDataTransfer } from './data-transfer.js?v=2.1.111';
+import { createMediaManager } from './media-manager.js?v=2.1.111';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.111';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.111';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.111';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.111';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.111';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.111';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.111';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.111';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.111';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.111';
+import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.111';
+import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.111';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.111';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.111';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.110';
+} from './location.mjs?v=2.1.111';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -33,7 +33,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.110';
+} from './photo-viewer-transform.mjs?v=2.1.111';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -1063,6 +1063,12 @@ function renderPreface() {
                 <p>Travel far enough, you meet yourself.</p>
             </header>
 
+            <nav class="preface-entry-actions" aria-label="写作与浏览">
+                <button class="paper-button preface-write-button" type="button" data-action="add-record">新增旅行日记</button>
+                <a class="preface-browse-link" href="#ledger?view=notes">浏览日记</a>
+                <a class="preface-browse-link" href="#ledger?view=trips">查看行程</a>
+            </nav>
+
             <section class="preface-identity-sheet" aria-label="日记主人与旅程概况">
                 <div class="preface-sheet-kicker" aria-hidden="true">
                     <span>TRAVEL DIARY</span>
@@ -1117,96 +1123,78 @@ function renderPreface() {
                 </dl>
             </section>
 
-            ${renderMobileContextToggle('打开日记工具箱', '写日记、备份、整理与设置')}
+            ${renderMobileContextToggle('打开日记工具箱', '整理日记、备份与个人设置')}
         </article>
     `, `
         ${renderContextPanelHeading('扉页', '日记工具箱')}
 
-        <section class="preface-tool-section" aria-labelledby="prefaceWritingTitle">
-            <h3 id="prefaceWritingTitle">写作与资料</h3>
-            <div class="preface-writing-row">
-                <p>把新的旅途，写进下一篇日记。</p>
-                <button class="paper-button preface-write-button" type="button" data-action="add-record">新增旅行日记</button>
-            </div>
-            <div class="preface-profile-tools" aria-label="扉页个人资料">
-                <span>扉页资料</span>
-                <button class="preface-text-action" type="button" data-action="upload-profile-picture">更换头像</button>
-                <button class="preface-text-action" type="button" data-action="edit-owner-name">修改署名</button>
+        <section class="preface-tool-section" aria-labelledby="prefaceOrganizeTitle">
+            <h3 id="prefaceOrganizeTitle">日记整理</h3>
+            <div class="preface-tool-choices">
+                <button class="preface-tool-command" type="button" data-action="media-health">
+                    <span class="preface-command-title">媒体整理</span>
+                    <span class="preface-command-description">检查缺失文件，整理闲置图片与视频。</span>
+                </button>
+                <button class="preface-tool-command preface-delete-command" type="button" data-action="delete-records">
+                    <span class="preface-command-title">批量删除日记</span>
+                    <span class="preface-command-description">选择日记移入回收站，可恢复。</span>
+                </button>
+                <button class="preface-tool-command" type="button" data-action="recycle-bin">
+                    <span class="preface-command-title">回收站</span>
+                    <span class="preface-command-description">恢复已删除的内容，或永久删除以释放空间。</span>
+                </button>
             </div>
         </section>
 
         <section class="preface-tool-section" aria-labelledby="prefaceDataTitle">
             <h3 id="prefaceDataTitle">备份与恢复</h3>
-            <div class="preface-backup-group" role="group" aria-labelledby="prefaceExportTitle">
-                <h4 id="prefaceExportTitle">导出 · 保存备份到本机</h4>
-                <div class="preface-tool-choices">
-                    <button class="preface-tool-command" type="button" data-action="export-records">
-                        <span class="preface-command-title">导出部分记录</span>
-                        <span class="preface-command-description">选择日记及其附件，适合增量备份。</span>
-                    </button>
-                    <button class="preface-tool-command" type="button" data-action="export-all-data">
-                        <span class="preface-command-title">导出全部数据</span>
-                        <span class="preface-command-description">验证访问密码后，备份日记、附件、个人资料和密码配置。</span>
-                    </button>
+            <div class="preface-backup-group" role="group" aria-labelledby="prefacePartialTitle" aria-describedby="prefacePartialNote">
+                <h4 id="prefacePartialTitle">部分记录</h4>
+                <p class="preface-tool-note" id="prefacePartialNote">选择日记及其附件，支持增量备份与合并。</p>
+                <div class="preface-transfer-actions">
+                    <button class="preface-text-action" type="button" data-action="export-records">导出部分记录</button>
+                    <button class="preface-text-action" type="button" data-action="import-records">导入并合并</button>
                 </div>
             </div>
-            <div class="preface-backup-group" role="group" aria-labelledby="prefaceImportTitle">
-                <h4 id="prefaceImportTitle">导入 · 使用已有备份</h4>
-                <div class="preface-tool-choices">
-                    <button class="preface-tool-command" type="button" data-action="import-records">
-                        <span class="preface-command-title">导入部分记录<span class="preface-command-kind">合并</span></span>
-                        <span class="preface-command-description">导入所选日记内容，其他日记、资料和密码不变。</span>
-                    </button>
-                    <button class="preface-tool-command" type="button" data-action="import-all-data">
-                        <span class="preface-command-title">导入全部数据<span class="preface-command-kind">替换</span></span>
-                        <span class="preface-command-description">用完整备份替换当前数据，密码也恢复为备份时的密码。</span>
-                    </button>
+            <div class="preface-backup-group" role="group" aria-labelledby="prefaceFullTitle" aria-describedby="prefaceFullNote">
+                <h4 id="prefaceFullTitle">全部数据</h4>
+                <p class="preface-tool-note" id="prefaceFullNote">包含日记、附件、个人资料和密码配置。</p>
+                <div class="preface-transfer-actions">
+                    <button class="preface-text-action" type="button" data-action="export-all-data">导出全部数据</button>
+                    <button class="preface-text-action preface-replace-action" type="button" data-action="import-all-data" aria-describedby="prefaceReplaceNote">导入并替换</button>
                 </div>
+                <p class="preface-tool-note preface-replace-note" id="prefaceReplaceNote">导入完整备份会替换当前数据，并恢复备份中的访问密码。</p>
             </div>
             <p class="archive-data-status preface-transfer-status" data-data-transfer-status role="status" aria-live="polite"></p>
         </section>
 
-        <section class="preface-tool-section" aria-labelledby="prefaceOrganizeTitle">
-            <h3 id="prefaceOrganizeTitle">日记与媒体整理</h3>
-            <div class="preface-tool-choices">
-                <button class="preface-tool-command preface-delete-command" type="button" data-action="delete-records">
-                    <span class="preface-command-title">批量删除日记</span>
-                    <span class="preface-command-description">按日记选择，删除的内容可从回收站恢复。</span>
-                </button>
-                <button class="preface-tool-command" type="button" data-action="media-health">
-                    <span class="preface-command-title">媒体整理</span>
-                    <span class="preface-command-description">检查缺失文件，整理未被日记使用的图片和视频。</span>
-                </button>
-                <button class="preface-tool-command" type="button" data-action="recycle-bin">
-                    <span class="preface-command-title">回收站</span>
-                    <span class="preface-command-description">恢复已删除或替换的内容，永久删除后释放空间。</span>
-                </button>
-            </div>
-        </section>
-
-        <section class="preface-tool-section" aria-labelledby="prefaceSecurityTitle">
-            <h3 id="prefaceSecurityTitle">密码与重置</h3>
-            <div class="preface-security-row">
-                <button class="preface-tool-command" type="button" data-action="change-password">
-                    <span class="preface-command-title">修改访问密码</span>
-                    <span class="preface-command-description">验证现用密码，设置新的 6 位数字密码。</span>
-                </button>
-                <button class="password-reset-help" type="button" data-action="password-reset-help" aria-haspopup="dialog" aria-label="忘记密码？查看重置方法">
-                    <span>忘记密码？</span>
-                    <svg class="password-reset-help-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
-                        <circle cx="8" cy="8" r="6.25"/>
-                        <path d="M6.5 6a1.5 1.5 0 0 1 3 .15c0 1.1-1.5 1.25-1.5 2.35M8 10.75h.01"/>
-                    </svg>
-                </button>
-            </div>
-            <div class="preface-reset-tools archive-danger-zone">
-                <h4>清空日记与资料</h4>
-                <div class="preface-reset-content">
-                    <p>清空全部日记、附件、头像和署名，访问密码保留。原数据会存入回收站。</p>
-                    <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
+        <details class="preface-tool-disclosure">
+            <summary>个人资料与安全</summary>
+            <div class="preface-settings-content">
+                <div class="preface-profile-tools" role="group" aria-label="扉页个人资料">
+                    <button class="preface-text-action" type="button" data-action="upload-profile-picture">更换头像</button>
+                    <button class="preface-text-action" type="button" data-action="edit-owner-name">修改署名</button>
+                </div>
+                <div class="preface-security-row">
+                    <button class="preface-text-action" type="button" data-action="change-password">修改访问密码</button>
+                    <button class="password-reset-help" type="button" data-action="password-reset-help" aria-haspopup="dialog" aria-label="忘记密码？查看重置方法">
+                        <span>忘记密码？</span>
+                        <svg class="password-reset-help-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                            <circle cx="8" cy="8" r="6.25"/>
+                            <path d="M6.5 6a1.5 1.5 0 0 1 3 .15c0 1.1-1.5 1.25-1.5 2.35M8 10.75h.01"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
-        </section>
+        </details>
+
+        <details class="preface-tool-disclosure preface-reset-tools">
+            <summary>清空数据</summary>
+            <div class="preface-reset-content archive-danger-zone">
+                <p>清空全部日记、附件、头像和署名，访问密码保留。原数据会存入回收站。</p>
+                <button class="paper-button archive-data-clear" type="button" data-action="clear-all-data">清空全部数据</button>
+            </div>
+        </details>
     `, 'dossier-page context-panel preface-tools-panel');
 }
 
@@ -4630,8 +4618,9 @@ function handleDocumentKeydown(event) {
 
 function trapPanelFocus(event, panel) {
     if (event.key !== 'Tab' || !panel) return false;
-    const controls = [...panel.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')]
-        .filter(node => !node.disabled && node.tabIndex >= 0 && !node.closest('[hidden], [inert]') && node.getClientRects().length);
+    const controls = [...panel.querySelectorAll('a[href], button, summary, input, select, textarea, [tabindex]')]
+        .filter(node => !node.disabled && node.tabIndex >= 0
+            && !node.closest('[hidden], [inert], details:not([open]) > :not(summary)') && node.getClientRects().length);
     const first = controls[0];
     const last = controls.at(-1);
     if (!first) {
@@ -4898,6 +4887,8 @@ function restoreFocusBeforeHidingContextPanel() {
         return;
     }
 
+    // 入口所在左页先解除 inert，才能在隐藏工具箱前接收焦点。
+    if (refs.leftPage) refs.leftPage.inert = false;
     const toggle = document.querySelector('[data-action="open-context-panel"], [data-action="show-ledger-filters"]');
     if (toggle instanceof HTMLElement && !toggle.disabled) {
         toggle.focus({ preventScroll: true });
@@ -4963,7 +4954,8 @@ function syncMobileContextPanelState() {
         if (supportsMobilePanel) {
             refs.rightPage.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
             refs.rightPage.setAttribute('role', 'dialog');
-            refs.rightPage.setAttribute('aria-label', activeRoute?.name === 'ledger' ? '高级筛选' : '档案概览');
+            refs.rightPage.setAttribute('aria-label', activeRoute?.name === 'ledger' ? '高级筛选'
+                : activeRoute?.name === 'preface' ? '日记工具箱' : '档案概览');
             refs.rightPage.setAttribute('aria-modal', 'true');
             refs.rightPage.setAttribute('tabindex', '-1');
             refs.rightPage.toggleAttribute('inert', !isOpen);

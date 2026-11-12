@@ -482,7 +482,13 @@ test('夹层与媒体面板的 Tab 焦点循环跳过禁用和隐藏控件', t =
     });
     const first = control();
     const last = control();
-    const panel = { querySelectorAll: () => [first, control({ disabled: true }), control({ closest: () => ({}) }), last] };
+    const panel = { querySelectorAll: selector => {
+        assert.match(selector, /\bsummary\b/);
+        return [first, control({ disabled: true }), control({ closest: hiddenSelector => {
+            assert.match(hiddenSelector, /details:not\(\[open\]\) > :not\(summary\)/);
+            return {};
+        } }), last];
+    } };
     globalThis.document = { activeElement: last };
     let prevented = 0;
     assert.equal(app.trapPanelFocus({ key: 'Tab', preventDefault: () => prevented++ }, panel), true);
@@ -627,6 +633,19 @@ test('同名或缺少正文路径的记录保留独立身份及原始顺序', ()
     assert.equal(model.records[1].id, 'note-2');
     assert.equal(model.stats.total, 4);
     assert.equal(app.deriveTravelModel([]).recordsById.size, 0);
+});
+
+test('扉页直接提供写作与浏览入口，工具箱按任务及备份范围组织按钮', () => {
+    const { left, right } = app.renderTestSummary([], 'preface');
+    assert.match(left, /<nav class="preface-entry-actions"[\s\S]*data-action="add-record"[\s\S]*href="#ledger\?view=notes"[\s\S]*href="#ledger\?view=trips"[\s\S]*<\/nav>/);
+    assert.doesNotMatch(right, /data-action="add-record"/);
+    assert.match(right, /aria-labelledby="prefacePartialTitle"[\s\S]*data-action="export-records"[\s\S]*data-action="import-records"[\s\S]*aria-labelledby="prefaceFullTitle"[\s\S]*data-action="export-all-data"[\s\S]*data-action="import-all-data" aria-describedby="prefaceReplaceNote"/);
+    assert.match(right, /<details class="preface-tool-disclosure">[\s\S]*<summary>个人资料与安全<\/summary>[\s\S]*data-action="change-password"[\s\S]*<\/details>/);
+    assert.match(right, /<details class="preface-tool-disclosure preface-reset-tools">\s*<summary>清空数据<\/summary>[\s\S]*data-action="clear-all-data"[\s\S]*<\/details>/);
+    for (const action of ['media-health', 'delete-records', 'recycle-bin', 'export-records', 'import-records',
+        'export-all-data', 'import-all-data', 'change-password', 'password-reset-help', 'clear-all-data']) {
+        assert.equal(right.match(new RegExp(`data-action="${action}"`, 'g'))?.length, 1);
+    }
 });
 
 test('扉页和足迹摘要显示全量媒体，高级筛选显示结果集媒体数量', () => {
