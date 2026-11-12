@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.108';
-import { createPasswordGate } from './record-password.js?v=2.1.108';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.108';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.108';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.108';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.108';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.108';
-import { recordIdentity } from './record-identity.mjs?v=2.1.108';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleSelectionGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.108';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.109';
+import { createPasswordGate } from './record-password.js?v=2.1.109';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.109';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.109';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.109';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.109';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.109';
+import { recordIdentity } from './record-identity.mjs?v=2.1.109';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleSelectionGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.109';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;

@@ -1,6 +1,6 @@
-import { escapeHtml } from './utils.js?v=2.1.108';
-import { changedTextBlocks } from './record-diff.mjs?v=2.1.108';
-import { markdownPreview } from './content-preview.js?v=2.1.108';
+import { escapeHtml } from './utils.js?v=2.1.109';
+import { changedTextBlocks } from './record-diff.mjs?v=2.1.109';
+import { markdownPreview } from './content-preview.js?v=2.1.109';
 
 export function renderRecordDifference(record, comparison, { afterLabel = '备份', note = '仅显示有变化的部分。勾选这篇日记后，将采用备份内容。', previewLabel = '预览导入后的正文', textLabel = '正文', collapsible = true, numberedFields = false, mediaLink } = {}) {
     if (!comparison) return '';
@@ -32,11 +32,13 @@ export function renderRecordDifference(record, comparison, { afterLabel = '备�
         return block[side].split('\n').map((line, index) => `<div class="record-diff-line record-diff-${removed ? 'removed' : 'added'}"><span class="record-diff-line-number">${removed ? start + index : ''}</span><span class="record-diff-line-number">${removed ? '' : start + index}</span><span class="record-diff-line-sign" aria-label="${removed ? '删除' : '新增'}">${removed ? '−' : '+'}</span><code>${escapeHtml(line) || '&#8203;'}</code></div>`).join('');
     };
     const diffLegend = '<p class="record-diff-legend"><span class="record-diff-removed">− 删除</span><span class="record-diff-added">+ 新增</span></p>';
-    const renderBlocks = (blocks, label, legend = true) => {
+    const rangeText = block => `@@ −${block.lineBefore - (block.countBefore ? 0 : 1)},${block.countBefore} +${block.lineAfter - (block.countAfter ? 0 : 1)},${block.countAfter} @@`;
+    const renderBlocks = (blocks, label, legend = true, foldable = false) => {
+        const tag = foldable ? 'details' : 'div';
         return blocks.length ? `${legend ? diffLegend : ''}
-            <div class="record-diff-unified" role="group" aria-label="${escapeHtml(label)}差异，左侧为当前行号，右侧为${escapeHtml(afterLabel)}行号">${blocks.map(block => `<div class="record-diff-hunk">
-                <p class="record-diff-range">@@ −${block.lineBefore - (block.countBefore ? 0 : 1)},${block.countBefore} +${block.lineAfter - (block.countAfter ? 0 : 1)},${block.countAfter} @@</p>
-                ${diffLines(block, 'before')}${diffLines(block, 'after')}</div>`).join('')}</div>` : '';
+            <${tag} class="record-diff-unified${foldable ? ' record-diff-foldable' : ''}" role="group" aria-label="${escapeHtml(label)}差异，左侧为当前行号，右侧为${escapeHtml(afterLabel)}行号"${foldable ? ' open' : ''}>${foldable ? `<summary><span class="record-diff-range">${rangeText(blocks[0])}</span><span class="record-diff-field-toggle"><span class="record-diff-field-collapse">收起</span><span class="record-diff-field-expand">展开</span></span></summary>` : ''}${blocks.map((block, index) => `<div class="record-diff-hunk">
+                ${!foldable || index ? `<p class="record-diff-range">${rangeText(block)}</p>` : ''}
+                ${diffLines(block, 'before')}${diffLines(block, 'after')}</div>`).join('')}</${tag}>` : '';
     };
     const fieldKeys = [...new Set([...Object.keys(labels), ...Object.keys(previous), ...Object.keys(record)])]
         .filter(key => key !== 'record_id');
@@ -71,7 +73,7 @@ export function renderRecordDifference(record, comparison, { afterLabel = '备�
     }).filter(group => group.blocks.length) : [];
     return `<${collapsible ? 'details' : 'section'} class="record-diff" data-diff-record="${escapeHtml(record.desc_md)}">${collapsible ? `<summary><span>${comparison.status === 'added' ? '预览新增内容' : comparison.status === 'removed' ? '预览移除内容' : '查看差异'}</span><small>${escapeHtml(sections.join(' · '))}</small></summary>` : ''}
         <div class="record-diff-body">${note ? `<p class="record-diff-note">${escapeHtml(note)}</p>` : ''}
-        ${comparison.fields.length ? `<section class="record-diff-section"><h3>记录信息</h3>${numberedFields ? diffLegend + fieldGroups.map(group => `<details class="record-diff-field-group" open><summary><h4>${escapeHtml(group.label)}</h4><span class="record-diff-field-toggle"><span class="record-diff-field-collapse">收起</span><span class="record-diff-field-expand">展开</span></span></summary>${renderBlocks(group.blocks, '日记信息', false)}</details>`).join('') : `<dl>${comparison.fields.map(key => `<div><dt>${escapeHtml(labels[key] || key)}</dt><dd><span class="record-diff-value record-diff-before"><small>当前</small>${escapeHtml(formatValue(previous[key], record[key]))}</span><span class="record-diff-value record-diff-after"><small>${escapeHtml(afterLabel)}</small>${escapeHtml(formatValue(record[key], previous[key]))}</span></dd></div>`).join('')}</dl>`}</section>` : ''}
+        ${comparison.fields.length ? `<section class="record-diff-section"><h3>记录信息</h3>${numberedFields ? diffLegend + fieldGroups.map(group => `<section class="record-diff-field-group"><h4>${escapeHtml(group.label)}</h4>${renderBlocks(group.blocks, group.label, false, true)}</section>`).join('') : `<dl>${comparison.fields.map(key => `<div><dt>${escapeHtml(labels[key] || key)}</dt><dd><span class="record-diff-value record-diff-before"><small>当前</small>${escapeHtml(formatValue(previous[key], record[key]))}</span><span class="record-diff-value record-diff-after"><small>${escapeHtml(afterLabel)}</small>${escapeHtml(formatValue(record[key], previous[key]))}</span></dd></div>`).join('')}</dl>`}</section>` : ''}
         ${comparison.markdownChanged ? `<section class="record-diff-section record-diff-text">
             <h3>${escapeHtml(textLabel)}改动${blocks.length ? ` <small>${blocks.length} 处</small>` : ''}</h3>
             ${textStates}

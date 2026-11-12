@@ -1491,15 +1491,16 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .record-diff-range { margin: 0; padding: 6px 10px; color: var(--ink-soft); background: rgba(91, 75, 53, 0.05); font-size: 12px; font-variant-numeric: tabular-nums; }
 .record-diff-hunk + .record-diff-hunk { border-top: 1px dashed var(--hairline); }
 .record-diff-field-group + .record-diff-field-group { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--hairline); }
-.record-diff .record-diff-field-group > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0; cursor: pointer; list-style: none; }
-.record-diff-field-group > summary::before { display: none; }
-.record-diff-field-group > summary::-webkit-details-marker { display: none; }
-.record-diff-field-group > summary > h4 { margin: 0; font-size: 13px; }
-.record-diff-field-group > summary:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
-.record-diff-field-group > summary > .record-diff-field-toggle { flex: 0 0 auto; padding: 8px 0 8px 12px; color: var(--stamp); font-size: 13px; text-underline-offset: 4px; }
-.record-diff-field-group > summary:hover .record-diff-field-toggle { text-decoration: underline; }
-.record-diff-field-group[open] > summary .record-diff-field-expand,
-.record-diff-field-group:not([open]) > summary .record-diff-field-collapse { display: none; }
+.record-diff-field-group > h4 { margin: 0 0 10px; font-size: 13px; }
+.record-diff .record-diff-foldable > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; padding: 0 10px; color: var(--ink-soft); background: rgba(91, 75, 53, 0.05); cursor: pointer; list-style: none; }
+.record-diff-foldable > summary::before { display: none; }
+.record-diff-foldable > summary::-webkit-details-marker { display: none; }
+.record-diff-foldable > summary > .record-diff-range { min-width: 0; padding: 6px 0; background: none; overflow-wrap: anywhere; }
+.record-diff-foldable > summary:focus-visible { outline: 2px solid var(--stamp); outline-offset: -2px; }
+.record-diff-foldable > summary > .record-diff-field-toggle { flex: 0 0 auto; padding: 8px 0 8px 12px; color: var(--stamp); font-size: 13px; text-underline-offset: 4px; }
+.record-diff-foldable > summary:hover .record-diff-field-toggle { text-decoration: underline; }
+.record-diff-foldable[open] > summary .record-diff-field-expand,
+.record-diff-foldable:not([open]) > summary .record-diff-field-collapse { display: none; }
 .record-diff-line { display: grid; grid-template-columns: 4ch 4ch 2ch minmax(0, 1fr); padding: 3px 10px 3px 4px; }
 .record-diff-line-number { text-align: right; padding-right: 6px; font-size: 11px; font-variant-numeric: tabular-nums; user-select: none; }
 .record-diff-line-sign { text-align: center; user-select: none; }

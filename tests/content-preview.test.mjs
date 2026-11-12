@@ -115,19 +115,21 @@ test('日记信息差异复用正文的双侧行号并保留数组顺序、转�
     const comparison = { status: 'changed', previous, fields: ['title', 'photos'], media: [], markdownChanged: false };
     const options = { numberedFields: true, afterLabel: '恢复后', note: '', collapsible: false };
     const html = renderRecordDifference(record, comparison, options);
-    assert.match(html, /aria-label="日记信息差异，左侧为当前行号，右侧为恢复后行号"/);
+    assert.match(html, /aria-label="基本信息差异，左侧为当前行号，右侧为恢复后行号"/);
     assert.match(html, /record-diff-line-number">1<\/span>/);
     assert.match(html, /@@ −4,2 \+4,2 @@/);
     assert.match(html, /&lt;新标题&gt;/);
     assert.doesNotMatch(html, /<新标题>|<dl>/);
     assert.match(html, /图片列表 \[1\]  &quot;b.png&quot;/);
     assert.match(html, /图片列表 \[2\]  &quot;a.png&quot;/);
-    const groups = [...html.matchAll(/<details class="record-diff-field-group" open><summary><h4>(.*?)<\/h4>[\s\S]*?<\/details>/g)];
+    const groups = [...html.matchAll(/<section class="record-diff-field-group"><h4>(.*?)<\/h4>[\s\S]*?<\/section>/g)];
     assert.deepEqual(groups.map(group => group[1]), ['基本信息', '图片列表']);
     for (const [group] of groups) {
         assert.match(group, /<span class="record-diff-field-collapse">收起<\/span>/);
         assert.match(group, /<span class="record-diff-field-expand">展开<\/span>/);
         assert.match(group, /record-diff-unified/);
+        assert.match(group, /<details class="record-diff-unified record-diff-foldable"[^>]* open><summary><span class="record-diff-range">@@ [^<]+ @@<\/span><span class="record-diff-field-toggle">/);
+        assert.match(group, /<\/summary><div class="record-diff-hunk">[\s\S]*?record-diff-line/);
         assert.doesNotMatch(group, /record-diff-legend/);
     }
     const added = renderRecordDifference(record, { ...comparison, status: 'added', previous: undefined }, options);
@@ -152,7 +154,7 @@ test('文件列表和附件顺序逐项显示位置、类型及特殊文件名�
     assert.doesNotMatch(html, /<a>|photo:|video:/);
     assert.match(html, /record-diff-line-number">4<\/span>/);
     assert.match(html, /record-diff-line-number">7<\/span>/);
-    const groups = [...html.matchAll(/<details class="record-diff-field-group" open><summary><h4>(.*?)<\/h4>[\s\S]*?<\/summary>([\s\S]*?)<\/details>/g)];
+    const groups = [...html.matchAll(/<section class="record-diff-field-group"><h4>(.*?)<\/h4>([\s\S]*?)<\/section>/g)];
     assert.deepEqual(groups.map(group => group[1]), ['图片列表', '视频列表', '附件顺序']);
     assert.match(groups[0][2], /图片列表 \[2\]/);
     assert.doesNotMatch(groups[0][2], /视频列表|附件顺序/);
