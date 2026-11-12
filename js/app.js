@@ -1,30 +1,30 @@
-import { orderMedia } from './media-order.mjs?v=2.1.114';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.114';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.114';
-import { createRecordEditor } from './record-editor.js?v=2.1.114';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.114';
-import { createDataTransfer } from './data-transfer.js?v=2.1.114';
-import { createMediaManager } from './media-manager.js?v=2.1.114';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.114';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.114';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.114';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.114';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.114';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.114';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.114';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.114';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.114';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.114';
-import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.114';
-import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.114';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.114';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.114';
+import { orderMedia } from './media-order.mjs?v=2.1.115';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.115';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.115';
+import { createRecordEditor } from './record-editor.js?v=2.1.115';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.115';
+import { createDataTransfer } from './data-transfer.js?v=2.1.115';
+import { createMediaManager } from './media-manager.js?v=2.1.115';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.115';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.115';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.115';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.115';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.115';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.115';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.115';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.115';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.115';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.115';
+import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.115';
+import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.115';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.115';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.115';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.114';
+} from './location.mjs?v=2.1.115';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -33,7 +33,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.114';
+} from './photo-viewer-transform.mjs?v=2.1.115';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -1129,7 +1129,7 @@ function renderPreface() {
                 <div class="preface-utility-actions" role="group" aria-label="日记与个人资料操作">
                     <button class="preface-button" type="button" data-action="upload-profile-picture">更改头像</button>
                     <button class="preface-button" type="button" data-action="edit-owner-name">修改署名</button>
-                    <button class="preface-button preface-utility-end" type="button" data-action="delete-records">批量删除日记</button>
+                    <button class="preface-button preface-button-danger preface-utility-end" type="button" data-action="delete-records">批量删除日记</button>
                 </div>
             </div>
         </details>
@@ -1139,11 +1139,17 @@ function renderPreface() {
             <div class="preface-module-content">
                 <div class="preface-transfer-actions" role="group" aria-label="全部数据备份与恢复">
                     <button class="preface-button" type="button" data-action="export-all-data">导出全部数据</button>
-                    <button class="preface-button" type="button" data-action="import-all-data">导入全部数据</button>
+                    <button class="preface-button preface-button-danger" type="button" data-action="import-all-data" aria-labelledby="prefaceImportAllLabel" aria-describedby="prefaceImportAllNote">
+                        <span id="prefaceImportAllLabel">导入全部数据</span>
+                        <span class="preface-button-note" id="prefaceImportAllNote">替换全部内容，原数据存入回收站</span>
+                    </button>
                 </div>
                 <div class="preface-transfer-actions" role="group" aria-label="部分记录备份与恢复">
                     <button class="preface-button" type="button" data-action="export-records">导出部分记录</button>
-                    <button class="preface-button" type="button" data-action="import-records">导入部分记录</button>
+                    <button class="preface-button" type="button" data-action="import-records" aria-labelledby="prefaceImportRecordsLabel" aria-describedby="prefaceImportRecordsNote">
+                        <span id="prefaceImportRecordsLabel">导入部分记录</span>
+                        <span class="preface-button-note" id="prefaceImportRecordsNote">按所选记录合并，有差异时采用备份</span>
+                    </button>
                 </div>
                 <p class="archive-data-status preface-transfer-status" data-data-transfer-status role="status" aria-live="polite"></p>
             </div>
@@ -1153,14 +1159,30 @@ function renderPreface() {
             <summary class="preface-module-heading"><h3 id="prefaceManageTitle">数据管理</h3></summary>
             <div class="preface-module-content">
                 <div class="preface-transfer-actions">
-                    <button class="preface-button preface-button-brass" type="button" data-action="media-health">媒体整理</button>
-                    <button class="preface-button preface-button-brass" type="button" data-action="recycle-bin">回收站</button>
+                    <button class="preface-button preface-button-brass" type="button" data-action="media-health" aria-labelledby="prefaceMediaLabel" aria-describedby="prefaceMediaNote">
+                        <span id="prefaceMediaLabel">媒体整理</span>
+                        <span class="preface-button-note" id="prefaceMediaNote">检查并整理未引用附件</span>
+                    </button>
+                    <button class="preface-button preface-button-brass" type="button" data-action="recycle-bin" aria-labelledby="prefaceRecycleLabel" aria-describedby="prefaceRecycleNote">
+                        <span id="prefaceRecycleLabel">回收站</span>
+                        <span class="preface-button-note" id="prefaceRecycleNote">恢复或永久删除已移除内容</span>
+                    </button>
                 </div>
                 <div class="preface-utility-actions">
-                    <button class="preface-button" type="button" data-action="change-password" aria-describedby="prefacePasswordNote">修改访问密码</button>
-                    <button class="preface-button preface-utility-end" type="button" data-action="clear-all-data">清空全部数据</button>
+                    <div class="preface-password-actions" role="group" aria-label="访问密码">
+                        <button class="preface-button" type="button" data-action="change-password">修改访问密码</button>
+                        <button class="password-reset-help" type="button" data-action="password-reset-help" aria-haspopup="dialog" aria-label="忘记密码？查看重置方法" title="忘记密码？查看重置方法">
+                            <svg class="password-reset-help-mark" viewBox="0 0 16 16" aria-hidden="true" focusable="false">
+                                <circle cx="8" cy="8" r="6.25"/>
+                                <path d="M6.5 6a1.5 1.5 0 0 1 3 .15c0 1.1-1.5 1.25-1.5 2.35M8 10.75h.01"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <button class="preface-button preface-button-danger preface-utility-end" type="button" data-action="clear-all-data" aria-labelledby="prefaceClearLabel" aria-describedby="prefaceClearNote">
+                        <span id="prefaceClearLabel">清空全部数据</span>
+                        <span class="preface-button-note" id="prefaceClearNote">全部内容移入回收站</span>
+                    </button>
                 </div>
-                <p class="preface-tool-note" id="prefacePasswordNote">忘记密码？在服务端项目目录运行 <code>npm run auth:set</code> 重置。</p>
             </div>
         </details>
     `, 'dossier-page context-panel preface-tools-panel');
@@ -4251,6 +4273,30 @@ function handleDocumentClick(event) {
     if (event.target.closest('[data-action="change-password"]')) {
         event.preventDefault();
         void openPasswordChange().catch(error => showFeedback(error.message));
+        return;
+    }
+    if (event.target.closest('[data-action="password-reset-help"]')) {
+        event.preventDefault();
+        void showFeedback('请在运行日记服务的电脑或服务器上操作。', {
+            label: '访问安全',
+            title: '如何重置密码',
+            steps: [
+                {
+                    title: '运行重置命令',
+                    description: '在项目目录打开终端并运行以下命令。',
+                    command: 'npm run auth:set'
+                },
+                {
+                    title: '设置新密码',
+                    description: '按提示输入并确认新的 6 位数字密码。'
+                },
+                {
+                    title: '返回网页验证',
+                    description: '重置成功后，回到网页使用新密码验证。'
+                }
+            ],
+            note: '没有服务器操作权限时，请联系站点维护者。'
+        });
         return;
     }
     if (event.target.closest('[data-action="upload-profile-picture"]')) {

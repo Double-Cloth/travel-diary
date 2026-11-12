@@ -481,6 +481,7 @@ body[data-route='preface'] .paper-page {
 
 .preface-button {
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
     gap: 6px;
@@ -515,6 +516,11 @@ body[data-route='preface'] .paper-page {
 .preface-button-brass:hover { border-color: #805b31; background: var(--control-face); filter: brightness(1.06); }
 .preface-button-brass:active { box-shadow: inset 0 2px 4px #4c301a40, 0 1px #fff7df; }
 .preface-button-brass:disabled { filter: none; }
+.preface-button-danger { color: #8b3228; border-color: #a34b3d; background-color: #f4d6be80; }
+.preface-button-danger:hover { color: #76271f; border-color: #8b3228; background-color: #f0c7ae; }
+.preface-button-danger:active { background-color: #e8b99d; }
+.preface-button-note { font-size: 11px; font-weight: 400; line-height: 1.5; text-shadow: none; }
+.preface-button:has(.preface-button-note) { gap: 2px; }
 
 .preface-tool-section {
     min-width: 0;
@@ -555,25 +561,34 @@ body[data-route='preface'] .paper-page {
     letter-spacing: .04em;
 }
 
-.preface-tool-note {
-    margin: 0;
-    color: #69513a;
-    font-size: 12px;
-    line-height: 1.75;
-    overflow-wrap: anywhere;
-}
-
-.preface-tool-note code { font-size: inherit; }
-
 .preface-transfer-actions {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px 12px;
 }
 
-.preface-utility-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.preface-utility-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .preface-utility-actions .preface-button { width: auto; }
 .preface-utility-actions .preface-utility-end { margin-left: auto; }
+.preface-password-actions { display: flex; align-items: center; min-width: 0; }
+.password-reset-help {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 44px;
+    width: 44px;
+    min-height: 44px;
+    padding: 0;
+    border: 0;
+    border-radius: 2px;
+    color: #69513a;
+    background: transparent;
+    cursor: pointer;
+}
+.password-reset-help:hover { color: var(--stamp); background-color: #a482431a; }
+.password-reset-help:active { background-color: #a4824326; }
+.password-reset-help:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+.password-reset-help-mark { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
 
 @media (max-width: 380px) {
     .preface-utility-actions { gap: 6px; }
