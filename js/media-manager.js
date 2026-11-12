@@ -1,8 +1,8 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.119';
-import { createPasswordGate } from './record-password.js?v=2.1.119';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.119';
-import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.119';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.119';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.120';
+import { createPasswordGate } from './record-password.js?v=2.1.120';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.120';
+import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.120';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.120';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -159,9 +159,7 @@ export function createMediaManager(onReferencesRemoved = async () => {}) {
                         link.querySelector('.media-file-detail').textContent = `${file.path} · ${missing ? '文件缺失' : '路径无效'}`;
                         showMediaFilePreviewError(link, missing ? '文件缺失' : '无法预览');
                     }
-                    const references = document.createElement('small');
-                    references.innerHTML = file.records.length ? owners(file) : '未被日记使用';
-                    content.append(link, references);
+                    content.append(link);
                     row.append(content);
                     return row;
                 });
