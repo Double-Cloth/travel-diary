@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recyclePartGroups, selectRecycleParts } from '../js/recycle-tree.mjs';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recyclePartGroups, recycleDiaryGroups, selectRecycleParts } from '../js/recycle-tree.mjs';
 
 test('恢复冲突识别同篇改名正文与旧标识，多篇混合批次也检测且不修改输入', () => {
     const saved = { record_id: `r-${'a'.repeat(32)}`, desc_md: 'data/old.md' };
@@ -273,4 +273,42 @@ test('部分恢复共用文件保留原附件批次的关联，整站批次仅�
     assert.equal(partial.records[0].desc_md, a.desc_md);
     assert.deepEqual(partial.records[0].photos, ['shared.png']);
     assert.deepEqual(partial.mediaReferences, [a]);
+});
+
+
+test('按日记恢复自动包含正文和全部归档附件，共用文件去重且不更新未选日记', () => {
+    const a = { date: '2026-11-12', desc_md: 'data/a.md', photo_folder: 'data/photos/trip', photos: ['shared.png', 'a.png'] };
+    const b = { ...a, desc_md: 'data/b.md', photos: ['shared.png', 'b.png'] };
+    for (const kind of ['snapshot', 'record', 'files']) {
+        const item = { kind, records: kind === 'record' ? [a, b] : [], mediaReferences: kind === 'files' ? [a, b] : [],
+            displayRecords: [a, b], files: ['data/travel_data.json', 'data/a.md', 'data/b.md', 'data/photos/trip/shared.png',
+                'data/photos/trip/a.png', 'data/photos/trip/b.png', 'data/profile/owner-name.txt'].map(path => ({ path, size: 1 })) };
+        const before = structuredClone(item);
+        const groups = recycleDiaryGroups(item);
+        assert.equal(groups.length, 2);
+        assert.ok(groups.every(group => group.parts.some(part => part.key === 'file:data/photos/trip/shared.png')));
+        const partial = selectRecycleParts(item, ['diary:data/a.md'], [a, { ...b, photos: [] }]);
+        assert.deepEqual(partial.files.map(file => file.path), ['data/a.md', 'data/photos/trip/shared.png', 'data/photos/trip/a.png']);
+        assert.ok([...partial.records, ...partial.mediaReferences, ...partial.displayRecords].every(record => record.desc_md === a.desc_md));
+        const both = selectRecycleParts(item, ['diary:data/a.md', 'diary:data/b.md'], []);
+        assert.equal(both.files.filter(file => file.path.endsWith('shared.png')).length, 1);
+        assert.deepEqual(item, before);
+        for (const parts of [['diary:data/missing.md'], ['diary:data/a.md', 'diary:data/a.md'], ['diary:data/a.md', 'file:data/a.md']]) {
+            assert.throws(() => selectRecycleParts(item, parts, []), /恢复日记/);
+        }
+    }
+});
+
+test('仅共用附件的日记仍可整篇勾选，空正文与纯信息日记可在逻辑目录直接显示', () => {
+    const a = { desc_md: 'data/a.md', photo_folder: 'data/photos/trip', photos: ['shared.png'] };
+    const b = { ...a, desc_md: 'data/b.md' };
+    const item = { kind: 'files', records: [], mediaReferences: [a, b], files: [{ path: 'data/photos/trip/shared.png', size: 0 }] };
+    assert.equal(recycleDiaryGroups(item).length, 2);
+    assert.deepEqual(selectRecycleParts(item, ['diary:data/a.md'], [a, b]).mediaReferences, [a]);
+    const tree = buildRecycleTree([], '', { records: [a, b], includeEmptyRecords: true });
+    assert.equal(tree.get('').directories.length, 2);
+    assert.equal(tree.get('record:data/a.md').record, a);
+    assert.equal(tree.get('').count, 0);
+    assert.equal(buildRecycleTree([], '', { records: [a, b] }).get('').directories.length, 0);
+    assert.equal(buildRecycleTree([], '', { records: [a], includeEmptyRecords: true, groupSingleRecord: true }).get('').directories.length, 1);
 });

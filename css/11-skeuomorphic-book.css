@@ -650,6 +650,8 @@ body[data-route='preface'] .paper-page {
 }
 
 .preface-tool-command:hover { color: var(--stamp); border-color: var(--brass-300); background-color: var(--paper-100); }
+.preface-delete-command .preface-command-title { color: var(--stamp); }
+
 .preface-tool-command:active { background-color: var(--paper-200); }
 .preface-tool-command:disabled { opacity: .55; cursor: wait; }
 .preface-tool-command:focus-visible,

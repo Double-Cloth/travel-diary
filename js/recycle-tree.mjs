@@ -1,5 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.93';
-import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.93';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.94';
+import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.94';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
@@ -41,8 +41,32 @@ export function recyclePartGroups(item) {
     return [...groups.values()].filter(group => group.parts.length);
 }
 
+// 界面按整篇日记选择，共用附件随引用它的日记一并恢复。
+export function recycleDiaryGroups(item) {
+    const groups = new Map(recyclePartGroups(item).filter(group => group.record).map(group => [group.key, group]));
+    const records = new Map([...(item.records || []), ...(item.mediaReferences || []), ...(item.displayRecords || [])]
+        .filter(record => record?.desc_md).map(record => [record.desc_md, record]));
+    const files = new Map(item.files.map(file => [file.path, file]));
+    return [...records.values()].map(record => {
+        const group = groups.get(record.desc_md) || { key: record.desc_md, label: recycleRecordLabel(record), record, parts: [] };
+        const parts = new Map(group.parts.map(part => [part.key, part]));
+        for (const path of recordFilePaths([group.record])) {
+            if (files.has(path)) parts.set(`file:${path}`, { key: `file:${path}`, file: files.get(path) });
+        }
+        return { ...group, parts: [...parts.values()] };
+    }).filter(group => group.parts.length);
+}
+
 export function selectRecycleParts(item, parts, currentRecords = []) {
     if (parts === undefined) return item;
+    const diarySelection = Array.isArray(parts) && parts.some(key => typeof key === 'string' && key.startsWith('diary:'));
+    let selectedDiaries;
+    if (diarySelection) {
+        const diaries = new Map(recycleDiaryGroups(item).map(group => [`diary:${group.key}`, group]));
+        if (new Set(parts).size !== parts.length || parts.some(key => !diaries.has(key))) throw new Error('请选择有效且不重复的恢复日记。');
+        selectedDiaries = new Set(parts.map(key => diaries.get(key).record.desc_md));
+        parts = [...new Set(parts.flatMap(key => diaries.get(key).parts.map(part => part.key)))];
+    }
     const groups = recyclePartGroups(item);
     const available = new Map(groups.flatMap(group => group.parts).map(part => [part.key, part]));
     if (!Array.isArray(parts) || !parts.length || new Set(parts).size !== parts.length || parts.some(key => !available.has(key))) {
@@ -59,6 +83,7 @@ export function selectRecycleParts(item, parts, currentRecords = []) {
         .filter(record => record?.desc_md).map(record => [record.desc_md, record]));
     const full = item.kind === 'snapshot' || item.files.some(file => file.path === 'data/travel_data.json');
     for (const saved of candidates.values()) {
+        if (selectedDiaries && !selectedDiaries.has(saved.desc_md)) continue;
         const group = groups.find(group => group.record?.desc_md === saved.desc_md);
         const current = matchRecord(saved, currentRecords);
         const metadata = keys.has(`record:${saved.desc_md}`);
@@ -182,6 +207,7 @@ export function recycleRestoreConflicts(items, currentRecords, selections) {
 // 逻辑目录只负责展示归属，文件保留原始对象供预览和恢复使用。
 export function buildRecycleTree(files, query = '', {
     records = [], mediaReferences = [], displayRecords = [], mediaKind = () => '', groupSingleRecord = false,
+    includeEmptyRecords = false,
     categories = ['正文', '图片', '视频', '个人资料', '日记索引', '其他文件']
 } = {}) {
     const directories = new Map();
@@ -207,6 +233,11 @@ export function buildRecycleTree(files, query = '', {
         }
         return directories.get(path);
     };
+    if (includeEmptyRecords && (groupSingleRecord || diaries.size > 1)) {
+        for (const record of diaries.values()) {
+            directory(root, `record:${record.desc_md}`, recycleRecordLabel(record), 0).record = record;
+        }
+    }
     for (const file of files) {
         const references = owners.get(file.path);
         let parent = root;
@@ -216,6 +247,7 @@ export function buildRecycleTree(files, query = '', {
         } else if (references?.size && (groupSingleRecord || diaries.size > 1)) {
             const name = references.values().next().value;
             parent = directory(root, `record:${name}`, recycleRecordLabel(diaries.get(name)), 0);
+            parent.record = diaries.get(name);
         }
         if (parent !== root) ancestors.push(parent);
         const category = file.category || (diaries.has(file.path) ? '正文' : recycleFileType(file.path, mediaKind));

@@ -1091,3 +1091,32 @@ test('部分恢复正文跟随固定标识的新路径，仅恢复信息时保�
     assert.equal(await fs.readFile(path.join(root, current.desc_md), 'utf8'), '# 标题\n\n原正文');
     await assert.rejects(fs.stat(path.join(root, saved.desc_md)), { code: 'ENOENT' });
 });
+
+
+test('按日记选择整站恢复可找回正文和全部附件，未选日记、资料及原回收批次保留', async t => {
+    const root = await fixture(t);
+    const id = await captureRecycle(root, { kind: 'snapshot', title: '清空前的全部数据' });
+    await write(root, 'data/travel_data.json', JSON.stringify([{ ...other, locality: '后续地点', photos: [] }]));
+    await write(root, other.desc_md, '# 保留后续正文');
+    await write(root, 'data/profile/owner-name.txt', '后续署名');
+    await fs.unlink(path.join(root, note.desc_md));
+    await fs.unlink(path.join(root, 'data/photos/trip/shared.png'));
+    await fs.unlink(path.join(root, 'data/photos/trip/unique.png'));
+    const report = await readRecycleBin(root);
+    const parts = [`diary:${note.desc_md}`];
+    const preview = await manageRecycleBin(root, { action: 'preview', id, parts, revision: report.revision });
+    await assert.rejects(manageRecycleBin(root, { action: 'restore-selected', revision: report.revision,
+        selections: [{ id, parts: [`diary:${other.desc_md}`], previewToken: preview.previewToken }] }));
+    await manageRecycleBin(root, { action: 'restore-selected', revision: report.revision, selections: [{ id, parts, previewToken: preview.previewToken }] });
+    const records = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
+    const restored = records.find(record => record.desc_md === note.desc_md);
+    assert.deepEqual(restored.photos, note.photos);
+    assert.equal(records.find(record => record.desc_md === other.desc_md).locality, '后续地点');
+    assert.deepEqual(records.find(record => record.desc_md === other.desc_md).photos, []);
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 标题\n\n原正文');
+    assert.equal(await fs.readFile(path.join(root, other.desc_md), 'utf8'), '# 保留后续正文');
+    assert.equal(await fs.readFile(path.join(root, 'data/photos/trip/shared.png'), 'utf8'), 'shared');
+    assert.equal(await fs.readFile(path.join(root, 'data/photos/trip/unique.png'), 'utf8'), 'unique');
+    assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '后续署名');
+    assert.ok((await readRecycleBin(root)).items.some(item => item.id === id));
+});
