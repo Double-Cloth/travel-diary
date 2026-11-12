@@ -1,8 +1,8 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.97';
-import { createPasswordGate } from './record-password.js?v=2.1.97';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.97';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.97';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.97';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.98';
+import { createPasswordGate } from './record-password.js?v=2.1.98';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.98';
+import { createMediaFileLink } from './media-file-link.js?v=2.1.98';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.98';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;

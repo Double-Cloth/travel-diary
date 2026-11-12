@@ -73,10 +73,10 @@ test('回收目录按内容类型展示，保留原文件并汇总大小', () =>
     const tree = buildRecycleTree(files);
     assert.equal(tree.get('').count, 5);
     assert.equal(tree.get('').totalBytes, 100);
-    assert.deepEqual(tree.get('').directories.map(node => node.name), ['正文', '图片', '视频', '日记索引']);
+    assert.deepEqual(tree.get('').directories.map(node => node.name), ['正文', '图片', '视频']);
     assert.equal(tree.get('type:1').count, 2);
     assert.equal(tree.get('type:1').totalBytes, 50);
-    assert.equal(tree.get('type:4').files[0], files[4]);
+    assert.equal(tree.get('').files[0], files[4]);
     assert.equal(tree.get('type:1').files[0], files[1]);
     assert.equal(tree.get('type:1').files[1], files[2]);
     assert.equal(tree.has('data'), false);
@@ -329,6 +329,28 @@ test('单一分类直接展示全部文件，保留排序、搜索、零字节�
         assert.equal(root.matches, Boolean(query && query !== '不存在'));
     }
     assert.deepEqual(files, before);
+});
+
+test('日记索引始终直接展示，混合目录和恢复预览只统计一次且保留搜索', () => {
+    const index = { path: 'data/travel_data.json', size: 0 };
+    const body = { path: 'data/a.md', size: 8 };
+    for (const files of [[index], [index, body]]) {
+        const tree = buildRecycleTree(files, '日记索引');
+        const root = tree.get('');
+        assert.equal(tree.has('type:4'), false);
+        assert.equal(root.files[0], index);
+        assert.equal(root.count, files.length);
+        assert.equal(root.totalBytes, files.length === 1 ? 0 : 8);
+        assert.equal(root.matches, true);
+    }
+    const comparison = { status: 'changed', fields: [], markdownChanged: true, media: [] };
+    const tree = buildRestorePreviewTree([
+        { record: { desc_md: index.path }, comparison },
+        { record: { date: '2026-11-12', desc_md: body.path }, comparison }
+    ]);
+    assert.equal(tree.get('').files[0].path, index.path);
+    assert.equal(tree.get('').count, 2);
+    assert.ok(tree.get('').directories.every(node => node.name !== '日记索引'));
 });
 
 test('单篇日记的单一分类压扁后仍保留按篇选择入口，多分类继续分层', () => {

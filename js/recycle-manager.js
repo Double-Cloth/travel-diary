@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.97';
-import { createPasswordGate } from './record-password.js?v=2.1.97';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.97';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.97';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.97';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.97';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.97';
-import { recordIdentity } from './record-identity.mjs?v=2.1.97';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleDiaryGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.97';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.98';
+import { createPasswordGate } from './record-password.js?v=2.1.98';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.98';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.98';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.98';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.98';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.98';
+import { recordIdentity } from './record-identity.mjs?v=2.1.98';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleDiaryGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.98';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -164,7 +164,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const comparison = file.comparison;
             let action = { added: '新增', removed: '移除', changed: '修改' }[comparison.status];
             if (comparison.media.length) action = !comparison.previousMediaPaths.has(file.path) ? '新增' : !comparison.incomingMediaPaths.has(file.path) ? '移除' : '内容变化';
-            const label = file.label || (file.path === 'data/profile/owner-name.txt' ? '个人署名' : file.path === 'data/profile/profile-picture.png' ? '个人头像' : file.path.split('/').pop());
+            const label = file.label || (file.path === 'data/travel_data.json' ? '日记索引' : file.path === 'data/profile/owner-name.txt' ? '个人署名' : file.path === 'data/profile/profile-picture.png' ? '个人头像' : file.path.split('/').pop());
             row.innerHTML = `<details class="content-file-preview" data-recycle-restore-file="${index}" title="${escapeHtml(file.path)}"><summary aria-label="${escapeHtml(`${restoreChangeTitle(file.record, comparison)} · ${label} · ${action}`)}">${fileIcon}<span>${escapeHtml(label)}</span><small>${action}</small></summary><div class="content-file-body"></div></details>`;
             list.append(row);
         }
@@ -241,6 +241,10 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             try { row.append(await scope.file({ name: file.path, url: recycleUrl(item.id, file.path), size: file.size, detail: kind ? `${kind === 'image' ? '图片' : '视频'} · ${sizeLabel(file.size)}` : '', collapsible: true })); }
             catch (failure) { row.textContent = `${file.path}：${failure.message}`; }
             if (scope !== previews || !list.isConnected || (!dialog.open && !suspended)) return;
+            if (file.path === 'data/travel_data.json') {
+                const label = row.querySelector('.content-file-preview > summary > span, .content-file-empty > span');
+                if (label) label.textContent = '日记索引';
+            }
             const summary = row.querySelector('.content-file-preview > summary');
             if (summary) {
                 if (/\.md$/i.test(file.path)) summary.querySelector('span').innerHTML = recordLink({ desc_md: file.path }, file.path.split('/').pop());

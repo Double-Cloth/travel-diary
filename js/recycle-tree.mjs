@@ -1,5 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.97';
-import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.97';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.98';
+import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.98';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
@@ -252,10 +252,10 @@ export function buildRecycleTree(files, query = '', {
         if (parent !== root) ancestors.push(parent);
         const category = file.category || (diaries.has(file.path) ? '正文' : recycleFileType(file.path, mediaKind));
         const index = categories.indexOf(category);
-        const node = directory(parent, `type:${index}`, category, index + 2);
+        const node = category === '日记索引' ? parent : directory(parent, `type:${index}`, category, index + 2);
         node.files.push(file);
-        ancestors.push(node);
-        const matches = Boolean(search && [file.path, ...ancestors.map(ancestor => ancestor.name)].some(value => value.toLowerCase().includes(search)));
+        if (node !== parent) ancestors.push(node);
+        const matches = Boolean(search && [file.path, category, ...ancestors.map(ancestor => ancestor.name)].some(value => value.toLowerCase().includes(search)));
         for (const ancestor of ancestors) {
             ancestor.count++;
             ancestor.totalBytes += file.size;
