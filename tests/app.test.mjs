@@ -637,9 +637,10 @@ test('同名或缺少正文路径的记录保留独立身份及原始顺序', ()
 
 test('扉页直接提供写作与浏览入口，工具箱按任务及备份范围组织按钮', () => {
     const { left, right } = app.renderTestSummary([], 'preface');
-    assert.match(left, /<nav class="preface-entry-actions"[\s\S]*data-action="add-record"[\s\S]*href="#ledger\?view=notes"[\s\S]*href="#ledger\?view=trips"[\s\S]*<\/nav>/);
+    assert.match(left, /<nav class="preface-entry-actions"[\s\S]*href="#ledger\?view=notes"[\s\S]*href="#ledger\?view=trips"[\s\S]*data-action="add-record"[\s\S]*<\/nav>/);
     assert.doesNotMatch(right, /data-action="add-record"/);
-    assert.match(right, /aria-labelledby="prefacePartialTitle"[\s\S]*data-action="export-records"[\s\S]*data-action="import-records"[\s\S]*aria-labelledby="prefaceFullTitle"[\s\S]*data-action="export-all-data"[\s\S]*data-action="import-all-data" aria-describedby="prefaceReplaceNote"/);
+    assert.match(right, /data-action="media-health"[\s\S]*data-action="recycle-bin"[\s\S]*data-action="delete-records"/);
+    assert.match(right, /aria-labelledby="prefaceFullTitle"[\s\S]*data-action="export-all-data"[\s\S]*data-action="import-all-data" aria-describedby="prefaceReplaceNote"[\s\S]*aria-labelledby="prefacePartialTitle"[\s\S]*data-action="export-records"[\s\S]*data-action="import-records"/);
     assert.match(right, /<details class="preface-tool-disclosure">[\s\S]*<summary>个人资料与安全<\/summary>[\s\S]*data-action="change-password"[\s\S]*<\/details>/);
     assert.match(right, /<details class="preface-tool-disclosure preface-reset-tools">\s*<summary>清空数据<\/summary>[\s\S]*data-action="clear-all-data"[\s\S]*<\/details>/);
     for (const action of ['media-health', 'delete-records', 'recycle-bin', 'export-records', 'import-records',
