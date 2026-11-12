@@ -1,5 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.104';
-import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.104';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.105';
+import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.105';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
@@ -57,15 +57,23 @@ export function recycleDiaryGroups(item) {
     }).filter(group => group.parts.length);
 }
 
+export function recycleSelectionGroups(item) {
+    const groups = recycleDiaryGroups(item).map(group => ({ ...group, key: `diary:${group.key}` }));
+    const parts = item.files.filter(file => file.path.startsWith('data/profile/'))
+        .map(file => ({ key: `file:${file.path}`, file }));
+    if (parts.length) groups.push({ key: 'profile', label: '个人资料', parts });
+    return groups;
+}
+
 export function selectRecycleParts(item, parts, currentRecords = []) {
     if (parts === undefined) return item;
-    const diarySelection = Array.isArray(parts) && parts.some(key => typeof key === 'string' && key.startsWith('diary:'));
+    const groupSelection = Array.isArray(parts) && parts.some(key => key === 'profile' || typeof key === 'string' && key.startsWith('diary:'));
     let selectedDiaries;
-    if (diarySelection) {
-        const diaries = new Map(recycleDiaryGroups(item).map(group => [`diary:${group.key}`, group]));
-        if (new Set(parts).size !== parts.length || parts.some(key => !diaries.has(key))) throw new Error('请选择有效且不重复的恢复日记。');
-        selectedDiaries = new Set(parts.map(key => diaries.get(key).record.desc_md));
-        parts = [...new Set(parts.flatMap(key => diaries.get(key).parts.map(part => part.key)))];
+    if (groupSelection) {
+        const choices = new Map(recycleSelectionGroups(item).map(group => [group.key, group]));
+        if (new Set(parts).size !== parts.length || parts.some(key => !choices.has(key))) throw new Error('请选择有效且不重复的恢复内容。');
+        selectedDiaries = new Set(parts.flatMap(key => choices.get(key).record ? [choices.get(key).record.desc_md] : []));
+        parts = [...new Set(parts.flatMap(key => choices.get(key).parts.map(part => part.key)))];
     }
     const groups = recyclePartGroups(item);
     const available = new Map(groups.flatMap(group => group.parts).map(part => [part.key, part]));
@@ -207,7 +215,7 @@ export function recycleRestoreConflicts(items, currentRecords, selections) {
 // 逻辑目录只负责展示归属，文件保留原始对象供预览和恢复使用。
 export function buildRecycleTree(files, query = '', {
     records = [], mediaReferences = [], displayRecords = [], mediaKind = () => '', groupSingleRecord = false,
-    includeEmptyRecords = false,
+    includeEmptyRecords = false, preserveProfileGroup = false,
     categories = ['正文', '图片', '视频', '个人资料', '日记索引', '其他文件']
 } = {}) {
     const directories = new Map();
@@ -268,7 +276,7 @@ export function buildRecycleTree(files, query = '', {
     for (const node of [...directories.values()].reverse()) {
         if (node.directories.length !== 1) continue;
         const child = node.directories[0];
-        if (child.record || child.path === 'shared') continue;
+        if (child.record || child.path === 'shared' || preserveProfileGroup && child.name === '个人资料') continue;
         node.directories = child.directories;
         node.files = node.files.concat(child.files);
         directories.delete(child.path);
@@ -284,7 +292,8 @@ export function buildRecycleTree(files, query = '', {
     for (const node of directories.values()) {
         for (const child of node.directories) child.depth = node.depth + 1;
         node.directories.sort((a, b) => a.order - b.order || collator.compare(a.name, b.name) || compare(a, b));
-        node.files.sort((a, b) => collator.compare(a.path.split('/').pop(), b.path.split('/').pop()) || compare(a, b));
+        node.files.sort((a, b) => Number(b.category === '日记信息') - Number(a.category === '日记信息')
+            || collator.compare(a.path.split('/').pop(), b.path.split('/').pop()) || compare(a, b));
     }
     return directories;
 }

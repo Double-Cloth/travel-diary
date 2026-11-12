@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recyclePartGroups, recycleDiaryGroups, selectRecycleParts } from '../js/recycle-tree.mjs';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recyclePartGroups, recycleDiaryGroups, recycleSelectionGroups, selectRecycleParts } from '../js/recycle-tree.mjs';
 
 test('恢复冲突识别同篇改名正文与旧标识，多篇混合批次也检测且不修改输入', () => {
     const saved = { record_id: `r-${'a'.repeat(32)}`, desc_md: 'data/old.md' };
@@ -296,7 +296,7 @@ test('按日记恢复自动包含正文和全部归档附件，共用文件去�
         assert.equal(both.files.filter(file => file.path.endsWith('shared.png')).length, 1);
         assert.deepEqual(item, before);
         for (const parts of [['diary:data/missing.md'], ['diary:data/a.md', 'diary:data/a.md'], ['diary:data/a.md', 'file:data/a.md']]) {
-            assert.throws(() => selectRecycleParts(item, parts, []), /恢复日记/);
+            assert.throws(() => selectRecycleParts(item, parts, []), /恢复内容/);
         }
     }
 });
@@ -479,8 +479,34 @@ test('日记信息始终合并为一个入口，与正文和多种媒体并存�
         const diary = tree.get(`record:${record.desc_md}`);
         assert.deepEqual(diary.directories.map(node => node.name), ['图片', '视频']);
         assert.equal(diary.files.filter(file => file.label === '日记信息').length, 1);
+        assert.equal(diary.files[0].label, '日记信息');
+        if (markdownChanged) assert.equal(diary.files[1].comparison.markdownChanged, true);
         assert.equal(tree.has(`${diary.path}/type:0`), false);
         assert.equal(diary.count, markdownChanged ? 4 : 3);
         assert.equal(tree.get('').count, diary.count);
     }
+});
+
+test('个人资料可单独勾选或与日记混合选择，纯资料批次保留目录勾选入口', () => {
+    const record = { date: '2026-11-12', desc_md: 'data/a.md' };
+    const files = ['data/travel_data.json', record.desc_md, 'data/profile/owner-name.txt', 'data/profile/profile-picture.png']
+        .map(path => ({ path, size: 1 }));
+    const item = { kind: 'snapshot', displayRecords: [record], files };
+    const original = structuredClone(item);
+    assert.deepEqual(recycleSelectionGroups(item).map(group => group.key), ['diary:data/a.md', 'profile']);
+    const profile = selectRecycleParts(item, ['profile'], [record]);
+    assert.equal(profile.kind, 'version');
+    assert.deepEqual(profile.files, files.slice(2));
+    for (const key of ['records', 'mediaReferences', 'displayRecords']) assert.deepEqual(profile[key], []);
+    const mixed = selectRecycleParts(item, ['profile', 'diary:data/a.md'], []);
+    assert.deepEqual(mixed.files, files.slice(1));
+    assert.equal(mixed.records.length, 1);
+    assert.deepEqual(item, original);
+    for (const parts of [['profile', 'profile'], ['profile', 'file:data/a.md']]) {
+        assert.throws(() => selectRecycleParts(item, parts), /恢复内容/);
+    }
+    assert.throws(() => selectRecycleParts({ ...item, files: files.slice(0, 2) }, ['profile']), /恢复内容/);
+    const tree = buildRecycleTree(files.filter(file => file.path !== record.desc_md), '', { preserveProfileGroup: true });
+    assert.deepEqual(tree.get('').directories.map(node => node.name), ['个人资料']);
+    assert.deepEqual(tree.get('').directories[0].files, files.slice(2));
 });

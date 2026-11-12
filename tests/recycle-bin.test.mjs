@@ -1120,3 +1120,39 @@ test('按日记选择整站恢复可找回正文和全部附件，未选日记�
     assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '后续署名');
     assert.ok((await readRecycleBin(root)).items.some(item => item.id === id));
 });
+
+test('整站批次可单独恢复个人资料，也可与日记一起恢复并留存被替换资料', async t => {
+    const root = await fixture(t);
+    const owner = 'data/profile/owner-name.txt';
+    const avatar = 'data/profile/profile-picture.png';
+    await write(root, owner, '原署名');
+    await write(root, avatar, '原头像');
+    const id = await captureRecycle(root, { kind: 'snapshot', title: '全部数据历史' });
+    await write(root, owner, '后续署名');
+    await write(root, avatar, '后续头像');
+    await write(root, note.desc_md, '# 后续正文');
+    const index = JSON.stringify([{ ...note, locality: '后续地点' }, other]);
+    await write(root, 'data/travel_data.json', index);
+    const restore = async parts => {
+        const report = await readRecycleBin(root);
+        const preview = await manageRecycleBin(root, { action: 'preview', id, parts, revision: report.revision });
+        await manageRecycleBin(root, { action: 'restore-selected', revision: report.revision,
+            selections: [{ id, parts, previewToken: preview.previewToken }] });
+        return preview;
+    };
+    const preview = await restore(['profile']);
+    assert.deepEqual(preview.changes.map(change => change.record.desc_md).sort(), [owner, avatar].sort());
+    assert.equal(await fs.readFile(path.join(root, owner), 'utf8'), '原署名');
+    assert.equal(await fs.readFile(path.join(root, avatar), 'utf8'), '原头像');
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 后续正文');
+    assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), index);
+    const protection = (await readRecycleBin(root)).items.find(item => item.id !== id);
+    assert.equal(await fs.readFile(path.join(root, `.cache/recycle-bin/${protection.id}/${owner}`), 'utf8'), '后续署名');
+    assert.equal(await fs.readFile(path.join(root, `.cache/recycle-bin/${protection.id}/${avatar}`), 'utf8'), '后续头像');
+    await write(root, owner, '再次修改');
+    await restore(['profile', `diary:${note.desc_md}`]);
+    assert.equal(await fs.readFile(path.join(root, owner), 'utf8'), '原署名');
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 标题\n\n原正文');
+    assert.equal(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')))[0].locality, note.locality);
+    assert.ok((await readRecycleBin(root)).items.some(item => item.id === id));
+});

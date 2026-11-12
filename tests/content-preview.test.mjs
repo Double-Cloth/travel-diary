@@ -109,6 +109,25 @@ test('个人署名差异使用对应的文本名称并转义标题，正文差�
     assert.doesNotMatch(renderRecordDifference(record, comparison, { textLabel: '<署名>' }), /<署名>/);
 });
 
+test('日记信息差异复用正文的双侧行号并保留数组顺序、转义与新增移除状态', () => {
+    const previous = { title: '原标题', date: '2026-11-12', photos: ['a.png', 'b.png'], desc_md: 'data/a.md' };
+    const record = { ...previous, title: '<新标题>', photos: ['b.png', 'a.png'] };
+    const comparison = { status: 'changed', previous, fields: ['title', 'photos'], media: [], markdownChanged: false };
+    const options = { numberedFields: true, afterLabel: '恢复后', note: '', collapsible: false };
+    const html = renderRecordDifference(record, comparison, options);
+    assert.match(html, /aria-label="日记信息差异，左侧为当前行号，右侧为恢复后行号"/);
+    assert.match(html, /record-diff-line-number">1<\/span>/);
+    assert.match(html, /@@ −4,1 \+4,1 @@/);
+    assert.match(html, /&lt;新标题&gt;/);
+    assert.doesNotMatch(html, /<新标题>|<dl>/);
+    assert.match(html, /\[&quot;b.png&quot;,&quot;a.png&quot;\]/);
+    const added = renderRecordDifference(record, { ...comparison, status: 'added', previous: undefined }, options);
+    assert.doesNotMatch(added, /class="record-diff-line record-diff-removed"/);
+    const removed = renderRecordDifference({ desc_md: record.desc_md }, { ...comparison, status: 'removed' }, options);
+    assert.doesNotMatch(removed, /class="record-diff-line record-diff-added"/);
+    assert.match(renderRecordDifference(record, comparison), /<dl>/);
+});
+
 test('恢复结果复用直接内容预览，空正文和空索引同样保留文件标题', async t => {
     const original = globalThis.document;
     t.after(() => { globalThis.document = original; });
