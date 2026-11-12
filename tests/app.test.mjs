@@ -635,22 +635,34 @@ test('同名或缺少正文路径的记录保留独立身份及原始顺序', ()
     assert.equal(app.deriveTravelModel([]).recordsById.size, 0);
 });
 
-test('扉页操作集中在右页，按钮按常用与低频统一样式', () => {
+test('扉页右页按三个默认展开模块组织操作，黄铜与扁平按钮统一样式', () => {
     const { left, right } = app.renderTestSummary([], 'preface');
     assert.doesNotMatch(left, /data-action="(?:add-record|upload-profile-picture|edit-owner-name)"|preface-entry-actions/);
-    assert.doesNotMatch(left + right, /浏览日记|查看行程/);
-    assert.match(right, /class="preface-button preface-button-primary"[^>]*data-action="add-record"/);
-    assert.equal(right.match(/preface-button-primary/g)?.length, 1);
-    assert.deepEqual([...right.matchAll(/<h3[^>]*>(.*?)<\/h3>/g)].map(match => match[1]), ['日记管理', '备份与恢复', '数据管理']);
-    assert.match(right, /data-action="media-health"[\s\S]*data-action="recycle-bin"[\s\S]*data-action="delete-records"/);
-    assert.match(right, /aria-labelledby="prefaceFullTitle"[\s\S]*data-action="export-all-data"[\s\S]*data-action="import-all-data" aria-describedby="prefaceReplaceNote"[\s\S]*aria-labelledby="prefacePartialTitle"[\s\S]*data-action="export-records"[\s\S]*data-action="import-records"/);
-    assert.match(right, /<details class="preface-tool-disclosure">[\s\S]*<summary class="preface-button">个人资料与安全<\/summary>[\s\S]*data-action="change-password"[\s\S]*<\/details>/);
-    assert.match(right, /<details class="preface-tool-disclosure preface-reset-tools">\s*<summary class="preface-button">清空数据<\/summary>[\s\S]*data-action="clear-all-data"[\s\S]*<\/details>/);
-    for (const action of ['add-record', 'upload-profile-picture', 'edit-owner-name', 'media-health', 'delete-records', 'recycle-bin', 'export-records', 'import-records',
-        'export-all-data', 'import-all-data', 'change-password', 'password-reset-help', 'clear-all-data']) {
-        assert.equal(right.match(new RegExp(`data-action="${action}"`, 'g'))?.length, 1);
-        assert.match(right, new RegExp(`<button class="preface-button[^"]*"[^>]*data-action="${action}"`));
-    }
+    assert.doesNotMatch(left + right, /浏览日记|查看行程|password-reset-help|个人资料与安全/);
+    const modules = [...right.matchAll(/<details class="preface-tool-section" open aria-labelledby="[^"]+">([\s\S]*?)<\/details>/g)]
+        .map(match => match[1]);
+    assert.equal(modules.length, 3);
+    assert.equal(right.match(/<details /g)?.length, 3);
+    assert.deepEqual([...right.matchAll(/<h3[^>]*>(.*?)<\/h3>/g)].map(match => match[1]), ['日记资料管理', '备份与恢复', '数据管理']);
+    const expectedActions = [
+        ['add-record', 'upload-profile-picture', 'edit-owner-name', 'delete-records'],
+        ['export-all-data', 'import-all-data', 'export-records', 'import-records'],
+        ['media-health', 'recycle-bin', 'change-password', 'clear-all-data']
+    ];
+    const brassActions = ['add-record', 'media-health', 'recycle-bin'];
+    modules.forEach((markup, index) => {
+        assert.match(markup, /<summary class="preface-module-heading"><h3/);
+        assert.deepEqual([...markup.matchAll(/data-action="([^"]+)"/g)].map(match => match[1]), expectedActions[index]);
+        for (const action of expectedActions[index]) {
+            const className = brassActions.includes(action) ? 'preface-button preface-button-brass' : 'preface-button(?: preface-utility-end)?';
+            assert.match(markup, new RegExp(`<button class="${className}"[^>]*data-action="${action}"`));
+        }
+    });
+    assert.match(modules[1], /data-action="import-all-data">导入全部数据/);
+    assert.match(modules[1], /data-action="import-records">导入部分记录/);
+    assert.match(modules[2], /data-action="change-password" aria-describedby="prefacePasswordNote"/);
+    assert.match(modules[2], /id="prefacePasswordNote">忘记密码？[\s\S]*<code>npm run auth:set<\/code>/);
+    assert.doesNotMatch(right, /prefaceDeleteNote|prefaceMediaNote|prefaceRecycleNote|prefaceClearNote|prefaceReplaceNote|<h4/);
 });
 
 test('扉页和足迹摘要显示全量媒体，高级筛选显示结果集媒体数量', () => {

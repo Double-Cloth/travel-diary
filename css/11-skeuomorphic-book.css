@@ -505,18 +505,47 @@ body[data-route='preface'] .paper-page {
 .preface-button:active { background-color: var(--paper-200); }
 .preface-button:disabled { opacity: .55; cursor: wait; }
 .preface-button:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
-.preface-button-primary { border-color: var(--green); color: var(--paper-50); background: var(--green); }
-.preface-button-primary:hover { border-color: var(--green); background-color: var(--green); filter: brightness(1.08); }
-.preface-button-primary:active { filter: brightness(.92); }
-.preface-button-primary:disabled { filter: none; }
+.preface-button-brass {
+    border-color: var(--metal-edge);
+    color: #513824;
+    background: var(--control-face);
+    box-shadow: var(--control-shadow);
+    text-shadow: 0 1px #fff8e6;
+}
+.preface-button-brass:hover { border-color: #805b31; background: var(--control-face); filter: brightness(1.06); }
+.preface-button-brass:active { box-shadow: inset 0 2px 4px #4c301a40, 0 1px #fff7df; }
+.preface-button-brass:disabled { filter: none; }
 
 .preface-tool-section {
-    display: grid;
-    gap: 12px;
     min-width: 0;
     padding: 0 0 20px;
     border-bottom: 1px solid #9c7a4c66;
 }
+
+.preface-module-heading {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    min-height: 44px;
+    list-style: none;
+    cursor: pointer;
+}
+.preface-module-heading::-webkit-details-marker { display: none; }
+.preface-module-heading::after {
+    content: '';
+    flex: none;
+    width: 7px;
+    height: 7px;
+    margin-right: 4px;
+    border-right: 1px solid currentColor;
+    border-bottom: 1px solid currentColor;
+    color: #793e30;
+    transform: translateY(-2px) rotate(45deg);
+}
+.preface-tool-section[open] > .preface-module-heading::after { transform: translateY(2px) rotate(225deg); }
+.preface-module-heading:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
+.preface-module-content { display: grid; gap: 12px; padding-top: 8px; }
 
 .preface-tool-section h3 {
     margin: 0;
@@ -526,39 +555,15 @@ body[data-route='preface'] .paper-page {
     letter-spacing: .04em;
 }
 
-.preface-security-row {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 12px;
-}
-
-.preface-tool-note,
-.preface-reset-content > p {
+.preface-tool-note {
     margin: 0;
     color: #69513a;
     font-size: 12px;
     line-height: 1.75;
+    overflow-wrap: anywhere;
 }
 
-.preface-profile-tools {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 12px;
-}
-
-.preface-backup-group { display: grid; gap: 8px; }
-.preface-backup-group + .preface-backup-group {
-    margin-top: 4px;
-    padding-top: 16px;
-    border-top: 1px dashed #9c7a4c66;
-}
-.preface-backup-group h4 {
-    margin: 0;
-    color: var(--ink);
-    font-size: 15px;
-    font-weight: 700;
-    line-height: 1.6;
-}
+.preface-tool-note code { font-size: inherit; }
 
 .preface-transfer-actions {
     display: grid;
@@ -566,39 +571,17 @@ body[data-route='preface'] .paper-page {
     gap: 8px 12px;
 }
 
-.preface-tool-choices { display: grid; gap: 12px; }
-.preface-tool-choice { display: grid; gap: 6px; }
+.preface-utility-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.preface-utility-actions .preface-button { width: auto; }
+.preface-utility-actions .preface-utility-end { margin-left: auto; }
 
-.preface-replace-note { color: var(--stamp); }
-
-.preface-tool-disclosure { min-width: 0; }
-.preface-tool-disclosure > summary { list-style: none; }
-.preface-tool-disclosure > summary::-webkit-details-marker { display: none; }
-.preface-tool-disclosure > summary::after {
-    content: '';
-    width: 6px;
-    height: 6px;
-    margin-left: 4px;
-    border-right: 1px solid currentColor;
-    border-bottom: 1px solid currentColor;
-    transform: translateY(-2px) rotate(45deg);
+@media (max-width: 380px) {
+    .preface-utility-actions { gap: 6px; }
+    .preface-utility-actions .preface-button { flex: 1 1 auto; }
 }
-.preface-tool-disclosure[open] > summary::after { transform: translateY(2px) rotate(225deg); }
-.preface-settings-content { display: grid; gap: 12px; padding-top: 12px; }
-.preface-reset-content { display: grid; gap: 12px; padding: 12px 0 2px; }
+
 .preface-transfer-status { margin: 0; color: var(--stamp); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
 .preface-transfer-status:empty { display: none; }
-
-.password-reset-help-mark {
-    flex: none;
-    width: 14px;
-    height: 14px;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 1.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-}
 
 .paper-page .paper-button,
 .paper-page .ribbon-back {
