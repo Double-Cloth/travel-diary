@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.101';
-import { createPasswordGate } from './record-password.js?v=2.1.101';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.101';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.101';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.101';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.101';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.101';
-import { recordIdentity } from './record-identity.mjs?v=2.1.101';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleDiaryGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.101';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.102';
+import { createPasswordGate } from './record-password.js?v=2.1.102';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.102';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.102';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.102';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.102';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.102';
+import { recordIdentity } from './record-identity.mjs?v=2.1.102';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleDiaryGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.102';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -174,9 +174,10 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const label = singleBody && file.comparison.markdownChanged && recycleFileType(file.path, mediaKind) === '正文' ? '正文' : file.label || fileDisplayName(file.path);
             if (comparison.media.length && comparison.incomingMediaPaths.has(file.path) && mediaKind(file.path)) {
                 const url = state.savedPaths.has(file.path) ? recycleUrl(state.id, state.savedFiles.get(file.path) || file.path) : getMediaFileUrl(file.path);
-                row.append(await filePreview(file, scope, { url, size: comparison.mediaSizes?.after?.[file.path], detail: action }));
+                const preview = await filePreview(file, scope, { url, size: comparison.mediaSizes?.after?.[file.path], detail: action });
+                row.append(preview);
                 if (scope !== previews || !list.isConnected || selected.get(state.id) !== state) return;
-                row.insertAdjacentHTML('beforeend', `<details class="recycle-change-details" data-recycle-difference="${index}"><summary>查看差异</summary><div></div></details>`);
+                (preview.querySelector('.content-file-body') || row).insertAdjacentHTML('beforeend', `<details class="recycle-change-details" data-recycle-difference="${index}"><summary>查看差异</summary><div></div></details>`);
                 list.append(row);
                 continue;
             }
@@ -189,8 +190,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         const kind = mediaKind(file.path);
         const name = fileDisplayName(file.path);
         const metadata = [kind ? kind === 'image' ? '图片' : '视频' : '', Number.isFinite(size) ? sizeLabel(size) : '', detail].filter(Boolean).join(' · ');
-        const preview = await scope.file({ name: file.path, url, size, detail: kind ? metadata : '', label,
-            filenameUrl: /\.md$/i.test(file.path) ? url : '' });
+        let preview = await scope.file({ name: file.path, url, size, detail: kind ? metadata : '', label });
         if (kind && name !== file.path.split('/').pop()) {
             const heading = preview.querySelector('.media-file-name');
             if (heading) heading.textContent = name;
@@ -200,7 +200,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         const summary = preview.querySelector('summary');
         if (summary) {
             if (!label) summary.querySelector('span').textContent = name;
-            if (/\.md$/i.test(file.path) && !label) summary.querySelector('span').innerHTML = recordLink({ desc_md: file.path }, name);
+            if (/\.md$/i.test(file.path) && !label) summary.querySelector('span').classList.add('recycle-body-filename');
             summary.insertAdjacentHTML('afterbegin', fileIcon);
             const sizeNote = document.createElement('small');
             sizeNote.textContent = Number.isFinite(size) ? sizeLabel(size) : '';
@@ -213,6 +213,15 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             empty.insertAdjacentHTML('afterbegin', fileIcon);
         }
         if (preview.matches('a.media-file-link')) preview.setAttribute('aria-label', `查看文件：${file.path}`);
+        // 资料媒体复用文件入口，分类压扁后仍与署名和索引对齐。
+        if (file.path.startsWith('data/profile/') && preview.matches('a.media-file-link')) {
+            const entry = document.createElement('details');
+            entry.className = 'content-file-preview';
+            entry.title = file.path;
+            entry.innerHTML = `<summary>${fileIcon}<span>${escapeHtml(name)}</span><small>${escapeHtml([Number.isFinite(size) ? sizeLabel(size) : '', detail].filter(Boolean).join(' · '))}</small></summary><div class="content-file-body"></div>`;
+            entry.querySelector('.content-file-body').append(preview);
+            preview = entry;
+        }
         return preview;
     }
     function currentRecord(record, previous) {
@@ -371,7 +380,8 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const list = details.closest('[data-recycle-restore-files]');
             const file = state.tree.get(list.dataset.recycleDirectory).files[Number(details.dataset.recycleDifference)];
             const body = details.querySelector('div');
-            body.innerHTML = renderRecordDifference(file.record, file.comparison, { afterLabel: '恢复后', note: '', collapsible: false, mediaLink: (name, side) => mediaLink(name, side, state) });
+            body.innerHTML = renderRecordDifference(file.record, file.comparison, { afterLabel: '恢复后', note: '', collapsible: false,
+                textLabel: file.path === 'data/profile/owner-name.txt' ? '署名' : /\.md$/i.test(file.path) ? '正文' : '文本', mediaLink: (name, side) => mediaLink(name, side, state) });
             body.querySelector('.content-preview-source')?.remove();
             const scope = previews;
             await loadDifferenceMedia(body.querySelector('[data-diff-record]'), file.comparison, scope, (name, side) => ({
@@ -402,10 +412,9 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             }
             const exists = file.comparison.markdownChanged ? file.comparison.markdownExists?.after ?? file.comparison.status !== 'removed' : file.comparison.incomingMediaPaths.has(file.path);
             if (exists && file.comparison.markdownChanged) {
-                const url = state.savedPaths.has(file.path) ? recycleUrl(id, state.savedFiles.get(file.path) || file.path) : getMediaFileUrl(file.path);
-                const preview = await scope.file({ name: file.path, source: new TextEncoder().encode(file.comparison.markdown ?? ''), collapsible: false,
-                    filenameUrl: /\.md$/i.test(file.path) ? url : '' });
+                const preview = await scope.file({ name: file.path, source: new TextEncoder().encode(file.comparison.markdown ?? ''), collapsible: false });
                 if (scope !== previews || state !== selected.get(id) || !details.isConnected) return;
+                if (!/\.md$/i.test(file.path)) preview.querySelector('.content-file-heading')?.remove();
                 body.replaceChildren(preview);
             } else body.innerHTML = `<p class="content-preview-empty">恢复后${exists ? '文件暂不支持预览' : '无此文件'}</p>`;
             body.insertAdjacentHTML('beforeend', `<details class="recycle-change-details" data-recycle-difference="${details.dataset.recycleRestoreFile}"><summary>查看差异</summary><div></div></details>`);

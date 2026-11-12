@@ -1,7 +1,7 @@
-import { escapeHtml } from './utils.js?v=2.1.101';
-import { parseMarkdown } from './data.js?v=2.1.101';
-import { createMediaFileLink } from './media-file-link.js?v=2.1.101';
-import { createMediaPreview, getMediaPreviewBlob, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.101';
+import { escapeHtml } from './utils.js?v=2.1.102';
+import { parseMarkdown } from './data.js?v=2.1.102';
+import { createMediaFileLink } from './media-file-link.js?v=2.1.102';
+import { createMediaPreview, getMediaPreviewBlob, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.102';
 import { sourceOf, readSourceText } from './zip-stream.mjs';
 
 export function markdownPreview(source) {
@@ -47,7 +47,7 @@ export function createContentPreviewScope() {
             urls.forEach(url => URL.revokeObjectURL(url));
             urls.clear();
         },
-        async file({ name, url, source, size, detail = '', index = 0, collapsible = true, label = '', filenameUrl = '' }) {
+        async file({ name, url, source, size, detail = '', index = 0, collapsible = true, label = '' }) {
             const fileSource = source == null ? null : sourceOf(source);
             const sourceSize = fileSource?.size ?? size;
             if (sourceSize === 0 && !label && collapsible) {
@@ -99,7 +99,6 @@ export function createContentPreviewScope() {
             if (!collapsible) summary.className = 'content-file-heading';
             const heading = document.createElement('span');
             heading.textContent = `${label || name.split('/').pop()}${detail ? ` · ${detail}` : ''}`;
-            if (!collapsible && filenameUrl) heading.innerHTML = `<a href="${escapeHtml(filenameUrl)}" target="_blank" rel="noopener">${escapeHtml(name.split('/').pop())}</a>`;
             summary.append(heading);
             entry.append(summary);
             if (!/\.(md|json|txt)$/i.test(name)) { heading.textContent += ' · 暂不支持预览'; return entry; }
@@ -152,7 +151,6 @@ export function createContentPreviewScope() {
                     const filename = document.createElement('p');
                     filename.className = 'content-file-heading';
                     filename.textContent = name.split('/').pop();
-                    if (filenameUrl) filename.innerHTML = `<a href="${escapeHtml(filenameUrl)}" target="_blank" rel="noopener">${escapeHtml(name.split('/').pop())}</a>`;
                     content.prepend(filename);
                 }
             };

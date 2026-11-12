@@ -1616,7 +1616,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-tree .recycle-directory > summary.recycle-diary-choice:focus-visible,
 .recycle-tree .content-file-preview > summary:focus-visible { outline: 2px solid var(--stamp); outline-offset: -2px; }
 .recycle-list .content-file-heading { margin: 0 0 12px; padding: 0; color: var(--stamp); font-size: 13px; overflow-wrap: anywhere; }
-.recycle-list .content-file-heading a { text-decoration-thickness: 1px; }
+.recycle-tree > .recycle-file > .content-file-preview > summary > .recycle-body-filename { color: var(--stamp); }
 .recycle-list .recycle-change-details { margin-top: 12px; }
 .recycle-list .recycle-change-details > summary { width: fit-content; min-height: 44px; padding: 8px 0; color: var(--ink-soft); }
 .recycle-list .recycle-change-details > summary:hover { color: var(--stamp); }

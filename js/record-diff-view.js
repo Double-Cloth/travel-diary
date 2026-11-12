@@ -1,8 +1,8 @@
-import { escapeHtml } from './utils.js?v=2.1.101';
-import { changedTextBlocks } from './record-diff.mjs?v=2.1.101';
-import { markdownPreview } from './content-preview.js?v=2.1.101';
+import { escapeHtml } from './utils.js?v=2.1.102';
+import { changedTextBlocks } from './record-diff.mjs?v=2.1.102';
+import { markdownPreview } from './content-preview.js?v=2.1.102';
 
-export function renderRecordDifference(record, comparison, { afterLabel = '备份', note = '仅显示有变化的部分。勾选这篇日记后，将采用备份内容。', previewLabel = '预览导入后的正文', collapsible = true, mediaLink } = {}) {
+export function renderRecordDifference(record, comparison, { afterLabel = '备份', note = '仅显示有变化的部分。勾选这篇日记后，将采用备份内容。', previewLabel = '预览导入后的正文', textLabel = '正文', collapsible = true, mediaLink } = {}) {
     if (!comparison) return '';
     if (comparison.status === 'conflict') return `<p role="status">${escapeHtml(comparison.message)}</p>`;
     if (!['changed', 'added', 'removed'].includes(comparison.status)) return '';
@@ -15,7 +15,7 @@ export function renderRecordDifference(record, comparison, { afterLabel = '备�
         return changed.length || removed ? changed.join('、') || '无' : `顺序：${value.join('、') || '无'}`;
     };
     const blocks = comparison.markdownChanged ? changedTextBlocks(comparison.currentMarkdown, comparison.markdown) : [];
-    const sections = [comparison.fields.length ? `${comparison.fields.length} 项信息` : '', comparison.markdownChanged ? '正文' : '', comparison.media.length ? `${comparison.media.length} 个附件` : ''].filter(Boolean);
+    const sections = [comparison.fields.length ? `${comparison.fields.length} 项信息` : '', comparison.markdownChanged ? textLabel : '', comparison.media.length ? `${comparison.media.length} 个附件` : ''].filter(Boolean);
     const textStates = comparison.markdownChanged ? ['before', 'after'].map(side => {
         const exists = comparison.markdownExists?.[side] ?? (side === 'before' ? comparison.status !== 'added' : comparison.status !== 'removed');
         const text = String((side === 'before' ? comparison.currentMarkdown : comparison.markdown) ?? '');
@@ -35,10 +35,10 @@ export function renderRecordDifference(record, comparison, { afterLabel = '备�
         <div class="record-diff-body">${note ? `<p class="record-diff-note">${escapeHtml(note)}</p>` : ''}
         ${comparison.fields.length ? `<section class="record-diff-section"><h3>记录信息</h3><dl>${comparison.fields.map(key => `<div><dt>${escapeHtml(labels[key] || key)}</dt><dd><span class="record-diff-value record-diff-before"><small>当前</small>${escapeHtml(formatValue(previous[key], record[key]))}</span><span class="record-diff-value record-diff-after"><small>${escapeHtml(afterLabel)}</small>${escapeHtml(formatValue(record[key], previous[key]))}</span></dd></div>`).join('')}</dl></section>` : ''}
         ${comparison.markdownChanged ? `<section class="record-diff-section record-diff-text">
-            <h3>正文改动${blocks.length ? ` <small>${blocks.length} 处</small>` : ''}</h3>
+            <h3>${escapeHtml(textLabel)}改动${blocks.length ? ` <small>${blocks.length} 处</small>` : ''}</h3>
             ${textStates}
             ${blocks.length ? `<p class="record-diff-legend"><span class="record-diff-removed">− 删除</span><span class="record-diff-added">+ 新增</span></p>
-            <div class="record-diff-unified" role="group" aria-label="正文差异，左侧为当前行号，右侧为${escapeHtml(afterLabel)}行号">${blocks.map(block => `<div class="record-diff-hunk">
+            <div class="record-diff-unified" role="group" aria-label="${escapeHtml(textLabel)}差异，左侧为当前行号，右侧为${escapeHtml(afterLabel)}行号">${blocks.map(block => `<div class="record-diff-hunk">
                 <p class="record-diff-range">@@ −${block.lineBefore - (block.countBefore ? 0 : 1)},${block.countBefore} +${block.lineAfter - (block.countAfter ? 0 : 1)},${block.countAfter} @@</p>
                 ${diffLines(block, 'before')}${diffLines(block, 'after')}</div>`).join('')}</div>` : ''}
             ${comparison.status !== 'removed' && comparison.markdown?.trim() ? `<details class="content-preview-source"><summary>${escapeHtml(previewLabel)}</summary>${markdownPreview(comparison.markdown)}</details>` : ''}

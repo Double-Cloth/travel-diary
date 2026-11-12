@@ -92,9 +92,21 @@ test('正文入口展开后直接显示文件名和内容，零字节正文保�
         await entry.events.toggle();
         const content = entry.children[1];
         assert.equal(content.children[0].textContent, 'huangshan.md');
+        assert.equal(content.children[0].innerHTML, undefined);
         assert.match(content.innerHTML, new RegExp(!text ? '空文件' : !text.trim() ? '文件仅含空白字符' : '旅行正文'));
         assert.doesNotMatch(content.innerHTML, /<details/);
     }
+});
+
+test('个人署名差异使用对应的文本名称并转义标题，正文差异保留原标签', () => {
+    const record = { desc_md: 'data/profile/owner-name.txt' };
+    const comparison = { status: 'changed', fields: [], media: [], markdownChanged: true, currentMarkdown: '原署名', markdown: '新署名' };
+    const html = renderRecordDifference(record, comparison, { textLabel: '署名', afterLabel: '恢复后', note: '', collapsible: false });
+    assert.match(html, /署名改动/);
+    assert.match(html, /aria-label="署名差异/);
+    assert.doesNotMatch(html, /正文改动|aria-label="正文差异/);
+    assert.match(renderRecordDifference(record, comparison), /正文改动/);
+    assert.doesNotMatch(renderRecordDifference(record, comparison, { textLabel: '<署名>' }), /<署名>/);
 });
 
 test('恢复结果复用直接内容预览，空正文和空索引同样保留文件标题', async t => {
@@ -116,14 +128,14 @@ test('恢复结果复用直接内容预览，空正文和空索引同样保留�
         ['data/diary.md', '# 北京\n\n旅行正文', '旅行正文'], ['data/travel_data.json', '[]', '日记目录为空'],
         ['data/profile/owner-name.txt', '旅行者', '']
     ]) {
-        const entry = await scope.file({ name, source: new TextEncoder().encode(text), collapsible: false,
-            filenameUrl: name.endsWith('.md') ? '/preview?file=a&name="北京"' : '' });
+        const entry = await scope.file({ name, source: new TextEncoder().encode(text), collapsible: false });
         await new Promise(resolve => setImmediate(resolve));
         assert.equal(entry.tagName, 'DIV');
         assert.equal(entry.events.toggle, undefined);
         assert.equal(entry.children[0].className, 'content-file-heading');
         assert.equal(entry.children[1].className, 'content-file-body');
         if (expected) assert.match(entry.children[1].innerHTML, new RegExp(expected));
-        if (name.endsWith('.md')) assert.match(entry.children[0].children[0].innerHTML, /href="\/preview\?file=a&amp;name=&quot;北京&quot;"/);
+        assert.equal(entry.children[0].children[0].textContent, name.split('/').pop());
+        assert.equal(entry.children[0].children[0].innerHTML, undefined);
     }
 });
