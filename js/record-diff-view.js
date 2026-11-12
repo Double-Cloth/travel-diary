@@ -1,6 +1,6 @@
-import { escapeHtml } from './utils.js?v=2.1.105';
-import { changedTextBlocks } from './record-diff.mjs?v=2.1.105';
-import { markdownPreview } from './content-preview.js?v=2.1.105';
+import { escapeHtml } from './utils.js?v=2.1.106';
+import { changedTextBlocks } from './record-diff.mjs?v=2.1.106';
+import { markdownPreview } from './content-preview.js?v=2.1.106';
 
 export function renderRecordDifference(record, comparison, { afterLabel = '备份', note = '仅显示有变化的部分。勾选这篇日记后，将采用备份内容。', previewLabel = '预览导入后的正文', textLabel = '正文', collapsible = true, numberedFields = false, mediaLink } = {}) {
     if (!comparison) return '';
@@ -40,7 +40,17 @@ export function renderRecordDifference(record, comparison, { afterLabel = '备�
     const fieldKeys = [...new Set([...Object.keys(labels), ...Object.keys(previous), ...Object.keys(record)])]
         .filter(key => key !== 'record_id');
     const fieldText = value => fieldKeys.filter(key => Object.hasOwn(value, key))
-        .map(key => `${labels[key] || key}  ${JSON.stringify(value[key])}`).join('\n');
+        .flatMap(key => {
+            const label = labels[key] || key;
+            const items = value[key];
+            if (!Array.isArray(items) || !items.length) return `${label}  ${JSON.stringify(items)}`;
+            // 每项单独占行，位置序号让顺序变化也能直接对照。
+            return items.map((item, index) => {
+                const type = key === 'media_order' && typeof item === 'string' ? /^(photo|video):/.exec(item) : null;
+                const text = type ? `${type[1] === 'photo' ? '图片' : '视频'}  ${JSON.stringify(item.slice(type[0].length))}` : JSON.stringify(item);
+                return `${label} [${index + 1}]  ${text}`;
+            });
+        }).join('\n');
     const fieldBlocks = numberedFields && comparison.fields.length ? changedTextBlocks(
         comparison.status === 'added' ? '' : fieldText(previous),
         comparison.status === 'removed' ? '' : fieldText(record)) : [];

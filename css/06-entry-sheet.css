@@ -1606,6 +1606,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-tree > .recycle-file > .content-file-preview > summary { display: grid; grid-template-columns: 10px 18px minmax(0, 1fr) auto; gap: 8px; min-height: 44px; padding: 8px 8px 8px calc(var(--recycle-depth) * 16px + 8px); border-radius: 4px; overflow-wrap: anywhere; }
 .recycle-tree > li > .recycle-directory > summary.recycle-diary-summary { grid-template-columns: 10px minmax(0, 1fr) auto; }
 .recycle-tree > li > .recycle-directory > summary.recycle-diary-choice { grid-template-columns: 10px 44px minmax(0, 1fr) auto; padding-block: 4px; }
+.recycle-tree > li > .recycle-directory > summary.recycle-profile-choice { grid-template-columns: 10px 44px 18px minmax(0, 1fr) auto; }
 .recycle-diary-selector { display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
 .recycle-diary-selector > input { width: 20px; height: 20px; margin: 0; accent-color: var(--stamp); cursor: pointer; }
 .recycle-diary-selector > input:focus-visible { outline: 2px solid var(--stamp); outline-offset: 4px; }
@@ -1719,6 +1720,8 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
     .recycle-tree > li > .recycle-directory > summary.recycle-diary-summary > small { grid-column: 2; }
     .recycle-tree > li > .recycle-directory > summary.recycle-diary-choice { grid-template-columns: 10px 44px minmax(0, 1fr); }
     .recycle-tree > li > .recycle-directory > summary.recycle-diary-choice > small { grid-column: 3; }
+    .recycle-tree > li > .recycle-directory > summary.recycle-profile-choice { grid-template-columns: 10px 44px 18px minmax(0, 1fr); }
+    .recycle-tree > li > .recycle-directory > summary.recycle-profile-choice > small { grid-column: 4; }
     .recycle-tree .recycle-directory > summary > small { grid-column: 3; justify-content: flex-start; gap: 10px; text-align: start; }
     .recycle-tree .recycle-directory > summary > small > span { min-width: 0; }
     .recycle-tree > .recycle-file > .content-file-preview > summary { grid-template-columns: 10px 18px minmax(0, 1fr); gap: 2px 8px; }

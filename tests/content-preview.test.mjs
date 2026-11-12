@@ -117,15 +117,36 @@ test('日记信息差异复用正文的双侧行号并保留数组顺序、转�
     const html = renderRecordDifference(record, comparison, options);
     assert.match(html, /aria-label="日记信息差异，左侧为当前行号，右侧为恢复后行号"/);
     assert.match(html, /record-diff-line-number">1<\/span>/);
-    assert.match(html, /@@ −4,1 \+4,1 @@/);
+    assert.match(html, /@@ −4,2 \+4,2 @@/);
     assert.match(html, /&lt;新标题&gt;/);
     assert.doesNotMatch(html, /<新标题>|<dl>/);
-    assert.match(html, /\[&quot;b.png&quot;,&quot;a.png&quot;\]/);
+    assert.match(html, /图片列表 \[1\]  &quot;b.png&quot;/);
+    assert.match(html, /图片列表 \[2\]  &quot;a.png&quot;/);
     const added = renderRecordDifference(record, { ...comparison, status: 'added', previous: undefined }, options);
     assert.doesNotMatch(added, /class="record-diff-line record-diff-removed"/);
     const removed = renderRecordDifference({ desc_md: record.desc_md }, { ...comparison, status: 'removed' }, options);
     assert.doesNotMatch(removed, /class="record-diff-line record-diff-added"/);
     assert.match(renderRecordDifference(record, comparison), /<dl>/);
+});
+
+test('文件列表和附件顺序逐项显示位置、类型及特殊文件名，增删后保持双侧行号', () => {
+    const previous = { desc_md: 'data/a.md', photos: ['<a>.png'], videos: [], media_order: ['photo:<a>.png'] };
+    const record = { ...previous, photos: ['b.png', '<a>.png'], videos: ['clip.mp4'], media_order: ['video:clip.mp4', 'photo:b.png', 'photo:<a>.png'] };
+    const comparison = { status: 'changed', previous, fields: ['photos', 'videos', 'media_order'], media: [], markdownChanged: false };
+    const html = renderRecordDifference(record, comparison, { numberedFields: true });
+    assert.match(html, /图片列表 \[1\]  &quot;b.png&quot;/);
+    assert.match(html, /图片列表 \[2\]  &quot;&lt;a&gt;.png&quot;/);
+    assert.match(html, /视频列表  \[\]/);
+    assert.match(html, /视频列表 \[1\]  &quot;clip.mp4&quot;/);
+    assert.match(html, /附件顺序 \[1\]  视频  &quot;clip.mp4&quot;/);
+    assert.match(html, /附件顺序 \[2\]  图片  &quot;b.png&quot;/);
+    assert.match(html, /附件顺序 \[3\]  图片  &quot;&lt;a&gt;.png&quot;/);
+    assert.doesNotMatch(html, /<a>|photo:|video:/);
+    assert.match(html, /record-diff-line-number">4<\/span>/);
+    assert.match(html, /record-diff-line-number">7<\/span>/);
+    const removed = renderRecordDifference({ ...record, photos: [], media_order: [] }, { ...comparison, previous: record }, { numberedFields: true });
+    assert.match(removed, /图片列表  \[\]/);
+    assert.match(removed, /附件顺序  \[\]/);
 });
 
 test('恢复结果复用直接内容预览，空正文和空索引同样保留文件标题', async t => {
