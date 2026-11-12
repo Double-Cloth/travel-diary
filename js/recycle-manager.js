@@ -1,11 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.83';
-import { createPasswordGate } from './record-password.js?v=2.1.83';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.83';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.83';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.83';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.83';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.83';
-import { recordIdentity } from './record-identity.mjs?v=2.1.83';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.84';
+import { createPasswordGate } from './record-password.js?v=2.1.84';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.84';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.84';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.84';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.84';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.84';
+import { recordIdentity } from './record-identity.mjs?v=2.1.84';
+import { buildRecycleTree } from './recycle-tree.mjs?v=2.1.84';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -56,6 +57,8 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
     const selected = new Map();
     const targets = new Map();
     const expandedItems = new Set();
+    const directoryStates = new Map();
+    const trees = new Map();
     let suspended = false;
     let scrollTop = 0;
     let returnFocus;
@@ -123,21 +126,41 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         return `<a href="${escapeHtml(url)}" data-action="open-media-viewer" data-media-src="${escapeHtml(url)}" data-media-name="${escapeHtml(name)}" data-media-alt="${escapeHtml(name)}" data-media-kind="${mediaKind(name)}" data-media-index="0">${escapeHtml(name)}</a>`;
     }
     function contentsMarkup(item) {
-        const diaries = item.files.filter(file => /\.md$/i.test(file.path));
-        const attachments = item.files.filter(file => !/\.md$/i.test(file.path));
-        const list = category => `<ul class="media-file-list content-preview-list" data-recycle-files="${item.id}" data-recycle-category="${category}" data-media-viewer-group></ul>`;
-        const fold = diaries.length > 0 && attachments.length > 0;
-        return `<div class="recycle-contents">${diaries.length ? list('diaries') : ''}${attachments.length ? fold ? `<details class="recycle-attachments"><summary><span>查看媒体与附件</span><small>${attachments.length} 个文件</small></summary>${list('attachments')}</details>` : list('attachments') : ''}</div>`;
+        if (!item.files.length) return '<p class="recycle-restore-note">此项目没有归档文件。</p>';
+        return `<div class="recycle-contents" data-media-viewer-group><ul class="recycle-tree" data-recycle-files="${item.id}" data-recycle-directory="" style="--recycle-depth: 0" aria-label="归档文件目录"></ul></div>`;
+    }
+    function directoryKey(id, name) {
+        return JSON.stringify([id, dialog.querySelector('[data-recycle-search]').value.trim().toLowerCase(), name]);
+    }
+    function loadItemContents(id) {
+        const item = report.items.find(item => item.id === id);
+        const list = dialog.querySelector(`[data-recycle-item="${id}"] [data-recycle-files]`);
+        if (!list) return;
+        if (!trees.has(id)) trees.set(id, buildRecycleTree(item.files, dialog.querySelector('[data-recycle-search]').value));
+        void loadContents(list, item, previews);
     }
     async function loadContents(list, item, scope) {
-        const diaries = item.files.filter(file => /\.md$/i.test(file.path));
-        const fold = diaries.length > 1 || (diaries.length > 0 && diaries.length < item.files.length);
-        for (const file of item.files) {
-            if (/\.md$/i.test(file.path) !== (list.dataset.recycleCategory === 'diaries')) continue;
+        if (list.dataset.loaded || !list.isConnected || scope !== previews) return;
+        list.dataset.loaded = 'true';
+        const directory = trees.get(item.id).get(list.dataset.recycleDirectory);
+        for (const child of directory.directories) {
+            const row = document.createElement('li');
+            const open = directoryStates.get(directoryKey(item.id, child.path)) ?? (child.depth <= 2 || child.matches);
+            row.innerHTML = `<details class="recycle-directory" data-recycle-folder="${escapeHtml(child.path)}"${open ? ' open' : ''}>
+                <summary title="${escapeHtml(child.path)}"><span>${escapeHtml(child.name)}/</span><small>${child.count} 个文件 · ${sizeLabel(child.totalBytes)}</small></summary>
+                <ul class="recycle-tree" data-recycle-files="${item.id}" data-recycle-directory="${escapeHtml(child.path)}" style="--recycle-depth: ${Math.min(child.depth, 4)}" aria-label="${escapeHtml(child.path)}"></ul></details>`;
+            list.append(row);
+        }
+        // 每层独立加载，深目录不会递归占用调用栈，折叠的目录无需创建文件预览。
+        for (const child of list.querySelectorAll(':scope > li > details[open] > [data-recycle-files]')) {
+            queueMicrotask(() => { void loadContents(child, item, scope); });
+        }
+        for (const file of directory.files) {
             if (!list.isConnected || scope !== previews) return;
             const row = document.createElement('li');
+            row.className = 'recycle-file';
             row.title = file.path;
-            try { row.append(await scope.file({ name: file.path, url: recycleUrl(item.id, file.path), detail: mediaKind(file.path) ? `${file.path} · ${sizeLabel(file.size)}` : sizeLabel(file.size), index: list.querySelectorAll('[data-action="open-media-viewer"]').length, collapsible: fold })); }
+            try { row.append(await scope.file({ name: file.path, url: recycleUrl(item.id, file.path), detail: mediaKind(file.path) ? `${file.path} · ${sizeLabel(file.size)}` : sizeLabel(file.size), collapsible: true })); }
             catch (failure) { row.textContent = `${file.path}：${failure.message}`; }
             if (scope !== previews || !list.isConnected || (!dialog.open && !suspended)) return;
             if (/\.md$/i.test(file.path)) {
@@ -165,10 +188,12 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         button.setAttribute('aria-expanded', String(expanded));
         button.textContent = expanded ? '收起' : '展开';
         button.setAttribute('aria-label', `${button.textContent} ${report.items.find(item => item.id === id).title}`);
+        if (expanded) loadItemContents(id);
     }
     function render() {
         previews.dispose();
         previews = createContentPreviewScope();
+        trees.clear();
         const items = filteredItems();
         dialog.querySelector('[data-recycle-status]').textContent = `显示 ${items.length} / ${report.items.length} 个回收项目 · 共 ${sizeLabel(report.totalBytes)}`;
         dialog.querySelector('[data-recycle-reset]').hidden = !dialog.querySelector('[data-recycle-search]').value;
@@ -184,7 +209,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             ${item.kind === 'files' && !item.mediaReferences?.length && item.files.some(file => mediaKind(file.path)) ? `<div class="recycle-target" data-recycle-selected-only${selected.has(item.id) ? '' : ' hidden'}><label class="field-label" for="recycleTarget-${item.id}">恢复到</label><select id="recycleTarget-${item.id}" data-custom-select data-recycle-target="${item.id}"><option value="">${item.title === '编辑日记时移除的媒体' ? '请选择原日记' : '仅恢复文件'}</option>${(report.currentRecords || []).map(record => `<option value="${escapeHtml(record.desc_md)}"${targets.get(item.id) === record.desc_md ? ' selected' : ''}>${escapeHtml([record.date, record.locality].filter(Boolean).join(' · '))}</option>`).join('')}</select><p class="recycle-restore-note">选择日记后，同时补回附件列表；其他日记信息保持不变。</p><p class="recycle-target-link" data-recycle-target-link></p></div>` : item.mediaReferences?.length ? '<p class="recycle-restore-note">恢复文件并补回原日记的附件列表，保留之后修改的内容。</p>' : ''}
             <div data-recycle-diff="${item.id}"${selected.has(item.id) ? '' : ' hidden'}>${previewMarkup(selected.get(item.id))}</div>
             </div></li>`).join('') : `<li class="media-empty">${report.items.length ? '没有匹配的回收项目，清除搜索后可查看全部内容。' : '回收站为空。删除的内容会显示在这里。'}</li>`;
-        dialog.querySelectorAll('[data-recycle-files]').forEach(list => { void loadContents(list, report.items.find(item => item.id === list.dataset.recycleFiles), previews); });
+        expandedItems.forEach(loadItemContents);
         syncControls();
     }
     function recycleUrl(id, name) {
@@ -195,6 +220,12 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
     }
     dialog.addEventListener('toggle', async event => {
         const details = event.target;
+        if (details.matches('[data-recycle-folder]')) {
+            const id = details.closest('[data-recycle-item]').dataset.recycleItem;
+            directoryStates.set(directoryKey(id, details.dataset.recycleFolder), details.open);
+            if (details.open) void loadContents(details.querySelector('[data-recycle-files]'), report.items.find(item => item.id === id), previews);
+            return;
+        }
         const differences = details.matches('[data-diff-record]') ? [details] : details.matches('.recycle-restore-preview') && details.open ? [...details.querySelectorAll('section[data-diff-record]')] : [];
         for (const difference of differences) {
             const id = details.closest('[data-recycle-item]').dataset.recycleItem;
@@ -320,6 +351,12 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         finally { busy = false; syncControls(); }
     }
     dialog.addEventListener('click', async event => {
+        const media = event.target.closest('.recycle-contents [data-action="open-media-viewer"]');
+        if (media) {
+            // 展开目录的先后顺序会改变 DOM 顺序，点击时使用查看器实际读取的索引。
+            media.dataset.mediaIndex = String([...media.closest('[data-media-viewer-group]').querySelectorAll('[data-action="open-media-viewer"]:not([hidden])')].indexOf(media));
+            return;
+        }
         if (busy) return;
         const toggle = event.target.closest('[data-recycle-toggle]');
         if (toggle) { setItemExpanded(toggle.dataset.recycleToggle, !expandedItems.has(toggle.dataset.recycleToggle)); return; }
@@ -383,6 +420,8 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         selected.clear();
         targets.clear();
         expandedItems.clear();
+        directoryStates.clear();
+        trees.clear();
         returnFocus = undefined;
         stale = true;
         dialog.querySelector('[data-recycle-search]').value = '';

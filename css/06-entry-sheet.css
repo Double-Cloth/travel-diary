@@ -1538,12 +1538,19 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list details[open] > summary::before { transform: rotate(45deg); }
 .recycle-list summary > span { flex: 1; min-width: 0; }
 .recycle-list summary small { flex: 0 0 auto; font-size: 12px; line-height: inherit; }
-/* 分隔线归后一个内容行或展开区所有，两侧统一保留 12px，不再单独清零列表首尾。 */
-.recycle-list .recycle-contents > * + *,
-.recycle-list .content-preview-list > li + li,
+/* 同级目录、文件与展开预览共用纸面的虚线分隔。 */
 .recycle-preview-change + .recycle-preview-change,
-.recycle-list details.content-file-preview > .content-file-body,
-.recycle-list .recycle-attachments > .content-preview-list { border-top: 1px dashed var(--hairline); }
+.recycle-list details.content-file-preview > .content-file-body { border-top: 1px dashed var(--hairline); }
+.recycle-tree { list-style: none; margin: 0; padding: 0; min-width: 0; }
+.recycle-tree > li { min-width: 0; }
+.recycle-tree > li + li { border-top: 1px dashed var(--hairline); }
+.recycle-tree > li > .recycle-directory > summary { padding-inline-start: calc(var(--recycle-depth) * 12px); }
+.recycle-tree > li > .recycle-directory > summary > span { font-weight: 600; }
+.recycle-tree > .recycle-file { padding: 12px 0 12px calc(var(--recycle-depth) * 12px); }
+.recycle-tree > .recycle-file:has(> .content-file-preview) { padding-block: 0; }
+.recycle-tree .recycle-directory > summary { flex-wrap: wrap; }
+.recycle-tree .recycle-directory > summary > small { margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+.recycle-directory > summary:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
 .recycle-list .content-file-heading { margin: 0; padding: 12px 0; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
 .recycle-list a:not(.media-file-link) { color: var(--stamp); text-decoration: underline; text-underline-offset: 3px; }
 .recycle-list a:focus-visible, .recycle-contents li:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
@@ -1553,13 +1560,10 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list .record-diff-note:empty { display: none; }
 .recycle-list .content-preview-source { margin-top: 16px; }
 .recycle-list .record-diff-section > h3 { font-size: 15px; }
-.recycle-list .content-preview-list, .recycle-list .content-preview-markdown, .recycle-list .content-file-body > pre, .recycle-list .record-diff pre { max-height: none; overflow: visible; }
+.recycle-list .content-preview-markdown, .recycle-list .content-file-body > pre, .recycle-list .record-diff pre { max-height: none; overflow: visible; }
 .recycle-list .content-file-body,
 .recycle-list .content-preview-source > .content-preview-markdown,
-.recycle-list .content-preview-list > li,
 .recycle-preview-change { padding: 12px 0; }
-.recycle-list .content-preview-list > li { border-bottom: 0; }
-.recycle-list .content-preview-list > li:has(> .content-file-preview) { padding: 0; }
 .recycle-list .content-file-body > .content-preview-markdown { padding: 0; }
 .recycle-list .content-preview-markdown > :last-child { margin-bottom: 0; }
 .content-preview-list > li { grid-template-columns: minmax(0, 1fr); }
