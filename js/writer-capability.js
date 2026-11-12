@@ -24,6 +24,8 @@ function capabilityFrom(endpoint, result) {
         recycleClear: result.recycleClear === true,
         recycleDiff: result.recycleDiff === true,
         recycleSelection: result.recycleSelection === true,
+        batchDelete: result.batchDelete === true,
+        recycleParts: result.recycleParts === true,
         recyclePurgeSelection: result.recyclePurgeSelection === true,
         authenticated: result.authenticated === true
     };

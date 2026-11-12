@@ -1,10 +1,10 @@
-import { createPasswordGate } from './record-password.js?v=2.1.92';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.92';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.92';
+import { createPasswordGate } from './record-password.js?v=2.1.93';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.93';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.93';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=2.1.92';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.92';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.92';
+import { createRecordTransfer } from './record-transfer.js?v=2.1.93';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.93';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.93';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
@@ -351,5 +351,6 @@ export function createDataTransfer(onImported, getRecords = () => []) {
     });
 
     return { chooseImport, clearAll, exportAll, getExportHref,
+        chooseRecordDelete: () => partialTransfer().chooseDelete(),
         chooseRecordExport: paths => partialTransfer().chooseExport(paths), chooseRecordImport: () => partialTransfer().chooseImport() };
 }

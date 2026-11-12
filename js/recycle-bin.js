@@ -161,7 +161,7 @@ async function restoredRecords(root, item, targetDescMd, replace = false, record
     const { matchRecord } = await import('./record-identity.mjs');
     for (const record of item.records) if (!replace && matchRecord(record, current)) throw failure('这篇日记已存在，请先处理当前记录再恢复，未覆盖任何内容。');
     const next = current.map(record => ({ ...record }));
-    const files = item.files.map(file => ({ ...file, sourcePath: file.path }));
+    const files = item.files.map(file => ({ ...file, sourcePath: file.sourcePath || file.path }));
     let references = item.mediaReferences || [];
     // 旧回收项目没有关联信息，由用户明确指定日记，避免猜测或替换整份索引。
     if (targetDescMd) {
@@ -276,7 +276,7 @@ async function restoreVersion(root, item, records, sources = new Map()) {
         }
         for (const file of incoming) {
             if (file.content !== undefined) await fs.writeFile(path.join(root, file.path), file.content, { flag: 'wx' });
-            else await fs.copyFile(await ordinaryPath(root, sources.get(file.path) || `${BASE}/${item.id}/${file.path}`), path.join(root, file.path), fs.constants.COPYFILE_EXCL);
+            else await fs.copyFile(await ordinaryPath(root, sources.get(file.path) || `${BASE}/${item.id}/${file.sourcePath || file.path}`), path.join(root, file.path), fs.constants.COPYFILE_EXCL);
             created.push(path.join(root, file.path));
         }
     } catch (error) {
@@ -321,8 +321,8 @@ async function restoreSnapshot(root, item) {
 }
 
 // 纳秒时间戳、文件身份及大小绑定整站状态，首次预览无需读取无关的大媒体。
-async function restoreToken(root, item, targetDescMd, revision, versions = new Map()) {
-    const hash = createHash('sha256').update(JSON.stringify([revision, item.id, targetDescMd || '']));
+async function restoreToken(root, item, targetDescMd, revision, versions = new Map(), parts) {
+    const hash = createHash('sha256').update(JSON.stringify([revision, item.id, targetDescMd || '', parts === undefined ? null : [...parts].sort()]));
     for (const [prefix, files] of [['', await dataFiles(root)], [`${BASE}/${item.id}/`, item.files]]) {
         for (const file of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
             const source = await ordinaryPath(root, prefix + file.path);
@@ -334,19 +334,23 @@ async function restoreToken(root, item, targetDescMd, revision, versions = new M
     return hash.digest('hex');
 }
 
-async function previewRestore(root, item, targetDescMd, revision) {
+async function previewRestore(root, item, targetDescMd, revision, parts) {
     const { fileSource } = require('./file-stream.js');
     const { compareBackup, describeRecords } = await import('./record-diff.mjs');
     const { recordFilePaths } = await import('./record-backup.mjs');
     const { matchRecord, identifyRecords } = await import('./record-identity.mjs');
     const { readSourceText, sourceOf } = await import('./zip-stream.mjs');
-    const versions = new Map();
-    const previewToken = await restoreToken(root, item, targetDescMd, revision, versions);
+    const { selectRecycleParts } = await import('./recycle-tree.mjs');
     const current = await readRecords(root);
+    const original = item;
+    try { item = selectRecycleParts(item, parts, current); }
+    catch (error) { throw failure(error.message); }
+    const versions = new Map();
+    const previewToken = await restoreToken(root, original, targetDescMd, revision, versions, parts);
     const before = new Map();
     for (const file of await dataFiles(root)) before.set(file.path, await fileSource(await ordinaryPath(root, file.path)));
     const after = item.kind === 'snapshot' ? new Map() : new Map(before);
-    let files = item.files.map(file => ({ ...file, sourcePath: file.path }));
+    let files = item.files.map(file => ({ ...file, sourcePath: file.sourcePath || file.path }));
     const text = async source => source ? new TextDecoder('utf-8', { fatal: true }).decode(await readSourceText(sourceOf(source))) : '';
     let next;
     if (item.kind !== 'snapshot' && item.kind !== 'version') ({ next, files } = await restoredRecords(root, item, targetDescMd, true));
@@ -429,13 +433,16 @@ async function restoreSelected(root, report, selections) {
     if (!Array.isArray(selections) || !selections.length || selections.length > report.items.length
         || new Set(selections.map(selection => selection?.id)).size !== selections.length) throw failure('请选择有效且不重复的回收项目。');
     const plans = [];
+    const { selectRecycleParts, recycleRestoreConflicts } = await import('./recycle-tree.mjs');
     for (const selection of selections) {
         const item = report.items.find(item => item.id === selection?.id);
         if (!item || !selection.previewToken) throw failure('所选项目缺少恢复预览，请刷新后重新选择。');
-        if (await restoreToken(root, item, selection.targetDescMd, report.revision) !== selection.previewToken) throw failure('预览后内容已变化，请重新预览再恢复，未覆盖任何内容。');
-        plans.push({ item, targetDescMd: selection.targetDescMd });
+        let projected;
+        try { projected = selectRecycleParts(item, selection.parts, report.currentRecords); }
+        catch (error) { throw failure(error.message); }
+        if (await restoreToken(root, item, selection.targetDescMd, report.revision, new Map(), selection.parts) !== selection.previewToken) throw failure('预览后内容已变化，请重新预览再恢复，未覆盖任何内容。');
+        plans.push({ item: projected, targetDescMd: selection.targetDescMd, partial: selection.parts !== undefined });
     }
-    const { recycleRestoreConflicts } = await import('./recycle-tree.mjs');
     if (recycleRestoreConflicts(report.items, report.currentRecords, selections).length) throw failure('同一篇日记每次只能恢复一个版本，请保留一个勾选项后重试。');
     if (plans.length === 1 && (plans[0].item.kind === 'snapshot' || plans[0].item.kind === 'version')) {
         const { item } = plans[0];
@@ -450,12 +457,13 @@ async function restoreSelected(root, report, selections) {
         const owners = [];
         for (const { item, targetDescMd } of plans) {
             const references = targetDescMd ? current.filter(record => record.desc_md === targetDescMd) : item.mediaReferences || [];
-            for (const record of [...item.records, ...references]) {
+            const related = [...item.records, ...references.filter(record => !matchRecord(record, item.records))];
+            for (const record of related) {
                 const full = item.records.includes(record);
                 if (owners.some(owner => matchRecord(record, [owner.record]) && (full || owner.full))) throw failure('所选项目包含同一篇日记的不同恢复内容，请分别恢复。');
                 owners.push({ record, full });
             }
-            let restored = item.files.map(file => ({ ...file, sourcePath: file.path }));
+            let restored = item.files.map(file => ({ ...file, sourcePath: file.sourcePath || file.path }));
             if (item.kind !== 'version') ({ next, files: restored } = await restoredRecords(root, item, targetDescMd, true, next));
             for (const file of restored) {
                 const source = `${BASE}/${item.id}/${file.sourcePath}`;
@@ -468,7 +476,8 @@ async function restoreSelected(root, report, selections) {
         await restoreVersion(root, { files: [...files.values()] }, JSON.stringify(current) === JSON.stringify(next) ? undefined : next,
             new Map([...files.values()].map(file => [file.path, file.source])));
     }
-    for (const { item } of plans) await discardRecycle(root, item.id);
+    // 部分恢复保留完整原批次，继续恢复其余内容时仍有原始信息和共用附件。
+    for (const { item, partial } of plans) if (!partial) await discardRecycle(root, item.id);
     return readRecycleBin(root);
 }
 
@@ -498,8 +507,9 @@ async function manageRecycleBin(root, payload) {
         }
         const item = report.items.find(item => item.id === payload.id);
         if (!item) throw failure('这个回收项目已不存在，请刷新。');
-        if (payload.action === 'preview') return await previewRestore(root, item, payload.targetDescMd, report.revision);
+        if (payload.action === 'preview') return await previewRestore(root, item, payload.targetDescMd, report.revision, payload.parts);
         if (payload.action === 'restore') {
+            if (payload.parts !== undefined) return await restoreSelected(root, report, [payload]);
             if (payload.previewToken) {
                 const token = await restoreToken(root, item, payload.targetDescMd, report.revision);
                 if (token !== payload.previewToken) throw failure('预览后内容已变化，请重新预览再恢复，未覆盖任何内容。');

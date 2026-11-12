@@ -794,56 +794,63 @@ async function updateRecord(root, payload, authorize, confirmation) {
 }
 
 async function deleteRecord(root, payload, authorize) {
-    const markdownPath = payload && typeof payload === 'object' && !Array.isArray(payload)
-        ? payload.desc_md
-        : '';
-    if (typeof markdownPath !== 'string' || !markdownPath || markdownPath.length > 200) {
-        throw failure(400, '缺少要删除的旅行记录标识。');
-    }
-
+    const paths = payload?.paths ?? [payload?.desc_md];
+    if (!Array.isArray(paths) || !paths.length || paths.length > 10000
+        || paths.some(name => typeof name !== 'string' || !name || name.length > 200)
+        || new Set(paths).size !== paths.length) throw failure(400, '请选择有效且不重复的旅行记录。');
     const dataDir = await checkedDirectory(root, ['data']);
     const indexFile = path.join(dataDir, 'travel_data.json');
     const releaseLock = await acquireDataLock(root);
-    let diaryFile;
-    let backupMarkdown;
+    const moved = [];
+    const stages = [];
+    const recycleIds = [];
     let committed = false;
-    let recycleId;
-    let unusedMediaStage;
     try {
         await authorize?.();
         await checkedFile(indexFile);
         const previous = await fs.readFile(indexFile, 'utf8');
         const records = JSON.parse(previous);
         if (!Array.isArray(records)) throw failure(409, '旅行索引不是数组，请先修复 data/travel_data.json。');
-        const matches = records.map((item, index) => ({ item, index }))
-            .filter(({ item }) => item && item.desc_md === markdownPath);
-        if (matches.length !== 1) throw failure(409, matches.length ? '记录标识不唯一，无法安全删除。' : '旅行记录已不存在，请刷新页面后重试。');
-
-        const { item: deletedRecord, index } = matches[0];
-        const { recordFilePaths } = await import('./record-backup.mjs');
-        recycleId = await captureRecycle(root, { kind: 'record', title: `${deletedRecord.date || ''} ${deletedRecord.locality || '删除的日记'}`.trim(), records: [deletedRecord], files: [...recordFilePaths([deletedRecord])].map(name => ({ path: name, optional: true })) });
-        unusedMediaStage = await stageUnusedMedia(root, records.filter((_, itemIndex) => itemIndex !== index), deletedRecord, false);
-        try {
-            diaryFile = await resolveMarkdownFile(root, markdownPath);
-            await checkedFile(diaryFile);
-            const backupPath = path.join(path.dirname(diaryFile), `.travel-delete-${randomBytes(16).toString('hex')}.bak`);
-            await fs.rename(diaryFile, backupPath);
-            backupMarkdown = backupPath;
-        } catch (error) {
-            if (error.code !== 'ENOENT') throw error;
+        const deleted = paths.map(name => {
+            const matches = records.filter(record => record?.desc_md === name);
+            if (matches.length !== 1) throw failure(409, matches.length ? '记录标识不唯一，无法安全删除。' : '旅行记录已不存在，请刷新页面后重试。');
+            return matches[0];
+        });
+        if (payload.expectedRecords && JSON.stringify(deleted) !== JSON.stringify(payload.expectedRecords)) {
+            throw failure(409, '所选日记在选择后已变化，请刷新后重新选择。');
         }
-        await replaceIndex(dataDir, indexFile, previous, records.filter((_, itemIndex) => itemIndex !== index), authorize);
+        const next = records.filter(record => !paths.includes(record?.desc_md));
+        const { recordFilePaths } = await import('./record-backup.mjs');
+        // 全部留存成功后才移动文件，各篇日记分别留在回收站便于选择恢复。
+        for (const record of deleted) recycleIds.push(await captureRecycle(root, {
+            kind: 'record', title: `${record.date || ''} ${record.locality || '删除的日记'}`.trim(), records: [record],
+            files: [...recordFilePaths([record])].map(name => ({ path: name, optional: true }))
+        }));
+        for (const record of deleted) {
+            stages.push(await stageUnusedMedia(root, next, record, false));
+            try {
+                const original = await resolveMarkdownFile(root, record.desc_md);
+                await checkedFile(original);
+                const backup = path.join(path.dirname(original), `.travel-delete-${randomBytes(16).toString('hex')}.bak`);
+                await fs.rename(original, backup);
+                moved.push({ original, backup });
+            } catch (error) { if (error.code !== 'ENOENT') throw error; }
+        }
+        await replaceIndex(dataDir, indexFile, previous, next, authorize);
         committed = true;
-        if (unusedMediaStage) await unusedMediaStage.commit();
-        if (backupMarkdown) await fs.unlink(backupMarkdown).catch(() => {});
-        backupMarkdown = null;
-        return { record: deletedRecord };
+        for (const stage of stages) await stage.commit();
+        for (const file of moved) await fs.unlink(file.backup).catch(() => {});
+        return { record: deleted[0], records: deleted };
     } finally {
-        if (!committed && backupMarkdown) await fs.rename(backupMarkdown, diaryFile).catch(() => {});
         try {
             if (!committed) {
-                if (unusedMediaStage) await unusedMediaStage.rollback();
-                if (recycleId) await discardRecycle(root, recycleId);
+                const results = await Promise.allSettled([
+                    ...moved.map(file => fs.rename(file.backup, file.original)),
+                    ...stages.map(stage => stage.rollback())
+                ]);
+                const failed = results.find(result => result.status === 'rejected');
+                if (failed) throw failed.reason;
+                for (const id of recycleIds) await discardRecycle(root, id);
             }
         } finally { await releaseLock(); }
     }
@@ -1152,12 +1159,12 @@ function createRecordApi(root, options = {}) {
         }
         if (requestPath === '/api/travel-records' && req.method === 'GET') {
             if (!session) {
-                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, mixedMediaOrder: true, partialRecords: true, recordManagement: true, mediaReferenceRemoval: true, recycleBin: true, recyclePreviews: true, recycleClear: true, recycleDiff: true, recycleSelection: true, recyclePurgeSelection: true, code: 'AUTH_REQUIRED' });
+                send(200, { service: 'travel-diary-writer-v1', authenticated: false, methods: [], writeMode, syncMediaFiles: true, mediaOrder: true, mixedMediaOrder: true, partialRecords: true, recordManagement: true, mediaReferenceRemoval: true, recycleBin: true, recyclePreviews: true, recycleClear: true, recycleDiff: true, recycleSelection: true, recyclePurgeSelection: true, recycleParts: true, batchDelete: true, code: 'AUTH_REQUIRED' });
                 return;
             }
             send(200, {
                 service: 'travel-diary-writer-v1', authenticated: true, token: session.token,
-                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true, mixedMediaOrder: true, partialRecords: true, recordManagement: true, mediaReferenceRemoval: true, recycleBin: true, recyclePreviews: true, recycleClear: true, recycleDiff: true, recycleSelection: true, recyclePurgeSelection: true
+                methods: ['POST', 'PUT', 'DELETE'], writeMode, syncMediaFiles: true, mediaOrder: true, mixedMediaOrder: true, partialRecords: true, recordManagement: true, mediaReferenceRemoval: true, recycleBin: true, recyclePreviews: true, recycleClear: true, recycleDiff: true, recycleSelection: true, recyclePurgeSelection: true, recycleParts: true, batchDelete: true
             });
             return;
         }

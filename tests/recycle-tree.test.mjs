@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel } from '../js/recycle-tree.mjs';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recyclePartGroups, selectRecycleParts } from '../js/recycle-tree.mjs';
 
 test('恢复冲突识别同篇改名正文与旧标识，多篇混合批次也检测且不修改输入', () => {
     const saved = { record_id: `r-${'a'.repeat(32)}`, desc_md: 'data/old.md' };
@@ -229,4 +229,48 @@ test('共用路径的不同固定标识保持独立，媒体根目录不用于�
     assert.equal(groups.length, 3);
     assert.deepEqual(recordsByItem.get('root'), []);
     assert.deepEqual(groupRecycleItems([]), { groups: [], recordsByItem: new Map() });
+});
+
+
+test('部分恢复选项按日记和共用内容分组，文件只出现一次且不暴露原索引', () => {
+    const a = { date: '2026-11-12', desc_md: 'data/a.md', photo_folder: 'data/photos/shared', photos: ['shared.png', 'a.png'] };
+    const b = { ...a, desc_md: 'data/b.md', photos: ['shared.png'] };
+    const item = { kind: 'snapshot', records: [], displayRecords: [a, b], files: [
+        'data/travel_data.json', 'data/a.md', 'data/b.md', 'data/photos/shared/shared.png', 'data/photos/shared/a.png', 'data/profile/owner-name.txt'
+    ].map(path => ({ path, size: 0 })) };
+    const groups = recyclePartGroups(item);
+    const keys = groups.flatMap(group => group.parts.map(part => part.key));
+    assert.equal(keys.length, 7);
+    assert.equal(new Set(keys).size, keys.length);
+    assert.ok(!keys.includes('file:data/travel_data.json'));
+    assert.deepEqual(groups.find(group => group.key === 'shared').parts.map(part => part.key), ['file:data/photos/shared/shared.png']);
+    const before = structuredClone(item);
+    const partial = selectRecycleParts(item, ['record:data/a.md', 'file:data/photos/shared/a.png'], []);
+    assert.deepEqual(partial.files.map(file => file.path), ['data/photos/shared/a.png', 'data/a.md']);
+    assert.deepEqual(partial.records[0].photos, ['a.png']);
+    assert.deepEqual(item, before);
+});
+
+test('部分恢复纯附件保留合并能力，缺失原日记仍保留恢复关联用于校验', () => {
+    const note = { date: '2026-11-12', desc_md: 'data/a.md', photo_folder: 'data/photos/a', photos: ['a.png', 'b.png'] };
+    const items = ['a.png', 'b.png'].map((name, index) => ({ id: String(index), kind: 'files', records: [], mediaReferences: [note], files: [{ path: `data/photos/a/${name}` }] }));
+    const selections = items.map(item => ({ id: item.id, parts: [`file:${item.files[0].path}`] }));
+    assert.equal(recycleRestoreConflicts(items, [note], selections).length, 0);
+    assert.deepEqual(selectRecycleParts(items[0], selections[0].parts, []).mediaReferences, [note]);
+});
+
+
+test('部分恢复共用文件保留原附件批次的关联，整站批次仅更新明确勾选的日记', () => {
+    const a = { date: '2026-11-12', desc_md: 'data/a.md', photo_folder: 'data/photos/shared', photos: ['shared.png'] };
+    const b = { ...a, desc_md: 'data/b.md' };
+    const file = { path: 'data/photos/shared/shared.png', size: 1 };
+    const media = { kind: 'files', records: [], mediaReferences: [a, b], files: [file] };
+    assert.deepEqual(selectRecycleParts(media, [`file:${file.path}`], [a,b]).mediaReferences, [a,b]);
+    const snapshot = { kind: 'snapshot', records: [], displayRecords: [a,b], files: [file,{path:'data/travel_data.json'}] };
+    const current = [a,b].map(record => ({...record,photos:[]}));
+    const partial = selectRecycleParts(snapshot, ['record:data/a.md', `file:${file.path}`], current);
+    assert.equal(partial.records.length, 1);
+    assert.equal(partial.records[0].desc_md, a.desc_md);
+    assert.deepEqual(partial.records[0].photos, ['shared.png']);
+    assert.deepEqual(partial.mediaReferences, [a]);
 });

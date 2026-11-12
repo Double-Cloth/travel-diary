@@ -1,16 +1,17 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.92';
-import { createPasswordGate } from './record-password.js?v=2.1.92';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.92';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.92';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.93';
+import { createPasswordGate } from './record-password.js?v=2.1.93';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.93';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.93';
 import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.92';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.92';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.92';
-import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.92';
-import { recordIdentity } from './record-identity.mjs?v=2.1.92';
-import { createContentPreviewScope } from './content-preview.js?v=2.1.92';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.93';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.93';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.93';
+import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.93';
+import { recordIdentity } from './record-identity.mjs?v=2.1.93';
+import { createContentPreviewScope } from './content-preview.js?v=2.1.93';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.93';
 
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.92';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.93';
 
 export function createRecordTransfer(onImported, getRecords) {
     const dialog = document.createElement('dialog');
@@ -50,6 +51,7 @@ export function createRecordTransfer(onImported, getRecords) {
     let comparisons = new Map();
     let importAuthorization;
     let importProgress;
+    let deleteRecords = [];
     let previews = createContentPreviewScope();
     const status = message => {
         const output = document.querySelector('[data-data-transfer-status]');
@@ -92,7 +94,7 @@ export function createRecordTransfer(onImported, getRecords) {
         }).join('');
         dialog.querySelector('[data-record-transfer-empty]').hidden = filtered.length > 0;
         dialog.querySelector('[data-record-transfer-list]').hidden = !filtered.length;
-        dialog.querySelector('[data-record-transfer-empty]').textContent = records.length ? '没有匹配的日记，清除搜索后可查看全部记录。' : mode === 'export' ? '还没有可导出的日记，新增日记后再来备份。' : '备份中没有可导入的日记，请重新选择备份。';
+        dialog.querySelector('[data-record-transfer-empty]').textContent = records.length ? '没有匹配的日记，清除搜索后可查看全部记录。' : mode === 'delete' ? '还没有可删除的日记。' : mode === 'export' ? '还没有可导出的日记，新增日记后再来备份。' : '备份中没有可导入的日记，请重新选择备份。';
         dialog.querySelectorAll('input').forEach(control => { if (busy) control.disabled = true; });
         updateSelection();
     }
@@ -126,13 +128,15 @@ export function createRecordTransfer(onImported, getRecords) {
         records = sortBackupRecords(nextRecords);
         selected.clear();
         dialog.querySelector('input[type="search"]').value = '';
-        dialog.querySelector('input[type="search"]').placeholder = mode === 'export' ? '筛选要备份的日记' : '筛选要导入的日记';
-        dialog.querySelector('#recordTransferTitle').textContent = mode === 'export' ? '导出部分记录' : '导入部分记录';
-        dialog.querySelector('[data-record-transfer-note]').textContent = mode === 'export'
+        dialog.querySelector('input[type="search"]').placeholder = mode === 'delete' ? '筛选要删除的日记' : mode === 'export' ? '筛选要备份的日记' : '筛选要导入的日记';
+        dialog.querySelector('#recordTransferTitle').textContent = mode === 'delete' ? '批量删除日记' : mode === 'export' ? '导出部分记录' : '导入部分记录';
+        dialog.querySelector('[data-record-transfer-note]').textContent = mode === 'delete' ? '勾选要删除的日记。正文和独有附件会移入回收站，共用附件保留在原位置。'
+            : mode === 'export'
             ? '日记按日期由近到远排列。备份包含正文、图片和视频，导入时会验证导出时的访问密码。'
             : '勾选要合并的日记，有差异时采用备份，相同内容会跳过。其他记录、个人资料和密码保持不变。替换前的数据会留在回收站。';
         dialog.querySelector('[data-record-transfer-changes]').hidden = mode !== 'export';
-        dialog.querySelector('[data-record-transfer-submit]').textContent = mode === 'export' ? '导出所选记录' : '确认合并所选记录';
+        dialog.querySelector('[data-record-transfer-submit]').textContent = mode === 'delete' ? '删除所选日记' : mode === 'export' ? '导出所选记录' : '确认合并所选记录';
+        dialog.querySelector('[data-record-transfer-submit]').classList.toggle('recycle-purge', mode === 'delete');
         error('');
         render();
         dialog.showModal();
@@ -327,6 +331,44 @@ export function createRecordTransfer(onImported, getRecords) {
         staticMessage: '当前站点为静态只读页面，不提供部分记录或行程备份导出。'
     });
 
+    const authorizeDelete = createPasswordGate(async capability => {
+        if (!capability.batchDelete) throw new Error('请重启日记服务后使用批量删除。');
+        trigger = document.activeElement;
+        const response = await fetch(new URL('data/travel_data.json', window.location.href), { cache: 'no-store', signal: AbortSignal.timeout(20000) });
+        const current = await response.json();
+        if (!response.ok || !Array.isArray(current)) throw new Error('无法读取日记列表，请刷新后重试。');
+        deleteRecords = current;
+        const titles = new Map(getRecords().map(record => [record.desc_md, record.descTitle]));
+        comparisons = new Map();
+        entries = undefined;
+        open('delete', current.map(record => ({ ...record, descTitle: titles.get(record.desc_md) })));
+    }, { title: '删除日记验证', description: '验证访问密码后，选择要批量删除的日记。', staticMessage: '静态页面不支持删除日记。' });
+
+    async function removeSelected() {
+        setBusy(true);
+        error('');
+        try {
+            const paths = [...selected];
+            const hidden = paths.length - filteredRecords().filter(record => selected.has(record.desc_md)).length;
+            if (!await confirmFeedback(`将删除所选 ${paths.length} 篇日记${hidden ? `（含筛选外 ${hidden} 篇）` : ''}，正文与独有附件会存入回收站。`, { title: '删除所选日记？', confirmLabel: '移入回收站' })) return;
+            const capability = await detectWriterCapability();
+            if (!capability.batchDelete) throw new Error('请重启日记服务后使用批量删除。');
+            const response = await fetch(capability.endpoint, {
+                method: 'DELETE', credentials: 'same-origin', signal: AbortSignal.timeout(120000),
+                headers: { 'Content-Type': 'application/json', 'X-Travel-Token': capability.token },
+                body: JSON.stringify({ paths, expectedRecords: paths.map(name => deleteRecords.find(record => record.desc_md === name)) })
+            });
+            const result = await response.json();
+            if (!response.ok || !result.deleted) throw new Error(result.error || '未收到删除确认，请刷新核对后再操作。');
+            close();
+            selected.clear();
+            status(`已将 ${paths.length} 篇日记移入回收站。`);
+            try { await onImported(); }
+            catch { status('日记已删除，页面刷新失败，请手动刷新。'); }
+        } catch (failure) { error(failure.message); }
+        finally { setBusy(false); }
+    }
+
     dialog.addEventListener('input', event => {
         if (event.target.type === 'search') render();
     });
@@ -350,6 +392,7 @@ export function createRecordTransfer(onImported, getRecords) {
             void loadInventory({ mode: 'export' }).catch(failure => error(failure.message)).finally(() => { setBusy(false); });
         }
         if (event.target.closest('[data-record-transfer-submit]') && selected.size) {
+            if (mode === 'delete') { void removeSelected(); return; }
             const context = { mode, paths: [...selected], records, entries, comparisons };
             close();
             if (mode === 'import' && importAuthorization) {
@@ -390,6 +433,10 @@ export function createRecordTransfer(onImported, getRecords) {
     });
 
     return {
+        chooseDelete() {
+            if (busy || dialog.open) return;
+            return authorizeDelete();
+        },
         chooseExport(paths = []) {
             if (busy || dialog.open) return;
             return authorizeExport(paths);

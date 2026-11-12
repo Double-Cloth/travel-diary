@@ -1513,6 +1513,24 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list > li { padding: 20px 12px; border-bottom: 1px solid var(--hairline); overflow-wrap: anywhere; }
 .recycle-list > li.is-selected { background: var(--paper-100); }
 .recycle-list > .recycle-diary-group { padding: 24px 0; }
+.recycle-diary-history > summary { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; min-height: 44px; padding: 4px 12px 8px; color: var(--stamp); font-size: 15px; line-height: 1.6; cursor: pointer; }
+.recycle-diary-history > summary::before, .recycle-part-group > summary::before { content: ''; width: 7px; height: 7px; margin-right: 4px; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: rotate(-45deg); flex: 0 0 7px; align-self: center; }
+.recycle-diary-history[open] > summary::before, .recycle-part-group[open] > summary::before { transform: rotate(45deg); }
+.recycle-diary-history > summary::-webkit-details-marker, .recycle-part-group > summary::-webkit-details-marker { display: none; }
+.recycle-diary-history > summary > span { min-width: 0; overflow-wrap: anywhere; }
+.recycle-diary-history > summary a, .recycle-part-group > summary a { color: var(--stamp); text-underline-offset: 4px; }
+.recycle-diary-history > summary small, .recycle-part-group > summary > small { color: var(--ink-soft); font-size: 12px; font-weight: 400; }
+.recycle-part-picker { margin: 16px 0 0 30px; }
+.recycle-part-picker > summary { min-height: 44px; color: var(--stamp); cursor: pointer; line-height: 44px; }
+.recycle-part-picker > summary > small { margin-left: 8px; color: var(--ink-soft); font-size: 12px; }
+.recycle-part-group { margin-block: 8px; }
+.recycle-part-group > summary { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
+.recycle-part-group label { display: flex; align-items: center; gap: 10px; min-height: 44px; cursor: pointer; min-width: 0; overflow-wrap: anywhere; }
+.recycle-part-group input { flex: 0 0 20px; width: 20px; height: 20px; margin: 0; accent-color: var(--stamp); }
+.recycle-part-group label > span { min-width: 0; }
+.recycle-part-group .recycle-part-record { color: var(--stamp); }
+.recycle-part-files { list-style: none; margin: 0 0 12px 18px; padding-left: 14px; border-left: 1px solid var(--hairline); }
+.recycle-part-files small { display: block; color: var(--ink-soft); font-size: 12px; }
 .recycle-diary-group > h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 0; padding: 0 12px 8px; color: var(--stamp); font-size: 15px; font-weight: 500; line-height: 1.6; }
 .recycle-diary-group > h3 > a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .recycle-diary-group > h3 > a:hover { text-decoration-thickness: 2px; }
@@ -1618,8 +1636,8 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-manager summary { -webkit-tap-highlight-color: rgba(145, 66, 44, 0.12); }
 .recycle-list details small { color: var(--ink-soft); }
 .recycle-manager .paper-button { width: auto; min-width: 44px; min-height: 44px; padding: 8px 14px; font: inherit; font-size: 14px; line-height: 1.5; }
-.recycle-manager .recycle-purge { color: var(--stamp); border-color: rgba(145, 66, 44, 0.4); background: transparent; box-shadow: none; }
-.recycle-manager .recycle-purge:hover:not(:disabled) { background: rgba(145, 66, 44, 0.06); }
+.record-transfer .recycle-purge { color: var(--stamp); border-color: rgba(145, 66, 44, 0.4); background: transparent; box-shadow: none; }
+.record-transfer .recycle-purge:hover:not(:disabled) { background: rgba(145, 66, 44, 0.06); }
 .recycle-manager .paper-button:disabled { cursor: not-allowed; transform: none; }
 .recycle-manager .recycle-notice { margin: 12px 0 0; }
 .recycle-manager .media-empty { padding: 32px 0; color: var(--ink-soft); font-size: 14px; text-align: center; }
@@ -1636,6 +1654,8 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
     .recycle-manager .recycle-selection-actions > button { padding-inline: 8px; font-size: 13px; }
     .recycle-list > li { padding: 16px 4px; }
     .recycle-list > .recycle-diary-group { padding: 20px 0; }
+    .recycle-diary-history > summary { padding-inline: 4px; }
+    .recycle-part-picker { margin-left: 0; }
     .recycle-diary-group > h3 { padding-inline: 4px; }
     .recycle-list .recycle-group-note { margin-inline: 4px; }
     .recycle-history { margin-inline: 4px; padding-left: 12px; }

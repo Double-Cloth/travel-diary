@@ -1,5 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.92';
-import { recordIdentity } from './record-identity.mjs?v=2.1.92';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.93';
+import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.93';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
@@ -13,6 +13,88 @@ export function recycleFileType(path, mediaKind = () => '') {
     if (kind === 'video' || path.startsWith('data/videos/')) return '视频';
     if (/\.md$/i.test(path)) return '正文';
     return '其他文件';
+}
+
+// 信息与文件分别选择，共用文件只出现一次，索引由所选日记合并生成。
+export function recyclePartGroups(item) {
+    const full = item.kind === 'snapshot' || item.files.some(file => file.path === 'data/travel_data.json');
+    const records = new Map([...(item.records || []), ...(item.mediaReferences || []), ...(item.displayRecords || [])]
+        .filter(record => record?.desc_md).map(record => [record.desc_md, record]));
+    const metadata = new Set((full ? item.displayRecords || [] : item.records || []).map(record => record.desc_md));
+    const groups = new Map();
+    const ownersByPath = new Map();
+    for (const record of records.values()) {
+        const parts = metadata.has(record.desc_md) ? [{ key: `record:${record.desc_md}`, label: '日记信息', record }] : [];
+        groups.set(record.desc_md, { key: record.desc_md, label: recycleRecordLabel(record), record, parts });
+        for (const name of recordFilePaths([record])) {
+            if (!ownersByPath.has(name)) ownersByPath.set(name, []);
+            ownersByPath.get(name).push(record);
+        }
+    }
+    for (const file of item.files) {
+        if (file.path === 'data/travel_data.json') continue;
+        const owners = ownersByPath.get(file.path) || [];
+        const key = owners.length === 1 ? owners[0].desc_md : owners.length > 1 ? 'shared' : recycleFileType(file.path);
+        if (!groups.has(key)) groups.set(key, { key, label: owners.length > 1 ? '共用内容' : key, parts: [] });
+        groups.get(key).parts.push({ key: `file:${file.path}`, label: file.path.split('/').pop(), file });
+    }
+    return [...groups.values()].filter(group => group.parts.length);
+}
+
+export function selectRecycleParts(item, parts, currentRecords = []) {
+    if (parts === undefined) return item;
+    const groups = recyclePartGroups(item);
+    const available = new Map(groups.flatMap(group => group.parts).map(part => [part.key, part]));
+    if (!Array.isArray(parts) || !parts.length || new Set(parts).size !== parts.length || parts.some(key => !available.has(key))) {
+        throw new Error('请选择有效且不重复的恢复内容。');
+    }
+    const keys = new Set(parts);
+    const files = item.files.filter(file => keys.has(`file:${file.path}`));
+    const paths = new Set(files.map(file => file.path));
+    const records = [];
+    const references = [];
+    const displayRecords = [];
+    const bodyTargets = new Map();
+    const candidates = new Map([...(item.records || []), ...(item.mediaReferences || []), ...(item.displayRecords || [])]
+        .filter(record => record?.desc_md).map(record => [record.desc_md, record]));
+    const full = item.kind === 'snapshot' || item.files.some(file => file.path === 'data/travel_data.json');
+    for (const saved of candidates.values()) {
+        const group = groups.find(group => group.record?.desc_md === saved.desc_md);
+        const current = matchRecord(saved, currentRecords);
+        const metadata = keys.has(`record:${saved.desc_md}`);
+        const related = [...recordFilePaths([saved])].some(name => paths.has(name));
+        if (!metadata && !related) continue;
+        const ownFiles = group?.parts.some(part => part.file && keys.has(part.key));
+        // 整站共用文件本身不代表选中了全部历史使用者。
+        if (full && !metadata && !ownFiles) continue;
+        displayRecords.push(saved);
+        if (current && !metadata && paths.has(saved.desc_md)) bodyTargets.set(saved.desc_md, current.desc_md);
+        const complete = available.has(`record:${saved.desc_md}`);
+        // 新日记需要信息与正文才能正常阅读，附件仍严格按勾选范围恢复。
+        if (metadata || (!current && complete && ownFiles)) {
+            const restored = { ...saved };
+            if (current && !paths.has(saved.desc_md)) restored.desc_md = current.desc_md;
+            for (const [folder, list] of [['photo_folder', 'photos'], ['video_folder', 'videos']]) {
+                restored[folder] = current?.[folder] || saved[folder] || '';
+                const chosen = (saved[list] || []).filter(name => paths.has(`${saved[folder]}/${name}`));
+                restored[list] = [...new Set([...(current?.[list] || []), ...chosen])];
+            }
+            if (current) restored.media_order = current.media_order || [];
+            records.push(restored);
+            if (!current && !paths.has(saved.desc_md)) {
+                const body = item.files.find(file => file.path === saved.desc_md);
+                if (body) { files.push(body); paths.add(body.path); }
+            }
+        }
+        if (related && (current || item.mediaReferences?.some(record => record.desc_md === saved.desc_md))) references.push(saved);
+    }
+    const attachments = files.length > 0 && files.every(file => /^data\/(photos|videos)\//.test(file.path));
+    let kind = references.length ? 'record' : 'version';
+    if (attachments || item.kind === 'files') kind = 'files';
+    if (records.length) kind = 'record';
+    return { ...item, kind,
+        records, mediaReferences: references, displayRecords,
+        files: files.map(file => bodyTargets.has(file.path) ? { ...file, path: bodyTargets.get(file.path), sourcePath: file.path } : file) };
 }
 
 function recordIdentityResolver(candidates) {
@@ -77,7 +159,9 @@ export function groupRecycleItems(items, currentRecords = []) {
 export function recycleRestoreConflicts(items, currentRecords, selections) {
     if (selections.length < 2) return [];
     const selected = new Map(selections.map(selection => [selection.id, selection]));
-    const candidates = items.map(item => {
+    const candidates = items.map(original => {
+        const selection = selected.get(original.id);
+        const item = selection?.parts ? selectRecycleParts(original, selection.parts, currentRecords) : original;
         const target = selected.get(item.id)?.targetDescMd;
         return target ? { ...item, mediaReferences: currentRecords.filter(record => record.desc_md === target), displayRecords: [] } : item;
     });
