@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.94';
-import { createPasswordGate } from './record-password.js?v=2.1.94';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.94';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.94';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.94';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.94';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.94';
-import { recordIdentity } from './record-identity.mjs?v=2.1.94';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleDiaryGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.94';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.95';
+import { createPasswordGate } from './record-password.js?v=2.1.95';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.95';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.95';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.95';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.95';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.95';
+import { recordIdentity } from './record-identity.mjs?v=2.1.95';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleDiaryGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.95';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -43,10 +43,10 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
     dialog.innerHTML = `<div class="record-transfer-card">
         <header class="management-heading"><div><h2 id="recycleManagerTitle">回收站</h2><p>勾选内容后，可预览恢复变化、恢复或永久清除。</p></div><button class="paper-button management-secondary" type="button" data-recycle-close>关闭</button></header>
         <div class="recycle-toolbar"><p data-recycle-status></p><div class="recycle-toolbar-actions"><button class="paper-button management-secondary" type="button" data-recycle-refresh>刷新</button><button class="paper-button recycle-purge" type="button" data-recycle-clear disabled>清空回收站</button></div></div>
-        <div class="recycle-filter-bar"><div class="recycle-search-field"><label class="field-label" for="recycleSearch">筛选回收内容</label><div class="management-search"><input id="recycleSearch" type="search" autocomplete="off" data-recycle-search placeholder="搜索标题、类型、地点或文件路径"><button class="media-text-button" type="button" data-recycle-reset hidden>清除搜索</button></div></div><div class="media-selection-tools"><button class="paper-button management-secondary" type="button" data-recycle-all disabled>全选当前结果</button><button class="paper-button management-secondary" type="button" data-recycle-none disabled>全不选</button></div></div>
+        <div class="recycle-filter-bar"><div class="recycle-search-field"><label class="field-label" for="recycleSearch">筛选回收内容</label><div class="management-search"><input id="recycleSearch" type="search" autocomplete="off" data-recycle-search placeholder="搜索标题、类型、地点或文件路径"><button class="media-text-button" type="button" data-recycle-reset hidden>清除搜索</button></div></div><div class="media-selection-tools"><button class="paper-button management-secondary" type="button" data-recycle-all disabled>全选当前结果</button><button class="paper-button management-secondary" type="button" data-recycle-none disabled>取消选择</button></div></div>
         <p class="recycle-notice" data-recycle-notice role="status" aria-live="polite"></p><p data-recycle-error role="alert"></p>
-        <ul class="recycle-list" data-recycle-list></ul>
-        <footer class="management-footer recycle-selection"><p data-recycle-count role="status" aria-live="polite">尚未选择内容</p><div class="recycle-selection-actions"><button class="paper-button" type="button" data-recycle-restore disabled>恢复所选内容</button><button class="paper-button recycle-purge" type="button" data-recycle-purge-selected disabled>清除所选内容</button></div><p class="recycle-selection-note" data-recycle-selection-note>恢复前可展开预览；清除所选内容后无法找回。</p></footer></div>`;
+        <ul class="recycle-list" data-recycle-list tabindex="0" aria-label="回收内容"></ul>
+        <footer class="management-footer recycle-selection"><p data-recycle-count role="status" aria-live="polite">尚未选择内容</p><div class="recycle-selection-actions"><button class="paper-button recycle-restore" type="button" data-recycle-restore disabled>恢复所选内容</button><button class="paper-button recycle-purge" type="button" data-recycle-purge-selected disabled>永久清除所选</button></div><p class="recycle-selection-note" data-recycle-selection-note>恢复前可展开预览；清除所选内容后无法找回。</p></footer></div>`;
     document.body.append(dialog);
     let report;
     let grouping = { groups: [], recordsByItem: new Map() };
@@ -68,7 +68,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
     const directoryStates = new Map();
     const trees = new Map();
     let suspended = false;
-    let scrollTop = 0;
+    let scrollPosition;
     let returnFocus;
     const error = message => { dialog.querySelector('[data-recycle-error]').textContent = message; };
     const notice = message => { dialog.querySelector('[data-recycle-notice]').textContent = message; };
@@ -89,6 +89,13 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             control.disabled ||= !selectionSupported;
             control.checked = selected.has(control.value);
             control.closest('li').classList.toggle('is-selected', control.checked);
+        });
+        dialog.querySelectorAll('[data-recycle-item-status]').forEach(element => {
+            const state = selected.get(element.dataset.recycleItemStatus);
+            element.hidden = !state;
+            if (!state) return;
+            const scope = state.parts ? `已选 ${state.parts.length} 篇日记` : '已选整项';
+            element.textContent = `${scope} · ${state.phase === 'pending' ? '正在生成预览' : state.phase === 'error' ? '预览需处理' : '预览就绪'}`;
         });
         dialog.querySelector('[data-recycle-all]').disabled = busy || stale || !selectionSupported || !filteredItems().some(item => !selected.has(item.id));
         dialog.querySelector('[data-recycle-none]').disabled = busy || !selected.size;
@@ -123,6 +130,8 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const group = grouping.groups.find(group => group.key === element.dataset.recycleHistoryCount);
             const count = group.items.filter(item => selected.has(item.id)).length;
             element.textContent = count ? `已选 ${count} 次` : '';
+            element.hidden = !count;
+            element.closest('[data-recycle-diary]').classList.toggle('has-selection', count > 0);
         });
         dialog.querySelectorAll('[data-recycle-target-link]').forEach(element => {
             const id = element.closest('[data-recycle-item]').dataset.recycleItem;
@@ -183,6 +192,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const id = control.closest('[data-recycle-item]').dataset.recycleItem;
             control.checked = selected.has(id) && (!partSelections.has(id) || partSelections.get(id).has(control.value));
             control.disabled = busy || stale || !partsSupported;
+            control.closest('summary').classList.toggle('is-selected', control.checked);
         });
         dialog.querySelectorAll('[data-recycle-select]').forEach(control => {
             control.indeterminate = selected.has(control.value) && partSelections.has(control.value);
@@ -211,7 +221,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const row = document.createElement('li');
             const open = directoryStates.get(directoryKey(item.id, child.path)) ?? false;
             const selectable = partsSupported && child.record && itemPartGroups(item).some(group => group.key === child.record.desc_md);
-            const choice = selectable ? `<input type="checkbox" data-recycle-diary-select value="${escapeHtml(child.record.desc_md)}" aria-label="恢复日记 ${escapeHtml(child.name)}">` : '';
+            const choice = selectable ? `<label class="recycle-diary-selector"><input type="checkbox" data-recycle-diary-select value="${escapeHtml(child.record.desc_md)}" aria-label="选择日记 ${escapeHtml(child.name)}"></label>` : '';
             row.innerHTML = `<details class="recycle-directory" data-recycle-folder="${escapeHtml(child.path)}"${open ? ' open' : ''}>
                 <summary${selectable ? ' class="recycle-diary-choice"' : ''} title="${escapeHtml(child.name)}">${choice}${folderIcon}<span${child.record ? ' class="recycle-directory-record"' : ''}>${child.record ? recordLink(child.record, child.name, undefined, item) : escapeHtml(child.name)}</span><small><span>${child.count ? `${child.count} 个文件` : '仅日记信息'}</span><span>${sizeLabel(child.totalBytes)}</span></small></summary>
                 <ul class="recycle-tree" data-recycle-files="${item.id}" data-recycle-directory="${escapeHtml(child.path)}" style="--recycle-depth: ${Math.min(child.depth, 4)}" aria-label="${escapeHtml(child.name)}"></ul></details>`;
@@ -278,7 +288,8 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             <div class="recycle-item-header">
             <label class="recycle-item-choice"><input type="checkbox" data-recycle-select value="${item.id}" aria-label="选择 ${escapeHtml(item.title)}，${escapeHtml(new Date(item.createdAt).toLocaleString())}"><strong>${escapeHtml(item.title)}</strong></label>
             <button class="media-text-button recycle-item-toggle" type="button" data-recycle-toggle="${item.id}" aria-controls="recycleBody-${item.id}" aria-expanded="${expandedItems.has(item.id)}" aria-label="${expandedItems.has(item.id) ? '收起' : '展开'} ${escapeHtml(item.title)}">${expandedItems.has(item.id) ? '收起' : '展开'}</button>
-            <small class="recycle-item-meta"><span>${types[item.kind] || '文件'}</span>${item.records.length ? `<span>${item.records.length} 篇日记</span>` : ''}<span>${item.files.length} 个文件</span><span>${sizeLabel(item.files.reduce((sum, file) => sum + file.size, 0))}</span><time>${escapeHtml(new Date(item.createdAt).toLocaleString())}</time></small>
+            <small class="recycle-item-meta"><span>${types[item.kind] || '文件'}</span>${item.records.length ? `<span>${item.records.length} 篇日记</span>` : ''}<span>${item.files.length} 个文件</span><span>${sizeLabel(item.files.reduce((sum, file) => sum + file.size, 0))}</span><time datetime="${escapeHtml(item.createdAt)}">${escapeHtml(new Date(item.createdAt).toLocaleString())}</time></small>
+            <p class="recycle-item-status" data-recycle-item-status="${item.id}" hidden></p>
             </div>
             <p class="recycle-version-conflict" id="recycleConflict-${item.id}" data-recycle-conflict="${item.id}" hidden>已选中同篇日记的其他回收内容，恢复前请只保留一个版本。</p>
             <div class="recycle-item-body" id="recycleBody-${item.id}"${expandedItems.has(item.id) ? '' : ' hidden'}>
@@ -530,7 +541,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
     function suspend() {
         if (!dialog.open) return;
         suspended = true;
-        scrollTop = dialog.scrollTop;
+        scrollPosition = { paper: dialog.scrollTop, list: dialog.querySelector('[data-recycle-list]').scrollTop };
         dialog.close();
     }
     const authorizeOpen = createPasswordGate(async () => {
@@ -539,7 +550,8 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             suspended = false;
             dialog.showModal();
             returnFocus?.focus({ preventScroll: true });
-            dialog.scrollTop = scrollTop;
+            dialog.scrollTop = scrollPosition.paper;
+            dialog.querySelector('[data-recycle-list]').scrollTop = scrollPosition.list;
             return;
         }
         trigger = document.activeElement;
