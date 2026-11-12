@@ -42,7 +42,7 @@ test('恢复变化按日记和信息、正文、附件分层，共用附件仅�
     const tree = buildRestorePreviewTree(changes);
     assert.equal(tree.get('').count, 7);
     assert.deepEqual(tree.get(`record:${records[0].desc_md}`).directories.map(node => node.name), ['日记信息', '正文', '图片']);
-    assert.deepEqual(tree.get('shared/type:2').files.map(file => file.path), ['data/photos/trip/shared.jpg']);
+    assert.deepEqual(tree.get('shared').files.map(file => file.path), ['data/photos/trip/shared.jpg']);
     const info = tree.get(`record:${records[0].desc_md}/type:0`).files[0];
     assert.deepEqual(info.comparison.fields, ['locality']);
     assert.equal(info.comparison.markdownChanged, false);
@@ -56,7 +56,7 @@ test('恢复目录覆盖移除附件、个人资料和同名独立文件', () =>
     const record = { ...previous, photo_folder: 'data/photos/new', photos: ['same.jpg'] };
     const comparison = { status: 'changed', previous, fields: [], markdownChanged: false, media: ['data/photos/old/same.jpg', 'data/photos/new/same.jpg'], previousMediaPaths: new Set(['data/photos/old/same.jpg']), incomingMediaPaths: new Set(['data/photos/new/same.jpg']) };
     const tree = buildRestorePreviewTree([{ record, comparison }, { record: { desc_md: 'data/profile/owner-name.txt' }, comparison: { status: 'removed', fields: [], markdownChanged: true, media: [] } }]);
-    assert.equal(tree.get(`record:${record.desc_md}/type:2`).files.length, 2);
+    assert.equal(tree.get(`record:${record.desc_md}`).files.length, 2);
     assert.equal(tree.get('type:4').files[0].path, 'data/profile/owner-name.txt');
     assert.equal(tree.get('').count, 3);
 });
@@ -98,7 +98,7 @@ test('原路径和逻辑分类搜索标记祖先，旧批次和空批次可正�
     const tree = buildRecycleTree(files, ' OLD.jpg ');
     for (const name of ['', 'type:1']) assert.equal(tree.get(name).matches, true);
     assert.equal(tree.get('type:3').matches, false);
-    assert.equal(buildRecycleTree(files, '图片').get('type:1').matches, true);
+    assert.equal(buildRecycleTree(files, '图片').get('').matches, true);
     const empty = buildRecycleTree([]).get('');
     assert.equal(empty.count, 0);
     assert.equal(empty.totalBytes, 0);
@@ -110,11 +110,11 @@ test('原路径和逻辑分类搜索标记祖先，旧批次和空批次可正�
 test('真实路径的深度与文件目录同名不影响逻辑层级', () => {
     const deepPath = `data/${Array(1500).fill('level').join('/')}/a.txt`;
     const tree = buildRecycleTree([{ path: deepPath, size: 1 }, { path: 'data/old', size: 2 }, { path: 'data/old/a.txt', size: 3 }]);
-    assert.equal(tree.size, 2);
-    assert.equal(tree.get('type:5').depth, 1);
+    assert.equal(tree.size, 1);
+    assert.equal(tree.get('').depth, 0);
     assert.equal(tree.get('').count, 3);
     assert.equal(tree.get('').totalBytes, 6);
-    assert.equal(tree.get('type:5').files.length, 3);
+    assert.equal(tree.get('').files.length, 3);
 });
 
 test('多篇日记按精确引用分组，共用文件仅统计一次，独立文件保留', () => {
@@ -133,7 +133,7 @@ test('多篇日记按精确引用分组，共用文件仅统计一次，独立�
     assert.equal(tree.get('record:data/b.md').name, '2026-11-01 · 南京');
     assert.equal(tree.get('record:data/a.md/type:1').files[0].path, files[2].path);
     assert.equal(tree.get('record:data/b.md/type:1').files[0].path, files[3].path);
-    assert.equal(tree.get('shared/type:1').files[0].path, files[4].path);
+    assert.equal(tree.get('shared').files[0].path, files[4].path);
     assert.equal(tree.get('shared').count, 1);
     assert.equal(tree.get('type:1').files[0].path, files[5].path);
     assert.equal(tree.get('record:data/a.md').matches, true);
@@ -176,7 +176,8 @@ test('同篇日记的多次删除合并展示，正文移动和新旧标识兼�
 test('外层已有单篇日记时恢复目录省略重复日记层，多篇变化仍保留归属', () => {
     const changes = [{ record: { date: '2026-11-01', desc_md: 'data/a.md' }, comparison: { status: 'changed', fields: [], markdownChanged: true, media: [] } }];
     const tree = buildRestorePreviewTree(changes, () => '', { groupSingleRecord: false });
-    assert.deepEqual(tree.get('').directories.map(node => node.name), ['正文']);
+    assert.deepEqual(tree.get('').directories, []);
+    assert.equal(tree.get('').files[0].path, changes[0].record.desc_md);
     const multiple = buildRestorePreviewTree([...changes, { ...changes[0], record: { date: '2026-11-02', desc_md: 'data/b.md' } }], () => '', { groupSingleRecord: false });
     assert.deepEqual(multiple.get('').directories.map(node => node.name), ['2026-11-01', '2026-11-02']);
 });
@@ -311,4 +312,91 @@ test('仅共用附件的日记仍可整篇勾选，空正文与纯信息日记�
     assert.equal(tree.get('').count, 0);
     assert.equal(buildRecycleTree([], '', { records: [a, b] }).get('').directories.length, 0);
     assert.equal(buildRecycleTree([], '', { records: [a], includeEmptyRecords: true, groupSingleRecord: true }).get('').directories.length, 1);
+});
+
+test('单一分类直接展示全部文件，保留排序、搜索、零字节与原始对象', () => {
+    const files = ['10.jpg', '2.jpg', 'empty.jpg'].map((name, index) => ({ path: `data/photos/trip/${name}`, size: index }));
+    const before = structuredClone(files);
+    for (const query of ['', '图片', 'trip/10.jpg', '不存在']) {
+        const tree = buildRecycleTree(files, query);
+        const root = tree.get('');
+        assert.equal(tree.size, 1);
+        assert.deepEqual(root.directories, []);
+        assert.deepEqual(root.files, [files[1], files[0], files[2]]);
+        assert.equal(root.files[1], files[0]);
+        assert.equal(root.count, 3);
+        assert.equal(root.totalBytes, 3);
+        assert.equal(root.matches, Boolean(query && query !== '不存在'));
+    }
+    assert.deepEqual(files, before);
+});
+
+test('单篇日记的单一分类压扁后仍保留按篇选择入口，多分类继续分层', () => {
+    const record = { date: '2026-11-12', desc_md: 'data/a.md', photo_folder: 'data/photos/a', photos: ['a.jpg'] };
+    const body = { path: record.desc_md, size: 0 };
+    const photo = { path: 'data/photos/a/a.jpg', size: 8 };
+    const options = { records: [record], groupSingleRecord: true, includeEmptyRecords: true };
+    const tree = buildRecycleTree([body], '正文', options);
+    const diary = tree.get(`record:${record.desc_md}`);
+    assert.deepEqual(tree.get('').directories, [diary]);
+    assert.equal(diary.record, record);
+    assert.equal(diary.depth, 1);
+    assert.deepEqual(diary.directories, []);
+    assert.deepEqual(diary.files, [body]);
+    assert.equal(diary.matches, true);
+    assert.equal(tree.size, 2);
+    const mixed = buildRecycleTree([body, photo], '', options).get(diary.path);
+    assert.deepEqual(mixed.directories.map(node => node.name), ['正文', '图片']);
+    assert.ok(mixed.directories.every(node => node.depth === 2));
+    assert.equal(mixed.count, 2);
+    assert.equal(mixed.totalBytes, 8);
+});
+
+test('共用内容仅移除单一分类，空日记入口、未知文件和恢复范围保持独立', () => {
+    const a = { desc_md: 'data/a.md', photo_folder: 'data/photos/trip', photos: ['shared.jpg'] };
+    const b = { ...a, desc_md: 'data/b.md' };
+    const shared = { path: 'data/photos/trip/shared.jpg', size: 10 };
+    const unknown = { path: 'data/photos/unknown.jpg', size: 5 };
+    const item = { kind: 'snapshot', records: [], displayRecords: [a, b], files: [shared, unknown] };
+    const tree = buildRecycleTree(item.files, '图片', { displayRecords: item.displayRecords, includeEmptyRecords: true });
+    const root = tree.get('');
+    assert.deepEqual(root.directories.map(node => node.path), ['record:data/a.md', 'record:data/b.md', 'shared', 'type:1']);
+    assert.equal(root.count, 2);
+    assert.equal(root.totalBytes, 15);
+    assert.equal(tree.get('record:data/a.md').count, 0);
+    assert.equal(tree.get('record:data/b.md').record, b);
+    assert.deepEqual(tree.get('shared').directories, []);
+    assert.deepEqual(tree.get('shared').files, [shared]);
+    assert.equal(tree.get('shared').matches, true);
+    assert.deepEqual(tree.get('type:1').files, [unknown]);
+    assert.deepEqual(selectRecycleParts(item, ['diary:data/a.md'], [a, b]).mediaReferences, [a]);
+    const sharedOnly = buildRecycleTree([shared], '', { records: [a, b] });
+    assert.deepEqual(sharedOnly.get('').directories, [sharedOnly.get('shared')]);
+    assert.deepEqual(sharedOnly.get('shared').files, [shared]);
+});
+
+test('恢复预览同步压扁单一分类且保留差异数据、日记链接归属和文件索引', () => {
+    const changes = ['a', 'b'].map(name => ({
+        record: { date: '2026-11-12', desc_md: `data/${name}.md` },
+        comparison: { status: 'changed', fields: [], markdownChanged: true, markdown: '# 正文', media: [] }
+    }));
+    const before = structuredClone(changes);
+    const tree = buildRestorePreviewTree(changes);
+    assert.equal(tree.size, 3);
+    assert.equal(tree.get('').count, 2);
+    for (const change of changes) {
+        const diary = tree.get(`record:${change.record.desc_md}`);
+        assert.equal(diary.record, change.record);
+        assert.deepEqual(diary.directories, []);
+        assert.equal(diary.files[0].path, change.record.desc_md);
+        assert.equal(diary.files[0].record, change.record);
+        assert.equal(diary.files[0].comparison.markdownChanged, true);
+        assert.equal(diary.files[0].comparison.markdown, '# 正文');
+    }
+    const single = buildRestorePreviewTree([changes[0]], () => '', { groupSingleRecord: false });
+    assert.equal(single.size, 1);
+    assert.equal(single.get('').files[0].path, changes[0].record.desc_md);
+    const info = buildRestorePreviewTree([{ ...changes[0], comparison: { status: 'changed', fields: ['title'], markdownChanged: false, media: [] } }]);
+    assert.equal(info.get(`record:${changes[0].record.desc_md}`).files[0].label, '记录信息');
+    assert.deepEqual(changes, before);
 });
