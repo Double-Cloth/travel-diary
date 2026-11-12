@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.84';
-import { createPasswordGate } from './record-password.js?v=2.1.84';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.84';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.84';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.84';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.84';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.84';
-import { recordIdentity } from './record-identity.mjs?v=2.1.84';
-import { buildRecycleTree } from './recycle-tree.mjs?v=2.1.84';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.85';
+import { createPasswordGate } from './record-password.js?v=2.1.85';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.85';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.85';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.85';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.85';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.85';
+import { recordIdentity } from './record-identity.mjs?v=2.1.85';
+import { buildRecycleTree } from './recycle-tree.mjs?v=2.1.85';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -147,7 +147,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const row = document.createElement('li');
             const open = directoryStates.get(directoryKey(item.id, child.path)) ?? (child.depth <= 2 || child.matches);
             row.innerHTML = `<details class="recycle-directory" data-recycle-folder="${escapeHtml(child.path)}"${open ? ' open' : ''}>
-                <summary title="${escapeHtml(child.path)}"><span>${escapeHtml(child.name)}/</span><small>${child.count} 个文件 · ${sizeLabel(child.totalBytes)}</small></summary>
+                <summary title="${escapeHtml(child.path)}"><svg class="recycle-node-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M3 9h18"/></svg><span>${escapeHtml(child.name)}</span><small><span>${child.count} 个文件</span><span>${sizeLabel(child.totalBytes)}</span></small></summary>
                 <ul class="recycle-tree" data-recycle-files="${item.id}" data-recycle-directory="${escapeHtml(child.path)}" style="--recycle-depth: ${Math.min(child.depth, 4)}" aria-label="${escapeHtml(child.path)}"></ul></details>`;
             list.append(row);
         }
@@ -160,13 +160,19 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const row = document.createElement('li');
             row.className = 'recycle-file';
             row.title = file.path;
-            try { row.append(await scope.file({ name: file.path, url: recycleUrl(item.id, file.path), detail: mediaKind(file.path) ? `${file.path} · ${sizeLabel(file.size)}` : sizeLabel(file.size), collapsible: true })); }
+            const kind = mediaKind(file.path);
+            try { row.append(await scope.file({ name: file.path, url: recycleUrl(item.id, file.path), detail: kind ? `${kind === 'image' ? '图片' : '视频'} · ${sizeLabel(file.size)}` : '', collapsible: true })); }
             catch (failure) { row.textContent = `${file.path}：${failure.message}`; }
             if (scope !== previews || !list.isConnected || (!dialog.open && !suspended)) return;
-            if (/\.md$/i.test(file.path)) {
-                const label = row.querySelector('.content-file-preview > summary > span, .content-file-heading > span');
-                if (label) label.innerHTML = `${recordLink({ desc_md: file.path }, file.path.split('/').pop())} · ${sizeLabel(file.size)}`;
+            const summary = row.querySelector('.content-file-preview > summary');
+            if (summary) {
+                if (/\.md$/i.test(file.path)) summary.querySelector('span').innerHTML = recordLink({ desc_md: file.path }, file.path.split('/').pop());
+                summary.insertAdjacentHTML('afterbegin', '<svg class="recycle-node-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 3H5v18h14V8Z"/><path d="M14 3v5h5M8 12h8M8 16h6"/></svg>');
+                const size = document.createElement('small');
+                size.textContent = sizeLabel(file.size);
+                summary.append(size);
             }
+            row.querySelector('a.media-file-link')?.setAttribute('aria-label', `查看文件：${file.path}`);
             list.append(row);
         }
     }

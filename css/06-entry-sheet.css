@@ -1538,19 +1538,38 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list details[open] > summary::before { transform: rotate(45deg); }
 .recycle-list summary > span { flex: 1; min-width: 0; }
 .recycle-list summary small { flex: 0 0 auto; font-size: 12px; line-height: inherit; }
-/* 同级目录、文件与展开预览共用纸面的虚线分隔。 */
+/* 预览分隔与目录层级线分别承载内容边界和父子关系。 */
 .recycle-preview-change + .recycle-preview-change,
 .recycle-list details.content-file-preview > .content-file-body { border-top: 1px dashed var(--hairline); }
 .recycle-tree { list-style: none; margin: 0; padding: 0; min-width: 0; }
-.recycle-tree > li { min-width: 0; }
-.recycle-tree > li + li { border-top: 1px dashed var(--hairline); }
-.recycle-tree > li > .recycle-directory > summary { padding-inline-start: calc(var(--recycle-depth) * 12px); }
-.recycle-tree > li > .recycle-directory > summary > span { font-weight: 600; }
-.recycle-tree > .recycle-file { padding: 12px 0 12px calc(var(--recycle-depth) * 12px); }
-.recycle-tree > .recycle-file:has(> .content-file-preview) { padding-block: 0; }
-.recycle-tree .recycle-directory > summary { flex-wrap: wrap; }
-.recycle-tree .recycle-directory > summary > small { margin-inline-start: auto; font-variant-numeric: tabular-nums; }
-.recycle-directory > summary:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+.recycle-contents { padding-block: 4px 12px; }
+.recycle-tree > li { position: relative; min-width: 0; }
+.recycle-tree[data-recycle-directory]:not([data-recycle-directory=""]) > li::before { content: ''; position: absolute; inset-block: 0; inset-inline-start: calc(var(--recycle-depth) * 16px - 2px); border-inline-start: 1px solid var(--hairline); pointer-events: none; }
+.recycle-tree[data-recycle-directory]:not([data-recycle-directory=""]) > li:last-child::before { height: 22px; }
+.recycle-tree > li > .recycle-directory > summary,
+.recycle-tree > .recycle-file > .content-file-preview > summary { display: grid; grid-template-columns: 10px 18px minmax(0, 1fr) auto; gap: 8px; min-height: 44px; padding: 8px 8px 8px calc(var(--recycle-depth) * 16px + 8px); border-radius: 4px; overflow-wrap: anywhere; }
+.recycle-tree .recycle-directory > summary > span { font-size: 13px; font-weight: 600; }
+.recycle-tree .recycle-directory > summary > small { display: flex; gap: 12px; text-align: end; font-variant-numeric: tabular-nums; }
+.recycle-tree .recycle-directory > summary > small > span:first-child { min-width: 60px; }
+.recycle-tree .recycle-directory > summary > small > span:last-child { min-width: 68px; }
+.recycle-tree .recycle-node-icon { display: block; width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; color: var(--ink-soft); }
+.recycle-tree .recycle-directory[open] > summary { color: var(--stamp); }
+.recycle-tree .recycle-directory[open] > summary > .recycle-node-icon { color: inherit; }
+.recycle-tree .recycle-directory > summary:hover,
+.recycle-tree > .recycle-file > .content-file-preview > summary:hover { background: rgba(142, 102, 52, 0.06); }
+.recycle-tree > .recycle-file { padding: 4px 8px 4px calc(var(--recycle-depth) * 16px + 26px); overflow-wrap: anywhere; }
+.recycle-tree > .recycle-file:has(> .content-file-preview) { padding: 0; }
+.recycle-tree > .recycle-file > .content-file-preview > summary { color: var(--ink); }
+.recycle-tree > .recycle-file > .content-file-preview > summary > small { font-variant-numeric: tabular-nums; }
+.recycle-tree > .recycle-file > .content-file-preview > .content-file-body { margin-inline-start: min(calc(var(--recycle-depth) * 16px + 26px), 56px); padding-block: 12px; }
+.recycle-tree .media-file-link { min-height: 52px; gap: 10px; padding: 4px 8px; }
+.recycle-tree .media-file-thumbnail { flex-basis: 44px; height: 36px; }
+.recycle-tree .media-file-play { width: 20px; height: 20px; }
+.recycle-tree .media-file-description { gap: 0; padding: 0; }
+.recycle-tree .media-file-name { font-size: 13px; }
+.recycle-tree .media-file-detail { font-variant-numeric: tabular-nums; }
+.recycle-directory > summary:focus-visible,
+.recycle-tree .content-file-preview > summary:focus-visible { outline: 2px solid var(--stamp); outline-offset: -2px; }
 .recycle-list .content-file-heading { margin: 0; padding: 12px 0; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
 .recycle-list a:not(.media-file-link) { color: var(--stamp); text-decoration: underline; text-underline-offset: 3px; }
 .recycle-list a:focus-visible, .recycle-contents li:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
@@ -1594,6 +1613,11 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
     .recycle-list > li { padding: 16px 4px; }
     .recycle-item-meta time { flex-basis: 100%; }
     .recycle-item-body { margin-left: 0; }
+    .recycle-tree .recycle-directory > summary { grid-template-columns: 10px 18px minmax(0, 1fr); gap: 2px 8px; }
+    .recycle-tree .recycle-directory > summary > small { grid-column: 3; justify-content: flex-start; gap: 10px; text-align: start; }
+    .recycle-tree .recycle-directory > summary > small > span { min-width: 0; }
+    .recycle-tree > .recycle-file > .content-file-preview > summary { grid-template-columns: 10px 18px minmax(0, 1fr); gap: 2px 8px; }
+    .recycle-tree > .recycle-file > .content-file-preview > summary > small { grid-column: 3; }
     .management-heading { gap: 12px; }
 }
 @media (max-width: 760px) {
