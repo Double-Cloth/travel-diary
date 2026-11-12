@@ -1,5 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.106';
-import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.106';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.107';
+import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.107';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
@@ -62,18 +62,26 @@ export function recycleSelectionGroups(item) {
     const parts = item.files.filter(file => file.path.startsWith('data/profile/'))
         .map(file => ({ key: `file:${file.path}`, file }));
     if (parts.length) groups.push({ key: 'profile', label: '个人资料', parts });
+    const index = item.files.find(file => file.path === 'data/travel_data.json');
+    if (index) groups.push({ key: 'index', label: '日记索引', parts: [{ key: `file:${index.path}`, file: index }] });
     return groups;
 }
 
 export function selectRecycleParts(item, parts, currentRecords = []) {
     if (parts === undefined) return item;
-    const groupSelection = Array.isArray(parts) && parts.some(key => key === 'profile' || typeof key === 'string' && key.startsWith('diary:'));
+    const groupSelection = Array.isArray(parts) && parts.some(key => key === 'profile' || key === 'index' || typeof key === 'string' && key.startsWith('diary:'));
     let selectedDiaries;
     if (groupSelection) {
         const choices = new Map(recycleSelectionGroups(item).map(group => [group.key, group]));
         if (new Set(parts).size !== parts.length || parts.some(key => !choices.has(key))) throw new Error('请选择有效且不重复的恢复内容。');
         selectedDiaries = new Set(parts.flatMap(key => choices.get(key).record ? [choices.get(key).record.desc_md] : []));
         parts = [...new Set(parts.flatMap(key => choices.get(key).parts.map(part => part.key)))];
+        // 整份索引已包含全部元数据，同时勾选日记时只补回其归档文件。
+        if (parts.includes('file:data/travel_data.json')) {
+            const keys = new Set(parts);
+            return { ...item, kind: 'version', records: [], mediaReferences: [], displayRecords: [],
+                files: item.files.filter(file => keys.has(`file:${file.path}`)) };
+        }
     }
     const groups = recyclePartGroups(item);
     const available = new Map(groups.flatMap(group => group.parts).map(part => [part.key, part]));

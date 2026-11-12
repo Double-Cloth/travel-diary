@@ -144,6 +144,15 @@ test('文件列表和附件顺序逐项显示位置、类型及特殊文件名�
     assert.doesNotMatch(html, /<a>|photo:|video:/);
     assert.match(html, /record-diff-line-number">4<\/span>/);
     assert.match(html, /record-diff-line-number">7<\/span>/);
+    const groups = [...html.matchAll(/<section class="record-diff-field-group"><h4>(.*?)<\/h4>([\s\S]*?)<\/section>/g)];
+    assert.deepEqual(groups.map(group => group[1]), ['图片列表', '视频列表', '附件顺序']);
+    assert.match(groups[0][2], /图片列表 \[2\]/);
+    assert.doesNotMatch(groups[0][2], /视频列表|附件顺序/);
+    assert.match(groups[1][2], /视频列表 \[1\]/);
+    assert.doesNotMatch(groups[1][2], /图片列表|附件顺序/);
+    assert.match(groups[2][2], /附件顺序 \[3\]/);
+    assert.doesNotMatch(groups[2][2], /图片列表|视频列表/);
+    assert.equal((html.match(/class="record-diff-legend"/g) || []).length, 1);
     const removed = renderRecordDifference({ ...record, photos: [], media_order: [] }, { ...comparison, previous: record }, { numberedFields: true });
     assert.match(removed, /图片列表  \[\]/);
     assert.match(removed, /附件顺序  \[\]/);

@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.106';
-import { createPasswordGate } from './record-password.js?v=2.1.106';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.106';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.106';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.106';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.106';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.106';
-import { recordIdentity } from './record-identity.mjs?v=2.1.106';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleSelectionGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.106';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.107';
+import { createPasswordGate } from './record-password.js?v=2.1.107';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.107';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.107';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.107';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.107';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.107';
+import { recordIdentity } from './record-identity.mjs?v=2.1.107';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleSelectionGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.107';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -99,7 +99,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             element.hidden = !state;
             if (!state) return;
             const count = state.parts?.filter(key => key.startsWith('diary:')).length;
-            const scope = state.parts ? `已选${[count ? `${count} 篇日记` : '', state.parts.includes('profile') ? '个人资料' : ''].filter(Boolean).join('及')}` : '已选整项';
+            const scope = state.parts ? `已选${[count ? `${count} 篇日记` : '', state.parts.includes('profile') ? '个人资料' : '', state.parts.includes('index') ? '日记索引' : ''].filter(Boolean).join('及')}` : '已选整项';
             element.textContent = `${scope} · ${state.phase === 'pending' ? '正在生成预览' : state.phase === 'error' ? '预览需处理' : '预览就绪'}`;
         });
         dialog.querySelector('[data-recycle-all]').disabled = busy || stale || !selectionSupported || !filteredItems().some(item => !selected.has(item.id));
@@ -112,7 +112,8 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         const restoreItems = items.map(item => selectRecycleParts(item, selected.get(item.id).parts, report.currentRecords));
         const pending = [...selected.values()].filter(state => state.phase === 'pending').length;
         const failed = [...selected.values()].filter(state => state.phase === 'error').length;
-        const exclusive = items.length > 1 && items.some(item => !selected.get(item.id).parts && (item.kind === 'snapshot' || item.files.some(file => file.path === 'data/travel_data.json')));
+        const exclusive = items.length > 1 && restoreItems.some(item => item.kind === 'snapshot' || item.files.some(file => file.path === 'data/travel_data.json'));
+        const indexSelected = [...selected.values()].some(state => state.parts?.includes('index'));
         const conflicts = recycleRestoreConflicts(report?.items || [], report?.currentRecords || [], [...selected.values()]);
         const conflictingIds = new Set(conflicts.flatMap(group => group.items.map(item => item.id)));
         dialog.querySelectorAll('[data-recycle-conflict]').forEach(element => {
@@ -125,11 +126,11 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         dialog.querySelector('[data-recycle-restore]').disabled = busy || stale || !selectionSupported || !items.length || pending > 0 || failed > 0 || exclusive || conflicts.length > 0;
         const selectionNote = dialog.querySelector('[data-recycle-selection-note]');
         selectionNote.dataset.recycleSelectionIssue = String(exclusive || conflicts.length > 0 || failed > 0);
-        selectionNote.textContent = exclusive ? '整站数据或包含日记目录的旧版本需要单独恢复；也可勾选目录中的日记或个人资料单独恢复。' : conflicts.length ? `同一篇日记每次只能恢复一个版本。请调整「${conflicts.map(group => recycleRecordLabel(group.record)).join('」「')}」的勾选项，保留一个后恢复。` : failed ? '请处理所选项目中的提示，预览全部就绪后才能恢复。' : partial ? '仅恢复勾选的日记、归档附件及个人资料，原回收批次完整保留。永久清除需勾选整个回收项目。' : '恢复前可展开预览；清除所选内容后无法找回。';
+        selectionNote.textContent = exclusive ? '整站数据或日记索引每次只能恢复一个批次，请调整所选项目。' : conflicts.length ? `同一篇日记每次只能恢复一个版本。请调整「${conflicts.map(group => recycleRecordLabel(group.record)).join('」「')}」的勾选项，保留一个后恢复。` : failed ? '请处理所选项目中的提示，预览全部就绪后才能恢复。' : indexSelected ? '将替换当前整份日记索引，回退全部日记信息和附件引用。正文、附件及个人资料按各自勾选范围恢复，原回收批次完整保留。' : partial ? '仅恢复勾选的日记、归档附件及个人资料，原回收批次完整保留。永久清除需勾选整个回收项目。' : '恢复前可展开预览；清除所选内容后无法找回。';
         syncPartControls();
         dialog.querySelectorAll('[data-recycle-mode-note]').forEach(element => {
             const id = element.closest('[data-recycle-item]').dataset.recycleItem;
-            element.textContent = selected.get(id)?.parts ? '仅恢复勾选的日记、归档附件及个人资料，原回收批次完整保留。' : '勾选整个项目可恢复全部日记和个人资料；勾选下方日记或个人资料可单独恢复。被替换的当前内容会先存入回收站。';
+            element.textContent = selected.get(id)?.parts?.includes('index') ? '日记索引将整份替换，回退全部日记信息和附件引用。原回收批次完整保留。' : selected.get(id)?.parts ? '仅恢复勾选的日记、归档附件及个人资料，原回收批次完整保留。' : '勾选整个项目可恢复全部日记和个人资料，也可单独勾选日记、个人资料或日记索引。被替换的当前内容会先存入回收站。';
         });
         dialog.querySelectorAll('[data-recycle-history-count]').forEach(element => {
             const group = grouping.groups.find(group => group.key === element.dataset.recycleHistoryCount);
@@ -298,12 +299,22 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             row.className = 'recycle-file';
             row.title = file.path;
             const bodyLabel = singleBody && recycleFileType(file.path, mediaKind) === '正文' ? '正文' : '';
-            try { row.append(await filePreview(file, scope, { url: recycleUrl(item.id, file.path), label: bodyLabel })); }
+            try {
+                const preview = await filePreview(file, scope, { url: recycleUrl(item.id, file.path), label: bodyLabel });
+                if (partsSupported && file.path === 'data/travel_data.json') {
+                    const summary = preview.querySelector('summary');
+                    summary.classList.add('recycle-index-choice');
+                    summary.insertAdjacentHTML('afterbegin', '<label class="recycle-diary-selector"><input type="checkbox" data-recycle-part-select value="index" aria-label="选择日记索引"></label>');
+                    summary.title = '恢复将替换当前整份索引，回退全部日记信息和附件引用。';
+                }
+                row.append(preview);
+            }
             catch (failure) { row.textContent = `${file.path}：${failure.message}`; }
             if (scope !== previews || !list.isConnected || (!dialog.open && !suspended)) return;
             if (bodyLabel) list.prepend(row);
             else list.append(row);
         }
+        syncPartControls();
     }
     function syncPreview(id) {
         const container = dialog.querySelector(`[data-recycle-diff="${id}"]`);
@@ -598,8 +609,9 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const items = report.items.filter(item => selected.has(item.id));
             const snapshot = items.some(item => item.kind === 'snapshot' && !selected.get(item.id).parts);
             const partial = [...selected.values()].some(state => state.parts);
+            const indexSelected = [...selected.values()].some(state => state.parts?.includes('index'));
             const hidden = items.length - filteredItems().filter(item => selected.has(item.id)).length;
-            await confirmAction(`将恢复所选 ${items.length} 个项目${hidden ? `（含筛选范围外的 ${hidden} 个）` : ''}：${items.map(item => `「${item.title}」`).join('、')}。${snapshot ? '全部日记和个人资料将恢复到这个时间点，访问密码保持不变。' : ''}${partial ? '部分勾选的项目仅恢复所选日记、归档附件及个人资料，原回收批次完整保留。' : ''}被替换的当前内容会先存入回收站。`, { title: '恢复所选内容？', confirmLabel: '恢复所选内容', danger: false }, { action: 'restore-selected', selections });
+            await confirmAction(`将恢复所选 ${items.length} 个项目${hidden ? `（含筛选范围外的 ${hidden} 个）` : ''}：${items.map(item => `「${item.title}」`).join('、')}。${snapshot ? '全部日记和个人资料将恢复到这个时间点，访问密码保持不变。' : ''}${indexSelected ? '将替换当前整份日记索引，回退全部日记信息和附件引用，当前索引独有的日记将从目录移除。正文、附件及个人资料按各自勾选范围恢复，原回收批次完整保留。' : partial ? '部分勾选的项目仅恢复所选日记、归档附件及个人资料，原回收批次完整保留。' : ''}被替换的当前内容会先存入回收站。`, { title: '恢复所选内容？', confirmLabel: '恢复所选内容', danger: false }, { action: 'restore-selected', selections });
             return;
         }
         if (event.target.closest('[data-recycle-clear]')) {

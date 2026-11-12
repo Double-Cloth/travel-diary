@@ -1156,3 +1156,118 @@ test('整站批次可单独恢复个人资料，也可与日记一起恢复并�
     assert.equal(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')))[0].locality, note.locality);
     assert.ok((await readRecycleBin(root)).items.some(item => item.id === id));
 });
+
+test('索引独立恢复通过认证 API 回退全部元数据，保留实际文件并留存可撤回的当前索引', async t => {
+    const root = await fixture(t);
+    await write(root, 'data/profile/owner-name.txt', '旧署名');
+    const id = await captureRecycle(root, { kind: 'snapshot', title: '索引历史' });
+    const added = { ...other, date: '2026-11-05', desc_md: 'data/travel-diary/2026/new.md' };
+    const current = [{ ...note, title: '后续标题', photos: [] }, added];
+    await write(root, 'data/travel_data.json', JSON.stringify(current));
+    await write(root, note.desc_md, '# 后续正文');
+    await write(root, added.desc_md, '# 新增正文');
+    await write(root, 'data/profile/owner-name.txt', '后续署名');
+    await write(root, 'data/photos/trip/unique.png', '后续图片');
+    const { base, headers } = await api(t, root);
+    const revision = (await readRecycleBin(root)).revision;
+    const payload = { id, parts: ['index'], revision };
+    const response = await fetch(`${base}/api/travel-data?mode=recycle-bin`, { method: 'POST', headers,
+        body: JSON.stringify({ ...payload, action: 'preview' }) });
+    assert.equal(response.status, 200);
+    const preview = await response.json();
+    assert.deepEqual(preview.savedPaths, ['data/travel_data.json']);
+    assert.ok(preview.changes.some(change => change.comparison.status === 'added'));
+    assert.ok(preview.changes.some(change => change.comparison.status === 'removed'));
+    assert.ok(preview.changes.every(change => !change.comparison.markdownChanged && !change.comparison.media.length));
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))), current);
+    const restored = await fetch(`${base}/api/travel-data?mode=recycle-bin`, { method: 'POST', headers,
+        body: JSON.stringify({ action: 'restore-selected', revision, selections: [{ ...payload, previewToken: preview.previewToken }] }) });
+    assert.equal(restored.status, 200);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))), [note, other]);
+    for (const [name, value] of [[note.desc_md, '# 后续正文'], [added.desc_md, '# 新增正文'], ['data/profile/owner-name.txt', '后续署名'], ['data/photos/trip/unique.png', '后续图片']]) {
+        assert.equal(await fs.readFile(path.join(root, name), 'utf8'), value);
+    }
+    const report = await readRecycleBin(root);
+    assert.ok(report.items.some(item => item.id === id));
+    const protection = report.items.find(item => item.id !== id);
+    assert.deepEqual(protection.files.map(file => file.path), ['data/travel_data.json']);
+    await action(root, protection.id);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))), current);
+});
+
+test('索引可与同批次日记及个人资料一起恢复，正文与附件变化继续参与预览', async t => {
+    const root = await fixture(t);
+    await write(root, 'data/profile/owner-name.txt', '旧署名');
+    const id = await captureRecycle(root, { kind: 'snapshot', title: '索引及文件' });
+    await write(root, note.desc_md, '# 后续正文');
+    await write(root, 'data/photos/trip/unique.png', '后续图片');
+    await write(root, other.desc_md, '# 另一篇后续正文');
+    await write(root, 'data/profile/owner-name.txt', '后续署名');
+    await write(root, 'data/travel_data.json', JSON.stringify([{ ...note, title: '后续标题' }, other]));
+    const parts = ['index', 'profile', `diary:${note.desc_md}`];
+    const report = await readRecycleBin(root);
+    const preview = await manageRecycleBin(root, { action: 'preview', id, parts, revision: report.revision });
+    const change = preview.changes.find(change => change.record.desc_md === note.desc_md);
+    assert.equal(change.comparison.markdownChanged, true);
+    assert.ok(change.comparison.media.includes('data/photos/trip/unique.png'));
+    await manageRecycleBin(root, { action: 'restore-selected', revision: report.revision, selections: [{ id, parts, previewToken: preview.previewToken }] });
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))), [note, other]);
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 标题\n\n原正文');
+    assert.equal(await fs.readFile(path.join(root, other.desc_md), 'utf8'), '# 另一篇后续正文');
+    assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '旧署名');
+    assert.ok((await readRecycleBin(root)).items.some(item => item.id === id));
+});
+
+test('索引恢复校验范围和批次冲突，写入失败撤回索引及资料，重复预览可重试', async t => {
+    const root = await fixture(t);
+    await write(root, 'data/profile/owner-name.txt', '旧署名');
+    const id = await captureRecycle(root, { kind: 'snapshot', title: '历史索引' });
+    const second = await captureRecycle(root, { kind: 'snapshot', title: '另一批次' });
+    const current = JSON.stringify([{ ...note, title: '后续标题' }, other]);
+    await write(root, 'data/travel_data.json', current);
+    await write(root, 'data/profile/owner-name.txt', '后续署名');
+    const parts = ['index', 'profile'];
+    const report = await readRecycleBin(root);
+    const preview = await manageRecycleBin(root, { action: 'preview', id, parts, revision: report.revision });
+    const selection = { id, parts, previewToken: preview.previewToken };
+    const restore = selections => manageRecycleBin(root, { action: 'restore-selected', revision: report.revision, selections });
+    await assert.rejects(restore([{ ...selection, parts: ['index'] }]), /预览后内容已变化/);
+    const another = await manageRecycleBin(root, { action: 'preview', id: second, parts: ['profile'], revision: report.revision });
+    await assert.rejects(restore([selection, { id: second, parts: ['profile'], previewToken: another.previewToken }]), /需要单独恢复/);
+    const originalWrite = fs.writeFile;
+    fs.writeFile = async (target, ...args) => {
+        if (target === path.join(root, 'data/travel_data.json')) throw new Error('模拟索引写入失败');
+        return originalWrite(target, ...args);
+    };
+    try { await assert.rejects(restore([selection]), /模拟索引写入失败/); }
+    finally { fs.writeFile = originalWrite; }
+    assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), current);
+    assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '后续署名');
+    assert.deepEqual((await readRecycleBin(root)).items.map(item => item.id).sort(), [id, second].sort());
+    const fresh = await readRecycleBin(root);
+    const retry = await manageRecycleBin(root, { action: 'preview', id, parts, revision: fresh.revision });
+    await manageRecycleBin(root, { action: 'restore-selected', revision: fresh.revision, selections: [{ id, parts, previewToken: retry.previewToken }] });
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))), [note, other]);
+});
+
+test('仅索引顺序变化仍显示差异，空索引可选择恢复且保留正文文件', async t => {
+    const root = await fixture(t);
+    const sameDay = [{ ...note, title: '第一篇' }, { ...other, date: note.date, title: '第二篇' }];
+    await write(root, 'data/travel_data.json', JSON.stringify(sameDay));
+    const id = await captureRecycle(root, { kind: 'snapshot', title: '原顺序' });
+    await write(root, 'data/travel_data.json', JSON.stringify([...sameDay].reverse()));
+    let report = await readRecycleBin(root);
+    const preview = await manageRecycleBin(root, { action: 'preview', id, parts: ['index'], revision: report.revision });
+    assert.deepEqual(preview.changes.map(change => change.record.desc_md), ['data/travel_data.json']);
+    await manageRecycleBin(root, { action: 'restore-selected', revision: report.revision, selections: [{ id, parts: ['index'], previewToken: preview.previewToken }] });
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))), sameDay);
+    await write(root, 'data/travel_data.json', '[]');
+    const empty = await captureRecycle(root, { kind: 'snapshot', title: '空索引' });
+    await write(root, 'data/travel_data.json', JSON.stringify(sameDay));
+    report = await readRecycleBin(root);
+    const cleared = await manageRecycleBin(root, { action: 'preview', id: empty, parts: ['index'], revision: report.revision });
+    assert.ok(cleared.changes.every(change => !change.comparison.markdownChanged && !change.comparison.media.length));
+    await manageRecycleBin(root, { action: 'restore-selected', revision: report.revision, selections: [{ id: empty, parts: ['index'], previewToken: cleared.previewToken }] });
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))), []);
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 标题\n\n原正文');
+});

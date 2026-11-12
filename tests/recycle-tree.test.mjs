@@ -493,7 +493,7 @@ test('个人资料可单独勾选或与日记混合选择，纯资料批次保�
         .map(path => ({ path, size: 1 }));
     const item = { kind: 'snapshot', displayRecords: [record], files };
     const original = structuredClone(item);
-    assert.deepEqual(recycleSelectionGroups(item).map(group => group.key), ['diary:data/a.md', 'profile']);
+    assert.deepEqual(recycleSelectionGroups(item).map(group => group.key), ['diary:data/a.md', 'profile', 'index']);
     const profile = selectRecycleParts(item, ['profile'], [record]);
     assert.equal(profile.kind, 'version');
     assert.deepEqual(profile.files, files.slice(2));
@@ -509,4 +509,22 @@ test('个人资料可单独勾选或与日记混合选择，纯资料批次保�
     const tree = buildRecycleTree(files.filter(file => file.path !== record.desc_md), '', { preserveProfileGroup: true });
     assert.deepEqual(tree.get('').directories.map(node => node.name), ['个人资料']);
     assert.deepEqual(tree.get('').directories[0].files, files.slice(2));
+});
+
+test('日记索引可单独恢复，混选同批次日记和资料时精确采用整份索引及所选文件', () => {
+    const record = { date: '2026-11-12', desc_md: 'data/a.md' };
+    const files = ['data/travel_data.json', record.desc_md, 'data/b.md', 'data/profile/owner-name.txt'].map(path => ({ path, size: 1 }));
+    const item = { kind: 'snapshot', displayRecords: [record], files };
+    const original = structuredClone(item);
+    const index = selectRecycleParts(item, ['index'], []);
+    assert.equal(index.kind, 'version');
+    assert.deepEqual(index.files, [files[0]]);
+    assert.deepEqual(index.records, []);
+    assert.deepEqual(selectRecycleParts(item, ['index', 'profile', 'diary:data/a.md']).files, [files[0], files[1], files[3]]);
+    assert.deepEqual(item, original);
+    for (const parts of [['index', 'index'], ['index', 'file:data/b.md'], ['index', 'diary:missing']]) {
+        assert.throws(() => selectRecycleParts(item, parts), /恢复内容/);
+    }
+    assert.throws(() => selectRecycleParts({ ...item, files: files.slice(1) }, ['index']), /恢复内容/);
+    assert.equal(recycleSelectionGroups({ kind: 'version', files: [files[0]] })[0].key, 'index');
 });

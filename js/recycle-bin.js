@@ -387,10 +387,17 @@ async function previewRestore(root, item, targetDescMd, revision, parts) {
     }
     const comparisons = await compareBackup(next, entries(after), await describeRecords(current, entries(before), { signatures: beforeSignatures }), { signatures: afterSignatures, readUnchangedMarkdown: false });
     const changes = [];
+    const indexSelection = parts?.includes('index');
+    const restoredPaths = new Set(files.map(file => file.path));
     for (const record of next) {
         const comparison = comparisons.get(record.desc_md);
         if (comparison.status === 'same') continue;
         if (comparison.status === 'conflict') throw failure(comparison.message);
+        if (indexSelection) {
+            comparison.media = comparison.media.filter(name => restoredPaths.has(name));
+            comparison.markdownChanged &&= restoredPaths.has(record.desc_md) || restoredPaths.has(comparison.previous?.desc_md);
+            if (comparison.status === 'changed' && !comparison.fields.length && !comparison.markdownChanged && !comparison.media.length) continue;
+        }
         comparison.currentMarkdown = comparison.markdownChanged ? await text(before.get(comparison.previous?.desc_md)) : '';
         changes.push({ record, comparison });
     }
@@ -398,9 +405,18 @@ async function previewRestore(root, item, targetDescMd, revision, parts) {
         if (next.some(incoming => matchRecord(incoming, [record]))) continue;
         changes.push({ record: { desc_md: record.desc_md }, comparison: {
             status: 'removed', previous: record, fields: Object.keys(record).filter(key => key !== 'record_id'),
-            currentMarkdown: await text(before.get(record.desc_md)), markdown: '', markdownChanged: true,
-            media: [...recordFilePaths([record])].filter(name => name !== record.desc_md),
+            currentMarkdown: indexSelection ? '' : await text(before.get(record.desc_md)), markdown: '', markdownChanged: !indexSelection,
+            media: indexSelection ? [] : [...recordFilePaths([record])].filter(name => name !== record.desc_md),
             previousMediaPaths: recordFilePaths([record]), incomingMediaPaths: new Set()
+        } });
+    }
+    // 只有索引顺序或格式变化时，仍提供可核对的文本差异。
+    if (indexSelection && !changes.some(change => change.comparison.fields.length)) {
+        const currentMarkdown = await text(before.get('data/travel_data.json'));
+        const markdown = await text(after.get('data/travel_data.json'));
+        if (currentMarkdown !== markdown) changes.push({ record: { desc_md: 'data/travel_data.json' }, comparison: {
+            status: 'changed', fields: [], currentMarkdown, markdown, markdownChanged: true,
+            media: [], previousMediaPaths: new Set(), incomingMediaPaths: new Set()
         } });
     }
     // 个人资料、无引用文件及旧版本文件，同样使用共享的文本和附件差异视图。
