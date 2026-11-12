@@ -140,6 +140,14 @@ test('同篇日记的多次删除合并展示，正文移动和新旧标识兼�
     assert.deepEqual({ items, current }, before);
 });
 
+test('外层已有单篇日记时恢复目录省略重复日记层，多篇变化仍保留归属', () => {
+    const changes = [{ record: { date: '2026-11-01', desc_md: 'data/a.md' }, comparison: { status: 'changed', fields: [], markdownChanged: true, media: [] } }];
+    const tree = buildRestorePreviewTree(changes, () => '', { groupSingleRecord: false });
+    assert.deepEqual(tree.get('').directories.map(node => node.name), ['正文']);
+    const multiple = buildRestorePreviewTree([...changes, { ...changes[0], record: { date: '2026-11-02', desc_md: 'data/b.md' } }], () => '', { groupSingleRecord: false });
+    assert.deepEqual(multiple.get('').directories.map(node => node.name), ['2026-11-01', '2026-11-02']);
+});
+
 test('旧正文与媒体结合精确路径、历史关联和唯一媒体目录补全所属日记', () => {
     const record = { date: '2026-11-01', desc_md: 'data/a.md', photo_folder: 'data/photos/trip', photos: ['a.jpg'] };
     const items = [

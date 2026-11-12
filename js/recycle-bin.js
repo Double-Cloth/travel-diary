@@ -2,7 +2,7 @@ const { serializeRecords } = require('./record-order.js');
 const fs = require('node:fs/promises');
 const path = require('node:path');
 const { randomBytes, createHash } = require('node:crypto');
-const { createReadStream } = require('node:fs');
+const fileSystem = require('node:fs');
 const { ordinaryPath, readRecords } = require('./record-inventory.js');
 
 const BASE = '.cache/recycle-bin';
@@ -128,17 +128,18 @@ async function readRecycleBin(root) {
         revision: createHash('sha256').update(JSON.stringify(items)).digest('hex') };
 }
 
+async function fileVersion(file) {
+    const stat = await fs.stat(file, { bigint: true });
+    return [stat.dev, stat.ino, stat.size, stat.mtimeNs, stat.ctimeNs, stat.birthtimeNs].join(':');
+}
+
 async function fileDigest(file) {
-    const stamp = async () => {
-        const stat = await fs.stat(file, { bigint: true });
-        return [stat.dev, stat.ino, stat.size, stat.mtimeNs, stat.ctimeNs, stat.birthtimeNs].join(':');
-    };
-    const version = await stamp();
+    const version = await fileVersion(file);
     const cached = digestCache.get(file);
     if (cached?.version === version) return cached.digest;
     const hash = createHash('sha256');
-    for await (const bytes of createReadStream(file)) hash.update(bytes);
-    if (await stamp() !== version) throw failure('比较期间文件已变化，请重新预览。');
+    for await (const bytes of fileSystem.createReadStream(file)) hash.update(bytes);
+    if (await fileVersion(file) !== version) throw failure('比较期间文件已变化，请重新预览。');
     const digest = hash.digest('hex');
     // 大小、纳秒时间戳和文件身份共同校验缓存，限制条目数避免长期占用内存。
     digestCache.delete(file);
@@ -319,15 +320,15 @@ async function restoreSnapshot(root, item) {
     }
 }
 
-// 预览与提交比较同一份磁盘状态，连未被索引引用的文件也纳入检查。
-async function restoreToken(root, item, targetDescMd, revision, digests = new Map()) {
+// 纳秒时间戳、文件身份及大小绑定整站状态，首次预览无需读取无关的大媒体。
+async function restoreToken(root, item, targetDescMd, revision, versions = new Map()) {
     const hash = createHash('sha256').update(JSON.stringify([revision, item.id, targetDescMd || '']));
     for (const [prefix, files] of [['', await dataFiles(root)], [`${BASE}/${item.id}/`, item.files]]) {
         for (const file of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
             const source = await ordinaryPath(root, prefix + file.path);
-            const digest = await fileDigest(source);
-            digests.set(prefix + file.path, digest);
-            hash.update(JSON.stringify([prefix, file.path, digest]));
+            const version = await fileVersion(source);
+            versions.set(prefix + file.path, version);
+            hash.update(JSON.stringify([prefix, file.path, version]));
         }
     }
     return hash.digest('hex');
@@ -339,8 +340,8 @@ async function previewRestore(root, item, targetDescMd, revision) {
     const { recordFilePaths } = await import('./record-backup.mjs');
     const { matchRecord, identifyRecords } = await import('./record-identity.mjs');
     const { readSourceText, sourceOf } = await import('./zip-stream.mjs');
-    const digests = new Map();
-    const previewToken = await restoreToken(root, item, targetDescMd, revision, digests);
+    const versions = new Map();
+    const previewToken = await restoreToken(root, item, targetDescMd, revision, versions);
     const current = await readRecords(root);
     const before = new Map();
     for (const file of await dataFiles(root)) before.set(file.path, await fileSource(await ordinaryPath(root, file.path)));
@@ -355,17 +356,38 @@ async function previewRestore(root, item, targetDescMd, revision) {
         next = identifyRecords(JSON.parse(await text(after.get('data/travel_data.json'))));
     }
     const entries = files => [...files].map(([name, data]) => ({ name, data }));
-    // 复用令牌校验的 SHA-256，未被覆盖的文件沿用同一签名，无需再流式读取媒体。
-    const beforeSignatures = Object.fromEntries([...before.keys()].map(name => [name, digests.get(name)]));
+    // 未覆盖的文件共用状态签名，仅同名覆盖需要比较实际字节。
+    const beforeSignatures = Object.fromEntries([...before.keys()].map(name => [name, versions.get(name)]));
     const afterSignatures = { ...beforeSignatures };
-    for (const file of files) afterSignatures[file.path] = digests.get(`${BASE}/${item.id}/${file.sourcePath}`);
-    const comparisons = await compareBackup(next, entries(after), await describeRecords(current, entries(before), { signatures: beforeSignatures }), { signatures: afterSignatures });
+    for (const file of files) {
+        const saved = `${BASE}/${item.id}/${file.sourcePath}`;
+        afterSignatures[file.path] = versions.get(saved);
+        if (!before.has(file.path)) continue;
+        [beforeSignatures[file.path], afterSignatures[file.path]] = await Promise.all([
+            fileDigest(await ordinaryPath(root, file.path)), fileDigest(await ordinaryPath(root, saved))
+        ]);
+    }
+    // 正文改名时，旧路径和新路径仍需按内容比较。
+    for (const record of next) {
+        const previous = matchRecord(record, current);
+        if (!previous || previous.desc_md === record.desc_md) continue;
+        if (before.has(previous.desc_md)) {
+            beforeSignatures[previous.desc_md] = await fileDigest(await ordinaryPath(root, previous.desc_md));
+            if (after.get(previous.desc_md) === before.get(previous.desc_md)) afterSignatures[previous.desc_md] = beforeSignatures[previous.desc_md];
+        }
+        if (after.has(record.desc_md)) {
+            const file = files.find(file => file.path === record.desc_md);
+            afterSignatures[record.desc_md] = await fileDigest(await ordinaryPath(root, file ? `${BASE}/${item.id}/${file.sourcePath}` : record.desc_md));
+            if (!file && before.has(record.desc_md)) beforeSignatures[record.desc_md] = afterSignatures[record.desc_md];
+        }
+    }
+    const comparisons = await compareBackup(next, entries(after), await describeRecords(current, entries(before), { signatures: beforeSignatures }), { signatures: afterSignatures, readUnchangedMarkdown: false });
     const changes = [];
     for (const record of next) {
         const comparison = comparisons.get(record.desc_md);
         if (comparison.status === 'same') continue;
         if (comparison.status === 'conflict') throw failure(comparison.message);
-        comparison.currentMarkdown = await text(before.get(comparison.previous?.desc_md));
+        comparison.currentMarkdown = comparison.markdownChanged ? await text(before.get(comparison.previous?.desc_md)) : '';
         changes.push({ record, comparison });
     }
     for (const record of current) {

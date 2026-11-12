@@ -1513,8 +1513,12 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list > li { padding: 20px 12px; border-bottom: 1px solid var(--hairline); overflow-wrap: anywhere; }
 .recycle-list > li.is-selected { background: var(--paper-100); }
 .recycle-list > .recycle-diary-group { padding: 20px 0 0; }
-.recycle-diary-group > h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 0; padding-inline: 12px; color: var(--ink); font-size: 16px; line-height: 1.6; }
+.recycle-diary-group > h3 { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 0; padding: 0 12px 8px; color: var(--stamp); font-size: 15px; font-weight: 500; line-height: 1.6; }
+.recycle-diary-group > h3 > a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.recycle-diary-group > h3 > a:hover { text-decoration-thickness: 2px; }
+.recycle-diary-group > h3 > a:focus-visible { outline: 2px solid var(--stamp); outline-offset: 4px; border-radius: 2px; }
 .recycle-diary-group > h3 > small { color: var(--ink-soft); font-size: 12px; font-weight: 400; }
+.recycle-history > li { padding-block: 12px; border-bottom-style: dashed; }
 .recycle-history > li:last-child { border-bottom: 0; }
 .recycle-item-header { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 0 12px; }
 .recycle-item-choice { display: flex; min-width: 0; align-items: start; gap: 12px; min-height: 44px; padding: 8px 0; cursor: pointer; }

@@ -1,5 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.90';
-import { recordIdentity } from './record-identity.mjs?v=2.1.90';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.91';
+import { recordIdentity } from './record-identity.mjs?v=2.1.91';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
@@ -130,7 +130,7 @@ export function buildRecycleTree(files, query = '', {
 }
 
 // 差异拆成信息、正文与单个附件，复用回收目录的日记归属及共用文件逻辑。
-export function buildRestorePreviewTree(changes, mediaKind = () => '') {
+export function buildRestorePreviewTree(changes, mediaKind = () => '', { groupSingleRecord = true } = {}) {
     const files = [];
     const records = [];
     const media = new Set();
@@ -149,5 +149,5 @@ export function buildRestorePreviewTree(changes, mediaKind = () => '') {
             files.push({ path: name, size: 0, record, comparison: { ...empty, media: [name] } });
         }
     }
-    return buildRecycleTree(files, '', { records, mediaKind, groupSingleRecord: true, categories: ['日记信息', '正文', '图片', '视频', '个人资料', '日记索引', '其他文件'] });
+    return buildRecycleTree(files, '', { records, mediaKind, groupSingleRecord, categories: ['日记信息', '正文', '图片', '视频', '个人资料', '日记索引', '其他文件'] });
 }

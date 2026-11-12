@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
+import fileSystem from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import http from 'node:http';
@@ -474,7 +475,7 @@ async function confirmRestore(root, id, plan, targetDescMd) {
     return manageRecycleBin(root, { action: 'restore', id, targetDescMd, previewToken: plan.previewToken, revision: (await readRecycleBin(root)).revision });
 }
 
-test('恢复差异复用令牌签名，避免再次流式读取媒体', async t => {
+test('恢复差异复用内容签名，避免再次流式读取媒体', async t => {
     const root = await fixture(t);
     const id = await captureRecycle(root, { kind: 'version', title: '旧正文', files: [{ path: note.desc_md }] });
     await write(root, note.desc_md, '# 新正文');
@@ -489,6 +490,42 @@ test('恢复差异复用令牌签名，避免再次流式读取媒体', async t 
         assert.equal(plan.changes.length, 1);
         assert.equal(plan.changes[0].comparison.markdown, '# 标题\n\n原正文');
     } finally { mocked.mock.restore(); }
+});
+
+test('首次正文预览只读取被恢复的正文，无关媒体和其他日记正文无需读取', async t => {
+    const root = await fixture(t);
+    const id = await captureRecycle(root, { kind: 'version', title: '旧正文', files: [{ path: note.desc_md }] });
+    await write(root, note.desc_md, '# 新正文');
+    await write(root, other.desc_md, Buffer.from([0xff]));
+    await write(root, 'data/videos/unreferenced.mp4', 'unreferenced');
+    const streams = [];
+    const createReadStream = fileSystem.createReadStream;
+    const mocked = t.mock.method(fileSystem, 'createReadStream', (file, ...args) => {
+        streams.push(path.relative(root, file).replaceAll('\\', '/'));
+        return createReadStream(file, ...args);
+    });
+    try {
+        const plan = await preview(root, id);
+        assert.equal(plan.changes.length, 1);
+        assert.equal(plan.changes[0].comparison.markdown, '# 标题\n\n原正文');
+        assert.deepEqual(streams.sort(), [note.desc_md, `.cache/recycle-bin/${id}/${note.desc_md}`].sort());
+        await write(root, 'data/videos/unreferenced.mp4', 'UNREFERENCED');
+        await assert.rejects(confirmRestore(root, id, plan), /预览后内容已变化/);
+    } finally { mocked.mock.restore(); }
+});
+
+test('恢复改名日记时相同正文按字节比较，继续保留正文改名的信息变化', async t => {
+    const root = await fixture(t);
+    const original = { ...note, record_id: `r-${'a'.repeat(32)}` };
+    await write(root, 'data/travel_data.json', JSON.stringify([original, other]));
+    const id = await captureRecycle(root, { kind: 'record', title: '原日记', records: [original], files: [{ path: original.desc_md }] });
+    const renamed = { ...original, desc_md: 'data/travel-diary/2026/renamed.md' };
+    await write(root, renamed.desc_md, '# 标题\n\n原正文');
+    await write(root, 'data/travel_data.json', JSON.stringify([renamed, other]));
+    const plan = await preview(root, id);
+    assert.equal(plan.changes.length, 1);
+    assert.equal(plan.changes[0].comparison.markdownChanged, false);
+    assert.ok(plan.changes[0].comparison.fields.includes('desc_md'));
 });
 
 test('签名缓存识别同大小同修改时间的写入和文件替换，重复预览保持一致', async t => {
