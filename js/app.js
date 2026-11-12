@@ -1,30 +1,30 @@
-import { orderMedia } from './media-order.mjs?v=2.1.120';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.120';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.120';
-import { createRecordEditor } from './record-editor.js?v=2.1.120';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.120';
-import { createDataTransfer } from './data-transfer.js?v=2.1.120';
-import { createMediaManager } from './media-manager.js?v=2.1.120';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.120';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.120';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.120';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.120';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.120';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.120';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.120';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.120';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.120';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.120';
-import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.120';
-import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.120';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.120';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.120';
+import { orderMedia } from './media-order.mjs?v=2.1.121';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.121';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.121';
+import { createRecordEditor } from './record-editor.js?v=2.1.121';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.121';
+import { createDataTransfer } from './data-transfer.js?v=2.1.121';
+import { createMediaManager } from './media-manager.js?v=2.1.121';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.121';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.121';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.121';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.121';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.121';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.121';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.121';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.121';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.121';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.121';
+import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.121';
+import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.121';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.121';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.121';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.120';
+} from './location.mjs?v=2.1.121';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -33,7 +33,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.120';
+} from './photo-viewer-transform.mjs?v=2.1.121';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -206,6 +206,13 @@ async function initApp() {
     openMediaManager = createMediaManager(async () => {
         await refreshTravelModel(getRefreshKey());
         syncRouteFromHash({ initial: true });
+    }, {
+        isActive: () => activeRoute?.name === 'preface' && activeRoute.params.panel === 'media',
+        onClose: () => {
+            if (activeRoute?.name === 'preface' && activeRoute.params.panel === 'media') {
+                navigateTo('#preface', { replace: true, animate: false });
+            }
+        }
     });
     openRecycleManager = createRecycleManager(async () => {
         resetProfilePicture();
@@ -478,7 +485,7 @@ function parseRoute(hash = window.location.hash) {
         case 'cover':
             return { name: 'cover', params: {}, valid: true };
         case 'preface':
-            return { name: 'preface', params: params.get('panel') === 'recycle' ? { panel: 'recycle' } : {}, valid: true };
+            return { name: 'preface', params: ['recycle', 'media'].includes(params.get('panel')) ? { panel: params.get('panel') } : {}, valid: true };
         case 'ledger':
             return {
                 name: 'ledger',
@@ -522,7 +529,7 @@ function parseRoute(hash = window.location.hash) {
                 name: 'entry',
                 params: {
                     id: params.get('id') || '',
-                    ...(params.get('from') === 'recycle' ? { from: 'recycle' } : {})
+                    ...(['recycle', 'media'].includes(params.get('from')) ? { from: params.get('from') } : {})
                 },
                 valid: true
             };
@@ -556,7 +563,7 @@ function serializeRoute(route) {
         case 'cover':
             return '#cover';
         case 'preface':
-            return route.params?.panel === 'recycle' ? '#preface?panel=recycle' : '#preface';
+            return ['recycle', 'media'].includes(route.params?.panel) ? `#preface?panel=${route.params.panel}` : '#preface';
         case 'ledger':
             {
                 const ledgerParams = normalizeLedgerParams(route.params);
@@ -586,7 +593,7 @@ function serializeRoute(route) {
             return `#trip${params.toString() ? `?${params}` : ''}`;
         case 'entry':
             if (route.params.id) params.set('id', route.params.id);
-            if (route.params.from === 'recycle') params.set('from', 'recycle');
+            if (['recycle', 'media'].includes(route.params.from)) params.set('from', route.params.from);
             return `#entry${params.toString() ? `?${params}` : ''}`;
         case 'photos':
             if (route.params.id) params.set('id', route.params.id);
@@ -619,9 +626,12 @@ function syncRouteFromHash(options = {}) {
     }
 
     const recycleActive = parsed.name === 'preface' && parsed.params.panel === 'recycle';
+    const mediaActive = parsed.name === 'preface' && parsed.params.panel === 'media';
     if (!recycleActive) openRecycleManager?.suspend();
+    if (!mediaActive) openMediaManager?.suspend();
     renderRoute(parsed, options);
     if (recycleActive) void openRecycleManager?.();
+    if (mediaActive) void openMediaManager?.();
 }
 
 function navigateTo(route, options = {}) {
@@ -1888,12 +1898,12 @@ function renderTrip(params = {}) {
 }
 
 function renderEntryRoute(params = {}) {
-    if (params.from === 'recycle') lastReadingHash = '#preface?panel=recycle';
+    if (['recycle', 'media'].includes(params.from)) lastReadingHash = `#preface?panel=${params.from}`;
     const record = travelModel.recordsById.get(params.id);
     const returnHash = lastReadingHash || '#ledger';
     const returnRoute = parseRoute(returnHash);
-    const returnLabel = returnRoute.name === 'preface' && returnRoute.params.panel === 'recycle'
-        ? '返回回收站'
+    const returnLabel = returnRoute.name === 'preface' && returnRoute.params.panel
+        ? { recycle: '返回回收站', media: '返回媒体整理' }[returnRoute.params.panel]
         : ({ cover: '返回封面', preface: '返回扉页', ledger: '返回日记目录', archive: '返回日记归档',
             place: '返回地点档案', trip: '返回行程详情', photos: '返回日记附件' }[returnRoute.name] || '返回日记目录');
 
@@ -4236,7 +4246,7 @@ function handleDocumentClick(event) {
     }
     if (event.target.closest('[data-action="media-health"]')) {
         event.preventDefault();
-        void openMediaManager();
+        navigateTo('#preface?panel=media', { animate: false });
         return;
     }
     if (event.target.closest('[data-action="recycle-bin"]')) {

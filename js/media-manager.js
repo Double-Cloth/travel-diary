@@ -1,8 +1,8 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.120';
-import { createPasswordGate } from './record-password.js?v=2.1.120';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.120';
-import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.120';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.120';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.121';
+import { createPasswordGate } from './record-password.js?v=2.1.121';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.121';
+import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.121';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.121';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -11,7 +11,7 @@ function sizeLabel(bytes) {
     return `${(bytes / 1024 ** 3).toFixed(2)} GiB`;
 }
 
-export function createMediaManager(onReferencesRemoved = async () => {}) {
+export function createMediaManager(onReferencesRemoved = async () => {}, { onClose, isActive = () => true } = {}) {
     const dialog = document.createElement('dialog');
     dialog.className = 'record-transfer media-manager management-dialog entry-sheet';
     dialog.setAttribute('aria-labelledby', 'mediaManagerTitle');
@@ -37,6 +37,9 @@ export function createMediaManager(onReferencesRemoved = async () => {}) {
     let trigger;
     let busy = false;
     let stale = true;
+    let suspended = false;
+    let scrollPosition;
+    let returnFocus;
     const selected = new Set();
     const selectedMissing = new Set();
     const expandedGroups = new Set();
@@ -44,7 +47,7 @@ export function createMediaManager(onReferencesRemoved = async () => {}) {
     const currentSelection = () => isMissing() ? selectedMissing : selected;
     const selectable = file => isMissing() ? capability?.mediaReferenceRemoval : !file.records.length;
     const error = message => { dialog.querySelector('[data-media-error]').textContent = message; };
-    const owners = file => file.records.map(record => `<a href="#entry?id=${encodeURIComponent(record.record_id)}" data-media-record>${escapeHtml(record.date)} ${escapeHtml(record.locality)}</a>`).join('、');
+    const owners = file => file.records.map(record => `<a href="#entry?id=${encodeURIComponent(record.record_id)}&from=media" data-media-record>${escapeHtml(record.date)} ${escapeHtml(record.locality)}</a>`).join('、');
 
     function filteredFiles() {
         if (!report) return [];
@@ -219,6 +222,8 @@ export function createMediaManager(onReferencesRemoved = async () => {}) {
     function close() {
         if (busy) return;
         dialog.close();
+        suspended = false;
+        onClose?.();
         if (trigger?.isConnected) trigger.focus();
         else document.getElementById('journalStage')?.focus();
     }
@@ -245,7 +250,12 @@ export function createMediaManager(onReferencesRemoved = async () => {}) {
     dialog.addEventListener('click', async event => {
         if (busy) return;
         if (event.target.closest('[data-media-close]')) { close(); return; }
-        if (event.target.closest('[data-media-record]') && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey) { close(); return; }
+        const recordAnchor = event.target.closest('[data-media-record]');
+        if (recordAnchor && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.button === 0) {
+            returnFocus = recordAnchor;
+            suspend();
+            return;
+        }
         if (event.target.closest('[data-media-refresh]')) { await request(); return; }
         if (!report) return;
         if (event.target.closest('[data-media-reset]')) { dialog.querySelector('[data-media-search]').value = ''; renderFiles(); dialog.querySelector('[data-media-search]').focus(); }
@@ -259,13 +269,30 @@ export function createMediaManager(onReferencesRemoved = async () => {}) {
             await request(payload);
         }
     });
-    return createPasswordGate(async () => {
+    // 阅读日记时保留当前列表，返回后恢复焦点和两层滚动位置。
+    function suspend() {
+        if (!dialog.open) return;
+        suspended = true;
+        scrollPosition = { paper: dialog.scrollTop, list: dialog.querySelector('[data-media-list]').scrollTop };
+        dialog.close();
+    }
+    const authorizeOpen = createPasswordGate(async () => {
+        if (!isActive()) return;
+        if (suspended && report) {
+            suspended = false;
+            dialog.showModal();
+            returnFocus?.focus({ preventScroll: true });
+            dialog.scrollTop = scrollPosition.paper;
+            dialog.querySelector('[data-media-list]').scrollTop = scrollPosition.list;
+            return;
+        }
         trigger = document.activeElement;
         report = undefined;
         stale = true;
         selected.clear();
         selectedMissing.clear();
         expandedGroups.clear();
+        returnFocus = undefined;
         dialog.querySelector('[data-media-search]').value = '';
         dialog.querySelector('[data-media-reset]').hidden = true;
         dialog.querySelector('[data-media-filter]').value = 'unused';
@@ -275,5 +302,8 @@ export function createMediaManager(onReferencesRemoved = async () => {}) {
         for (const selector of ['[data-media-list]', '[data-media-count]', '[data-media-hint]']) dialog.querySelector(selector).textContent = '';
         dialog.showModal();
         await request();
-    }, { title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，整理媒体文件。', staticMessage: '静态页面不提供媒体整理，请使用本机服务。' });
+    }, { title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，整理媒体文件。', staticMessage: '静态页面不提供媒体整理，请使用本机服务。', onCancel: onClose });
+    const open = () => { if (!dialog.open) return authorizeOpen(); };
+    open.suspend = suspend;
+    return open;
 }

@@ -528,7 +528,7 @@ test('长短篇详情正文只渲染一次，左页相邻篇目与管理入口�
     }
 });
 
-test('日记返回入口按来源命名，缺失日记与回收站来源保持相同返回目标', t => {
+test('日记返回入口按来源命名，缺失日记与管理页面来源保持相同返回目标', t => {
     const previous = globalThis.requestAnimationFrame;
     globalThis.requestAnimationFrame = () => 1;
     t.after(() => { globalThis.requestAnimationFrame = previous; });
@@ -537,7 +537,7 @@ test('日记返回入口按来源命名，缺失日记与回收站来源保持�
         ['#ledger?view=notes&q=昆明', '返回日记目录'], ['#ledger?view=trips', '返回日记目录'],
         ['#archive?q=云南', '返回日记归档'], ['#place?country=CN&area=云南省&locality=昆明市', '返回地点档案'],
         ['#trip?id=trip-1', '返回行程详情'], ['#preface', '返回扉页'],
-        ['#preface?panel=recycle', '返回回收站'], ['#cover', '返回封面']
+        ['#preface?panel=recycle', '返回回收站'], ['#preface?panel=media', '返回媒体整理'], ['#cover', '返回封面']
     ]) {
         for (const missing of [false, true]) {
             const { left } = app.renderTestEntry(record, { index: 0, total: 1 }, { returnHash, missing });
@@ -547,6 +547,10 @@ test('日记返回入口按来源命名，缺失日记与回收站来源保持�
     }
     const { left } = app.renderTestEntry(record, { index: 0, total: 1 }, { returnHash: '#ledger', from: 'recycle' });
     assert.match(left, /href="#preface\?panel=recycle">返回回收站<\/a>/);
+    for (const missing of [false, true]) {
+        const result = app.renderTestEntry(record, { index: 0, total: 1 }, { returnHash: '#ledger', from: 'media', missing });
+        assert.match(result.left, /href="#preface\?panel=media">返回媒体整理<\/a>/);
+    }
 });
 
 test('首末篇在相邻篇目中显示不可点击的边界提示', t => {
@@ -1623,8 +1627,8 @@ test('手机柔性纸页始终固定左侧装订边，分段曲面连续并能�
     }
 });
 
-test('回收站位置和日记来源在路由规范化后保留，普通页面不携带额外来源', () => {
-    for (const hash of ['#preface?panel=recycle', '#entry?id=note&from=recycle']) {
+test('管理页面位置和日记来源在路由规范化后保留，普通页面不携带额外来源', () => {
+    for (const hash of ['#preface?panel=recycle', '#entry?id=note&from=recycle', '#preface?panel=media', '#entry?id=note&from=media']) {
         assert.equal(app.serializeRoute(app.parseRoute(hash)), hash);
     }
     assert.equal(app.serializeRoute(app.parseRoute('#preface?panel=unknown')), '#preface');
