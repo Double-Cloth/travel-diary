@@ -1587,7 +1587,24 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list .content-preview-markdown > :last-child { margin-bottom: 0; }
 .content-preview-list > li { grid-template-columns: minmax(0, 1fr); }
 .recycle-list .content-file-preview { margin: 0; }
-.recycle-list .recycle-record-info { color: var(--ink); }
+.recycle-list .recycle-record-info {
+    width: fit-content;
+    max-width: 100%;
+    box-sizing: border-box;
+    margin: 0 0 16px;
+    padding: 10px 14px;
+    border: 1px solid rgba(145, 66, 44, 0.28);
+    border-radius: 4px;
+    background: rgba(145, 66, 44, 0.08);
+    color: var(--ink);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+.recycle-list .recycle-record-info > a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 4px; }
+.recycle-list .recycle-record-info > a:hover { color: var(--stamp); text-decoration-thickness: 2px; }
+.recycle-list .recycle-record-info > a:focus-visible { outline: 2px solid var(--stamp); outline-offset: 4px; border-radius: 2px; }
 .recycle-target { display: grid; gap: 8px; margin: 16px 0; padding-top: 16px; border-top: 1px solid var(--hairline); }
 .recycle-target .custom-select { width: 100%; }
 .recycle-target > p { margin: 0; }
