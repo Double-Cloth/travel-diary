@@ -567,6 +567,90 @@ body[data-route='preface'] .paper-page {
     gap: 8px 12px;
 }
 
+#prefaceDataTitle { font-size: 18px; }
+
+.preface-backup-group { display: grid; gap: 6px; }
+.preface-backup-group + .preface-backup-group { margin-top: 4px; }
+.preface-backup-group h4 {
+    margin: 0;
+    color: #69513a;
+    font-size: 12px;
+    font-weight: 400;
+    line-height: 1.6;
+}
+
+.preface-tool-choices {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+}
+
+.preface-tool-command {
+    position: relative;
+    display: grid;
+    align-content: start;
+    gap: 6px;
+    min-width: 0;
+    min-height: 44px;
+    padding: 12px 28px 12px 12px;
+    border: 1px solid #9c7a4c80;
+    border-radius: 2px;
+    color: var(--ink);
+    background: #fbf0d699;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: background-color .18s ease, color .18s ease;
+}
+
+.preface-tool-command::after {
+    content: '';
+    position: absolute;
+    top: 16px;
+    right: 13px;
+    width: 6px;
+    height: 6px;
+    border-top: 1px solid currentColor;
+    border-right: 1px solid currentColor;
+    rotate: 45deg;
+}
+
+.preface-command-title {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 8px;
+    font-size: 16px;
+    font-weight: 700;
+    line-height: 1.5;
+}
+
+.preface-command-kind {
+    color: #793e30;
+    font-size: 12px;
+    font-weight: 400;
+}
+
+.preface-command-description {
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.7;
+    overflow-wrap: anywhere;
+}
+
+.preface-tool-command:hover { color: var(--stamp); border-color: var(--brass-300); background-color: var(--paper-100); }
+
+.preface-tool-command:active { background-color: var(--paper-200); }
+.preface-tool-command:disabled { opacity: .55; cursor: wait; }
+.preface-tool-command:focus-visible {
+    outline: 2px solid var(--stamp);
+    outline-offset: 3px;
+}
+
+@media (max-width: 760px) {
+    .preface-tool-choices { grid-template-columns: minmax(0, 1fr); gap: 10px; }
+}
+
 .preface-utility-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
 .preface-utility-actions .preface-button { width: auto; }
 .preface-utility-actions .preface-utility-end { margin-left: auto; }

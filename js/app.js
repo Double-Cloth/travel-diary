@@ -1,30 +1,30 @@
-import { orderMedia } from './media-order.mjs?v=2.1.126';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.126';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.126';
-import { createRecordEditor } from './record-editor.js?v=2.1.126';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.126';
-import { createDataTransfer } from './data-transfer.js?v=2.1.126';
-import { createMediaManager } from './media-manager.js?v=2.1.126';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.126';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.126';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.126';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.126';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.126';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.126';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.126';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.126';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.126';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.126';
-import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.126';
-import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.126';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.126';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.126';
+import { orderMedia } from './media-order.mjs?v=2.1.127';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.127';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.127';
+import { createRecordEditor } from './record-editor.js?v=2.1.127';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.127';
+import { createDataTransfer } from './data-transfer.js?v=2.1.127';
+import { createMediaManager } from './media-manager.js?v=2.1.127';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.127';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.127';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.127';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.127';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.127';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.127';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.127';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.127';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.127';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.127';
+import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.127';
+import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.127';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.127';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.127';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.126';
+} from './location.mjs?v=2.1.127';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -33,7 +33,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.126';
+} from './photo-viewer-transform.mjs?v=2.1.127';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -1147,13 +1147,31 @@ function renderPreface() {
         <details class="preface-tool-section" open aria-labelledby="prefaceDataTitle">
             <summary class="preface-module-heading"><h3 id="prefaceDataTitle">备份与恢复</h3></summary>
             <div class="preface-module-content">
-                <div class="preface-transfer-actions" role="group" aria-label="全部数据备份与恢复">
-                    <button class="preface-button" type="button" data-action="export-all-data">导出全部数据</button>
-                    <button class="preface-button" type="button" data-action="import-all-data">导入全部数据</button>
+                <div class="preface-backup-group" role="group" aria-labelledby="prefaceExportTitle">
+                    <h4 id="prefaceExportTitle">导出 · 保存备份到本机</h4>
+                    <div class="preface-tool-choices">
+                        <button class="preface-tool-command" type="button" data-action="export-records">
+                            <span class="preface-command-title">导出部分记录</span>
+                            <span class="preface-command-description">选择日记及其附件，适合增量备份。</span>
+                        </button>
+                        <button class="preface-tool-command" type="button" data-action="export-all-data">
+                            <span class="preface-command-title">导出全部数据</span>
+                            <span class="preface-command-description">验证访问密码后，备份日记、附件、个人资料和密码配置。</span>
+                        </button>
+                    </div>
                 </div>
-                <div class="preface-transfer-actions" role="group" aria-label="部分记录备份与恢复">
-                    <button class="preface-button" type="button" data-action="export-records">导出部分记录</button>
-                    <button class="preface-button" type="button" data-action="import-records">导入部分记录</button>
+                <div class="preface-backup-group" role="group" aria-labelledby="prefaceImportTitle">
+                    <h4 id="prefaceImportTitle">导入 · 使用已有备份</h4>
+                    <div class="preface-tool-choices">
+                        <button class="preface-tool-command" type="button" data-action="import-records">
+                            <span class="preface-command-title">导入部分记录<span class="preface-command-kind">合并</span></span>
+                            <span class="preface-command-description">导入所选日记内容，其他日记、资料和密码不变。</span>
+                        </button>
+                        <button class="preface-tool-command" type="button" data-action="import-all-data">
+                            <span class="preface-command-title">导入全部数据<span class="preface-command-kind">替换</span></span>
+                            <span class="preface-command-description">用完整备份替换当前数据，密码也恢复为备份时的密码。</span>
+                        </button>
+                    </div>
                 </div>
                 <p class="archive-data-status preface-transfer-status" data-data-transfer-status role="status" aria-live="polite"></p>
             </div>

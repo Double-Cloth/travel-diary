@@ -650,7 +650,7 @@ test('扉页右页按三个默认展开模块组织操作，黄铜与扁平按�
     assert.deepEqual([...right.matchAll(/<h3[^>]*>(.*?)<\/h3>/g)].map(match => match[1]), ['日记资料管理', '备份与恢复', '数据管理']);
     const expectedActions = [
         ['add-record', 'upload-profile-picture', 'edit-owner-name', 'delete-records'],
-        ['export-all-data', 'import-all-data', 'export-records', 'import-records'],
+        ['export-records', 'export-all-data', 'import-records', 'import-all-data'],
         ['media-health', 'recycle-bin', 'change-password', 'password-reset-help', 'clear-all-data']
     ];
     const brassActions = ['add-record', 'media-health', 'recycle-bin'];
@@ -663,6 +663,8 @@ test('扉页右页按三个默认展开模块组织操作，黄铜与扁平按�
             assert.ok(button);
             if (action === 'password-reset-help') {
                 assert.equal(button[1], 'password-reset-help');
+            } else if (index === 1) {
+                assert.equal(button[1], 'preface-tool-command');
             } else {
                 assert.ok(button[1].split(' ').includes('preface-button'));
                 assert.equal(button[1].includes('preface-button-brass'), brassActions.includes(action));
@@ -674,13 +676,15 @@ test('扉页右页按三个默认展开模块组织操作，黄铜与扁平按�
         assert.match(right, new RegExp(`aria-labelledby="preface${note}Label" aria-describedby="preface${note}Note"`));
         assert.match(right, new RegExp(`<span class="preface-button-note" id="preface${note}Note">[^<]+</span>`));
     }
-    assert.deepEqual([...modules[1].matchAll(/class="preface-transfer-actions" role="group" aria-label="([^"]+)"/g)].map(match => match[1]), ['全部数据备份与恢复', '部分记录备份与恢复']);
-    assert.equal(modules[1].match(/<button class="preface-button"/g)?.length, 4);
-    assert.doesNotMatch(modules[1], /preface-backup-|preface-button-note/);
+    assert.deepEqual([...modules[1].matchAll(/<h4[^>]*>(.*?)<\/h4>/g)].map(match => match[1]), ['导出 · 保存备份到本机', '导入 · 使用已有备份']);
+    assert.equal(modules[1].match(/class="preface-tool-command"/g)?.length, 4);
+    assert.equal(modules[1].match(/class="preface-command-description"/g)?.length, 4);
+    assert.match(modules[1], /class="preface-command-kind">合并/);
+    assert.match(modules[1], /class="preface-command-kind">替换/);
     assert.match(modules[2], /class="preface-password-actions"[^>]*>[\s\S]*data-action="change-password"[\s\S]*data-action="password-reset-help" aria-haspopup="dialog" aria-label="忘记密码？查看重置方法"/);
     assert.match(modules[2], /class="preface-utility-actions preface-data-actions"/);
     assert.match(modules[2], /<svg class="password-reset-help-mark"[^>]*aria-hidden="true"/);
-    assert.doesNotMatch(right, /prefacePasswordNote|preface-tool-note|npm run auth:set|<h4/);
+    assert.doesNotMatch(right, /prefacePasswordNote|preface-tool-note|npm run auth:set/);
 });
 
 test('扉页和足迹摘要显示全量媒体，高级筛选显示结果集媒体数量', () => {
