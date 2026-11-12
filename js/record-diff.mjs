@@ -1,5 +1,5 @@
-import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.88';
-import { recordFilePaths } from './record-backup.mjs?v=2.1.88';
+import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.89';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.89';
 import { sourceOf, updateCrc, readSourceText } from './zip-stream.mjs';
 
 export function canonical(value) {
@@ -27,20 +27,20 @@ export async function recordFingerprint(record, signatures) {
     return [...new Uint8Array(bytes)].map(byte => byte.toString(16).padStart(2, '0')).join('');
 }
 
-export async function describeRecords(records, entries, { signal } = {}) {
+export async function describeRecords(records, entries, { signal, signatures: knownSignatures = {} } = {}) {
     const files = new Map(entries.map(entry => [entry.name, entry.data]));
     const signatures = {};
     for (const name of recordFilePaths(records)) {
         signal?.throwIfAborted();
-        signatures[name] = files.has(name) ? await fileSignature(files.get(name), { signal }) : 'missing';
+        signatures[name] = files.has(name) ? knownSignatures[name] ?? await fileSignature(files.get(name), { signal }) : 'missing';
     }
     const fingerprints = {};
     for (const record of records) fingerprints[recordIdentity(record)] = await recordFingerprint(record, signatures);
     return { records, signatures, fingerprints };
 }
 
-export async function compareBackup(records, entries, current) {
-    const incoming = await describeRecords(records, entries);
+export async function compareBackup(records, entries, current, options) {
+    const incoming = await describeRecords(records, entries, options);
     const files = new Map(entries.map(entry => [entry.name, entry.data]));
     const comparisons = new Map();
     for (const record of records) {

@@ -1527,7 +1527,6 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-selection-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); align-items: stretch; gap: 8px; }
 .recycle-manager .recycle-selection-note { grid-column: 1 / -1; font-size: 12px; }
 .recycle-manager .recycle-preview-status { padding: 10px 0; color: var(--stamp); }
-.recycle-manager .recycle-preview-path { margin: 0 0 12px; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
 /* 恢复预览独立成区，实线两侧使用相同留白，与区内虚线区分。 */
 .recycle-list [data-recycle-diff]:not([hidden]) { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); }
 .recycle-list .recycle-restore-preview > summary { color: var(--stamp); font-weight: 600; }
@@ -1543,7 +1542,6 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list summary > span { flex: 1; min-width: 0; }
 .recycle-list summary small { flex: 0 0 auto; font-size: 12px; line-height: inherit; }
 /* 预览分隔与目录层级线分别承载内容边界和父子关系。 */
-.recycle-preview-change + .recycle-preview-change,
 .recycle-list details.content-file-preview > .content-file-body { border-top: 1px dashed var(--hairline); }
 .recycle-tree { list-style: none; margin: 0; padding: 0; min-width: 0; }
 .recycle-contents { padding-block: 4px 12px; }
@@ -1585,8 +1583,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list .record-diff-section > h3 { font-size: 15px; }
 .recycle-list .content-preview-markdown, .recycle-list .content-file-body > pre, .recycle-list .record-diff pre { max-height: none; overflow: visible; }
 .recycle-list .content-file-body,
-.recycle-list .content-preview-source > .content-preview-markdown,
-.recycle-preview-change { padding: 12px 0; }
+.recycle-list .content-preview-source > .content-preview-markdown { padding: 12px 0; }
 .recycle-list .content-file-body > .content-preview-markdown { padding: 0; }
 .recycle-list .content-preview-markdown > :last-child { margin-bottom: 0; }
 .content-preview-list > li { grid-template-columns: minmax(0, 1fr); }

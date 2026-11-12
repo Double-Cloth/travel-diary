@@ -1,6 +1,32 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildRecycleTree, groupRecycleItems, recycleRecordLabel } from '../js/recycle-tree.mjs';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRecordLabel } from '../js/recycle-tree.mjs';
+
+test('恢复变化按日记和信息、正文、附件分层，共用附件仅展示一次', () => {
+    const records = ['a', 'b'].map(name => ({ date: '2026-11-12', locality: name, desc_md: `data/travel-diary/2026/${name}.md`, photo_folder: 'data/photos/trip', photos: ['shared.jpg', `${name}.jpg`] }));
+    const changes = records.map(record => ({ record, comparison: { status: 'changed', previous: record, fields: ['locality'], markdownChanged: true, markdown: '# 新正文', media: ['data/photos/trip/shared.jpg', `data/photos/trip/${record.locality}.jpg`], previousMediaPaths: new Set(), incomingMediaPaths: new Set() } }));
+    const original = structuredClone(changes);
+    const tree = buildRestorePreviewTree(changes);
+    assert.equal(tree.get('').count, 7);
+    assert.deepEqual(tree.get(`record:${records[0].desc_md}`).directories.map(node => node.name), ['日记信息', '正文', '图片']);
+    assert.deepEqual(tree.get('shared/type:2').files.map(file => file.path), ['data/photos/trip/shared.jpg']);
+    const info = tree.get(`record:${records[0].desc_md}/type:0`).files[0];
+    assert.deepEqual(info.comparison.fields, ['locality']);
+    assert.equal(info.comparison.markdownChanged, false);
+    assert.deepEqual(info.comparison.media, []);
+    assert.deepEqual(changes, original);
+    assert.equal(buildRestorePreviewTree([]).get('').count, 0);
+});
+
+test('恢复目录覆盖移除附件、个人资料和同名独立文件', () => {
+    const previous = { date: '2026-11-12', desc_md: 'data/travel-diary/2026/old.md', photo_folder: 'data/photos/old', photos: ['same.jpg'] };
+    const record = { ...previous, photo_folder: 'data/photos/new', photos: ['same.jpg'] };
+    const comparison = { status: 'changed', previous, fields: [], markdownChanged: false, media: ['data/photos/old/same.jpg', 'data/photos/new/same.jpg'], previousMediaPaths: new Set(['data/photos/old/same.jpg']), incomingMediaPaths: new Set(['data/photos/new/same.jpg']) };
+    const tree = buildRestorePreviewTree([{ record, comparison }, { record: { desc_md: 'data/profile/owner-name.txt' }, comparison: { status: 'removed', fields: [], markdownChanged: true, media: [] } }]);
+    assert.equal(tree.get(`record:${record.desc_md}/type:2`).files.length, 2);
+    assert.equal(tree.get('type:4').files[0].path, 'data/profile/owner-name.txt');
+    assert.equal(tree.get('').count, 3);
+});
 
 test('回收目录按内容类型展示，保留原文件并汇总大小', () => {
     const files = [

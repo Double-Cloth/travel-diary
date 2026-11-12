@@ -7,6 +7,7 @@ const { ordinaryPath, readRecords } = require('./record-inventory.js');
 
 const BASE = '.cache/recycle-bin';
 const failure = message => Object.assign(new Error(message), { status: 409 });
+const digestCache = new Map();
 
 function safeDataPath(name) {
     if (typeof name !== 'string' || !name.startsWith('data/') || name.split('/').some(part => !part || part === '.' || part === '..' || /[\\:\x00-\x1f]/.test(part))) throw failure('回收站中的文件路径无效。');
@@ -128,9 +129,22 @@ async function readRecycleBin(root) {
 }
 
 async function fileDigest(file) {
+    const stamp = async () => {
+        const stat = await fs.stat(file, { bigint: true });
+        return [stat.dev, stat.ino, stat.size, stat.mtimeNs, stat.ctimeNs, stat.birthtimeNs].join(':');
+    };
+    const version = await stamp();
+    const cached = digestCache.get(file);
+    if (cached?.version === version) return cached.digest;
     const hash = createHash('sha256');
     for await (const bytes of createReadStream(file)) hash.update(bytes);
-    return hash.digest('hex');
+    if (await stamp() !== version) throw failure('比较期间文件已变化，请重新预览。');
+    const digest = hash.digest('hex');
+    // 大小、纳秒时间戳和文件身份共同校验缓存，限制条目数避免长期占用内存。
+    digestCache.delete(file);
+    digestCache.set(file, { version, digest });
+    if (digestCache.size > 10000) digestCache.delete(digestCache.keys().next().value);
+    return digest;
 }
 
 async function recycleFile(root, id, name) {
@@ -306,12 +320,14 @@ async function restoreSnapshot(root, item) {
 }
 
 // 预览与提交比较同一份磁盘状态，连未被索引引用的文件也纳入检查。
-async function restoreToken(root, item, targetDescMd, revision) {
+async function restoreToken(root, item, targetDescMd, revision, digests = new Map()) {
     const hash = createHash('sha256').update(JSON.stringify([revision, item.id, targetDescMd || '']));
     for (const [prefix, files] of [['', await dataFiles(root)], [`${BASE}/${item.id}/`, item.files]]) {
         for (const file of [...files].sort((a, b) => a.path.localeCompare(b.path))) {
             const source = await ordinaryPath(root, prefix + file.path);
-            hash.update(JSON.stringify([prefix, file.path, await fileDigest(source)]));
+            const digest = await fileDigest(source);
+            digests.set(prefix + file.path, digest);
+            hash.update(JSON.stringify([prefix, file.path, digest]));
         }
     }
     return hash.digest('hex');
@@ -319,11 +335,12 @@ async function restoreToken(root, item, targetDescMd, revision) {
 
 async function previewRestore(root, item, targetDescMd, revision) {
     const { fileSource } = require('./file-stream.js');
-    const { compareBackup, describeRecords, fileSignature } = await import('./record-diff.mjs');
+    const { compareBackup, describeRecords } = await import('./record-diff.mjs');
     const { recordFilePaths } = await import('./record-backup.mjs');
     const { matchRecord, identifyRecords } = await import('./record-identity.mjs');
     const { readSourceText, sourceOf } = await import('./zip-stream.mjs');
-    const previewToken = await restoreToken(root, item, targetDescMd, revision);
+    const digests = new Map();
+    const previewToken = await restoreToken(root, item, targetDescMd, revision, digests);
     const current = await readRecords(root);
     const before = new Map();
     for (const file of await dataFiles(root)) before.set(file.path, await fileSource(await ordinaryPath(root, file.path)));
@@ -338,7 +355,11 @@ async function previewRestore(root, item, targetDescMd, revision) {
         next = identifyRecords(JSON.parse(await text(after.get('data/travel_data.json'))));
     }
     const entries = files => [...files].map(([name, data]) => ({ name, data }));
-    const comparisons = await compareBackup(next, entries(after), await describeRecords(current, entries(before)));
+    // 复用令牌校验的 SHA-256，未被覆盖的文件沿用同一签名，无需再流式读取媒体。
+    const beforeSignatures = Object.fromEntries([...before.keys()].map(name => [name, digests.get(name)]));
+    const afterSignatures = { ...beforeSignatures };
+    for (const file of files) afterSignatures[file.path] = digests.get(`${BASE}/${item.id}/${file.sourcePath}`);
+    const comparisons = await compareBackup(next, entries(after), await describeRecords(current, entries(before), { signatures: beforeSignatures }), { signatures: afterSignatures });
     const changes = [];
     for (const record of next) {
         const comparison = comparisons.get(record.desc_md);
@@ -362,7 +383,7 @@ async function previewRestore(root, item, targetDescMd, revision) {
         if (name === 'data/travel_data.json' || covered.has(name)) continue;
         const left = before.get(name);
         const right = after.get(name);
-        if (left === right || (left && right && await fileSignature(left) === await fileSignature(right))) continue;
+        if (left === right || (left && right && beforeSignatures[name] === afterSignatures[name])) continue;
         const isText = /\.(md|json|txt)$/i.test(name);
         changes.push({ record: { desc_md: name }, comparison: {
             status: !left ? 'added' : !right ? 'removed' : 'changed', fields: [],

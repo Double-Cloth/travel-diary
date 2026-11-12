@@ -8,6 +8,7 @@ import { captureRecycle, readRecycleBin, manageRecycleBin } from '../js/recycle-
 import { clearTravelData, importDataArchive } from '../js/data-archive.js';
 import { clearCache } from '../scripts/clear-cache.js';
 import { createHandler } from '../js/server.js';
+import fileStream from '../js/file-stream.js';
 import { createZipBlob } from '../js/zip-stream.mjs';
 import { compareBackup, describeRecords, changedTextBlocks } from '../js/record-diff.mjs';
 import { DRAFT_FORMAT } from '../js/record-input.mjs';
@@ -472,6 +473,44 @@ async function preview(root, id, targetDescMd) {
 async function confirmRestore(root, id, plan, targetDescMd) {
     return manageRecycleBin(root, { action: 'restore', id, targetDescMd, previewToken: plan.previewToken, revision: (await readRecycleBin(root)).revision });
 }
+
+test('恢复差异复用令牌签名，避免再次流式读取媒体', async t => {
+    const root = await fixture(t);
+    const id = await captureRecycle(root, { kind: 'version', title: '旧正文', files: [{ path: note.desc_md }] });
+    await write(root, note.desc_md, '# 新正文');
+    const fileSource = fileStream.fileSource;
+    const mocked = t.mock.method(fileStream, 'fileSource', async (...args) => {
+        const source = await fileSource(...args);
+        source.chunks = async function* () { throw new Error('重复读取了媒体签名'); };
+        return source;
+    });
+    try {
+        const plan = await preview(root, id);
+        assert.equal(plan.changes.length, 1);
+        assert.equal(plan.changes[0].comparison.markdown, '# 标题\n\n原正文');
+    } finally { mocked.mock.restore(); }
+});
+
+test('签名缓存识别同大小同修改时间的写入和文件替换，重复预览保持一致', async t => {
+    const root = await fixture(t);
+    const name = 'data/photos/trip/unique.png';
+    const id = await captureRecycle(root, { title: '旧附件', mediaReferences: [note], files: [{ path: name }] });
+    const plan = await preview(root, id);
+    assert.equal((await preview(root, id)).previewToken, plan.previewToken);
+    const target = path.join(root, name);
+    const before = await fs.stat(target);
+    await write(root, name, 'UNIQUE');
+    await fs.utimes(target, before.atime, before.mtime);
+    await assert.rejects(confirmRestore(root, id, plan), /预览后内容已变化/);
+    const changed = await preview(root, id);
+    assert.deepEqual(changed.changes[0].comparison.media, [name]);
+    const replacement = `${target}.replacement`;
+    await fs.writeFile(replacement, 'unique');
+    await fs.utimes(replacement, before.atime, before.mtime);
+    await fs.rename(replacement, target);
+    await assert.rejects(confirmRestore(root, id, changed), /预览后内容已变化/);
+    assert.equal((await preview(root, id)).changes.length, 0);
+});
 
 test('恢复预览的整个异步读取过程持有数据锁', async t => {
     const root = await fixture(t);

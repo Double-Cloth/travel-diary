@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.88';
-import { createPasswordGate } from './record-password.js?v=2.1.88';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.88';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.88';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.88';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.88';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.88';
-import { recordIdentity } from './record-identity.mjs?v=2.1.88';
-import { buildRecycleTree, groupRecycleItems, recycleRecordLabel, recycleFileType } from './recycle-tree.mjs?v=2.1.88';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.89';
+import { createPasswordGate } from './record-password.js?v=2.1.89';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.89';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.89';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.89';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.89';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.89';
+import { recordIdentity } from './record-identity.mjs?v=2.1.89';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRecordLabel, recycleFileType } from './recycle-tree.mjs?v=2.1.89';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -32,6 +32,9 @@ function restoreChangeTitle(record, comparison) {
     const type = kind === 'image' ? '图片' : kind === 'video' ? '视频' : /\.md$/i.test(name) ? '正文文件' : '文件';
     return `${type} · ${name.split('/').pop()}`;
 }
+
+const folderIcon = '<svg class="recycle-node-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M3 9h18"/></svg>';
+const fileIcon = '<svg class="recycle-node-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 3H5v18h14V8Z"/><path d="M14 3v5h5M8 12h8M8 16h6"/></svg>';
 
 export function createRecycleManager(onRestored, { onClose, isActive = () => true } = {}) {
     const dialog = document.createElement('dialog');
@@ -109,9 +112,28 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         if (!state) return '';
         if (state.phase === 'pending') return '<p class="recycle-preview-status" role="status">正在生成恢复预览…</p>';
         if (state.phase === 'error') return `<p class="recycle-preview-status" role="alert">${escapeHtml(state.message)}</p><button class="media-text-button" type="button" data-recycle-retry="${state.id}">重试预览</button>`;
-        return `<details class="recycle-restore-preview"><summary>预览恢复后的变化 <small>${state.changes.length ? `${state.changes.length} 项内容` : '内容相同'}</small></summary><div class="recycle-preview-body">${state.changes.length ? `<p class="recycle-restore-note">以下为这个项目恢复后的变化。确认恢复后才会写入。</p>${state.changes.map(({ record }) => `<div class="recycle-preview-change"><p class="recycle-preview-path" title="${escapeHtml(record.desc_md)}">${recordLink(record, restoreChangeTitle(record, state.comparisons.get(record.desc_md)), state.comparisons.get(record.desc_md)?.previous)}</p>${renderRecordDifference(record, state.comparisons.get(record.desc_md), {
-            afterLabel: '恢复后', note: '', previewLabel: '预览恢复后的正文', collapsible: state.changes.length > 1, mediaLink: (name, side) => mediaLink(name, side, state)
-        })}</div>`).join('')}` : '<p class="recycle-restore-note">回收内容与当前内容一致，无需恢复。</p>'}</div></details>`;
+        return `<details class="recycle-restore-preview"><summary>预览恢复后的变化 <small>${state.changes.length ? `${state.changes.length} 项内容` : '内容相同'}</small></summary><div class="recycle-preview-body">${state.changes.length ? '<p class="recycle-restore-note">以下为这个项目恢复后的变化。确认恢复后才会写入。</p><ul class="recycle-tree" data-recycle-restore-files data-recycle-directory="" style="--recycle-depth: 0" aria-label="恢复变化目录"></ul>' : '<p class="recycle-restore-note">回收内容与当前内容一致，无需恢复。</p>'}</div></details>`;
+    }
+    function loadRestoreContents(list, state) {
+        if (!list || list.dataset.loaded) return;
+        list.dataset.loaded = 'true';
+        state.tree ||= buildRestorePreviewTree(state.changes, mediaKind);
+        const node = state.tree.get(list.dataset.recycleDirectory);
+        for (const child of node.directories) {
+            const row = document.createElement('li');
+            row.innerHTML = `<details class="recycle-directory" data-recycle-restore-directory open><summary>${folderIcon}<span>${escapeHtml(child.name)}</span><small>${child.count} 项变化</small></summary><ul class="recycle-tree" data-recycle-restore-files data-recycle-directory="${escapeHtml(child.path)}" style="--recycle-depth: ${Math.min(child.depth, 4)}" aria-label="${escapeHtml(child.name)}"></ul></details>`;
+            list.append(row);
+        }
+        for (const [index, file] of node.files.entries()) {
+            const row = document.createElement('li');
+            row.className = 'recycle-file';
+            const comparison = file.comparison;
+            let action = { added: '新增', removed: '移除', changed: '修改' }[comparison.status];
+            if (comparison.media.length) action = !comparison.previousMediaPaths.has(file.path) ? '新增' : !comparison.incomingMediaPaths.has(file.path) ? '移除' : '内容变化';
+            const label = file.label || (file.path === 'data/profile/owner-name.txt' ? '个人署名' : file.path === 'data/profile/profile-picture.png' ? '个人头像' : file.path.split('/').pop());
+            row.innerHTML = `<details class="content-file-preview" data-recycle-restore-file="${index}" title="${escapeHtml(file.path)}"><summary aria-label="${escapeHtml(`${restoreChangeTitle(file.record, comparison)} · ${label} · ${action}`)}">${fileIcon}<span>${escapeHtml(label)}</span><small>${action}</small></summary><div class="content-file-body"></div></details>`;
+            list.append(row);
+        }
     }
     function currentRecord(record, previous) {
         return report.currentRecords?.find(candidate => [record, previous].some(value => value && (recordIdentity(value) === recordIdentity(candidate) || value.desc_md === candidate.desc_md)));
@@ -148,7 +170,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const row = document.createElement('li');
             const open = directoryStates.get(directoryKey(item.id, child.path)) ?? (child.depth <= 2 || child.matches);
             row.innerHTML = `<details class="recycle-directory" data-recycle-folder="${escapeHtml(child.path)}"${open ? ' open' : ''}>
-                <summary title="${escapeHtml(child.name)}"><svg class="recycle-node-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M3 7V5a1 1 0 0 1 1-1h5l2 3h9a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1Z"/><path d="M3 9h18"/></svg><span>${escapeHtml(child.name)}</span><small><span>${child.count} 个文件</span><span>${sizeLabel(child.totalBytes)}</span></small></summary>
+                <summary title="${escapeHtml(child.name)}">${folderIcon}<span>${escapeHtml(child.name)}</span><small><span>${child.count} 个文件</span><span>${sizeLabel(child.totalBytes)}</span></small></summary>
                 <ul class="recycle-tree" data-recycle-files="${item.id}" data-recycle-directory="${escapeHtml(child.path)}" style="--recycle-depth: ${Math.min(child.depth, 4)}" aria-label="${escapeHtml(child.name)}"></ul></details>`;
             list.append(row);
         }
@@ -168,7 +190,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const summary = row.querySelector('.content-file-preview > summary');
             if (summary) {
                 if (/\.md$/i.test(file.path)) summary.querySelector('span').innerHTML = recordLink({ desc_md: file.path }, file.path.split('/').pop());
-                summary.insertAdjacentHTML('afterbegin', '<svg class="recycle-node-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M14 3H5v18h14V8Z"/><path d="M14 3v5h5M8 12h8M8 16h6"/></svg>');
+                summary.insertAdjacentHTML('afterbegin', fileIcon);
                 const size = document.createElement('small');
                 size.textContent = sizeLabel(file.size);
                 summary.append(size);
@@ -240,20 +262,32 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
     }
     dialog.addEventListener('toggle', async event => {
         const details = event.target;
+        if (details.matches('.recycle-restore-preview, [data-recycle-restore-directory], [data-recycle-restore-file]')) {
+            if (!details.open) return;
+            const id = details.closest('[data-recycle-item]').dataset.recycleItem;
+            const state = selected.get(id);
+            if (state?.phase !== 'ready') return;
+            if (!details.matches('[data-recycle-restore-file]')) {
+                loadRestoreContents(details.querySelector('[data-recycle-restore-files]'), state);
+                return;
+            }
+            if (details.dataset.loaded) return;
+            details.dataset.loaded = 'true';
+            const list = details.closest('[data-recycle-restore-files]');
+            const file = state.tree.get(list.dataset.recycleDirectory).files[Number(details.dataset.recycleRestoreFile)];
+            const body = details.querySelector('.content-file-body');
+            body.innerHTML = renderRecordDifference(file.record, file.comparison, { afterLabel: '恢复后', note: '', previewLabel: '预览恢复后的正文', collapsible: false, mediaLink: (name, side) => mediaLink(name, side, state) });
+            const scope = previews;
+            await loadDifferenceMedia(body.querySelector('[data-diff-record]'), file.comparison, scope, (name, side) => ({
+                url: side === 'after' && state.savedPaths.has(name) ? recycleUrl(id, state.savedFiles.get(name) || name) : getMediaFileUrl(name)
+            }), () => scope === previews && state === selected.get(id));
+            return;
+        }
         if (details.matches('[data-recycle-folder]')) {
             const id = details.closest('[data-recycle-item]').dataset.recycleItem;
             directoryStates.set(directoryKey(id, details.dataset.recycleFolder), details.open);
             if (details.open) void loadContents(details.querySelector('[data-recycle-files]'), report.items.find(item => item.id === id), previews);
             return;
-        }
-        const differences = details.matches('[data-diff-record]') ? [details] : details.matches('.recycle-restore-preview') && details.open ? [...details.querySelectorAll('section[data-diff-record]')] : [];
-        for (const difference of differences) {
-            const id = details.closest('[data-recycle-item]').dataset.recycleItem;
-            const state = selected.get(id);
-            const scope = previews;
-            await loadDifferenceMedia(difference, state?.comparisons?.get(difference.dataset.diffRecord), scope, (name, side) => ({
-                url: side === 'after' && state.savedPaths.has(name) ? recycleUrl(id, state.savedFiles.get(name) || name) : getMediaFileUrl(name)
-            }), () => scope === previews && state === selected.get(id));
         }
     }, true);
     function selectItem(item) {
@@ -277,9 +311,10 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
                 const result = await response.json();
                 if (!response.ok || !Array.isArray(result.changes) || !result.previewToken) throw new Error(result.error || '无法比较恢复内容，请刷新后重试。');
                 if (!isCurrent()) return;
-                Object.assign(state, { phase: 'ready', previewToken: result.previewToken, changes: result.changes, savedPaths: new Set(result.savedPaths), savedFiles: new Map((result.savedFiles || []).map(file => [file.path, file.sourcePath])), comparisons: new Map(result.changes.map(({ record, comparison }) => [record.desc_md, {
+                const changes = result.changes.map(({ record, comparison }) => ({ record, comparison: {
                     ...comparison, previousMediaPaths: new Set(comparison.previousMediaPaths), incomingMediaPaths: new Set(comparison.incomingMediaPaths)
-                }])) });
+                } }));
+                Object.assign(state, { phase: 'ready', previewToken: result.previewToken, changes, savedPaths: new Set(result.savedPaths), savedFiles: new Map((result.savedFiles || []).map(file => [file.path, file.sourcePath])) });
             } catch (failure) {
                 if (!isCurrent()) return;
                 state.phase = 'error';

@@ -1,5 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.88';
-import { recordIdentity } from './record-identity.mjs?v=2.1.88';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.89';
+import { recordIdentity } from './record-identity.mjs?v=2.1.89';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
@@ -70,7 +70,10 @@ export function groupRecycleItems(items, currentRecords = []) {
 }
 
 // 逻辑目录只负责展示归属，文件保留原始对象供预览和恢复使用。
-export function buildRecycleTree(files, query = '', { records = [], mediaReferences = [], displayRecords = [], mediaKind = () => '' } = {}) {
+export function buildRecycleTree(files, query = '', {
+    records = [], mediaReferences = [], displayRecords = [], mediaKind = () => '', groupSingleRecord = false,
+    categories = ['正文', '图片', '视频', '个人资料', '日记索引', '其他文件']
+} = {}) {
     const directories = new Map();
     const root = { path: '', name: '', depth: 0, directories: [], files: [], count: 0, totalBytes: 0, matches: false };
     directories.set('', root);
@@ -85,7 +88,6 @@ export function buildRecycleTree(files, query = '', { records = [], mediaReferen
         }
     }
     const search = query.trim().toLowerCase();
-    const categories = ['正文', '图片', '视频', '个人资料', '日记索引', '其他文件'];
     const directory = (parent, key, name, order) => {
         const path = parent.path ? `${parent.path}/${key}` : key;
         if (!directories.has(path)) {
@@ -101,12 +103,12 @@ export function buildRecycleTree(files, query = '', { records = [], mediaReferen
         const ancestors = [root];
         if (references?.size > 1) {
             parent = directory(root, 'shared', '共用内容', 1);
-        } else if (references?.size && diaries.size > 1) {
+        } else if (references?.size && (groupSingleRecord || diaries.size > 1)) {
             const name = references.values().next().value;
             parent = directory(root, `record:${name}`, recycleRecordLabel(diaries.get(name)), 0);
         }
         if (parent !== root) ancestors.push(parent);
-        const category = diaries.has(file.path) ? '正文' : recycleFileType(file.path, mediaKind);
+        const category = file.category || (diaries.has(file.path) ? '正文' : recycleFileType(file.path, mediaKind));
         const index = categories.indexOf(category);
         const node = directory(parent, `type:${index}`, category, index + 2);
         node.files.push(file);
@@ -125,4 +127,27 @@ export function buildRecycleTree(files, query = '', { records = [], mediaReferen
         node.files.sort((a, b) => collator.compare(a.path.split('/').pop(), b.path.split('/').pop()) || compare(a, b));
     }
     return directories;
+}
+
+// 差异拆成信息、正文与单个附件，复用回收目录的日记归属及共用文件逻辑。
+export function buildRestorePreviewTree(changes, mediaKind = () => '') {
+    const files = [];
+    const records = [];
+    const media = new Set();
+    for (const { record, comparison } of changes) {
+        const diary = record.date ? record : comparison.previous?.date ? comparison.previous : null;
+        if (diary) {
+            records.push(diary);
+            if (comparison.previous?.date) records.push({ ...comparison.previous, desc_md: diary.desc_md });
+        }
+        const empty = { ...comparison, fields: [], media: [], markdownChanged: false };
+        if (comparison.fields.length) files.push({ path: record.desc_md, size: 0, category: '日记信息', label: '记录信息', record, comparison: { ...empty, fields: comparison.fields } });
+        if (comparison.markdownChanged) files.push({ path: record.desc_md, size: 0, record, comparison: { ...empty, markdownChanged: true } });
+        for (const name of comparison.media) {
+            if (media.has(name)) continue;
+            media.add(name);
+            files.push({ path: name, size: 0, record, comparison: { ...empty, media: [name] } });
+        }
+    }
+    return buildRecycleTree(files, '', { records, mediaKind, groupSingleRecord: true, categories: ['日记信息', '正文', '图片', '视频', '个人资料', '日记索引', '其他文件'] });
 }
