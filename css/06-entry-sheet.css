@@ -204,16 +204,17 @@
 .media-file-thumbnail.is-media-error::after {
     content: '';
     position: absolute;
+    box-sizing: border-box;
     top: 50%;
     left: 50%;
-    width: 28px;
+    width: 24px;
     transform: translate(-50%, -50%);
     pointer-events: none;
 }
 
 .photo-sleeve-media-error::before,
 .media-file-thumbnail.is-media-error::before {
-    height: 28px;
+    height: 24px;
     border: 2px solid currentColor;
     border-radius: 50%;
 }
