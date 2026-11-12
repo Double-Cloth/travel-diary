@@ -271,8 +271,6 @@ body[data-route='preface'] .paper-page {
         linear-gradient(145deg, #fffcf2, #f3e9d4 70%, #e3d2b2);
     box-shadow: inset 0 1px 1px #fffef5, inset 0 -1px 2px #b89c7466, 0 2px 3px #4a301b26, 2px 8px 14px #4a301b2e;
     transform: rotate(-1.4deg);
-    cursor: pointer;
-    transition: transform 180ms cubic-bezier(.2,.7,.2,1), filter 180ms, box-shadow 180ms;
 }
 
 /* 细线卡纸包边与照片内沿分层，角贴独立压在相片上方。 */
@@ -294,20 +292,6 @@ body[data-route='preface'] .paper-page {
     inset: var(--portrait-mat);
     border: 1px solid #70543780;
     box-shadow: inset 0 1px 3px #3f2b1d38, 0 1px #fffdf0;
-}
-
-.preface-portrait:focus-visible { outline: 2px solid var(--stamp); outline-offset: 5px; }
-
-.preface-portrait:hover,
-.preface-portrait:focus-visible {
-    filter: brightness(1.025);
-    transform: rotate(-.3deg) translateY(-2px);
-    box-shadow: inset 0 1px 1px #fffef5, inset 0 -1px 2px #b89c7466, 0 3px 5px #4a301b26, 3px 11px 18px #4a301b38;
-}
-
-.preface-portrait:active {
-    transform: rotate(-.3deg);
-    box-shadow: inset 0 1px 1px #fffef5, 0 2px 5px #4a301b30;
 }
 
 .preface-portrait img,
@@ -396,8 +380,6 @@ body[data-route='preface'] .paper-page {
     text-shadow: none;
     font: inherit;
     text-align: left;
-    cursor: pointer;
-    transition: transform 180ms cubic-bezier(.2,.7,.2,1), box-shadow 180ms;
 }
 
 /* 朱砂双线落在纸面上，保留署名章的印记感与姓名的呼吸空间。 */
@@ -408,22 +390,6 @@ body[data-route='preface'] .paper-page {
     border: 1px solid #9c58465c;
     border-radius: 1px;
     pointer-events: none;
-}
-
-.preface-owner-plaque:hover,
-.preface-owner-plaque:focus-visible {
-    transform: translateY(-1px);
-    box-shadow: inset 0 1px #fffbed, 0 5px 12px #583b2029;
-}
-
-.preface-owner-plaque:active {
-    transform: translateY(0);
-    box-shadow: inset 0 1px 3px #583b201a, 0 1px 3px #583b2014;
-}
-
-.preface-owner-plaque:focus-visible {
-    outline: 2px solid var(--stamp);
-    outline-offset: 4px;
 }
 
 .preface-owner-plaque span {
@@ -513,39 +479,36 @@ body[data-route='preface'] .paper-page {
 .preface-tools-panel { gap: 22px; }
 .preface-tools-panel button { -webkit-tap-highlight-color: #a4824326; }
 
-.preface-entry-actions {
+.preface-button {
     display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 8px 16px;
-}
-
-.preface-entry-actions > .preface-write-button { flex: 1 1 160px; }
-
-.paper-page .preface-entry-actions .preface-write-button,
-.paper-page .preface-entry-actions .preface-write-button:hover {
-    min-height: 44px;
-    padding: 10px 16px;
-    border-color: var(--green);
-    color: var(--paper-50);
-    background: var(--green);
-    text-shadow: none;
-    font-size: 14px;
-}
-
-.preface-browse-link {
-    display: inline-flex;
-    flex: 1 0 auto;
     align-items: center;
     justify-content: center;
+    gap: 6px;
+    width: 100%;
+    min-width: 0;
     min-height: 44px;
-    color: var(--ink-soft);
+    padding: 10px 12px;
+    border: 1px solid #9c7a4c80;
+    border-radius: 2px;
+    color: var(--ink);
+    background: #f2dfb780;
+    font: inherit;
     font-size: 14px;
-    text-decoration: underline;
-    text-underline-offset: 5px;
+    font-weight: 600;
+    line-height: 1.6;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color .18s ease, border-color .18s ease;
 }
 
-.preface-browse-link:hover { color: var(--stamp); }
+.preface-button:hover { border-color: var(--brass-300); background-color: var(--paper-100); }
+.preface-button:active { background-color: var(--paper-200); }
+.preface-button:disabled { opacity: .55; cursor: wait; }
+.preface-button:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
+.preface-button-primary { border-color: var(--green); color: var(--paper-50); background: var(--green); }
+.preface-button-primary:hover { border-color: var(--green); background-color: var(--green); filter: brightness(1.08); }
+.preface-button-primary:active { filter: brightness(.92); }
+.preface-button-primary:disabled { filter: none; }
 
 .preface-tool-section {
     display: grid;
@@ -564,10 +527,9 @@ body[data-route='preface'] .paper-page {
 }
 
 .preface-security-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px 12px;
 }
 
 .preface-tool-note,
@@ -579,31 +541,10 @@ body[data-route='preface'] .paper-page {
 }
 
 .preface-profile-tools {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px 12px;
-    color: #69513a;
-    font-size: 12px;
 }
-
-.preface-text-action {
-    min-height: 44px;
-    padding: 7px 12px;
-    border: 1px solid #9c7a4c80;
-    border-radius: 2px;
-    color: var(--ink);
-    background: #f2dfb780;
-    font: inherit;
-    font-size: 14px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background-color .18s ease, color .18s ease;
-}
-
-.preface-text-action:hover { color: var(--stamp); border-color: var(--brass-300); background-color: var(--paper-100); }
-.preface-text-action:active { background-color: var(--paper-200); }
-.preface-text-action:disabled { opacity: .55; cursor: wait; }
 
 .preface-backup-group { display: grid; gap: 8px; }
 .preface-backup-group + .preface-backup-group {
@@ -625,127 +566,28 @@ body[data-route='preface'] .paper-page {
     gap: 8px 12px;
 }
 
-.preface-tool-choices { display: grid; }
+.preface-tool-choices { display: grid; gap: 12px; }
+.preface-tool-choice { display: grid; gap: 6px; }
 
-.preface-tool-command {
-    position: relative;
-    display: grid;
-    align-content: start;
-    gap: 4px;
-    min-width: 0;
-    min-height: 44px;
-    padding: 12px 24px 12px 0;
-    border: 0;
-    border-bottom: 1px solid var(--line);
-    border-radius: 0;
-    color: var(--ink);
-    background: transparent;
-    font: inherit;
-    text-align: left;
-    cursor: pointer;
-    transition: background-color .18s ease, color .18s ease;
-}
+.preface-replace-note { color: var(--stamp); }
 
-.preface-tool-command:last-child { border-bottom: 0; }
-
-.preface-tool-command::after {
+.preface-tool-disclosure { min-width: 0; }
+.preface-tool-disclosure > summary { list-style: none; }
+.preface-tool-disclosure > summary::-webkit-details-marker { display: none; }
+.preface-tool-disclosure > summary::after {
     content: '';
-    position: absolute;
-    top: 16px;
-    right: 13px;
     width: 6px;
     height: 6px;
-    border-top: 1px solid currentColor;
+    margin-left: 4px;
     border-right: 1px solid currentColor;
-    rotate: 45deg;
+    border-bottom: 1px solid currentColor;
+    transform: translateY(-2px) rotate(45deg);
 }
-
-.preface-command-title {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 4px 8px;
-    font-size: 16px;
-    font-weight: 700;
-    line-height: 1.5;
-}
-
-.preface-command-description {
-    color: var(--ink-soft);
-    font-size: 14px;
-    line-height: 1.7;
-    overflow-wrap: anywhere;
-}
-
-.preface-tool-command:hover { color: var(--stamp); border-color: var(--brass-300); background-color: var(--paper-100); }
-.preface-delete-command .preface-command-title { color: var(--stamp); }
-
-.preface-tool-command:active { background-color: var(--paper-200); }
-.preface-tool-command:disabled { opacity: .55; cursor: wait; }
-.preface-tool-command:focus-visible,
-.preface-text-action:focus-visible,
-.preface-browse-link:focus-visible,
-.preface-tool-disclosure > summary:focus-visible {
-    outline: 2px solid var(--stamp);
-    outline-offset: 3px;
-}
-
-.preface-replace-action,
-.preface-replace-note { color: var(--stamp); }
-.preface-security-row > .preface-text-action { flex: 1; }
-.preface-security-row .password-reset-help { flex: none; margin: 0; }
-
-.preface-tool-disclosure {
-    min-width: 0;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #9c7a4c66;
-}
-
-.preface-tool-disclosure > summary {
-    min-height: 44px;
-    padding-block: 8px;
-    color: var(--ink-soft);
-    font-size: 16px;
-    line-height: 1.6;
-    cursor: pointer;
-}
-
-.preface-tool-disclosure > summary:hover { color: var(--stamp); }
+.preface-tool-disclosure[open] > summary::after { transform: translateY(2px) rotate(225deg); }
 .preface-settings-content { display: grid; gap: 12px; padding-top: 12px; }
-.preface-reset-tools { border-bottom: 0; }
-.preface-reset-tools > summary { color: var(--stamp); font-size: 14px; }
 .preface-reset-content { display: grid; gap: 12px; padding: 12px 0 2px; }
-.preface-reset-content .paper-button { justify-self: start; font-size: 13px; min-height: 44px; }
 .preface-transfer-status { margin: 0; color: var(--stamp); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
 .preface-transfer-status:empty { display: none; }
-
-.password-reset-help {
-    display: inline-flex;
-    align-items: center;
-    justify-self: end;
-    gap: 5px;
-    min-height: 32px;
-    margin-top: -4px;
-    padding: 6px 2px;
-    color: var(--ink-soft);
-    background: transparent;
-    font-size: 12px;
-    line-height: 20px;
-    border-radius: 2px;
-    cursor: pointer;
-}
-
-.password-reset-help:hover { color: var(--stamp); }
-
-.password-reset-help:hover > span {
-    text-decoration: underline;
-    text-underline-offset: 3px;
-}
-
-.password-reset-help:focus-visible {
-    outline: 1px solid var(--stamp);
-    outline-offset: 3px;
-}
 
 .password-reset-help-mark {
     flex: none;
@@ -1775,10 +1617,6 @@ body:is([data-route='entry'], [data-route='place']) .notebook .paper-page { padd
     .preface-facts dd { font-size: 11px; }
     .preface-tools-panel { gap: 20px; }
     .preface-tool-section { padding-bottom: 18px; }
-    .preface-entry-actions { gap: 4px 16px; }
-    .preface-entry-actions > .preface-write-button { flex-basis: 100%; }
-    .preface-profile-tools > .preface-text-action { flex: 1; }
-    .preface-security-row { flex-wrap: wrap; gap: 4px 12px; }
 }
 
 /* 以藏书票自身宽度为准切换单列，兼容窄双页、浏览器缩放和极窄单页。 */

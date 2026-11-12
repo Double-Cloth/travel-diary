@@ -724,7 +724,7 @@ test('扉页署名像头像一样验证后修改并随完整备份导出', () =>
     assert.match(appJs, /let profileOwnerName = DEFAULT_OWNER_NAME;/);
     assert.match(appJs, /const \[ownerName, hydratedRecords\] = await Promise\.all\([\s\S]*loadOwnerName\(\)/);
     assert.match(appJs, /profileOwnerName = ownerName;/);
-    assert.match(appJs, /class="preface-owner-plaque" type="button" data-action="edit-owner-name"/);
+    assert.match(appJs, /<div class="preface-owner-plaque">/);
     assert.match(appJs, /<strong>\$\{escapeHtml\(profileOwnerName\)\}<\/strong>/);
     assert.match(appJs, /data-action="edit-owner-name">修改署名<\/button>/);
     assert.match(appJs, /const nextName = await ownerNameDialog\.open\(profileOwnerName\);/);
@@ -741,7 +741,7 @@ test('扉页署名像头像一样验证后修改并随完整备份导出', () =>
     assert.match(profileOwnerDialogJs, /data-owner-name-input/);
     assert.match(profileOwnerDialogJs, /normalizeOwnerName\(input\.value\)/);
     assert.match(recordStoreJs, /owner-name\.txt/);
-    assert.match(journalCss, /\.preface-owner-plaque:hover,/);
+    assert.match(journalCss, /\.preface-button:focus-visible/);
     assert.match(journalCss, /\.profile-owner-dialog-card\s*{/);
     assert.match(journalCss, /dialog\.profile-owner-dialog\.entry-sheet/);
 });
