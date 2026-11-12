@@ -1771,6 +1771,9 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-manager .custom-select-menu { min-width: 100%; }
 .media-manager .media-filter-hint { margin: 12px 0; font-size: 13px; overflow-wrap: anywhere; }
 .media-manager .media-diary-list .media-file-list { min-height: 0; max-height: none; overflow: visible; }
+.media-manager .media-special-group > .recycle-diary-history > summary { color: var(--ink); background: rgba(145, 66, 44, 0.06); }
+.media-manager .media-special-group + .recycle-diary-group:not(.media-special-group) { margin-top: 12px; border-top: 1px solid var(--hairline); }
+.media-manager .media-shared-owners { display: block; margin-top: 4px; font-size: 13px; font-weight: 400; }
 .media-manager .media-file-list > .media-health-file { grid-template-columns: 44px minmax(0, 1fr); column-gap: 12px; }
 .media-manager .media-file-list > .media-health-file-readonly { grid-template-columns: minmax(0, 1fr); }
 .media-manager [data-media-path]:disabled { accent-color: var(--ink-soft); cursor: not-allowed; }

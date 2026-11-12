@@ -1,14 +1,20 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.123';
-import { createPasswordGate } from './record-password.js?v=2.1.123';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.123';
-import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.123';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.123';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.124';
+import { createPasswordGate } from './record-password.js?v=2.1.124';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.124';
+import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.124';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.124';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`;
     if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
     return `${(bytes / 1024 ** 3).toFixed(2)} GiB`;
+}
+
+function mediaGroupKey(file) {
+    if (!file.records.length) return 'unused';
+    const keys = file.records.map(record => record.desc_md || record.record_id).sort();
+    return keys.length > 1 ? `shared:${JSON.stringify(keys)}` : keys[0];
 }
 
 export function createMediaManager(onReferencesRemoved = async () => {}, { onClose, isActive = () => true } = {}) {
@@ -117,24 +123,37 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
         const files = filteredFiles();
         const groups = new Map();
         for (const file of files) {
-            const records = file.records.length ? file.records : [null];
-            for (const record of records) {
-                const key = record ? record.desc_md || record.record_id : 'unused';
-                if (!groups.has(key)) groups.set(key, { record, files: [] });
-                groups.get(key).files.push(file);
+            const key = mediaGroupKey(file);
+            if (!groups.has(key)) {
+                let order = 2;
+                if (!file.records.length) order = 0;
+                else if (file.records.length > 1) order = 1;
+                groups.set(key, { records: file.records, files: [], order });
             }
+            groups.get(key).files.push(file);
         }
         const list = dialog.querySelector('[data-media-list]');
-        const rows = [...groups].map(([key, group]) => {
+        const rows = [...groups].sort((a, b) => a[1].order - b[1].order).map(([key, group]) => {
             const row = document.createElement('li');
             row.className = 'recycle-diary-group';
+            if (group.records.length !== 1) row.classList.add('media-special-group');
             const details = document.createElement('details');
             details.className = 'recycle-diary-history';
             details.dataset.mediaDiary = key;
             details.open = expandedGroups.has(key);
-            const label = group.record ? `${group.record.date} · ${group.record.locality}` : '未被日记使用';
+            const shared = group.records.length > 1;
+            const record = group.records[0];
+            let label = '未被日记使用';
+            let heading = label;
+            if (shared) {
+                label = '多篇日记共用';
+                heading = `${label}<span class="media-shared-owners">${owners(group)}</span>`;
+            } else if (record) {
+                label = `${record.date} · ${record.locality}`;
+                heading = owners(group);
+            }
             const summary = document.createElement('summary');
-            summary.innerHTML = `<span>${group.record ? owners({ records: [group.record] }) : label}</span><small>${group.files.length} 个文件${filter === 'missing' ? '' : ` · ${sizeLabel(group.files.reduce((sum, file) => sum + file.size, 0))}`}</small>`;
+            summary.innerHTML = `<span>${heading}</span><small>${group.files.length} 个文件${filter === 'missing' ? '' : ` · ${sizeLabel(group.files.reduce((sum, file) => sum + file.size, 0))}`}</small>`;
             const media = document.createElement('ul');
             media.className = 'record-transfer-list media-file-list recycle-history';
             media.setAttribute('data-media-viewer-group', '');
@@ -276,8 +295,7 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
         if (event.target.closest('[data-media-all]') && !stale) {
             filteredFiles().filter(selectable).forEach(file => {
                 currentSelection().add(file.path);
-                if (!file.records.length) expandedGroups.add('unused');
-                file.records.forEach(record => expandedGroups.add(record.desc_md || record.record_id));
+                expandedGroups.add(mediaGroupKey(file));
             });
             renderFiles();
             count();
