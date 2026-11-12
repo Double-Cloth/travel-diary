@@ -1516,7 +1516,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-manager .media-selection-tools { align-items: stretch; gap: 8px; margin: 0; padding: 0; }
 .recycle-list { list-style: none; padding: 0; margin: 0; }
 .recycle-list > li { padding: 16px 12px; border-bottom: 1px solid var(--hairline); overflow-wrap: anywhere; }
-.recycle-list > li.is-selected { background: rgba(155, 61, 46, 0.06); }
+.recycle-list > li.is-selected { background: rgba(155, 61, 46, 0.035); }
 .recycle-list > .recycle-diary-group { padding: 16px 0; }
 .recycle-list .recycle-diary-history > summary { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; min-height: 48px; padding: 8px 12px; border-radius: 2px; color: var(--stamp); font-size: 15px; font-weight: 600; line-height: 1.7; cursor: pointer; }
 .recycle-diary-history > summary::before { content: ''; width: 7px; height: 7px; margin-right: 4px; border-right: 1px solid currentColor; border-bottom: 1px solid currentColor; transform: rotate(-45deg); flex: 0 0 7px; align-self: center; }
@@ -1527,7 +1527,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-diary-history > summary small { color: var(--ink-soft); font-size: 12px; font-weight: 400; }
 .recycle-diary-history > summary [data-recycle-history-count] { grid-column: 2 / -1; color: var(--stamp); }
 .recycle-diary-history > summary:hover,
-.recycle-diary-group.has-selection > .recycle-diary-history > summary { background: rgba(155, 61, 46, 0.06); }
+.recycle-diary-group.has-selection > .recycle-diary-history > summary { background: rgba(155, 61, 46, 0.035); }
 .recycle-list .recycle-group-note { margin: 4px 12px 12px 34px; color: var(--ink-soft); font-size: 12px; }
 .recycle-history { margin: 0 12px; padding-left: 16px; border-left: 1px solid var(--hairline); }
 .recycle-history > li { padding-block: 12px; border-bottom-style: dashed; }
@@ -1578,11 +1578,13 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-tree[data-recycle-directory]:not([data-recycle-directory=""]) > li:last-child::before { height: 22px; }
 .recycle-tree > li > .recycle-directory > summary,
 .recycle-tree > .recycle-file > .content-file-preview > summary { display: grid; grid-template-columns: 10px 18px minmax(0, 1fr) auto; gap: 8px; min-height: 44px; padding: 8px 8px 8px calc(var(--recycle-depth) * 16px + 8px); border-radius: 4px; overflow-wrap: anywhere; }
-.recycle-tree > li > .recycle-directory > summary.recycle-diary-choice { grid-template-columns: 10px 44px 18px minmax(0, 1fr) auto; padding-block: 4px; }
+.recycle-tree > li > .recycle-directory > summary.recycle-diary-summary { grid-template-columns: 10px minmax(0, 1fr) auto; }
+.recycle-tree > li > .recycle-directory > summary.recycle-diary-choice { grid-template-columns: 10px 44px minmax(0, 1fr) auto; padding-block: 4px; }
 .recycle-diary-selector { display: grid; place-items: center; width: 44px; height: 44px; cursor: pointer; }
 .recycle-diary-selector > input { width: 20px; height: 20px; margin: 0; accent-color: var(--stamp); cursor: pointer; }
 .recycle-diary-selector > input:focus-visible { outline: 2px solid var(--stamp); outline-offset: 4px; }
-.recycle-diary-choice.is-selected { background: rgba(155, 61, 46, 0.06); outline: 1px solid var(--hairline); outline-offset: -1px; }
+.recycle-tree .recycle-directory > summary.recycle-diary-choice.is-selected { background: rgba(155, 61, 46, 0.035); outline: 1px solid rgba(155, 61, 46, 0.16); outline-offset: -1px; }
+.recycle-tree .recycle-directory > summary.recycle-diary-choice.is-selected:hover { background: rgba(155, 61, 46, 0.05); }
 .recycle-tree .recycle-directory > summary > .recycle-directory-record { color: var(--stamp); }
 .recycle-directory-record a { color: inherit; text-decoration-thickness: 1px; text-underline-offset: 4px; }
 .recycle-directory-record a:hover { text-decoration-thickness: 2px; }
@@ -1609,6 +1611,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-tree .media-file-name { font-size: 13px; }
 .recycle-tree .media-file-detail { font-variant-numeric: tabular-nums; }
 .recycle-directory > summary:focus-visible,
+.recycle-tree .recycle-directory > summary.recycle-diary-choice:focus-visible,
 .recycle-tree .content-file-preview > summary:focus-visible { outline: 2px solid var(--stamp); outline-offset: -2px; }
 .recycle-list .content-file-heading { margin: 0; padding: 12px 0; color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
 .recycle-list a:not(.media-file-link) { color: var(--stamp); text-decoration: underline; text-underline-offset: 3px; }
@@ -1673,8 +1676,10 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
     .recycle-item-meta time { flex-basis: 100%; margin-left: 0; }
     .recycle-item-body { margin-left: 0; }
     .recycle-tree .recycle-directory > summary { grid-template-columns: 10px 18px minmax(0, 1fr); gap: 2px 8px; }
-    .recycle-tree > li > .recycle-directory > summary.recycle-diary-choice { grid-template-columns: 10px 44px 18px minmax(0, 1fr); }
-    .recycle-tree .recycle-directory > summary.recycle-diary-choice > small { grid-column: 4; }
+    .recycle-tree > li > .recycle-directory > summary.recycle-diary-summary { grid-template-columns: 10px minmax(0, 1fr); }
+    .recycle-tree > li > .recycle-directory > summary.recycle-diary-summary > small { grid-column: 2; }
+    .recycle-tree > li > .recycle-directory > summary.recycle-diary-choice { grid-template-columns: 10px 44px minmax(0, 1fr); }
+    .recycle-tree > li > .recycle-directory > summary.recycle-diary-choice > small { grid-column: 3; }
     .recycle-tree .recycle-directory > summary > small { grid-column: 3; justify-content: flex-start; gap: 10px; text-align: start; }
     .recycle-tree .recycle-directory > summary > small > span { min-width: 0; }
     .recycle-tree > .recycle-file > .content-file-preview > summary { grid-template-columns: 10px 18px minmax(0, 1fr); gap: 2px 8px; }
