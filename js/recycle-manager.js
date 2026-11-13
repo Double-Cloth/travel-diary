@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl, formatFileSize } from './utils.js?v=2.1.137';
-import { createPasswordGate } from './record-password.js?v=2.1.137';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.137';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.137';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.137';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.137';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.137';
-import { recordIdentity } from './record-identity.mjs?v=2.1.137';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleSelectionGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.137';
+import { escapeHtml, getMediaFileUrl, formatFileSize } from './utils.js?v=2.1.138';
+import { createPasswordGate } from './record-password.js?v=2.1.138';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.138';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.138';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.138';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.138';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.138';
+import { recordIdentity } from './record-identity.mjs?v=2.1.138';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleSelectionGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.138';
 
 function restoreChangeTitle(record, comparison) {
     const diary = record.date ? record : comparison.previous?.date ? comparison.previous : null;
@@ -123,7 +123,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         syncPartControls();
         dialog.querySelectorAll('[data-recycle-mode-note]').forEach(element => {
             const id = element.closest('[data-recycle-item]').dataset.recycleItem;
-            element.textContent = selected.get(id)?.parts?.includes('index') ? '日记索引将整份替换，回退全部日记信息和附件引用。原回收批次完整保留。' : selected.get(id)?.parts ? '仅恢复勾选的日记、归档附件及个人资料，原回收批次完整保留。' : '勾选整个项目可恢复全部日记和个人资料，也可单独勾选日记、个人资料或日记索引。被替换的当前内容会先存入回收站。';
+            element.textContent = selected.get(id)?.parts?.includes('index') ? '日记索引将整份替换，回退全部日记信息和附件引用。原回收批次完整保留。' : selected.get(id)?.parts ? '仅恢复勾选的日记、归档附件及个人资料，原回收批次完整保留。' : '勾选整个项目可恢复全部日记和个人资料，也可单独勾选日记、个人资料或日记索引。恢复将直接覆盖预览中发生变化的当前内容。';
         });
         dialog.querySelectorAll('[data-recycle-history-count]').forEach(element => {
             const group = grouping.groups.find(group => group.key === element.dataset.recycleHistoryCount);
@@ -606,7 +606,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const partial = [...selected.values()].some(state => state.parts);
             const indexSelected = [...selected.values()].some(state => state.parts?.includes('index'));
             const hidden = items.length - filteredItems().filter(item => selected.has(item.id)).length;
-            await confirmAction(`将恢复所选 ${items.length} 个项目${hidden ? `（含筛选范围外的 ${hidden} 个）` : ''}：${items.map(item => `「${item.title}」`).join('、')}。${snapshot ? '全部日记和个人资料将恢复到这个时间点，访问密码保持不变。' : ''}${indexSelected ? '将替换当前整份日记索引，回退全部日记信息和附件引用，当前索引独有的日记将从目录移除。正文、附件及个人资料按各自勾选范围恢复，原回收批次完整保留。' : partial ? '部分勾选的项目仅恢复所选日记、归档附件及个人资料，原回收批次完整保留。' : ''}被替换的当前内容会先存入回收站。`, { title: '恢复所选内容？', confirmLabel: '恢复所选内容', danger: false }, { action: 'restore-selected', selections });
+            await confirmAction(`将恢复所选 ${items.length} 个项目${hidden ? `（含筛选范围外的 ${hidden} 个）` : ''}：${items.map(item => `「${item.title}」`).join('、')}。${snapshot ? '全部日记和个人资料将恢复到这个时间点，访问密码保持不变。' : ''}${indexSelected ? '将替换当前整份日记索引，回退全部日记信息和附件引用，当前索引独有的日记将从目录移除。正文、附件及个人资料按各自勾选范围恢复，原回收批次完整保留。' : partial ? '部分勾选的项目仅恢复所选日记、归档附件及个人资料，原回收批次完整保留。' : ''}恢复将直接覆盖预览中发生变化的当前内容。`, { title: '恢复所选内容？', confirmLabel: '恢复所选内容', danger: false }, { action: 'restore-selected', selections });
             return;
         }
         if (event.target.closest('[data-recycle-clear]')) {

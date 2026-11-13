@@ -261,10 +261,6 @@ async function restoreVersion(root, item, records, sources = new Map(), removedP
         try { await ordinaryPath(root, file.path); files.push({ path: file.path }); }
         catch (error) { if (error.code !== 'ENOENT') throw error; }
     }
-    const { recordFilePaths } = await import('./record-backup.mjs');
-    const paths = new Set(files.map(file => file.path));
-    const displayRecords = (await readRecords(root)).filter(record => [...recordFilePaths([record])].some(name => paths.has(name)));
-    const protection = files.length ? await captureRecycle(root, { kind: 'version', title: '恢复前的文件', displayRecords, files }) : null;
     const moved = [];
     const created = [];
     try {
@@ -282,7 +278,6 @@ async function restoreVersion(root, item, records, sources = new Map(), removedP
     } catch (error) {
         for (const file of created) await fs.unlink(file);
         for (const file of moved.reverse()) await fs.rename(file.temporary, file.original);
-        if (protection) await discardRecycle(root, protection);
         throw error;
     }
     for (const file of moved) await fs.unlink(file.temporary);
@@ -303,7 +298,6 @@ async function restoreSnapshot(root, item) {
         }
         const stagedIndex = path.join(root, stage, 'data/travel_data.json');
         await fs.writeFile(stagedIndex, serializeRecords(JSON.parse(await fs.readFile(stagedIndex, 'utf8'))));
-        const protection = await captureRecycle(root, { kind: 'snapshot', title: '恢复前的数据' });
         try {
             await ordinaryPath(root, 'data', true);
             await fs.rename(path.join(root, 'data'), path.join(root, stage, 'previous'));
@@ -312,7 +306,6 @@ async function restoreSnapshot(root, item) {
             installed = true;
         } catch (error) {
             if (moved && !installed) { await fs.rename(path.join(root, stage, 'previous'), path.join(root, 'data')); moved = false; }
-            await discardRecycle(root, protection);
             throw error;
         }
     } finally {

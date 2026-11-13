@@ -199,8 +199,7 @@ test('清理的附件可恢复到不同目录的日记，预览与提交使用�
     await assert.rejects(fs.stat(path.join(root, source)), { code: 'ENOENT' });
     assert.equal(await fs.readFile(path.join(root, 'data/photos/trip/shared.png'), 'utf8'), 'shared');
     report = await readRecycleBin(root);
-    assert.ok(!report.items.some(item => item.id === id));
-    assert.ok(report.items.some(item => item.title === '恢复前的文件'));
+    assert.deepEqual(report.items, []);
 });
 
 test('跨目录恢复在提交失败时撤回目标文件；同名来源及非法目标不会被合并', async t => {
@@ -269,7 +268,7 @@ test('删除提交失败时恢复正文和媒体，不遗留回收项目或数�
     await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
 });
 
-test('清空可恢复整站数据，恢复前当前内容也保留，密码与旧回收项目保持不变', async t => {
+test('清空可恢复整站数据，恢复后只保留旧回收项目', async t => {
     const root = await fixture(t);
     await write(root, 'data/profile/owner-name.txt', '原署名');
     const oldId = await captureRecycle(root, { title: '旧文件', files: [{ path: 'data/photos/trip/shared.png' }] });
@@ -283,11 +282,33 @@ test('清空可恢复整站数据，恢复前当前内容也保留，密码与�
     await action(root, snapshot.id);
     assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '原署名');
     report = await readRecycleBin(root);
-    assert.ok(report.items.some(item => item.id === oldId));
-    const protection = report.items.find(item => item.title === '恢复前的数据');
-    await action(root, protection.id);
-    assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '清空后新署名');
+    assert.deepEqual(report.items.map(item => item.id), [oldId]);
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))), [note, other]);
     assert.deepEqual(await fs.readFile(path.join(root, '.secrets/auth.json')), auth);
+});
+
+test('整站恢复目录切换失败时还原当前数据，重试成功后清理暂存内容', async t => {
+    const root = await fixture(t);
+    const id = await captureRecycle(root, { kind: 'snapshot', title: '整站历史' });
+    await write(root, note.desc_md, '# 当前正文');
+    await write(root, 'data/profile/owner-name.txt', '当前署名');
+    const selections = await selectionsFor(root, [id]);
+    const rename = fs.rename;
+    const mocked = t.mock.method(fs, 'rename', async (source, target) => {
+        if (target === path.join(root, 'data') && path.basename(source) === 'data') throw new Error('模拟整站目录切换失败');
+        return rename(source, target);
+    });
+    try { await assert.rejects(selectedRestore(root, selections), /模拟整站目录切换失败/); }
+    finally { mocked.mock.restore(); }
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 当前正文');
+    assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '当前署名');
+    assert.deepEqual((await readRecycleBin(root)).items.map(item => item.id), [id]);
+    assert.deepEqual((await fs.readdir(root)).filter(name => name.startsWith('.travel-recycle-')), []);
+    const result = await selectedRestore(root, await selectionsFor(root, [id]));
+    assert.deepEqual(result.items, []);
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 标题\n\n原正文');
+    await assert.rejects(fs.stat(path.join(root, 'data/profile/owner-name.txt')), { code: 'ENOENT' });
+    assert.deepEqual((await fs.readdir(root)).filter(name => name.startsWith('.travel-recycle-')), []);
 });
 
 test('导入替换前的数据可从回收站恢复，导入失败不产生可误恢复的项目', async t => {
@@ -321,15 +342,15 @@ test('旧媒体回收区自动迁入 .cache，清缓存保留回收项目，永�
     assert.equal(await fs.readFile(path.join(root, 'data/photos/trip/shared.png'), 'utf8'), 'shared');
 });
 
-test('旧版本恢复前保存当前文件，可连续撤回且不影响其他文件', async t => {
+test('旧版本恢复后回收站为空，其他文件保留', async t => {
     const root = await fixture(t);
     const id = await captureRecycle(root, { title: '旧正文', kind: 'version', files: [{ path: note.desc_md }] });
     await write(root, note.desc_md, '# 新正文');
     await action(root, id);
     assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 标题\n\n原正文');
-    const protection = (await readRecycleBin(root)).items[0];
-    await action(root, protection.id);
-    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 新正文');
+    assert.deepEqual((await readRecycleBin(root)).items, []);
+    const files = await fs.readdir(path.dirname(path.join(root, note.desc_md)));
+    assert.deepEqual(files.sort(), [path.basename(note.desc_md), path.basename(other.desc_md)].sort());
     assert.equal(await fs.readFile(path.join(root, other.desc_md), 'utf8'), '# 另一篇');
 });
 
@@ -574,7 +595,7 @@ test('恢复预览的整个异步读取过程持有数据锁', async t => {
     await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
 });
 
-test('同一日记冲突先预览字段、正文和附件，确认恢复留存当前版本且不影响其他日记', async t => {
+test('同一日记冲突先预览字段、正文和附件，确认恢复后回收站为空', async t => {
     const root = await fixture(t);
     const id = await captureRecycle(root, { kind: 'record', title: '旧日记', records: [note], files: [note.desc_md, 'data/photos/trip/unique.png'].map(path => ({ path })) });
     await write(root, note.desc_md, '# 新标题\n\n新正文');
@@ -595,11 +616,8 @@ test('同一日记冲突先预览字段、正文和附件，确认恢复留存�
     assert.equal(records[0].locality, note.locality);
     assert.equal(records[1].desc_md, other.desc_md);
     assert.equal(await fs.readFile(path.join(root, 'data/photos/trip/unique.png'), 'utf8'), 'unique');
-    const protection = (await readRecycleBin(root)).items.find(item => item.title === '恢复前的文件');
-    assert.ok(protection);
-    await action(root, protection.id);
-    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 新标题\n\n新正文');
-    assert.equal(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')))[0].locality, '新地点');
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 标题\n\n原正文');
+    assert.deepEqual((await readRecycleBin(root)).items, []);
 });
 
 test('附件恢复预览真实的合并结果，保留后续字段与附件并显示同名内容变化', async t => {
@@ -784,7 +802,7 @@ async function selectionsFor(root, ids) {
     return selections;
 }
 
-test('选择恢复一次合并多份同篇附件，保留后续日记内容且留存恢复前版本', async t => {
+test('选择恢复一次合并多份同篇附件，保留后续日记内容且回收站为空', async t => {
     const root = await fixture(t);
     const names = ['data/photos/trip/unique.png', 'data/photos/trip/second.png'];
     await write(root, names[1], 'second');
@@ -800,9 +818,7 @@ test('选择恢复一次合并多份同篇附件，保留后续日记内容且�
     assert.deepEqual(restored.photos, saved.photos);
     assert.equal(restored.locality, '后续地点');
     for (const name of names) assert.ok((await fs.stat(path.join(root, name))).isFile());
-    assert.equal(result.items.length, 1);
-    assert.equal(result.items[0].title, '恢复前的文件');
-    assert.ok(result.items[0].files.some(file => file.path === 'data/travel_data.json'));
+    assert.deepEqual(result.items, []);
 });
 
 test('选择恢复先校验全部令牌，缺失、重复、过期或目标变更均不写入', async t => {
@@ -1121,7 +1137,7 @@ test('按日记选择整站恢复可找回正文和全部附件，未选日记�
     assert.ok((await readRecycleBin(root)).items.some(item => item.id === id));
 });
 
-test('整站批次可单独恢复个人资料，也可与日记一起恢复并留存被替换资料', async t => {
+test('整站批次单独或混合恢复个人资料后只保留原批次', async t => {
     const root = await fixture(t);
     const owner = 'data/profile/owner-name.txt';
     const avatar = 'data/profile/profile-picture.png';
@@ -1146,18 +1162,16 @@ test('整站批次可单独恢复个人资料，也可与日记一起恢复并�
     assert.equal(await fs.readFile(path.join(root, avatar), 'utf8'), '原头像');
     assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 后续正文');
     assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), index);
-    const protection = (await readRecycleBin(root)).items.find(item => item.id !== id);
-    assert.equal(await fs.readFile(path.join(root, `.cache/recycle-bin/${protection.id}/${owner}`), 'utf8'), '后续署名');
-    assert.equal(await fs.readFile(path.join(root, `.cache/recycle-bin/${protection.id}/${avatar}`), 'utf8'), '后续头像');
+    assert.deepEqual((await readRecycleBin(root)).items.map(item => item.id), [id]);
     await write(root, owner, '再次修改');
     await restore(['profile', `diary:${note.desc_md}`]);
     assert.equal(await fs.readFile(path.join(root, owner), 'utf8'), '原署名');
     assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), '# 标题\n\n原正文');
     assert.equal(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')))[0].locality, note.locality);
-    assert.ok((await readRecycleBin(root)).items.some(item => item.id === id));
+    assert.deepEqual((await readRecycleBin(root)).items.map(item => item.id), [id]);
 });
 
-test('个人资料快照预览并移除后来新增的署名，单独及混合恢复均可撤回', async t => {
+test('个人资料快照预览并移除后来新增的署名，恢复后只保留原批次', async t => {
     for (const parts of [['profile'], ['profile', `diary:${note.desc_md}`], ['index', 'profile'], ['profile', 'another']]) {
         await t.test(parts.join('、'), async t => {
             const root = await fixture(t);
@@ -1187,12 +1201,7 @@ test('个人资料快照预览并移除后来新增的署名，单独及混合�
             assert.equal(await fs.readFile(path.join(root, avatar), 'utf8'), '历史头像');
             assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), parts.includes(`diary:${note.desc_md}`) ? '# 标题\n\n原正文' : '# 当前正文');
             const restored = await readRecycleBin(root);
-            assert.ok(restored.items.some(item => item.id === id));
-            const protection = restored.items.find(item => item.id !== id);
-            assert.equal(await fs.readFile(path.join(root, `.cache/recycle-bin/${protection.id}/${owner}`), 'utf8'), '新增署名');
-            await action(root, protection.id);
-            assert.equal(await fs.readFile(path.join(root, owner), 'utf8'), '新增署名');
-            assert.equal(await fs.readFile(path.join(root, avatar), 'utf8'), '当前头像');
+            assert.deepEqual(restored.items.map(item => item.id), [id]);
         });
     }
 });
@@ -1260,7 +1269,7 @@ test('资料恢复失败还原待移除的署名，跨批次恢复与移除同�
     await assert.rejects(fs.stat(path.join(root, owner)), { code: 'ENOENT' });
 });
 
-test('索引独立恢复通过认证 API 回退全部元数据，保留实际文件并留存可撤回的当前索引', async t => {
+test('索引独立恢复通过认证 API 回退全部元数据，保留实际文件及原批次', async t => {
     const root = await fixture(t);
     await write(root, 'data/profile/owner-name.txt', '旧署名');
     const id = await captureRecycle(root, { kind: 'snapshot', title: '索引历史' });
@@ -1291,11 +1300,7 @@ test('索引独立恢复通过认证 API 回退全部元数据，保留实际文
         assert.equal(await fs.readFile(path.join(root, name), 'utf8'), value);
     }
     const report = await readRecycleBin(root);
-    assert.ok(report.items.some(item => item.id === id));
-    const protection = report.items.find(item => item.id !== id);
-    assert.deepEqual(protection.files.map(file => file.path), ['data/travel_data.json']);
-    await action(root, protection.id);
-    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))), current);
+    assert.deepEqual(report.items.map(item => item.id), [id]);
 });
 
 test('索引可与同批次日记及个人资料一起恢复，正文与附件变化继续参与预览', async t => {
