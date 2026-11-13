@@ -649,11 +649,11 @@ test('扉页右页按三个默认展开模块组织操作，主要入口、文�
     assert.equal(right.match(/<details /g)?.length, 3);
     assert.deepEqual([...right.matchAll(/<h3[^>]*>(.*?)<\/h3>/g)].map(match => match[1]), ['日记资料管理', '备份与恢复', '数据管理']);
     const expectedActions = [
-        ['add-record', 'delete-records', 'upload-profile-picture', 'edit-owner-name'],
+        ['add-record', 'upload-profile-picture', 'edit-owner-name', 'delete-records'],
         ['export-records', 'export-all-data', 'import-records', 'import-all-data'],
         ['media-health', 'recycle-bin', 'change-password', 'password-reset-help', 'clear-all-data']
     ];
-    const commandActions = ['media-health', 'recycle-bin'];
+    const commandActions = ['upload-profile-picture', 'edit-owner-name', 'media-health', 'recycle-bin'];
     const dangerActions = ['delete-records', 'clear-all-data'];
     modules.forEach((markup, index) => {
         assert.match(markup, /<summary class="preface-module-heading"><h3/);
@@ -675,11 +675,13 @@ test('扉页右页按三个默认展开模块组织操作，主要入口、文�
     });
     assert.match(modules[0], /class="preface-writing-actions"/);
     assert.match(modules[0], /class="paper-button preface-write-entry"/);
+    assert.match(modules[0], /class="preface-writing-note">把新的旅途，写进下一篇日记。/);
     const writingActions = modules[0].match(/class="preface-writing-actions">([\s\S]*?)<\/div>/)[1];
-    assert.deepEqual([...writingActions.matchAll(/data-action="([^"]+)"/g)].map(match => match[1]), ['add-record', 'delete-records']);
+    assert.deepEqual([...writingActions.matchAll(/data-action="([^"]+)"/g)].map(match => match[1]), ['add-record']);
     const profileActions = modules[0].match(/class="preface-utility-actions preface-profile-actions"[^>]*>([\s\S]*?)<\/div>/)[1];
-    assert.deepEqual([...profileActions.matchAll(/data-action="([^"]+)"/g)].map(match => match[1]), ['upload-profile-picture', 'edit-owner-name']);
+    assert.deepEqual([...profileActions.matchAll(/data-action="([^"]+)"/g)].map(match => match[1]), ['upload-profile-picture', 'edit-owner-name', 'delete-records']);
     assert.match(modules[0], /class="preface-utility-actions preface-profile-actions"/);
+    assert.match(modules[0], /aria-labelledby="prefaceProfileLabel">\s*<span class="preface-profile-label" id="prefaceProfileLabel">扉页资料<\/span>/);
     assert.match(modules[2], /class="preface-management-actions"/);
     for (const note of ['Media', 'Recycle']) {
         assert.match(right, new RegExp(`aria-labelledby="preface${note}Label" aria-describedby="preface${note}Note"`));

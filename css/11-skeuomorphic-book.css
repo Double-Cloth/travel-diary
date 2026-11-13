@@ -622,11 +622,11 @@ body[data-route='preface'] .paper-page {
 }
 
 .preface-tool-command:hover {
-    border-color: #9c7a4c99;
-    background-color: #fbf0d6bf;
+    border-color: #a48243;
+    background-color: #f0dfbd;
 }
 
-.preface-tool-command:active { background-color: #fbf0d6d9; }
+.preface-tool-command:active { background-color: #e8d4aa; }
 .preface-tool-command:disabled { opacity: .55; cursor: wait; }
 .preface-tool-command:focus-visible {
     outline: 2px solid var(--stamp);
@@ -637,11 +637,15 @@ body[data-route='preface'] .paper-page {
     .preface-tool-choices { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 }
 
-.preface-writing-actions { display: flex; align-items: center; gap: 16px; }
+.preface-writing-actions { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.preface-writing-note { margin: 8px 0 0; color: var(--ink-soft); font-size: 14px; line-height: 1.7; }
 .preface-write-entry { flex: none; width: auto; white-space: nowrap; }
 .preface-utility-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 20px; }
 .preface-utility-actions .preface-utility-end { margin-left: auto; }
-.preface-profile-actions { gap: 4px 20px; }
+.preface-profile-actions { gap: 8px 12px; }
+.preface-profile-label { color: var(--ink-soft); font-size: 14px; line-height: 1.7; }
+.preface-profile-actions .preface-tool-command { display: inline-flex; align-items: center; padding: 8px 12px; font-size: 16px; line-height: 1.6; }
+.preface-profile-actions .preface-tool-command::after { display: none; }
 .preface-management-actions { display: grid; gap: 10px; }
 .preface-management-actions .preface-tool-command {
     grid-template-columns: minmax(84px, .65fr) minmax(0, 2fr);
@@ -672,6 +676,10 @@ body[data-route='preface'] .paper-page {
 @container preface-tools (max-width: 380px) {
     .preface-tool-choices { grid-template-columns: minmax(0, 1fr); }
     .preface-management-actions .preface-tool-command { grid-template-columns: minmax(0, 1fr); }
+    .preface-profile-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); column-gap: 8px; }
+    .preface-profile-label { grid-column: 1 / -1; }
+    .preface-profile-actions .preface-tool-command { justify-content: center; padding-inline: 6px; }
+    .preface-profile-actions .preface-utility-end { align-items: center; margin-left: 0; text-align: center; text-wrap: balance; }
 }
 
 .preface-transfer-status { margin: 0; color: var(--stamp); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }

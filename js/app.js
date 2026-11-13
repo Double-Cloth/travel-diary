@@ -1,30 +1,30 @@
-import { orderMedia } from './media-order.mjs?v=2.1.133';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.133';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.133';
-import { createRecordEditor } from './record-editor.js?v=2.1.133';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.133';
-import { createDataTransfer } from './data-transfer.js?v=2.1.133';
-import { createMediaManager } from './media-manager.js?v=2.1.133';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.133';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.133';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.133';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.133';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.133';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.133';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.133';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.133';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.133';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.133';
-import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.133';
-import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.133';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.133';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.133';
+import { orderMedia } from './media-order.mjs?v=2.1.134';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.134';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.134';
+import { createRecordEditor } from './record-editor.js?v=2.1.134';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.134';
+import { createDataTransfer } from './data-transfer.js?v=2.1.134';
+import { createMediaManager } from './media-manager.js?v=2.1.134';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.134';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.134';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.134';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.134';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.134';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.134';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.134';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.134';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.134';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.134';
+import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.134';
+import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.134';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.134';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.134';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.133';
+} from './location.mjs?v=2.1.134';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -33,7 +33,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.133';
+} from './photo-viewer-transform.mjs?v=2.1.134';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -1136,14 +1136,16 @@ function renderPreface() {
             <summary class="preface-module-heading"><h3 id="prefaceOrganizeTitle">日记资料管理</h3></summary>
             <div class="preface-module-content">
                 <div class="preface-writing-actions">
+                    <p class="preface-writing-note">把新的旅途，写进下一篇日记。</p>
                     <button class="paper-button preface-write-entry" type="button" data-action="add-record">
                         新增旅行日记
                     </button>
-                    <button class="preface-button preface-button-danger" type="button" data-action="delete-records">批量删除日记</button>
                 </div>
-                <div class="preface-utility-actions preface-profile-actions" role="group" aria-label="个人资料操作">
-                    <button class="preface-button" type="button" data-action="upload-profile-picture">更改头像</button>
-                    <button class="preface-button" type="button" data-action="edit-owner-name">修改署名</button>
+                <div class="preface-utility-actions preface-profile-actions" role="group" aria-labelledby="prefaceProfileLabel">
+                    <span class="preface-profile-label" id="prefaceProfileLabel">扉页资料</span>
+                    <button class="preface-tool-command" type="button" data-action="upload-profile-picture">更改头像</button>
+                    <button class="preface-tool-command" type="button" data-action="edit-owner-name">修改署名</button>
+                    <button class="preface-button preface-button-danger preface-utility-end" type="button" data-action="delete-records">批量删除日记</button>
                 </div>
             </div>
         </details>
