@@ -1457,6 +1457,10 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .record-transfer-list label > span { display: grid; gap: 5px; min-width: 0; overflow-wrap: anywhere; }
 .record-transfer-list strong { color: var(--ink); font-size: 16px; }
 .record-transfer-list small { color: var(--ink-soft); font-size: 12px; line-height: 1.6; }
+.record-transfer-delete-row { display: flex; align-items: center; gap: 12px; }
+.record-transfer-delete-row > label { flex: 0 0 32px; justify-content: center; }
+.record-transfer-delete-row > span { display: grid; gap: 5px; min-width: 0; padding-block: 10px; overflow-wrap: anywhere; }
+.record-transfer-delete-row a { color: var(--stamp); text-decoration: underline; text-underline-offset: 3px; }
 .record-transfer [data-record-transfer-error] { color: var(--stamp); }
 .record-transfer :focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
 .record-transfer [hidden] { display: none !important; }

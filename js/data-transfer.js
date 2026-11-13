@@ -1,19 +1,19 @@
-import { createPasswordGate } from './record-password.js?v=2.1.135';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.135';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.135';
+import { createPasswordGate } from './record-password.js?v=2.1.136';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.136';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.136';
 import { readZipSource } from './zip-stream.mjs';
-import { createRecordTransfer } from './record-transfer.js?v=2.1.135';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.135';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.135';
+import { createRecordTransfer } from './record-transfer.js?v=2.1.136';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.136';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.136';
 
 function setStatus(message) {
     const output = document.querySelector('[data-data-transfer-status]');
     if (output) output.textContent = message;
 }
 
-export function createDataTransfer(onImported, getRecords = () => []) {
+export function createDataTransfer(onImported, getRecords = () => [], recordTransferOptions = {}) {
     let recordTransfer;
-    const partialTransfer = () => recordTransfer ||= createRecordTransfer(onImported, getRecords);
+    const partialTransfer = () => recordTransfer ||= createRecordTransfer(onImported, getRecords, recordTransferOptions);
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.zip,application/zip';
@@ -350,5 +350,6 @@ export function createDataTransfer(onImported, getRecords = () => []) {
 
     return { chooseImport, clearAll, exportAll, getExportHref,
         chooseRecordDelete: () => partialTransfer().chooseDelete(),
+        suspendRecordDelete: () => recordTransfer?.suspendDelete(),
         chooseRecordExport: paths => partialTransfer().chooseExport(paths), chooseRecordImport: () => partialTransfer().chooseImport() };
 }

@@ -1,19 +1,19 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.135';
-import { createPasswordGate } from './record-password.js?v=2.1.135';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.135';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.135';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.136';
+import { createPasswordGate } from './record-password.js?v=2.1.136';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.136';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.136';
 import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.135';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.135';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.135';
-import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.135';
-import { recordIdentity } from './record-identity.mjs?v=2.1.135';
-import { createContentPreviewScope } from './content-preview.js?v=2.1.135';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.135';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.136';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.136';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.136';
+import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.136';
+import { recordIdentity } from './record-identity.mjs?v=2.1.136';
+import { createContentPreviewScope } from './content-preview.js?v=2.1.136';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.136';
 
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.135';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.136';
 
-export function createRecordTransfer(onImported, getRecords) {
+export function createRecordTransfer(onImported, getRecords, { isDeleteActive = () => true, onDeleteClose = () => {} } = {}) {
     const dialog = document.createElement('dialog');
     dialog.className = 'record-transfer management-dialog entry-sheet';
     dialog.setAttribute('aria-labelledby', 'recordTransferTitle');
@@ -52,13 +52,23 @@ export function createRecordTransfer(onImported, getRecords) {
     let importAuthorization;
     let importProgress;
     let deleteRecords = [];
+    let deleteSuspended = false;
+    let returnFocus;
+    let listScrollTop = 0;
+    let dialogScrollTop = 0;
     let previews = createContentPreviewScope();
     const status = message => {
         const output = document.querySelector('[data-data-transfer-status]');
         if (output) output.textContent = message;
     };
     const restoreFocus = () => { if (trigger?.isConnected) trigger.focus(); else document.getElementById('journalStage')?.focus(); };
-    const close = () => { dialog.close(); previews.dispose(); restoreFocus(); };
+    const close = () => {
+        dialog.close();
+        deleteSuspended = false;
+        previews.dispose();
+        if (mode === 'delete') onDeleteClose();
+        restoreFocus();
+    };
     const error = message => { dialog.querySelector('[data-record-transfer-error]').textContent = message; };
     function startImportProgress() {
         importProgress?.remove();
@@ -87,6 +97,12 @@ export function createRecordTransfer(onImported, getRecords) {
             const comparison = comparisons.get(record.desc_md);
             const unavailable = mode === 'import' && comparison?.status === 'conflict';
             const labels = { added: '新增记录', same: '内容相同，导入时自动跳过', changed: '内容不同，勾选后采用备份', conflict: '路径冲突，无法导入' };
+            if (mode === 'delete') {
+                const title = record.descTitle || record.locality || record.desc_md;
+                return `<li><div class="record-transfer-delete-row"><label><input type="checkbox" value="${escapeHtml(record.desc_md)}" aria-label="${escapeHtml(`选择${title}`)}"${selected.has(record.desc_md) ? ' checked' : ''}></label>
+                    <span><strong><a href="#entry?id=${encodeURIComponent(recordIdentity(record))}&from=delete" data-record-transfer-entry>${escapeHtml(title)}</a></strong>
+                    <small>${escapeHtml([record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · '))}</small></span></div></li>`;
+            }
             return `<li><label><input type="checkbox" value="${escapeHtml(record.desc_md)}"${selected.has(record.desc_md) ? ' checked' : ''}${unavailable ? ' disabled' : ''}>
                 <span><strong>${escapeHtml(record.descTitle || comparison?.markdown?.match(/^#\s+(.+)$/m)?.[1] || record.locality || record.desc_md)}</strong>
                 <small>${escapeHtml([record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · '))}${mode === 'import' ? ` · ${labels[comparison?.status] || ''}` : ''}</small></span></label>
@@ -124,6 +140,8 @@ export function createRecordTransfer(onImported, getRecords) {
 
     function open(nextMode, nextRecords) {
         mode = nextMode;
+        deleteSuspended = false;
+        returnFocus = undefined;
         dialog.classList.toggle('record-transfer-import', mode === 'import');
         records = sortBackupRecords(nextRecords);
         selected.clear();
@@ -332,17 +350,35 @@ export function createRecordTransfer(onImported, getRecords) {
     });
 
     const authorizeDelete = createPasswordGate(async capability => {
+        if (!isDeleteActive()) return;
         if (!capability.batchDelete) throw new Error('请重启日记服务后使用批量删除。');
+        if (deleteSuspended && mode === 'delete') {
+            deleteSuspended = false;
+            dialog.showModal();
+            returnFocus?.focus({ preventScroll: true });
+            dialog.querySelector('[data-record-transfer-list]').scrollTop = listScrollTop;
+            dialog.scrollTop = dialogScrollTop;
+            return;
+        }
         trigger = document.activeElement;
         const response = await fetch(new URL('data/travel_data.json', window.location.href), { cache: 'no-store', signal: AbortSignal.timeout(20000) });
         const current = await response.json();
         if (!response.ok || !Array.isArray(current)) throw new Error('无法读取日记列表，请刷新后重试。');
+        if (!isDeleteActive()) return;
         deleteRecords = current;
         const titles = new Map(getRecords().map(record => [record.desc_md, record.descTitle]));
         comparisons = new Map();
         entries = undefined;
         open('delete', current.map(record => ({ ...record, descTitle: titles.get(record.desc_md) })));
-    }, { title: '删除日记验证', description: '验证访问密码后，选择要批量删除的日记。', staticMessage: '静态页面不支持删除日记。' });
+    }, { title: '删除日记验证', description: '验证访问密码后，选择要批量删除的日记。', staticMessage: '静态页面不支持删除日记。', onCancel: onDeleteClose });
+
+    function suspendDelete() {
+        if (mode !== 'delete' || !dialog.open) return;
+        deleteSuspended = true;
+        listScrollTop = dialog.querySelector('[data-record-transfer-list]').scrollTop;
+        dialogScrollTop = dialog.scrollTop;
+        dialog.close();
+    }
 
     async function removeSelected() {
         setBusy(true);
@@ -381,7 +417,13 @@ export function createRecordTransfer(onImported, getRecords) {
     dialog.addEventListener('keydown', event => event.stopPropagation());
     dialog.addEventListener('cancel', event => { event.preventDefault(); if (busy) return; importAuthorization = undefined; close(); });
     dialog.addEventListener('click', event => {
-        if (busy) return;
+        if (busy) { event.preventDefault(); return; }
+        const entryLink = event.target.closest('[data-record-transfer-entry]');
+        if (entryLink && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.button === 0) {
+            returnFocus = entryLink;
+            suspendDelete();
+            return;
+        }
         if (event.target.closest('[data-record-transfer-cancel]')) { importAuthorization = undefined; close(); }
         if (event.target.closest('[data-record-transfer-reset]')) { dialog.querySelector('input[type="search"]').value = ''; render(); dialog.querySelector('input[type="search"]').focus(); }
         if (event.target.closest('[data-record-transfer-all]')) { filteredRecords().filter(record => mode !== 'import' || comparisons.get(record.desc_md)?.status !== 'conflict').forEach(record => selected.add(record.desc_md)); render(); }
@@ -433,6 +475,7 @@ export function createRecordTransfer(onImported, getRecords) {
     });
 
     return {
+        suspendDelete,
         chooseDelete() {
             if (busy || dialog.open) return;
             return authorizeDelete();
