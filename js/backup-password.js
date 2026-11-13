@@ -1,5 +1,5 @@
 import { readSourceText, sourceOf } from './zip-stream.mjs';
-import { requestWriterJson } from './writer-capability.js?v=2.1.132';
+import { requestWriterJson } from './writer-capability.js?v=2.1.133';
 
 // 上传大文件前验证密码；服务端正式导入时仍会重新验证 ZIP 内的配置。
 export async function verifyBackupPassword(entries, capability, currentPassword, backupPassword = currentPassword) {

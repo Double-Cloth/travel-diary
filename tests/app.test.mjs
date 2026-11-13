@@ -649,7 +649,7 @@ test('扉页右页按三个默认展开模块组织操作，主要入口、文�
     assert.equal(right.match(/<details /g)?.length, 3);
     assert.deepEqual([...right.matchAll(/<h3[^>]*>(.*?)<\/h3>/g)].map(match => match[1]), ['日记资料管理', '备份与恢复', '数据管理']);
     const expectedActions = [
-        ['add-record', 'upload-profile-picture', 'edit-owner-name', 'delete-records'],
+        ['add-record', 'delete-records', 'upload-profile-picture', 'edit-owner-name'],
         ['export-records', 'export-all-data', 'import-records', 'import-all-data'],
         ['media-health', 'recycle-bin', 'change-password', 'password-reset-help', 'clear-all-data']
     ];
@@ -664,7 +664,7 @@ test('扉页右页按三个默认展开模块组织操作，主要入口、文�
             if (action === 'password-reset-help') {
                 assert.equal(button[1], 'password-reset-help');
             } else if (action === 'add-record') {
-                assert.equal(button[1], 'brass-button preface-write-entry');
+                assert.equal(button[1], 'paper-button preface-write-entry');
             } else if (index === 1 || commandActions.includes(action)) {
                 assert.ok(button[1].split(' ').includes('preface-tool-command'));
             } else {
@@ -674,7 +674,11 @@ test('扉页右页按三个默认展开模块组织操作，主要入口、文�
         }
     });
     assert.match(modules[0], /class="preface-writing-actions"/);
-    assert.match(modules[0], /class="brass-button preface-write-entry"/);
+    assert.match(modules[0], /class="paper-button preface-write-entry"/);
+    const writingActions = modules[0].match(/class="preface-writing-actions">([\s\S]*?)<\/div>/)[1];
+    assert.deepEqual([...writingActions.matchAll(/data-action="([^"]+)"/g)].map(match => match[1]), ['add-record', 'delete-records']);
+    const profileActions = modules[0].match(/class="preface-utility-actions preface-profile-actions"[^>]*>([\s\S]*?)<\/div>/)[1];
+    assert.deepEqual([...profileActions.matchAll(/data-action="([^"]+)"/g)].map(match => match[1]), ['upload-profile-picture', 'edit-owner-name']);
     assert.match(modules[0], /class="preface-utility-actions preface-profile-actions"/);
     assert.match(modules[2], /class="preface-management-actions"/);
     for (const note of ['Media', 'Recycle']) {
