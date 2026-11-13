@@ -46,6 +46,7 @@
 | `media-health.js`、`media-manager.js` | 媒体引用检查、空间统计、未引用文件移入统一回收站。 |
 | `recycle-bin.js`、`recycle-manager.js` | 数据锁内留存与恢复日记、文件和整站数据；独立回收站入口、版本校验和永久删除。 |
 | `server.js`、`record-store.js`、`auth.js`、`data-archive.js` | 静态服务、API、写入策略、认证、数据锁与恢复。 |
+| `record-order.js`、`sort-travel-data.js` | 索引稳定排序与序列化、磁盘校验和原子替换；启动服务与维护命令共用同一实现。 |
 | `scripts/` | 密码恢复、备份导出、调用本机浏览器批量生成媒体预览、字体生成、固定版本地点目录更新。 |
 | `js/vendor/pinyin-pro.mjs` | 随仓库分发的第三方拼音实现。 |
 

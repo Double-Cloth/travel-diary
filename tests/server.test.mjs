@@ -76,9 +76,25 @@ test('缺少 data 时创建可用的最小目录结构且不覆盖已有索引',
     for (const directory of ['travel-diary', 'photos', 'videos', 'profile']) {
         assert.equal((await stat(path.join(emptyRoot, 'data', directory))).isDirectory(), true);
     }
-    await writeFile(path.join(emptyRoot, 'data/travel_data.json'), '[{"kept":true}]\n');
+    await writeFile(path.join(emptyRoot, 'data/travel_data.json'), '[{"date":"2026-11-13","kept":true}]\n');
     assert.deepEqual(await ensureDataStructure(emptyRoot), { authConfigured: false, secretsCreated: false });
-    assert.equal(await readFile(path.join(emptyRoot, 'data/travel_data.json'), 'utf8'), '[{"kept":true}]\n');
+    assert.equal(await readFile(path.join(emptyRoot, 'data/travel_data.json'), 'utf8'), '[{"date":"2026-11-13","kept":true}]\n');
+});
+
+test('监听复用本次初始化状态，remote 模式在监听前检查认证配置', async () => {
+    const startupRoot = path.join(fixture, 'startup-site');
+    await mkdir(startupRoot);
+    for (const secretsCreated of [true, false]) {
+        const result = await listenWithRetries(startupRoot, 0, false);
+        try {
+            assert.deepEqual(result.structure, { authConfigured: false, secretsCreated });
+        } finally {
+            await new Promise(resolve => result.server.close(resolve));
+        }
+    }
+    await assert.rejects(listenWithRetries(startupRoot, 0, false, {
+        writeMode: 'remote', allowedOrigins: ['https://diary.example.com']
+    }), { code: 'AUTH_CONFIG_MISSING' });
 });
 
 test('路径只解码一次，含百分号的合法文件仍可访问', async () => {

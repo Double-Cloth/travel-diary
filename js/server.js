@@ -1,6 +1,4 @@
-const { serializeRecords, sortRecords } = require('./record-order.js');
-const { acquireDataLock } = require('./data-archive.js');
-const { randomBytes } = require('node:crypto');
+const { sortTravelData } = require('./sort-travel-data.js');
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -286,24 +284,7 @@ async function ensureDataStructure(rootDir) {
     }
   }
 
-  const release = await acquireDataLock(resolvedRoot);
-  const indexFile = path.join(resolvedRoot, 'data', 'travel_data.json');
-  const temporary = path.join(resolvedRoot, 'data', `.travel-order-${randomBytes(16).toString('hex')}.tmp`);
-  try {
-    const previous = await fs.promises.readFile(indexFile, 'utf8');
-    const records = JSON.parse(previous);
-    const sorted = sortRecords(records);
-    if (sorted.some((record, index) => record !== records[index])) {
-      await fs.promises.writeFile(temporary, serializeRecords(records), { flag: 'wx' });
-      if (await fs.promises.readFile(indexFile, 'utf8') !== previous) {
-        throw new Error('旅行索引在排序期间被修改，请重试。');
-      }
-      await fs.promises.rename(temporary, indexFile);
-    }
-  } finally {
-    await fs.promises.unlink(temporary).catch(() => {});
-    await release();
-  }
+  await sortTravelData(resolvedRoot);
 
   const authFile = path.join(resolvedRoot, '.secrets', 'auth.json');
   let authConfigured = false;
@@ -497,7 +478,10 @@ function createHandler(rootDir, options = {}) {
 }
 
 async function listenWithRetries(rootDir, port, bindAll, options = {}) {
-  await ensureDataStructure(rootDir);
+  const structure = await ensureDataStructure(rootDir);
+  if (options.writeMode === 'remote') {
+    await readAuthConfig(rootDir, { requireProduction: true });
+  }
   const host = bindAll ? '0.0.0.0' : '127.0.0.1';
   let currentPort = port;
 
@@ -524,7 +508,7 @@ async function listenWithRetries(rootDir, port, bindAll, options = {}) {
         reject(error);
       });
 
-      server.listen(currentPort, host, () => resolve({ server, port: currentPort }));
+      server.listen(currentPort, host, () => resolve({ server, port: currentPort, structure }));
     };
 
     tryListen();
@@ -539,12 +523,7 @@ async function main() {
     throw new Error(`Directory does not exist: ${rootDir}`);
   }
 
-  const structure = await ensureDataStructure(rootDir);
-  if (args.writeMode === 'remote') {
-    await readAuthConfig(rootDir, { requireProduction: true });
-  }
-
-  const { server, port } = await listenWithRetries(rootDir, args.port, !args.local, {
+  const { server, port, structure } = await listenWithRetries(rootDir, args.port, !args.local, {
     writeMode: args.writeMode,
     allowedOrigins: args.allowedOrigins
   });

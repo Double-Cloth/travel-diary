@@ -3,6 +3,7 @@ const fs = require('fs/promises');
 const path = require('path');
 const { randomBytes } = require('crypto');
 const { fileSource, writeSource } = require('./file-stream.js');
+const { digestSource } = require('./media-index.js');
 const { AUTH_RELATIVE_PATH, validateAuthConfig, verifyBackupAccess } = require('./auth.js');
 
 const DEFAULT_PROFILE_PICTURE = Buffer.from(
@@ -314,13 +315,9 @@ async function mergeRecordEntries(root, incoming) {
         if (!allowed.has(entry.name)) continue;
         const previous = entries.get(entry.name);
         if (previous && (protectedFiles.has(entry.name) || !replacedFiles.has(entry.name))) {
-            const { createHash } = require('node:crypto');
-            const digest = async data => {
-                const hash = createHash('sha256');
-                for await (const chunk of sourceOf(data).chunks()) hash.update(chunk);
-                return hash.digest('hex');
-            };
-            if (await digest(previous.data) !== await digest(entry.data)) {
+            const previousSource = sourceOf(previous.data);
+            const incomingSource = sourceOf(entry.data);
+            if (previousSource.size !== incomingSource.size || await digestSource(previousSource) !== await digestSource(incomingSource)) {
                 const reason = protectedFiles.has(entry.name) ? '被未选中的记录共用' : '与已有独立文件重名';
                 throw failure(409, `文件 ${entry.name} ${reason}且内容不同，请先调整文件名再导入。`);
             }

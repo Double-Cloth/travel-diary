@@ -77,9 +77,16 @@ async function manageMedia(root, payload) {
             const removed = new Set(payload.paths);
             const records = await readRecords(root);
             for (const record of records) {
+                const removedOrderKeys = new Set();
                 for (const [folder, list] of [['photo_folder', 'photos'], ['video_folder', 'videos']]) {
-                    if (Array.isArray(record[list])) record[list] = record[list].filter(name => !removed.has(`${record[folder]}/${name}`));
+                    if (!Array.isArray(record[list])) continue;
+                    record[list] = record[list].filter(name => {
+                        if (!removed.has(`${record[folder]}/${name}`)) return true;
+                        removedOrderKeys.add(`${list === 'photos' ? 'photo' : 'video'}:${name}`);
+                        return false;
+                    });
                 }
+                if (Array.isArray(record.media_order)) record.media_order = record.media_order.filter(key => !removedOrderKeys.has(key));
             }
             const temporary = path.join(root, `data/.media-references-${randomBytes(16).toString('hex')}.tmp`);
             try {

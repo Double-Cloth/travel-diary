@@ -83,3 +83,17 @@ test('启动自动修正磁盘乱序，已排序索引保留原始格式', async
         await rm(root, { recursive: true, force: true });
     }
 });
+
+test('启动与维护命令一致拒绝无效索引，保留原文件并释放数据锁', async t => {
+    const root = await mkdtemp(path.join(tmpdir(), 'travel-startup-order-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    await ensureDataStructure(root);
+    const file = path.join(root, 'data/travel_data.json');
+    for (const source of ['{}', '[null]', '[{"date":"2026-02-30"}]', '[{"date":"2024-01-01"},{}]']) {
+        await writeFile(file, source);
+        await assert.rejects(ensureDataStructure(root), /有效的 YYYY-MM-DD 日期/);
+        assert.equal(await readFile(file, 'utf8'), source);
+        assert.equal((await readdir(root)).includes('.travel-data.lock'), false);
+        assert.deepEqual(await readdir(path.join(root, 'data')), ['photos', 'profile', 'travel-diary', 'travel_data.json', 'videos']);
+    }
+});

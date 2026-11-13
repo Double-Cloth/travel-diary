@@ -1,7 +1,7 @@
-import { isValidDateString } from './analytics.mjs?v=2.1.134';
-import { readUploads, storedMediaNames } from './photo-uploads.mjs?v=2.1.134';
-import { isSafeAsciiFileName, pinyinSlug } from './slug.mjs?v=2.1.134';
-import { MAXIMUM_RECORD_MEDIA_ITEMS } from './file-limits.mjs?v=2.1.134';
+import { isValidDateString } from './analytics.mjs?v=2.1.135';
+import { readUploads, storedMediaNames } from './photo-uploads.mjs?v=2.1.135';
+import { isSafeAsciiFileName, pinyinSlug } from './slug.mjs?v=2.1.135';
+import { MAXIMUM_RECORD_MEDIA_ITEMS } from './file-limits.mjs?v=2.1.135';
 
 export const DRAFT_FORMAT = 'travel-diary-draft-v4';
 export const RECORD_FIELDS = ['date', 'country_code', 'country', 'admin_area', 'admin_area_type', 'locality', 'locality_type', 'trip_id', 'title', 'body', 'desc_md', 'photo_folder', 'photos', 'video_folder', 'videos'];
@@ -24,10 +24,6 @@ export function recordSlug(locality) {
 
 export function defaultMarkdownPath(date, locality) {
     return `data/travel-diary/${date.slice(0, 4)}/${date}-${recordSlug(locality)}.md`;
-}
-
-function isSafeFileName(name) {
-    return isSafeAsciiFileName(name);
 }
 
 export function readDraft(value) {
@@ -101,19 +97,19 @@ export function prepareRecord(value, countries) {
     const slug = recordSlug(input.locality);
     const markdownPath = input.desc_md || defaultMarkdownPath(input.date, input.locality);
     const expectedPrefix = `data/travel-diary/${input.date.slice(0, 4)}/${input.date}-`;
-    if (!markdownPath.startsWith(expectedPrefix) || !markdownPath.endsWith('.md') || !isSafeFileName(markdownPath.slice(`data/travel-diary/${input.date.slice(0, 4)}/`.length))) {
+    if (!markdownPath.startsWith(expectedPrefix) || !markdownPath.endsWith('.md') || !isSafeAsciiFileName(markdownPath.slice(`data/travel-diary/${input.date.slice(0, 4)}/`.length))) {
         throw new Error(`正文路径须为 ${expectedPrefix}name.md，文件名仅使用 ASCII 字母、数字、连字符、下划线或点。`);
     }
-    if (input.photo_folder && (!input.photo_folder.startsWith('data/photos/') || !input.photo_folder.slice('data/photos/'.length).split('/').every(isSafeFileName))) {
+    if (input.photo_folder && (!input.photo_folder.startsWith('data/photos/') || !input.photo_folder.slice('data/photos/'.length).split('/').every(isSafeAsciiFileName))) {
         throw new Error('照片目录须位于 data/photos/ 下，各级目录名仅使用 ASCII 字母、数字、连字符、下划线或点。');
     }
     if (input.photos.length && !input.photo_folder) throw new Error('填写照片列表时必须指定照片目录。');
-    if (input.photos.some(photo => !isSafeFileName(photo))) throw new Error('照片列表每行填写一个文件名，不能包含子路径、特殊字符或空行。');
-    if (input.video_folder && (!input.video_folder.startsWith('data/videos/') || !input.video_folder.slice('data/videos/'.length).split('/').every(isSafeFileName))) {
+    if (input.photos.some(photo => !isSafeAsciiFileName(photo))) throw new Error('照片列表每行填写一个文件名，不能包含子路径、特殊字符或空行。');
+    if (input.video_folder && (!input.video_folder.startsWith('data/videos/') || !input.video_folder.slice('data/videos/'.length).split('/').every(isSafeAsciiFileName))) {
         throw new Error('视频目录须位于 data/videos/ 下，各级目录名仅使用 ASCII 字母、数字、连字符、下划线或点。');
     }
     if (input.videos.length && !input.video_folder) throw new Error('填写视频列表时必须指定视频目录。');
-    if (input.videos.some(video => !isSafeFileName(video))) throw new Error('视频列表每行填写一个文件名，不能包含子路径、特殊字符或空行。');
+    if (input.videos.some(video => !isSafeAsciiFileName(video))) throw new Error('视频列表每行填写一个文件名，不能包含子路径、特殊字符或空行。');
     const record = {
         date: input.date,
         country: input.country || country.name_zh,

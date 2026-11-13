@@ -29,6 +29,15 @@ test('统一顺序兼容旧记录、缺失引用、新附件、同名跨类型�
         [items[0], items[3], items[1], items[2]]);
 });
 
+test('同一媒体对象出现多次时按列表位置消费，重排后数量保持一致', () => {
+    const photo = { type: 'photo', name: 'same.png' };
+    const video = { type: 'video', name: 'clip.mp4' };
+    const items = [photo, video, photo];
+    assert.deepEqual(orderMedia(items, ['photo:same.png']), items);
+    assert.deepEqual(orderMedia(items, ['video:clip.mp4', 'photo:same.png']), [video, photo, photo]);
+    assert.deepEqual(orderMedia(items, ['photo:same.png', 'photo:same.png', 'photo:same.png']), [photo, photo, video]);
+});
+
 test('误用 Unix 纪元的剪辑视频按真实时间插入照片和标准视频之间', async () => {
     const items = [
         { key: 'edited', name: 'edited.mp4', bytes: movie('2025-08-10T05:54:16Z', 0, 0) },

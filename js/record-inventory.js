@@ -5,11 +5,12 @@ const { fileSource } = require('./file-stream.js');
 
 async function ordinaryPath(root, name, directory = false) {
     let target = root;
-    for (const [index, part] of name.split('/').entries()) {
+    const parts = name.split('/');
+    for (const [index, part] of parts.entries()) {
         if (!part || part === '.' || part === '..' || /[\\:\x00-\x1f]/.test(part)) throw new Error('数据路径无效。');
         target = path.join(target, part);
         const stat = await fs.lstat(target);
-        const last = index === name.split('/').length - 1;
+        const last = index === parts.length - 1;
         if (stat.isSymbolicLink() || (last && !directory ? !stat.isFile() : !stat.isDirectory())) {
             throw Object.assign(new Error('数据路径必须是项目内的普通文件或目录。'), { status: 403 });
         }

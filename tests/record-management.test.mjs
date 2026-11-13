@@ -273,7 +273,8 @@ test('体检后新增引用或文件变化时拒绝清理，同名恢复不覆�
 test('删除缺失文件引用更新所有关联日记，保留其他媒体、顺序、正文及元数据', async t => {
     const root = await fixture(t);
     const records = identifyRecords([
-        { ...first, photos: ['missing.png', 'shared.png', 'missing.png'], video_folder: 'data/videos/trip', videos: ['missing.mp4'], trip_id: 'trip-a' },
+        { ...first, photos: ['missing.png', 'shared.png', 'missing.png'], video_folder: 'data/videos/trip', videos: ['missing.mp4'], trip_id: 'trip-a',
+            media_order: ['video:missing.mp4', 'photo:shared.png', 'photo:missing.png', 'photo:missing.png'] },
         { ...second, photos: ['shared.png', 'missing.png'], video_folder: 'data/videos/trip', videos: ['missing.mp4', 'other.mp4'] },
         { ...record('third'), photo_folder: 'data/photos/other', photos: ['missing.png'] }
     ]);
@@ -283,7 +284,7 @@ test('删除缺失文件引用更新所有关联日记，保留其他媒体、�
     report = await manageMedia(root, { action: 'remove-missing', revision: report.revision, paths: ['data/photos/trip/missing.png', 'data/videos/trip/missing.mp4'] });
     const saved = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json')));
     assert.deepEqual(saved, [
-        { ...records[0], photos: ['shared.png'], videos: [] },
+        { ...records[0], photos: ['shared.png'], videos: [], media_order: ['photo:shared.png'] },
         { ...records[1], photos: ['shared.png'], videos: ['other.mp4'] },
         records[2]
     ]);

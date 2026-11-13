@@ -1,19 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.134';
-import { createPasswordGate } from './record-password.js?v=2.1.134';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.134';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.134';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.134';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.134';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.134';
-import { recordIdentity } from './record-identity.mjs?v=2.1.134';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleSelectionGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.134';
-
-function sizeLabel(bytes) {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`;
-    if (bytes < 1024 ** 3) return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
-    return `${(bytes / 1024 ** 3).toFixed(2)} GiB`;
-}
+import { escapeHtml, getMediaFileUrl, formatFileSize } from './utils.js?v=2.1.135';
+import { createPasswordGate } from './record-password.js?v=2.1.135';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.135';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.135';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.135';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.135';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.135';
+import { recordIdentity } from './record-identity.mjs?v=2.1.135';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleSelectionGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.135';
 
 function restoreChangeTitle(record, comparison) {
     const diary = record.date ? record : comparison.previous?.date ? comparison.previous : null;
@@ -122,7 +115,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             if (element.hidden) checkbox.removeAttribute('aria-describedby');
             else checkbox.setAttribute('aria-describedby', element.id);
         });
-        dialog.querySelector('[data-recycle-count]').textContent = items.length ? `已选 ${items.length} 个项目${hidden ? `（含筛选外 ${hidden} 个）` : ''} · ${sizeLabel(restoreItems.flatMap(item => item.files).reduce((sum, file) => sum + file.size, 0))}${partial ? ' · 含部分恢复' : ''}${pending ? ` · 正在生成 ${pending} 项预览` : failed ? ` · ${failed} 项需处理` : ''}` : '尚未选择内容';
+        dialog.querySelector('[data-recycle-count]').textContent = items.length ? `已选 ${items.length} 个项目${hidden ? `（含筛选外 ${hidden} 个）` : ''} · ${formatFileSize(restoreItems.flatMap(item => item.files).reduce((sum, file) => sum + file.size, 0))}${partial ? ' · 含部分恢复' : ''}${pending ? ` · 正在生成 ${pending} 项预览` : failed ? ` · ${failed} 项需处理` : ''}` : '尚未选择内容';
         dialog.querySelector('[data-recycle-restore]').disabled = busy || stale || !selectionSupported || !items.length || pending > 0 || failed > 0 || exclusive || conflicts.length > 0;
         const selectionNote = dialog.querySelector('[data-recycle-selection-note]');
         selectionNote.dataset.recycleSelectionIssue = String(exclusive || conflicts.length > 0 || failed > 0);
@@ -192,7 +185,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
     async function filePreview(file, scope, { url, size = file.size, detail = '', label = '' }) {
         const kind = mediaKind(file.path);
         const name = fileDisplayName(file.path);
-        const metadata = [kind ? kind === 'image' ? '图片' : '视频' : '', Number.isFinite(size) ? sizeLabel(size) : '', detail].filter(Boolean).join(' · ');
+        const metadata = [kind ? kind === 'image' ? '图片' : '视频' : '', Number.isFinite(size) ? formatFileSize(size) : '', detail].filter(Boolean).join(' · ');
         let preview = await scope.file({ name: file.path, url, size, detail: kind ? metadata : '', label });
         if (kind && name !== file.path.split('/').pop()) {
             const heading = preview.querySelector('.media-file-name');
@@ -206,7 +199,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             if (/\.md$/i.test(file.path) && !label) summary.querySelector('span').classList.add('recycle-body-filename');
             summary.insertAdjacentHTML('afterbegin', fileIcon);
             const sizeNote = document.createElement('small');
-            sizeNote.textContent = Number.isFinite(size) ? sizeLabel(size) : '';
+            sizeNote.textContent = Number.isFinite(size) ? formatFileSize(size) : '';
             summary.append(sizeNote);
         }
         const empty = preview.matches('.content-file-empty') ? preview : null;
@@ -221,7 +214,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const entry = document.createElement('details');
             entry.className = 'content-file-preview';
             entry.title = file.path;
-            entry.innerHTML = `<summary>${fileIcon}<span>${escapeHtml(name)}</span><small>${escapeHtml([Number.isFinite(size) ? sizeLabel(size) : '', detail].filter(Boolean).join(' · '))}</small></summary><div class="content-file-body"></div>`;
+            entry.innerHTML = `<summary>${fileIcon}<span>${escapeHtml(name)}</span><small>${escapeHtml([Number.isFinite(size) ? formatFileSize(size) : '', detail].filter(Boolean).join(' · '))}</small></summary><div class="content-file-body"></div>`;
             entry.querySelector('.content-file-body').append(preview);
             preview = entry;
         }
@@ -286,7 +279,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const choice = selectable ? `<label class="recycle-diary-selector"><input type="checkbox" data-recycle-part-select value="${escapeHtml(groupKey)}" aria-label="选择${child.record ? '日记 ' : ''}${escapeHtml(child.name)}"></label>` : '';
             const summaryClass = [child.record ? 'recycle-diary-summary' : '', selectable ? 'recycle-diary-choice' : '', selectable && !child.record ? 'recycle-profile-choice' : ''].filter(Boolean).join(' ');
             row.innerHTML = `<details class="recycle-directory" data-recycle-folder="${escapeHtml(child.path)}"${open ? ' open' : ''}>
-                <summary${summaryClass ? ` class="${summaryClass}"` : ''} title="${escapeHtml(child.name)}">${choice}${child.record ? '' : folderIcon}<span${child.record ? ' class="recycle-directory-record"' : ''}>${child.record ? recordLink(child.record, child.name, undefined, item) : escapeHtml(child.name)}</span><small><span>${child.count ? `${child.count} 个文件` : child.record ? '仅日记信息' : '无归档文件'}</span><span>${sizeLabel(child.totalBytes)}</span></small></summary>
+                <summary${summaryClass ? ` class="${summaryClass}"` : ''} title="${escapeHtml(child.name)}">${choice}${child.record ? '' : folderIcon}<span${child.record ? ' class="recycle-directory-record"' : ''}>${child.record ? recordLink(child.record, child.name, undefined, item) : escapeHtml(child.name)}</span><small><span>${child.count ? `${child.count} 个文件` : child.record ? '仅日记信息' : '无归档文件'}</span><span>${formatFileSize(child.totalBytes)}</span></small></summary>
                 <ul class="recycle-tree" data-recycle-files="${item.id}" data-recycle-directory="${escapeHtml(child.path)}" style="--recycle-depth: ${Math.min(child.depth, 4)}" aria-label="${escapeHtml(child.name)}"></ul></details>`;
             list.append(row);
         }
@@ -343,7 +336,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         previews = createContentPreviewScope();
         trees.clear();
         const items = filteredItems();
-        dialog.querySelector('[data-recycle-status]').textContent = `显示 ${items.length} / ${report.items.length} 个回收项目 · 共 ${sizeLabel(report.totalBytes)}`;
+        dialog.querySelector('[data-recycle-status]').textContent = `显示 ${items.length} / ${report.items.length} 个回收项目 · 共 ${formatFileSize(report.totalBytes)}`;
         dialog.querySelector('[data-recycle-reset]').hidden = !dialog.querySelector('[data-recycle-search]').value;
         const itemMarkup = (item, grouped = false) => {
             const records = grouping.recordsByItem.get(item.id) || [];
@@ -352,7 +345,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             <div class="recycle-item-header">
             <label class="recycle-item-choice"><input type="checkbox" data-recycle-select value="${item.id}" aria-label="选择 ${escapeHtml(item.title)}，${escapeHtml(new Date(item.createdAt).toLocaleString())}"><strong>${escapeHtml(item.title)}</strong></label>
             <button class="media-text-button recycle-item-toggle" type="button" data-recycle-toggle="${item.id}" aria-controls="recycleBody-${item.id}" aria-expanded="${expandedItems.has(item.id)}" aria-label="${expandedItems.has(item.id) ? '收起' : '展开'} ${escapeHtml(item.title)}">${expandedItems.has(item.id) ? '收起' : '展开'}</button>
-            <small class="recycle-item-meta"><span>${types[item.kind] || '文件'}</span>${item.records.length ? `<span>${item.records.length} 篇日记</span>` : ''}<span>${item.files.length} 个文件</span><span>${sizeLabel(item.files.reduce((sum, file) => sum + file.size, 0))}</span><time datetime="${escapeHtml(item.createdAt)}">${escapeHtml(new Date(item.createdAt).toLocaleString())}</time></small>
+            <small class="recycle-item-meta"><span>${types[item.kind] || '文件'}</span>${item.records.length ? `<span>${item.records.length} 篇日记</span>` : ''}<span>${item.files.length} 个文件</span><span>${formatFileSize(item.files.reduce((sum, file) => sum + file.size, 0))}</span><time datetime="${escapeHtml(item.createdAt)}">${escapeHtml(new Date(item.createdAt).toLocaleString())}</time></small>
             <p class="recycle-item-status" data-recycle-item-status="${item.id}" hidden></p>
             </div>
             <p class="recycle-version-conflict" id="recycleConflict-${item.id}" data-recycle-conflict="${item.id}" hidden>已选中同篇日记的其他回收内容，恢复前请只保留一个版本。</p>
@@ -618,14 +611,14 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         }
         if (event.target.closest('[data-recycle-clear]')) {
             if (!report.items.length || !clearSupported) return;
-            await confirmAction(`将永久删除回收站中的全部 ${report.items.length} 个项目（${sizeLabel(report.totalBytes)}）。当前日记和资料保持不变，删除后无法恢复。`, { title: '清空回收站？', confirmLabel: '清空回收站' }, { action: 'clear' });
+            await confirmAction(`将永久删除回收站中的全部 ${report.items.length} 个项目（${formatFileSize(report.totalBytes)}）。当前日记和资料保持不变，删除后无法恢复。`, { title: '清空回收站？', confirmLabel: '清空回收站' }, { action: 'clear' });
             return;
         }
         if (event.target.closest('[data-recycle-purge-selected]')) {
             if (dialog.querySelector('[data-recycle-purge-selected]').disabled) return;
             const items = report.items.filter(item => selected.has(item.id));
             const hidden = items.length - filteredItems().filter(item => selected.has(item.id)).length;
-            await confirmAction(`将永久清除所选 ${items.length} 个项目${hidden ? `（含筛选范围外的 ${hidden} 个）` : ''}：${items.map(item => `「${item.title}」`).join('、')}。共 ${sizeLabel(items.flatMap(item => item.files).reduce((sum, file) => sum + file.size, 0))}，清除后无法恢复。`, { title: '清除所选内容？', confirmLabel: '清除所选内容' }, { action: 'purge-selected', ids: items.map(item => item.id) });
+            await confirmAction(`将永久清除所选 ${items.length} 个项目${hidden ? `（含筛选范围外的 ${hidden} 个）` : ''}：${items.map(item => `「${item.title}」`).join('、')}。共 ${formatFileSize(items.flatMap(item => item.files).reduce((sum, file) => sum + file.size, 0))}，清除后无法恢复。`, { title: '清除所选内容？', confirmLabel: '清除所选内容' }, { action: 'purge-selected', ids: items.map(item => item.id) });
         }
     });
     // 跳转阅读时保留当前纸面的内容与位置，返回后重新验证会话再继续。
