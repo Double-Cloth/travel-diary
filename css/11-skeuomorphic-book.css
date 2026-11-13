@@ -406,6 +406,26 @@ body[data-route='preface'] .paper-page {
     overflow-wrap: anywhere;
 }
 
+@media (hover: hover) and (pointer: fine) {
+    .preface-portrait,
+    .preface-owner-plaque {
+        transition: translate 220ms cubic-bezier(.16, 1, .3, 1), box-shadow 220ms ease-out;
+    }
+
+    .preface-portrait:hover {
+        box-shadow: inset 0 1px 1px #fffef5, inset 0 -1px 2px #b89c7466, 0 4px 6px #4a301b26, 3px 14px 22px #4a301b40;
+    }
+
+    .preface-owner-plaque:hover {
+        box-shadow: inset 0 1px #fffbed, 0 6px 10px #583b2026, 2px 12px 20px #583b202e;
+    }
+
+    @media (prefers-reduced-motion: no-preference) {
+        .preface-portrait:hover,
+        .preface-owner-plaque:hover { translate: 0 -4px; }
+    }
+}
+
 .preface-inscription {
     display: grid;
     grid-template-columns: minmax(0, 1fr) 76px;
