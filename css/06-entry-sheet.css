@@ -1752,7 +1752,7 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 html:has(.media-manager[open]) { overflow: hidden; }
 .media-manager.entry-sheet { width: min(760px, calc(100vw - 24px)); overflow: hidden; }
 .media-manager.management-dialog .record-transfer-card { max-height: calc(100dvh - 34px); }
-.media-manager .media-manager-scroll { position: relative; flex-shrink: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.media-manager .media-manager-scroll { position: relative; flex-shrink: 1; min-height: 0; padding-inline-end: 12px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .media-manager .media-files-section { display: block; min-height: 0; }
 .media-manager .record-transfer-list { min-height: 0; max-height: none; overflow: visible; }
 .media-manager .management-heading { margin-bottom: 24px; }

@@ -39,8 +39,7 @@ function getCustomSelectBoundary(wrapper) {
 function updateCustomSelectPlacement(wrapper) {
     const trigger = wrapper.querySelector('[data-custom-select-trigger]');
     const menu = wrapper.querySelector('[data-custom-select-menu]');
-    // 关闭的菜单不参与测量，避免离散显隐过渡引发溢出和滚动反馈。
-    if (!trigger || !menu || menu.hidden) return;
+    if (!trigger || !menu || !trigger.getClientRects().length) return;
 
     const boundary = getCustomSelectBoundary(wrapper);
     const triggerRect = trigger.getBoundingClientRect();
@@ -74,7 +73,15 @@ function updateCustomSelectPlacement(wrapper) {
         menu.style.right = 'auto';
     }
 
-    const menuHeight = Math.min(menu.scrollHeight, 272);
+    // 收起时用不可见的副本测量，避免原菜单的显隐过渡撑大滚动容器。
+    let measurement = menu;
+    if (menu.hidden) {
+        measurement = menu.cloneNode(true);
+        measurement.style.cssText += '; display: grid !important; position: fixed; inset: 0 auto auto 0; visibility: hidden; max-height: none; transition: none;';
+        menu.after(measurement);
+    }
+    const menuHeight = Math.min(measurement.scrollHeight, 272);
+    if (measurement !== menu) measurement.remove();
     const opensUpward = menuHeight > spaceBelow && spaceAbove > spaceBelow;
     menu.style.maxHeight = `${Math.min(272, opensUpward ? spaceAbove : spaceBelow)}px`;
     wrapper.classList.toggle('is-open-upward', opensUpward);
@@ -321,10 +328,7 @@ function updateCustomSelectPlacements() {
     if (placementUpdateFrame) return;
     placementUpdateFrame = requestAnimationFrame(() => {
         placementUpdateFrame = 0;
-        document.querySelectorAll('.custom-select.is-open').forEach(wrapper => {
-            const trigger = wrapper.querySelector('[data-custom-select-trigger]');
-            if (trigger?.getClientRects().length) updateCustomSelectPlacement(wrapper);
-        });
+        document.querySelectorAll('.custom-select').forEach(updateCustomSelectPlacement);
     });
 }
 

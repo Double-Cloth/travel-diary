@@ -27,6 +27,9 @@ function createSelectFixture(t) {
             insertBefore(child) { node.append(child); },
             matches: selector => selector === '.custom-select',
             closest: () => null,
+            getClientRects: () => [{}],
+            cloneNode: () => ({ style: {}, scrollHeight: node.scrollHeight, remove() {} }),
+            after() {},
             getBoundingClientRect: () => ({ top: 100, bottom: 140, left: 20, right: 260, width: 240 }),
             focus: () => { globalThis.document.activeElement = node; },
             scrollIntoView() {},
@@ -132,7 +135,7 @@ test('菜单获得焦点后仍可键盘导航，Escape 关闭并恢复按钮焦�
     assert.equal(menu.hidden, true);
 });
 
-test('关闭的选择框不测量菜单，打开后随滚动和窗口变化更新位置', () => {
+test('收起的选择框按可用空间预设方向，滚动与缩放时同步更新且保持隐藏', () => {
     const originals = { document: globalThis.document, window: globalThis.window, requestAnimationFrame: globalThis.requestAnimationFrame };
     const events = {};
     const frames = [];
@@ -145,7 +148,16 @@ test('关闭的选择框不测量菜单，打开后随滚动和窗口变化更�
     const menu = {
         get hidden() { return hidden; },
         set hidden(value) { hiddenChanges += 1; hidden = value; },
-        scrollHeight: 472, style: {}
+        scrollHeight: 472,
+        cloneNode: () => ({ style: { cssText: '' }, scrollHeight: 472, remove() {} }),
+        after(measurement) {
+            assert.match(measurement.style.cssText, /display: grid !important/);
+            assert.match(measurement.style.cssText, /position: fixed/);
+            assert.match(measurement.style.cssText, /visibility: hidden/);
+            assert.match(measurement.style.cssText, /transition: none/);
+            assert.equal(hidden, true);
+        },
+        style: { cssText: '' }
     };
     const trigger = {
         getClientRects: () => visible ? [{}] : [],
@@ -163,7 +175,7 @@ test('关闭的选择框不测量菜单，打开后随滚动和窗口变化更�
     try {
         globalThis.document = {
             documentElement: {},
-            querySelectorAll: selector => selector === '.custom-select.is-open' && !menu.hidden ? [wrapper] : [],
+            querySelectorAll: selector => selector === '.custom-select' ? [wrapper] : [],
             addEventListener: (name, handler) => { events[name] = handler; }
         };
         globalThis.window = {
@@ -175,15 +187,24 @@ test('关闭的选择框不测量菜单，打开后随滚动和窗口变化更�
         customSelect.enhanceCustomSelects();
         assert.equal(frames.length, 1);
         frames.shift()();
-        assert.equal(measurements, 0);
+        assert.equal(measurements, 1);
+        assert.ok(classes.has('is-open-upward'));
+        assert.equal(menu.style.cssText, '');
         assert.equal(hiddenChanges, 0);
         assert.equal(menu.hidden, true);
 
         events.scroll();
         events.resize();
         frames.shift()();
-        assert.equal(measurements, 0);
+        assert.equal(measurements, 2);
         assert.equal(hiddenChanges, 0);
+
+        top = 455;
+        events.scroll();
+        frames.shift()();
+        assert.ok(classes.has('is-open-downward'));
+        assert.equal(menu.hidden, true);
+        top = 510;
 
         menu.hidden = false;
         events.resize();
@@ -212,9 +233,13 @@ test('关闭的选择框不测量菜单，打开后随滚动和窗口变化更�
         assert.equal(measurements, previousMeasurements);
 
         menu.hidden = true;
+        visible = true;
+        top = 100;
         events.scroll();
         frames.shift()();
-        assert.equal(measurements, previousMeasurements);
+        assert.equal(measurements, previousMeasurements + 1);
+        assert.ok(classes.has('is-open-downward'));
+        assert.equal(menu.style.cssText, '');
         assert.equal(hiddenChanges, 2);
     } finally {
         Object.assign(globalThis, originals);
