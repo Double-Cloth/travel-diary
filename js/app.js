@@ -1135,11 +1135,15 @@ function renderPreface() {
         <details class="preface-tool-section" open aria-labelledby="prefaceOrganizeTitle">
             <summary class="preface-module-heading"><h3 id="prefaceOrganizeTitle">日记资料管理</h3></summary>
             <div class="preface-module-content">
-                <button class="preface-button preface-button-brass" type="button" data-action="add-record">新增旅行日记</button>
-                <div class="preface-utility-actions" role="group" aria-label="日记与个人资料操作">
-                    <button class="preface-button" type="button" data-action="upload-profile-picture">更改头像</button>
-                    <button class="preface-button" type="button" data-action="edit-owner-name">修改署名</button>
-                    <button class="preface-button preface-button-danger preface-utility-end" type="button" data-action="delete-records">批量删除日记</button>
+                <div class="preface-writing-actions">
+                    <button class="preface-tool-command preface-write-entry" type="button" data-action="add-record">
+                        <span class="preface-command-title">新增旅行日记</span>
+                    </button>
+                    <div class="preface-utility-actions preface-profile-actions" role="group" aria-label="日记与个人资料操作">
+                        <button class="preface-button" type="button" data-action="upload-profile-picture">更改头像</button>
+                        <button class="preface-button" type="button" data-action="edit-owner-name">修改署名</button>
+                        <button class="preface-button preface-button-danger preface-utility-end" type="button" data-action="delete-records">批量删除日记</button>
+                    </div>
                 </div>
             </div>
         </details>
@@ -1180,14 +1184,14 @@ function renderPreface() {
         <details class="preface-tool-section" open aria-labelledby="prefaceManageTitle">
             <summary class="preface-module-heading"><h3 id="prefaceManageTitle">数据管理</h3></summary>
             <div class="preface-module-content">
-                <div class="preface-transfer-actions">
-                    <button class="preface-button preface-button-brass" type="button" data-action="media-health" aria-labelledby="prefaceMediaLabel" aria-describedby="prefaceMediaNote">
-                        <span id="prefaceMediaLabel">媒体整理</span>
-                        <span class="preface-button-note" id="prefaceMediaNote">检查并整理未引用附件</span>
+                <div class="preface-management-actions">
+                    <button class="preface-tool-command" type="button" data-action="media-health" aria-labelledby="prefaceMediaLabel" aria-describedby="prefaceMediaNote">
+                        <span class="preface-command-title" id="prefaceMediaLabel">媒体整理</span>
+                        <span class="preface-command-description" id="prefaceMediaNote">检查并整理未引用附件</span>
                     </button>
-                    <button class="preface-button preface-button-brass" type="button" data-action="recycle-bin" aria-labelledby="prefaceRecycleLabel" aria-describedby="prefaceRecycleNote">
-                        <span id="prefaceRecycleLabel">回收站</span>
-                        <span class="preface-button-note" id="prefaceRecycleNote">恢复或永久删除已移除内容</span>
+                    <button class="preface-tool-command" type="button" data-action="recycle-bin" aria-labelledby="prefaceRecycleLabel" aria-describedby="prefaceRecycleNote">
+                        <span class="preface-command-title" id="prefaceRecycleLabel">回收站</span>
+                        <span class="preface-command-description" id="prefaceRecycleNote">恢复或永久删除已移除内容</span>
                     </button>
                 </div>
                 <div class="preface-utility-actions preface-data-actions">

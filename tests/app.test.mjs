@@ -639,7 +639,7 @@ test('同名或缺少正文路径的记录保留独立身份及原始顺序', ()
     assert.equal(app.deriveTravelModel([]).recordsById.size, 0);
 });
 
-test('扉页右页按三个默认展开模块组织操作，黄铜与扁平按钮统一样式', () => {
+test('扉页右页按三个默认展开模块组织操作，主要入口、文字操作与整理列表分层排列', () => {
     const { left, right } = app.renderTestSummary([], 'preface');
     assert.doesNotMatch(left, /data-action="(?:add-record|upload-profile-picture|edit-owner-name)"|preface-entry-actions/);
     assert.doesNotMatch(left + right, /浏览日记|查看行程|个人资料与安全/);
@@ -653,7 +653,7 @@ test('扉页右页按三个默认展开模块组织操作，黄铜与扁平按�
         ['export-records', 'export-all-data', 'import-records', 'import-all-data'],
         ['media-health', 'recycle-bin', 'change-password', 'password-reset-help', 'clear-all-data']
     ];
-    const brassActions = ['add-record', 'media-health', 'recycle-bin'];
+    const commandActions = ['add-record', 'media-health', 'recycle-bin'];
     const dangerActions = ['delete-records', 'clear-all-data'];
     modules.forEach((markup, index) => {
         assert.match(markup, /<summary class="preface-module-heading"><h3/);
@@ -663,18 +663,22 @@ test('扉页右页按三个默认展开模块组织操作，黄铜与扁平按�
             assert.ok(button);
             if (action === 'password-reset-help') {
                 assert.equal(button[1], 'password-reset-help');
-            } else if (index === 1) {
-                assert.equal(button[1], 'preface-tool-command');
+            } else if (index === 1 || commandActions.includes(action)) {
+                assert.ok(button[1].split(' ').includes('preface-tool-command'));
             } else {
                 assert.ok(button[1].split(' ').includes('preface-button'));
-                assert.equal(button[1].includes('preface-button-brass'), brassActions.includes(action));
                 assert.equal(button[1].includes('preface-button-danger'), dangerActions.includes(action));
             }
         }
     });
+    assert.match(modules[0], /class="preface-writing-actions"/);
+    assert.match(modules[0], /class="preface-tool-command preface-write-entry"/);
+    assert.match(modules[0], /class="preface-utility-actions preface-profile-actions"/);
+    assert.match(modules[2], /class="preface-management-actions"/);
     for (const note of ['Media', 'Recycle', 'Clear']) {
         assert.match(right, new RegExp(`aria-labelledby="preface${note}Label" aria-describedby="preface${note}Note"`));
-        assert.match(right, new RegExp(`<span class="preface-button-note" id="preface${note}Note">[^<]+</span>`));
+        const descriptionClass = note === 'Clear' ? 'preface-button-note' : 'preface-command-description';
+        assert.match(right, new RegExp(`<span class="${descriptionClass}" id="preface${note}Note">[^<]+</span>`));
     }
     assert.deepEqual([...modules[1].matchAll(/<h4[^>]*>(.*?)<\/h4>/g)].map(match => match[1]), ['导出 · 保存备份到本机', '导入 · 使用已有备份']);
     assert.equal(modules[1].match(/class="preface-tool-command"/g)?.length, 4);

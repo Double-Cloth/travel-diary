@@ -476,51 +476,40 @@ body[data-route='preface'] .paper-page {
 .preface-facts dt { color: #52351f; font: 700 23px/1.3 var(--font-code); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
 .preface-facts dd { margin: 6px 0 0; color: #71583e; font-size: 12px; line-height: 1.6; }
 
-.preface-tools-panel { gap: 22px; }
+.preface-tools-panel { gap: 22px; container: preface-tools / inline-size; }
 .preface-tools-panel button { -webkit-tap-highlight-color: #a4824326; }
 
 .preface-button {
     display: flex;
     flex-direction: column;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
-    gap: 6px;
-    width: 100%;
+    gap: 2px;
     min-width: 0;
     min-height: 44px;
-    padding: 10px 12px;
-    border: 1px solid #9c7a4c80;
+    padding: 8px 0;
+    border: 0;
     border-radius: 2px;
     color: var(--ink);
-    background: #f2dfb780;
+    background: transparent;
     font: inherit;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 400;
     line-height: 1.6;
-    text-align: center;
+    text-align: left;
     cursor: pointer;
-    transition: background-color .18s ease, border-color .18s ease;
+    text-underline-offset: 4px;
+    transition: color .18s ease;
 }
 
-.preface-button:hover { border-color: var(--brass-300); background-color: var(--paper-100); }
-.preface-button:active { background-color: var(--paper-200); }
+.preface-button:hover { color: var(--stamp); text-decoration: underline; }
+.preface-button:active { color: #52351f; }
 .preface-button:disabled { opacity: .55; cursor: wait; }
 .preface-button:focus-visible { outline: 2px solid var(--stamp); outline-offset: 3px; }
-.preface-button-brass {
-    border-color: var(--metal-edge);
-    color: #513824;
-    background: var(--control-face);
-    box-shadow: var(--control-shadow);
-    text-shadow: 0 1px #fff8e6;
-}
-.preface-button-brass:hover { border-color: #805b31; background: var(--control-face); filter: brightness(1.06); }
-.preface-button-brass:active { box-shadow: inset 0 2px 4px #4c301a40, 0 1px #fff7df; }
-.preface-button-brass:disabled { filter: none; }
-.preface-button-danger { color: #8b3228; border-color: #a34b3d; background-color: #f4d6be80; }
-.preface-button-danger:hover { color: #76271f; border-color: #8b3228; background-color: #f0c7ae; }
-.preface-button-danger:active { background-color: #e8b99d; }
-.preface-button-note { font-size: 11px; font-weight: 400; line-height: 1.5; text-shadow: none; }
-.preface-button:has(.preface-button-note) { gap: 2px; }
+.preface-button-danger { color: #8b3228; }
+.preface-button-danger:hover { color: #76271f; }
+.preface-button-danger:active { color: #622019; }
+.preface-button-note { color: var(--ink-soft); font-size: 12px; line-height: 1.5; }
 
 .preface-tool-section {
     min-width: 0;
@@ -560,14 +549,6 @@ body[data-route='preface'] .paper-page {
     font-weight: 400;
     letter-spacing: .04em;
 }
-
-.preface-transfer-actions {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px 12px;
-}
-
-#prefaceDataTitle { font-size: 18px; }
 
 .preface-backup-group { display: grid; gap: 6px; }
 .preface-backup-group + .preface-backup-group { margin-top: 4px; }
@@ -651,13 +632,25 @@ body[data-route='preface'] .paper-page {
     .preface-tool-choices { grid-template-columns: minmax(0, 1fr); gap: 10px; }
 }
 
-.preface-utility-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
-.preface-utility-actions .preface-button { width: auto; }
+.preface-writing-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 24px; }
+.preface-write-entry { flex: 1 1 220px; align-content: center; min-height: 76px; padding-block: 20px; }
+.preface-write-entry::after { top: calc(50% - 3px); }
+.preface-utility-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 20px; }
 .preface-utility-actions .preface-utility-end { margin-left: auto; }
+.preface-profile-actions { flex: 1 1 168px; }
+.preface-management-actions { display: grid; }
+.preface-management-actions .preface-tool-command {
+    grid-template-columns: minmax(84px, .65fr) minmax(0, 2fr);
+    align-items: baseline;
+    gap: 4px 20px;
+    padding-left: 0;
+    border-width: 0 0 1px;
+    background-color: transparent;
+}
+.preface-management-actions .preface-tool-command:hover { background-color: var(--paper-100); }
+.preface-management-actions .preface-tool-command:active { background-color: var(--paper-200); }
 .preface-password-actions { display: flex; align-items: center; min-width: 0; }
-.preface-data-actions { align-items: stretch; }
-.preface-data-actions .preface-password-actions { align-items: stretch; }
-.preface-data-actions .preface-button { min-height: 64px; }
+.preface-data-actions { gap: 12px 24px; padding-top: 4px; }
 .password-reset-help {
     display: inline-flex;
     align-items: center;
@@ -677,9 +670,10 @@ body[data-route='preface'] .paper-page {
 .password-reset-help:focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
 .password-reset-help-mark { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; }
 
-@media (max-width: 380px) {
-    .preface-utility-actions { gap: 6px; }
-    .preface-utility-actions .preface-button { flex: 1 1 auto; }
+@container preface-tools (max-width: 380px) {
+    .preface-tool-choices { grid-template-columns: minmax(0, 1fr); }
+    .preface-write-entry { min-height: 64px; padding-block: 16px; }
+    .preface-management-actions .preface-tool-command { grid-template-columns: minmax(0, 1fr); }
 }
 
 .preface-transfer-status { margin: 0; color: var(--stamp); font-size: 13px; line-height: 1.7; overflow-wrap: anywhere; }
