@@ -1,17 +1,17 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.139';
-import { createPasswordGate } from './record-password.js?v=2.1.139';
-import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.139';
-import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.139';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.140';
+import { createPasswordGate } from './record-password.js?v=2.1.140';
+import { detectWriterCapability, probeWriterService } from './writer-capability.js?v=2.1.140';
+import { createOperationProgress, downloadWithProgress, uploadWithProgress } from './operation-progress.js?v=2.1.140';
 import { readZipSource, createZipBlob, readSourceText, sourceOf } from './zip-stream.mjs';
-import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.139';
-import { verifyBackupPassword } from './backup-password.js?v=2.1.139';
-import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.139';
-import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.139';
-import { recordIdentity } from './record-identity.mjs?v=2.1.139';
-import { createContentPreviewScope } from './content-preview.js?v=2.1.139';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.139';
+import { readBackupRecords, selectBackupRecords, recordBackupEntries, sortBackupRecords } from './record-backup.mjs?v=2.1.140';
+import { verifyBackupPassword } from './backup-password.js?v=2.1.140';
+import { MAXIMUM_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.140';
+import { compareBackup, fileSignature } from './record-diff.mjs?v=2.1.140';
+import { recordIdentity } from './record-identity.mjs?v=2.1.140';
+import { createContentPreviewScope } from './content-preview.js?v=2.1.140';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.140';
 
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.139';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.140';
 
 export function createRecordTransfer(onImported, getRecords, { isDeleteActive = () => true, onDeleteClose = () => {} } = {}) {
     const dialog = document.createElement('dialog');
@@ -418,6 +418,11 @@ export function createRecordTransfer(onImported, getRecords, { isDeleteActive = 
     dialog.addEventListener('cancel', event => { event.preventDefault(); if (busy) return; importAuthorization = undefined; close(); });
     dialog.addEventListener('click', event => {
         if (busy) { event.preventDefault(); return; }
+        const deleteRow = event.target.closest('.record-transfer-delete-row');
+        if (deleteRow && !event.target.closest('a, label, input')) {
+            deleteRow.querySelector('input[type="checkbox"]').click();
+            return;
+        }
         const entryLink = event.target.closest('[data-record-transfer-entry]');
         if (entryLink && !event.ctrlKey && !event.metaKey && !event.shiftKey && !event.altKey && event.button === 0) {
             returnFocus = entryLink;

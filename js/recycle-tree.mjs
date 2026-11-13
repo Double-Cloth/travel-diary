@@ -1,5 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.139';
-import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.139';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.140';
+import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.140';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
