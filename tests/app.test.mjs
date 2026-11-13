@@ -653,7 +653,7 @@ test('扉页右页按三个默认展开模块组织操作，主要入口、文�
         ['export-records', 'export-all-data', 'import-records', 'import-all-data'],
         ['media-health', 'recycle-bin', 'change-password', 'password-reset-help', 'clear-all-data']
     ];
-    const commandActions = ['add-record', 'media-health', 'recycle-bin'];
+    const commandActions = ['media-health', 'recycle-bin'];
     const dangerActions = ['delete-records', 'clear-all-data'];
     modules.forEach((markup, index) => {
         assert.match(markup, /<summary class="preface-module-heading"><h3/);
@@ -663,6 +663,8 @@ test('扉页右页按三个默认展开模块组织操作，主要入口、文�
             assert.ok(button);
             if (action === 'password-reset-help') {
                 assert.equal(button[1], 'password-reset-help');
+            } else if (action === 'add-record') {
+                assert.equal(button[1], 'brass-button preface-write-entry');
             } else if (index === 1 || commandActions.includes(action)) {
                 assert.ok(button[1].split(' ').includes('preface-tool-command'));
             } else {
@@ -672,14 +674,14 @@ test('扉页右页按三个默认展开模块组织操作，主要入口、文�
         }
     });
     assert.match(modules[0], /class="preface-writing-actions"/);
-    assert.match(modules[0], /class="preface-tool-command preface-write-entry"/);
+    assert.match(modules[0], /class="brass-button preface-write-entry"/);
     assert.match(modules[0], /class="preface-utility-actions preface-profile-actions"/);
     assert.match(modules[2], /class="preface-management-actions"/);
-    for (const note of ['Media', 'Recycle', 'Clear']) {
+    for (const note of ['Media', 'Recycle']) {
         assert.match(right, new RegExp(`aria-labelledby="preface${note}Label" aria-describedby="preface${note}Note"`));
-        const descriptionClass = note === 'Clear' ? 'preface-button-note' : 'preface-command-description';
-        assert.match(right, new RegExp(`<span class="${descriptionClass}" id="preface${note}Note">[^<]+</span>`));
+        assert.match(right, new RegExp(`<span class="preface-command-description" id="preface${note}Note">[^<]+</span>`));
     }
+    assert.doesNotMatch(right, /prefaceClearNote|prefaceClearLabel|全部内容移入回收站/);
     assert.deepEqual([...modules[1].matchAll(/<h4[^>]*>(.*?)<\/h4>/g)].map(match => match[1]), ['导出 · 保存备份到本机', '导入 · 使用已有备份']);
     assert.equal(modules[1].match(/class="preface-tool-command"/g)?.length, 4);
     assert.equal(modules[1].match(/class="preface-command-description"/g)?.length, 4);
