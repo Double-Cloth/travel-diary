@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.130';
-import { createPasswordGate } from './record-password.js?v=2.1.130';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.130';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.130';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.130';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.130';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.130';
-import { recordIdentity } from './record-identity.mjs?v=2.1.130';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleSelectionGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.130';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.131';
+import { createPasswordGate } from './record-password.js?v=2.1.131';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.131';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.131';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.131';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.131';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.131';
+import { recordIdentity } from './record-identity.mjs?v=2.1.131';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleSelectionGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.131';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -356,7 +356,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             <p class="recycle-version-conflict" id="recycleConflict-${item.id}" data-recycle-conflict="${item.id}" hidden>已选中同篇日记的其他回收内容，恢复前请只保留一个版本。</p>
             <div class="recycle-item-body" id="recycleBody-${item.id}"${expandedItems.has(item.id) ? '' : ' hidden'}>
             ${summaries.map(record => `<p class="recycle-record-info">${recordLink(record, recycleRecordLabel(record), undefined, item)}</p>`).join('')}
-            ${item.kind === 'snapshot' ? '<p class="recycle-restore-note" data-recycle-mode-note></p>' : item.kind === 'version' ? '<p class="recycle-restore-note">恢复到原位置；被替换的当前文件也会存入回收站。</p>' : ''}
+            ${item.kind === 'snapshot' ? '<p class="recycle-restore-note" data-recycle-mode-note></p>' : ''}
             ${contentsMarkup(item)}
             ${item.kind === 'files' && !item.mediaReferences?.length && item.files.some(file => mediaKind(file.path)) ? `<div class="recycle-target" data-recycle-selected-only${selected.has(item.id) ? '' : ' hidden'}><label class="field-label" for="recycleTarget-${item.id}">恢复到</label><select id="recycleTarget-${item.id}" data-custom-select data-recycle-target="${item.id}"><option value="">${item.title === '编辑日记时移除的媒体' ? '请选择原日记' : '仅恢复文件'}</option>${(report.currentRecords || []).map(record => `<option value="${escapeHtml(record.desc_md)}"${targets.get(item.id) === record.desc_md ? ' selected' : ''}>${escapeHtml([record.date, record.locality].filter(Boolean).join(' · '))}</option>`).join('')}</select><p class="recycle-restore-note">选择日记后，同时补回附件列表；其他日记信息保持不变。</p><p class="recycle-target-link" data-recycle-target-link></p></div>` : item.mediaReferences?.length ? '<p class="recycle-restore-note">恢复文件并补回原日记的附件列表，保留之后修改的内容。</p>' : ''}
             <div data-recycle-diff="${item.id}"${selected.has(item.id) ? '' : ' hidden'}>${previewMarkup(selected.get(item.id))}</div>

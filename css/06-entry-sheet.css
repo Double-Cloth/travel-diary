@@ -1673,11 +1673,15 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .recycle-list section.record-diff > .record-diff-body { padding: 0; border-top: 0; }
 .recycle-list .record-diff-note:empty { display: none; }
 .recycle-list .content-preview-source { margin-top: 16px; }
-.recycle-list .record-diff-section > h3 { font-size: 15px; }
+.recycle-list .record-diff-section > h3 { margin-bottom: 12px; font-size: 15px; }
+.recycle-list .record-diff-media > li:first-child { padding-top: 0; }
+.recycle-list .record-diff-media > li:last-child { padding-bottom: 0; }
+.recycle-list .record-diff-media-heading { margin: 0; padding: 0; }
 .recycle-list .content-preview-markdown, .recycle-list .content-file-body > pre, .recycle-list .record-diff pre { max-height: none; overflow: visible; }
 .recycle-list .content-file-body,
 .recycle-list .content-preview-source > .content-preview-markdown { padding: 12px 0; }
 .recycle-list .content-file-body > .content-preview-markdown { padding: 0; }
+.recycle-list .content-file-body > .content-preview-empty { margin: 0; padding-block: 0; }
 .recycle-list .content-file-body > .content-file-preview > .content-file-body { padding: 0; }
 .recycle-list .content-preview-markdown > :last-child { margin-bottom: 0; }
 .content-preview-list > li { grid-template-columns: minmax(0, 1fr); }
