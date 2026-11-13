@@ -1160,7 +1160,7 @@ function renderPreface() {
                         </button>
                         <button class="preface-tool-command" type="button" data-action="export-all-data">
                             <span class="preface-command-title">导出全部数据</span>
-                            <span class="preface-command-description">验证访问密码后，备份日记、附件、个人资料和密码配置。</span>
+                            <span class="preface-command-description">备份日记、附件、个人资料和密码配置。</span>
                         </button>
                     </div>
                 </div>
