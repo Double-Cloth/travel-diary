@@ -98,7 +98,7 @@ export function stubViewerImageReveal(image) {
     };
 }
 export function stubReadingRoutes() {
-    const originals = { renderLedger, renderCover, renderEntryRoute, renderEntryPhotosRoute,
+    const originals = { renderLedger, renderCover, renderPreface, renderEntryRoute, renderEntryPhotosRoute,
         renderWithPageTurn, clearPageTurn, updateChapterTabs, restoreFocus,
         restoreReadingScrollPosition, travelModel, activeRoute, renderedPageHash, lastReadingHash,
         shell: refs.shell, lastLedgerView };
@@ -108,6 +108,7 @@ export function stubReadingRoutes() {
     let pending;
     renderLedger = () => calls.push('ledger');
     renderCover = () => calls.push('cover');
+    renderPreface = () => calls.push('preface');
     renderEntryRoute = params => calls.push('entry:' + params.id);
     renderEntryPhotosRoute = () => calls.push('photos');
     clearPageTurn = () => {};
@@ -133,7 +134,7 @@ export function stubReadingRoutes() {
         render: renderRoute,
         invalidate: () => { renderedPageHash = ''; },
         restore() {
-            ({ renderLedger, renderCover, renderEntryRoute, renderEntryPhotosRoute,
+            ({ renderLedger, renderCover, renderPreface, renderEntryRoute, renderEntryPhotosRoute,
                 renderWithPageTurn, clearPageTurn, updateChapterTabs, restoreFocus,
                 restoreReadingScrollPosition, travelModel, activeRoute, renderedPageHash,
                 lastReadingHash, lastLedgerView } = originals);
@@ -1708,6 +1709,29 @@ test('详情、附件与返回都作为书页路由参与翻页', t => {
     scenario.invalidate();
     scenario.render(app.parseRoute('#entry?id=a'));
     assert.deepEqual(scenario.calls.slice(-2), ['turn', 'entry:a']);
+});
+
+test('扉页弹窗路由沿用现有纸页，数据刷新或跨页返回仍重新渲染', t => {
+    const previous = { document: globalThis.document, window: globalThis.window };
+    const scrolls = [];
+    globalThis.window = { matchMedia: () => ({ matches: true }), scrollTo: value => scrolls.push(value) };
+    globalThis.document = { body: { dataset: {} } };
+    const scenario = app.stubReadingRoutes();
+    t.after(() => { scenario.restore(); Object.assign(globalThis, previous); });
+    scenario.render(app.parseRoute('#preface'), { initial: true });
+    for (const panel of ['delete', 'media', 'recycle']) {
+        scenario.render(app.parseRoute('#preface?panel=' + panel));
+        scenario.render(app.parseRoute('#preface'));
+    }
+    assert.deepEqual(scenario.calls, ['direct', 'preface'], '打开和关闭弹窗不重建工具箱');
+    assert.deepEqual(scrolls, [], '弹窗切换不改变移动端背景滚动位置');
+    scenario.render(app.parseRoute('#preface?panel=media'));
+    scenario.invalidate();
+    scenario.render(app.parseRoute('#preface'));
+    assert.deepEqual(scenario.calls.slice(-2), ['direct', 'preface'], '数据失效后仍更新扉页');
+    scenario.render(app.parseRoute('#ledger'));
+    scenario.render(app.parseRoute('#preface?panel=recycle'));
+    assert.deepEqual(scenario.calls.slice(-2), ['turn', 'preface'], '从其他章节进入仍渲染扉页');
 });
 
 test('合书后重开保留筛选、详情与附件位置，且不覆盖详情返回目录的位置', t => {
