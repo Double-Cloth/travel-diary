@@ -1749,7 +1749,12 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
     .record-diff > summary small { margin-left: auto; }
 }
 @media (prefers-reduced-motion: reduce) { .record-diff > summary::before { transition: none; } }
-.media-manager.entry-sheet { width: min(760px, calc(100vw - 24px)); }
+html:has(.media-manager[open]) { overflow: hidden; }
+.media-manager.entry-sheet { width: min(760px, calc(100vw - 24px)); overflow: hidden; }
+.media-manager.management-dialog .record-transfer-card { max-height: calc(100dvh - 34px); }
+.media-manager .media-manager-scroll { position: relative; flex-shrink: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.media-manager .media-files-section { display: block; min-height: 0; }
+.media-manager .record-transfer-list { min-height: 0; max-height: none; overflow: visible; }
 .media-manager .management-heading { margin-bottom: 24px; }
 .media-manager .media-manager-status { margin: 0 0 12px; font-size: 13px; }
 .media-space-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding: 14px 0; margin: 0 0 16px; border-block: 1px solid var(--hairline); }
@@ -1797,10 +1802,6 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 .media-manager .custom-select-trigger { min-height: 44px; }
 @media (max-width: 600px) {
     .media-manager-filters { grid-template-columns: minmax(0, 1fr); }
-    .media-manager .record-transfer-card { max-height: none; }
-    .media-manager .media-files-section { flex-shrink: 0; min-height: 0; }
-    .media-manager .media-file-list { overflow-y: visible; }
-    .media-manager .media-diary-list { overflow-y: visible; }
 }
 @media (max-width: 760px) {
     .record-diff { margin-left: 0; }
@@ -1813,8 +1814,8 @@ a.media-file-link:hover .media-file-name { text-decoration: underline; text-unde
 }
 @media (max-height: 650px) {
     .management-dialog .record-transfer-card { max-height: none; }
-    .management-dialog .record-transfer-list { max-height: 42dvh; }
-    .management-dialog .management-footer { position: sticky; bottom: calc(-1 * clamp(20px, 5vw, 36px)); margin-bottom: calc(-1 * clamp(20px, 5vw, 36px)); padding-bottom: clamp(20px, 5vw, 36px); background: var(--paper-50); }
+    .management-dialog:where(:not(.media-manager)) .record-transfer-list { max-height: 42dvh; }
+    .management-dialog:where(:not(.media-manager)) .management-footer { position: sticky; bottom: calc(-1 * clamp(20px, 5vw, 36px)); margin-bottom: calc(-1 * clamp(20px, 5vw, 36px)); padding-bottom: clamp(20px, 5vw, 36px); background: var(--paper-50); }
     .recycle-manager .recycle-selection { position: static; margin-bottom: 0; padding-bottom: 0; }
     .recycle-manager [data-recycle-list] { flex-shrink: 0; overflow-y: visible; }
 }

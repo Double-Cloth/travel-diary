@@ -1,8 +1,8 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.127';
-import { createPasswordGate } from './record-password.js?v=2.1.127';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.127';
-import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.127';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.127';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.128';
+import { createPasswordGate } from './record-password.js?v=2.1.128';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.128';
+import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.128';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.128';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -23,6 +23,7 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
     dialog.setAttribute('aria-labelledby', 'mediaManagerTitle');
     dialog.innerHTML = `<div class="record-transfer-card">
         <header class="management-heading"><div><h2 id="mediaManagerTitle">媒体整理</h2><p>查看文件的使用情况，整理不再需要的图片和视频。</p></div><button class="paper-button management-secondary" type="button" data-media-close>关闭</button></header>
+        <div class="media-manager-scroll" data-media-scroll>
         <p class="media-manager-status" data-media-summary role="status" aria-live="polite"></p>
         <dl class="media-space-summary" data-media-space hidden></dl>
         <div class="media-manager-navigation"><h3 id="mediaFilesTitle">文件检查</h3><button class="media-text-button" type="button" data-media-refresh>重新检查</button></div>
@@ -34,7 +35,7 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
         <p class="media-filter-hint" data-media-hint></p>
         <div class="media-selection-tools" data-media-select-tools><button class="paper-button management-secondary" type="button" data-media-all>全选可选结果</button><button class="paper-button management-secondary" type="button" data-media-clear disabled>清空全部选择</button></div>
         <ul class="record-transfer-list recycle-list media-diary-list" data-media-list aria-label="按日记分类的媒体文件"></ul></section>
-        <p data-media-error role="alert"></p>
+        <p data-media-error role="alert"></p></div>
         <div class="management-footer media-selection" data-media-selection><p data-media-count role="status" aria-live="polite"></p><button class="paper-button" type="button" data-media-trash disabled>移入回收站</button><p class="media-selection-note">移入后仍占用空间，可在工具箱的回收站恢复或永久删除。</p></div></div>`;
     document.body.append(dialog);
     enhanceCustomSelects(dialog);
@@ -316,11 +317,11 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
             await request(payload);
         }
     });
-    // 阅读日记时保留当前列表，返回后恢复焦点和两层滚动位置。
+    // 阅读日记时保留当前列表，返回后恢复焦点和内容区滚动位置。
     function suspend() {
         if (!dialog.open) return;
         suspended = true;
-        scrollPosition = { paper: dialog.scrollTop, list: dialog.querySelector('[data-media-list]').scrollTop };
+        scrollPosition = dialog.querySelector('[data-media-scroll]').scrollTop;
         dialog.close();
     }
     const authorizeOpen = createPasswordGate(async () => {
@@ -329,8 +330,7 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
             suspended = false;
             dialog.showModal();
             returnFocus?.focus({ preventScroll: true });
-            dialog.scrollTop = scrollPosition.paper;
-            dialog.querySelector('[data-media-list]').scrollTop = scrollPosition.list;
+            dialog.querySelector('[data-media-scroll]').scrollTop = scrollPosition;
             return;
         }
         trigger = document.activeElement;
