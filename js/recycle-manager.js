@@ -253,8 +253,10 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             control.closest('summary').classList.toggle('is-selected', control.checked);
         });
         dialog.querySelectorAll('[data-recycle-select]').forEach(control => {
-            control.indeterminate = selected.has(control.value) && partSelections.has(control.value);
-            if (control.indeterminate) control.checked = false;
+            const keys = partSelections.get(control.value);
+            const item = report?.items.find(item => item.id === control.value);
+            control.checked = selected.has(control.value) && (!keys || itemPartGroups(item).every(group => keys.has(group.key)));
+            control.indeterminate = selected.has(control.value) && !control.checked;
         });
     }
     function itemPartGroups(item) {
