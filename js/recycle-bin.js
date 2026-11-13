@@ -241,7 +241,7 @@ async function restoreFiles(root, item, targetDescMd) {
     finally { if (temporary) await fs.unlink(temporary).catch(() => {}); }
 }
 
-async function restoreVersion(root, item, records, sources = new Map()) {
+async function restoreVersion(root, item, records, sources = new Map(), removedPaths = []) {
     // 将附件与索引放在同一回滚范围，任何一步失败都还原当前文件。
     const incoming = [...item.files];
     for (let index = 0; index < incoming.length; index++) {
@@ -256,7 +256,7 @@ async function restoreVersion(root, item, records, sources = new Map()) {
         incoming.push({ path: 'data/travel_data.json', content: serializeRecords(records) });
     }
     const files = [];
-    for (const file of incoming) {
+    for (const file of [...incoming, ...removedPaths.map(path => ({ path }))]) {
         await ensureParent(root, file.path);
         try { await ordinaryPath(root, file.path); files.push({ path: file.path }); }
         catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -320,6 +320,13 @@ async function restoreSnapshot(root, item) {
     }
 }
 
+// 整站批次中的个人资料按历史时点恢复，缺失的文件也属于恢复范围。
+async function profileRemovalPaths(root, item, parts, files) {
+    if (item.kind !== 'snapshot' || !parts?.includes('profile')) return [];
+    const saved = new Set(files.map(file => file.path.toLowerCase()));
+    return (await dataFiles(root, 'data/profile')).map(file => file.path).filter(name => !saved.has(name.toLowerCase()));
+}
+
 // 纳秒时间戳、文件身份及大小绑定整站状态，首次预览无需读取无关的大媒体。
 async function restoreToken(root, item, targetDescMd, revision, versions = new Map(), parts) {
     const hash = createHash('sha256').update(JSON.stringify([revision, item.id, targetDescMd || '', parts === undefined ? null : [...parts].sort()]));
@@ -350,6 +357,7 @@ async function previewRestore(root, item, targetDescMd, revision, parts) {
     const before = new Map();
     for (const file of await dataFiles(root)) before.set(file.path, await fileSource(await ordinaryPath(root, file.path)));
     const after = item.kind === 'snapshot' ? new Map() : new Map(before);
+    for (const name of await profileRemovalPaths(root, original, parts, item.files)) after.delete(name);
     let files = item.files.map(file => ({ ...file, sourcePath: file.sourcePath || file.path }));
     const text = async source => source ? new TextDecoder('utf-8', { fatal: true }).decode(await readSourceText(sourceOf(source))) : '';
     let next;
@@ -457,21 +465,26 @@ async function restoreSelected(root, report, selections) {
         try { projected = selectRecycleParts(item, selection.parts, report.currentRecords); }
         catch (error) { throw failure(error.message); }
         if (await restoreToken(root, item, selection.targetDescMd, report.revision, new Map(), selection.parts) !== selection.previewToken) throw failure('预览后内容已变化，请重新预览再恢复，未覆盖任何内容。');
-        plans.push({ item: projected, targetDescMd: selection.targetDescMd, partial: selection.parts !== undefined });
+        plans.push({ item: projected, targetDescMd: selection.targetDescMd, partial: selection.parts !== undefined,
+            removedPaths: await profileRemovalPaths(root, item, selection.parts, projected.files),
+            profilePaths: item.kind === 'snapshot' && selection.parts?.includes('profile') ? new Set(projected.files.map(file => file.path.toLowerCase())) : null });
     }
     if (recycleRestoreConflicts(report.items, report.currentRecords, selections).length) throw failure('同一篇日记每次只能恢复一个版本，请保留一个勾选项后重试。');
     if (plans.length === 1 && (plans[0].item.kind === 'snapshot' || plans[0].item.kind === 'version')) {
         const { item } = plans[0];
         if (item.kind === 'snapshot') await restoreSnapshot(root, item);
-        else await restoreVersion(root, item);
+        else await restoreVersion(root, item, undefined, undefined, plans[0].removedPaths);
     } else {
         if (plans.some(({ item }) => item.kind === 'snapshot' || item.files.some(file => file.path === 'data/travel_data.json'))) throw failure('整站数据或包含日记目录的旧版本需要单独恢复，请调整选择。');
         const { matchRecord } = await import('./record-identity.mjs');
         const current = await readRecords(root);
         let next = current;
         const files = new Map();
+        const removedPaths = new Set();
         const owners = [];
-        for (const { item, targetDescMd } of plans) {
+        for (const plan of plans) {
+            const { item, targetDescMd } = plan;
+            for (const name of plan.removedPaths) removedPaths.add(name);
             const references = targetDescMd ? current.filter(record => record.desc_md === targetDescMd) : item.mediaReferences || [];
             const related = [...item.records, ...references.filter(record => !matchRecord(record, item.records))];
             for (const record of related) {
@@ -489,8 +502,11 @@ async function restoreSelected(root, report, selections) {
                 files.set(key, { ...file, source });
             }
         }
+        if (plans.some(plan => plan.profilePaths && [...files.values()].some(file => file.path.startsWith('data/profile/') && !plan.profilePaths.has(file.path.toLowerCase())))) {
+            throw failure('所选项目同时恢复和移除同一份个人资料，请分别恢复。');
+        }
         await restoreVersion(root, { files: [...files.values()] }, JSON.stringify(current) === JSON.stringify(next) ? undefined : next,
-            new Map([...files.values()].map(file => [file.path, file.source])));
+            new Map([...files.values()].map(file => [file.path, file.source])), [...removedPaths]);
     }
     // 部分恢复保留完整原批次，继续恢复其余内容时仍有原始信息和共用附件。
     for (const { item, partial } of plans) if (!partial) await discardRecycle(root, item.id);

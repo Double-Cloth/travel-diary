@@ -1,5 +1,5 @@
-import { recordFilePaths } from './record-backup.mjs?v=2.1.129';
-import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.129';
+import { recordFilePaths } from './record-backup.mjs?v=2.1.130';
+import { recordIdentity, matchRecord } from './record-identity.mjs?v=2.1.130';
 
 export function recycleRecordLabel(record) {
     return [record.date, record.country, record.admin_area, record.locality].filter(Boolean).join(' · ') || '日记';
@@ -61,7 +61,7 @@ export function recycleSelectionGroups(item) {
     const groups = recycleDiaryGroups(item).map(group => ({ ...group, key: `diary:${group.key}` }));
     const parts = item.files.filter(file => file.path.startsWith('data/profile/'))
         .map(file => ({ key: `file:${file.path}`, file }));
-    if (parts.length) groups.push({ key: 'profile', label: '个人资料', parts });
+    if (parts.length || item.kind === 'snapshot') groups.push({ key: 'profile', label: '个人资料', parts });
     const index = item.files.find(file => file.path === 'data/travel_data.json');
     if (index) groups.push({ key: 'index', label: '日记索引', parts: [{ key: `file:${index.path}`, file: index }] });
     return groups;
@@ -85,7 +85,7 @@ export function selectRecycleParts(item, parts, currentRecords = []) {
     }
     const groups = recyclePartGroups(item);
     const available = new Map(groups.flatMap(group => group.parts).map(part => [part.key, part]));
-    if (!Array.isArray(parts) || !parts.length || new Set(parts).size !== parts.length || parts.some(key => !available.has(key))) {
+    if (!Array.isArray(parts) || (!parts.length && !groupSelection) || new Set(parts).size !== parts.length || parts.some(key => !available.has(key))) {
         throw new Error('请选择有效且不重复的恢复内容。');
     }
     const keys = new Set(parts);
@@ -223,7 +223,7 @@ export function recycleRestoreConflicts(items, currentRecords, selections) {
 // 逻辑目录只负责展示归属，文件保留原始对象供预览和恢复使用。
 export function buildRecycleTree(files, query = '', {
     records = [], mediaReferences = [], displayRecords = [], mediaKind = () => '', groupSingleRecord = false,
-    includeEmptyRecords = false, preserveProfileGroup = false,
+    includeEmptyRecords = false, includeEmptyProfile = false, preserveProfileGroup = false,
     categories = ['正文', '图片', '视频', '个人资料', '日记索引', '其他文件']
 } = {}) {
     const directories = new Map();
@@ -253,6 +253,10 @@ export function buildRecycleTree(files, query = '', {
         for (const record of diaries.values()) {
             directory(root, `record:${record.desc_md}`, recycleRecordLabel(record), 0).record = record;
         }
+    }
+    if (includeEmptyProfile) {
+        const index = categories.indexOf('个人资料');
+        directory(root, `type:${index}`, '个人资料', index + 2);
     }
     for (const file of files) {
         const references = owners.get(file.path);

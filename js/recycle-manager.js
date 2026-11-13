@@ -1,12 +1,12 @@
-import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.129';
-import { createPasswordGate } from './record-password.js?v=2.1.129';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.129';
-import { confirmFeedback } from './feedback-dialog.js?v=2.1.129';
-import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.129';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.129';
-import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.129';
-import { recordIdentity } from './record-identity.mjs?v=2.1.129';
-import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleSelectionGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.129';
+import { escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.130';
+import { createPasswordGate } from './record-password.js?v=2.1.130';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.130';
+import { confirmFeedback } from './feedback-dialog.js?v=2.1.130';
+import { createContentPreviewScope, mediaKind } from './content-preview.js?v=2.1.130';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.130';
+import { renderRecordDifference, loadDifferenceMedia } from './record-diff-view.js?v=2.1.130';
+import { recordIdentity } from './record-identity.mjs?v=2.1.130';
+import { buildRecycleTree, buildRestorePreviewTree, groupRecycleItems, recycleRestoreConflicts, recycleRecordLabel, recycleFileType, recycleSelectionGroups, selectRecycleParts } from './recycle-tree.mjs?v=2.1.130';
 
 function sizeLabel(bytes) {
     if (bytes < 1024) return `${bytes} B`;
@@ -268,7 +268,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         const item = report.items.find(item => item.id === id);
         const list = dialog.querySelector(`[data-recycle-item="${id}"] [data-recycle-files]`);
         if (!list) return;
-        if (!trees.has(id)) trees.set(id, buildRecycleTree(item.files, dialog.querySelector('[data-recycle-search]').value, { records: item.records, mediaReferences: item.mediaReferences, displayRecords: grouping.recordsByItem.get(id), mediaKind, groupSingleRecord: item.kind === 'snapshot', includeEmptyRecords: true, preserveProfileGroup: true }));
+        if (!trees.has(id)) trees.set(id, buildRecycleTree(item.files, dialog.querySelector('[data-recycle-search]').value, { records: item.records, mediaReferences: item.mediaReferences, displayRecords: grouping.recordsByItem.get(id), mediaKind, groupSingleRecord: item.kind === 'snapshot', includeEmptyRecords: true, includeEmptyProfile: item.kind === 'snapshot', preserveProfileGroup: true }));
         void loadContents(list, item, previews);
     }
     async function loadContents(list, item, scope) {
@@ -284,7 +284,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
             const choice = selectable ? `<label class="recycle-diary-selector"><input type="checkbox" data-recycle-part-select value="${escapeHtml(groupKey)}" aria-label="选择${child.record ? '日记 ' : ''}${escapeHtml(child.name)}"></label>` : '';
             const summaryClass = [child.record ? 'recycle-diary-summary' : '', selectable ? 'recycle-diary-choice' : '', selectable && !child.record ? 'recycle-profile-choice' : ''].filter(Boolean).join(' ');
             row.innerHTML = `<details class="recycle-directory" data-recycle-folder="${escapeHtml(child.path)}"${open ? ' open' : ''}>
-                <summary${summaryClass ? ` class="${summaryClass}"` : ''} title="${escapeHtml(child.name)}">${choice}${child.record ? '' : folderIcon}<span${child.record ? ' class="recycle-directory-record"' : ''}>${child.record ? recordLink(child.record, child.name, undefined, item) : escapeHtml(child.name)}</span><small><span>${child.count ? `${child.count} 个文件` : '仅日记信息'}</span><span>${sizeLabel(child.totalBytes)}</span></small></summary>
+                <summary${summaryClass ? ` class="${summaryClass}"` : ''} title="${escapeHtml(child.name)}">${choice}${child.record ? '' : folderIcon}<span${child.record ? ' class="recycle-directory-record"' : ''}>${child.record ? recordLink(child.record, child.name, undefined, item) : escapeHtml(child.name)}</span><small><span>${child.count ? `${child.count} 个文件` : child.record ? '仅日记信息' : '无归档文件'}</span><span>${sizeLabel(child.totalBytes)}</span></small></summary>
                 <ul class="recycle-tree" data-recycle-files="${item.id}" data-recycle-directory="${escapeHtml(child.path)}" style="--recycle-depth: ${Math.min(child.depth, 4)}" aria-label="${escapeHtml(child.name)}"></ul></details>`;
             list.append(row);
         }

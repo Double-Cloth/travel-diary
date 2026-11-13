@@ -505,10 +505,23 @@ test('个人资料可单独勾选或与日记混合选择，纯资料批次保�
     for (const parts of [['profile', 'profile'], ['profile', 'file:data/a.md']]) {
         assert.throws(() => selectRecycleParts(item, parts), /恢复内容/);
     }
-    assert.throws(() => selectRecycleParts({ ...item, files: files.slice(0, 2) }, ['profile']), /恢复内容/);
+    assert.deepEqual(selectRecycleParts({ ...item, files: files.slice(0, 2) }, ['profile']).files, []);
+    assert.throws(() => selectRecycleParts({ kind: 'version', files: [] }, ['profile']), /恢复内容/);
     const tree = buildRecycleTree(files.filter(file => file.path !== record.desc_md), '', { preserveProfileGroup: true });
     assert.deepEqual(tree.get('').directories.map(node => node.name), ['个人资料']);
     assert.deepEqual(tree.get('').directories[0].files, files.slice(2));
+});
+
+test('空个人资料快照保留勾选入口，空范围仍需有效分组', () => {
+    const item = { kind: 'snapshot', files: [{ path: 'data/travel_data.json', size: 2 }] };
+    assert.deepEqual(recycleSelectionGroups(item).map(group => group.key), ['profile', 'index']);
+    const selected = selectRecycleParts(item, ['profile']);
+    assert.equal(selected.kind, 'version');
+    assert.deepEqual(selected.files, []);
+    assert.throws(() => selectRecycleParts(item, []), /恢复内容/);
+    const tree = buildRecycleTree(item.files, '', { includeEmptyProfile: true, preserveProfileGroup: true });
+    assert.deepEqual(tree.get('').directories.map(node => node.name), ['个人资料']);
+    assert.equal(tree.get('').directories[0].count, 0);
 });
 
 test('日记索引可单独恢复，混选同批次日记和资料时精确采用整份索引及所选文件', () => {

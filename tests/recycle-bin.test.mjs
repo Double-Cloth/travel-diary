@@ -1157,6 +1157,109 @@ test('整站批次可单独恢复个人资料，也可与日记一起恢复并�
     assert.ok((await readRecycleBin(root)).items.some(item => item.id === id));
 });
 
+test('个人资料快照预览并移除后来新增的署名，单独及混合恢复均可撤回', async t => {
+    for (const parts of [['profile'], ['profile', `diary:${note.desc_md}`], ['index', 'profile'], ['profile', 'another']]) {
+        await t.test(parts.join('、'), async t => {
+            const root = await fixture(t);
+            const owner = 'data/profile/owner-name.txt';
+            const avatar = 'data/profile/profile-picture.png';
+            await write(root, avatar, '历史头像');
+            const id = await captureRecycle(root, { kind: 'snapshot', title: '无署名的资料' });
+            await write(root, owner, '新增署名');
+            await write(root, avatar, '当前头像');
+            await write(root, note.desc_md, '# 当前正文');
+            const another = parts.includes('another') ? await captureRecycle(root, { kind: 'version', title: '另一篇正文', files: [{ path: other.desc_md }] }) : null;
+            const report = await readRecycleBin(root);
+            const selectedParts = parts.filter(part => part !== 'another');
+            const preview = await manageRecycleBin(root, { action: 'preview', id, parts: selectedParts, revision: report.revision });
+            const change = preview.changes.find(change => change.record.desc_md === owner);
+            assert.equal(change.comparison.status, 'removed');
+            assert.equal(change.comparison.currentMarkdown, '新增署名');
+            assert.equal(change.comparison.markdown, '');
+            assert.deepEqual(change.comparison.markdownExists, { before: true, after: false });
+            const selections = [{ id, parts: selectedParts, previewToken: preview.previewToken }];
+            if (another) {
+                const extra = await manageRecycleBin(root, { action: 'preview', id: another, revision: report.revision });
+                selections.push({ id: another, previewToken: extra.previewToken });
+            }
+            await manageRecycleBin(root, { action: 'restore-selected', revision: report.revision, selections });
+            await assert.rejects(fs.stat(path.join(root, owner)), { code: 'ENOENT' });
+            assert.equal(await fs.readFile(path.join(root, avatar), 'utf8'), '历史头像');
+            assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), parts.includes(`diary:${note.desc_md}`) ? '# 标题\n\n原正文' : '# 当前正文');
+            const restored = await readRecycleBin(root);
+            assert.ok(restored.items.some(item => item.id === id));
+            const protection = restored.items.find(item => item.id !== id);
+            assert.equal(await fs.readFile(path.join(root, `.cache/recycle-bin/${protection.id}/${owner}`), 'utf8'), '新增署名');
+            await action(root, protection.id);
+            assert.equal(await fs.readFile(path.join(root, owner), 'utf8'), '新增署名');
+            assert.equal(await fs.readFile(path.join(root, avatar), 'utf8'), '当前头像');
+        });
+    }
+});
+
+test('空个人资料快照可移除当前资料，普通资料旧版本仅覆盖归档文件', async t => {
+    const root = await fixture(t);
+    const owner = 'data/profile/owner-name.txt';
+    const avatar = 'data/profile/profile-picture.png';
+    const id = await captureRecycle(root, { kind: 'snapshot', title: '空资料' });
+    await write(root, avatar, '旧头像');
+    const version = await captureRecycle(root, { kind: 'version', title: '头像旧版本', files: [{ path: avatar }] });
+    await write(root, owner, '当前署名');
+    await write(root, avatar, '当前头像');
+    let report = await readRecycleBin(root);
+    const old = await manageRecycleBin(root, { action: 'preview', id: version, parts: ['profile'], revision: report.revision });
+    assert.deepEqual(old.changes.map(change => change.record.desc_md), [avatar]);
+    await manageRecycleBin(root, { action: 'restore-selected', revision: report.revision, selections: [{ id: version, parts: ['profile'], previewToken: old.previewToken }] });
+    assert.equal(await fs.readFile(path.join(root, owner), 'utf8'), '当前署名');
+    report = await readRecycleBin(root);
+    const empty = await manageRecycleBin(root, { action: 'preview', id, parts: ['profile'], revision: report.revision });
+    assert.deepEqual(empty.changes.map(change => change.record.desc_md).sort(), [owner, avatar].sort());
+    assert.ok(empty.changes.every(change => change.comparison.status === 'removed'));
+    await manageRecycleBin(root, { action: 'restore-selected', revision: report.revision, selections: [{ id, parts: ['profile'], previewToken: empty.previewToken }] });
+    for (const name of [owner, avatar]) await assert.rejects(fs.stat(path.join(root, name)), { code: 'ENOENT' });
+});
+
+test('资料恢复失败还原待移除的署名，跨批次恢复与移除同一资料时拒绝写入', async t => {
+    const root = await fixture(t);
+    const owner = 'data/profile/owner-name.txt';
+    const avatar = 'data/profile/profile-picture.png';
+    await write(root, avatar, '历史头像');
+    const id = await captureRecycle(root, { kind: 'snapshot', title: '无署名资料' });
+    await write(root, owner, '当前署名');
+    await write(root, avatar, '当前头像');
+    const version = await captureRecycle(root, { kind: 'version', title: '保留署名', files: [{ path: owner }] });
+    const report = await readRecycleBin(root);
+    const preview = await manageRecycleBin(root, { action: 'preview', id, parts: ['profile'], revision: report.revision });
+    const selection = { id, parts: ['profile'], previewToken: preview.previewToken };
+    const originalCopy = fs.copyFile;
+    const mocked = t.mock.method(fs, 'copyFile', async (source, destination, ...args) => {
+        if (destination === path.join(root, avatar)) throw new Error('模拟资料写入失败');
+        return originalCopy(source, destination, ...args);
+    });
+    try {
+        await assert.rejects(manageRecycleBin(root, { action: 'restore-selected', revision: report.revision, selections: [selection] }), /模拟资料写入失败/);
+    } finally { mocked.mock.restore(); }
+    assert.equal(await fs.readFile(path.join(root, owner), 'utf8'), '当前署名');
+    assert.equal(await fs.readFile(path.join(root, avatar), 'utf8'), '当前头像');
+    assert.deepEqual((await readRecycleBin(root)).items.map(item => item.id).sort(), [id, version].sort());
+    const fresh = await readRecycleBin(root);
+    const profile = await manageRecycleBin(root, { action: 'preview', id, parts: ['profile'], revision: fresh.revision });
+    const keep = await manageRecycleBin(root, { action: 'preview', id: version, parts: ['profile'], revision: fresh.revision });
+    await assert.rejects(manageRecycleBin(root, { action: 'restore-selected', revision: fresh.revision, selections: [
+        { id, parts: ['profile'], previewToken: profile.previewToken }, { id: version, parts: ['profile'], previewToken: keep.previewToken }
+    ] }), /同时恢复和移除/);
+    assert.equal(await fs.readFile(path.join(root, owner), 'utf8'), '当前署名');
+    assert.equal(await fs.readFile(path.join(root, avatar), 'utf8'), '当前头像');
+    await fs.unlink(path.join(root, owner));
+    const missing = await readRecycleBin(root);
+    const emptyOwner = await manageRecycleBin(root, { action: 'preview', id, parts: ['profile'], revision: missing.revision });
+    const addedOwner = await manageRecycleBin(root, { action: 'preview', id: version, parts: ['profile'], revision: missing.revision });
+    await assert.rejects(manageRecycleBin(root, { action: 'restore-selected', revision: missing.revision, selections: [
+        { id, parts: ['profile'], previewToken: emptyOwner.previewToken }, { id: version, parts: ['profile'], previewToken: addedOwner.previewToken }
+    ] }), /同时恢复和移除/);
+    await assert.rejects(fs.stat(path.join(root, owner)), { code: 'ENOENT' });
+});
+
 test('索引独立恢复通过认证 API 回退全部元数据，保留实际文件并留存可撤回的当前索引', async t => {
     const root = await fixture(t);
     await write(root, 'data/profile/owner-name.txt', '旧署名');
