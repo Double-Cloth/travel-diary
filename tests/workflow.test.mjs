@@ -1,36 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFile } from 'node:fs/promises';
+import { readFile, access } from 'node:fs/promises';
 
-const workflow = await readFile(new URL('../.github/workflows/pages.yml', import.meta.url), 'utf8');
-const staticCapability = JSON.parse(await readFile(new URL('../api/travel-records', import.meta.url), 'utf8'));
+const workflow = await readFile(new URL('../.github/workflows/test.yml', import.meta.url), 'utf8');
 
-test('GitHub Pages workflow runs tests before deployment', () => {
+test('CI 验证字体缓存构建并运行 Node 测试', () => {
     assert.match(workflow, /on:\s*\n\s+push:/);
     assert.match(workflow, /actions\/setup-node@v[0-9]+/);
-    assert.doesNotMatch(workflow, /setup-python|pip install|fonttools/);
-    assert.match(workflow, /npm run fonts/);
     assert.match(workflow, /npm test/);
-    assert.doesNotMatch(workflow, /cache:\s*npm|npm ci|npm install/);
-    assert.match(workflow, /needs: test/);
+    assert.match(workflow, /npm run fonts/);
+    assert.doesNotMatch(workflow, /setup-python|pip install|fonttools|npm install|npm ci|deploy-pages|upload-pages|pages: write/);
 });
 
-test('GitHub Pages workflow publishes prepared static files', () => {
-    assert.match(workflow, /pages:\s+write/);
-    assert.match(workflow, /id-token:\s+write/);
-    assert.match(workflow, /actions\/configure-pages@v[0-9]+/);
-    assert.match(workflow, /npm run fonts/);
-    assert.doesNotMatch(workflow, /build-data-backup|travel-diary-data\.zip/);
-    assert.match(workflow, /mkdir -p _site\/data\/travel-diary _site\/data\/photos _site\/data\/videos _site\/data\/profile/);
-    assert.match(workflow, /cp -R api assets css doc js _site\//);
-    assert.deepEqual(staticCapability, { service: 'travel-diary-static-v1', readonly: true });
-    assert.match(workflow, /if \[ -d data \]; then cp -R data\/\. _site\/data\/; fi/);
-    assert.match(workflow, /if \[ ! -f _site\/data\/travel_data\.json \]; then printf '\[\]\\n'/);
-    assert.match(workflow, /if \[ ! -f _site\/data\/profile\/profile-picture\.png \]; then printf 'iVBORw0KGgo/);
-    assert.doesNotMatch(workflow, /cp -R[^\n]*\.secrets/);
-    assert.match(workflow, /find _site\/assets\/fonts -name '\*\.ttf' -delete/);
-    assert.match(workflow, /actions\/upload-pages-artifact@v[0-9]+/);
-    assert.match(workflow, /path:\s+_site/);
-    assert.match(workflow, /npm run media:previews -- --dir _site/);
-    assert.match(workflow, /actions\/deploy-pages@v[0-9]+/);
+test('仓库移除页面发布工作流和只读 API 文件', async () => {
+    await assert.rejects(access(new URL('../.github/workflows/pages.yml', import.meta.url)), { code: 'ENOENT' });
+    await assert.rejects(access(new URL('../api/travel-records', import.meta.url)), { code: 'ENOENT' });
 });

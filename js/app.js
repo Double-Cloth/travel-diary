@@ -166,7 +166,6 @@ async function initApp() {
             verifying: '正在验证并打开编辑器…',
             actionError: '无法打开编辑器，请重试。',
             beforePrompt: () => openCreateEditor.beforePrompt(),
-            onStatic: () => openCreateEditor(null, { readonly: true }, true)
         }
     );
     openRecordEditor = requestCreateAuthorization;
@@ -176,7 +175,6 @@ async function initApp() {
         verifying: '正在验证并打开编辑器…',
         actionError: '无法打开修改窗口，请重试。',
         beforePrompt: record => openUpdateEditor.beforePrompt(record),
-        onStatic: record => openUpdateEditor(record, { readonly: true }, true)
     });
     openEditRecord = requestEditAuthorization;
     const requestDeleteAuthorization = createPasswordGate(async (capability, record) => {
@@ -192,7 +190,6 @@ async function initApp() {
         description: '输入 6 位数字密码后，将这条记录移入回收站。',
         verifying: '正在验证并删除记录…',
         actionError: '删除记录失败，请重试。',
-        staticMessage: '当前站点为静态只读页面，不支持删除记录。',
         beforePrompt: record => recordDeleteDialog.confirm(record)
     });
     refs.openEditRecord = record => openEditRecord(record);
@@ -241,7 +238,6 @@ async function initApp() {
             description: '输入 6 位数字密码后导出全部旅行数据和认证配置。',
             verifying: '正在验证并准备下载…',
             actionError: '无法导出全部数据，请重试。',
-            staticMessage: '当前站点为静态只读页面，不提供全部数据备份导出。'
         }
     );
     openDataExport = requestDataExportAuthorization;
@@ -259,7 +255,6 @@ async function initApp() {
         description: '输入 6 位数字密码后，将全部旅行数据移入回收站。',
         verifying: '正在验证并清空数据…',
         actionError: '无法清空全部数据，请重试。',
-        staticMessage: '当前站点为静态只读页面，不支持清空全部数据。',
         beforePrompt: () => confirmFeedback(
             '所有日记、正文、图片、视频、头像和署名将移入回收站，可以恢复。访问密码会保留。',
             {
@@ -278,7 +273,6 @@ async function initApp() {
         description: '输入 6 位数字密码后选择新头像。',
         verifying: '正在验证并打开文件选择器…',
         actionError: '无法打开头像选择器，请重试。',
-        staticMessage: '当前站点为静态只读页面，不支持更换头像。'
     });
     ownerNameDialog = createOwnerNameDialog();
     openOwnerNameChange = createPasswordGate(async capability => {
@@ -300,7 +294,6 @@ async function initApp() {
         description: '输入 6 位数字密码后修改扉页署名。',
         verifying: '正在验证并准备修改署名…',
         actionError: '无法修改署名，请重试。',
-        staticMessage: '当前站点为静态只读页面，不支持修改署名。'
     });
     const showPasswordChange = createPasswordChangeDialog(async () => {
         await showFeedback(
@@ -313,7 +306,6 @@ async function initApp() {
         description: '请先输入当前的 6 位数字密码。',
         verifying: '正在验证当前密码…',
         actionError: '无法开始修改密码，请重试。',
-        staticMessage: '当前站点为静态只读页面，不支持修改访问密码。'
     });
     renderLoading();
 

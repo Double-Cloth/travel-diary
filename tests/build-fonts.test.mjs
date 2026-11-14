@@ -1,10 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import { mkdtemp, mkdir, readFile, writeFile, cp, rm, stat } from 'node:fs/promises';
+import { mkdtemp, mkdir, readFile, writeFile, cp, rm, stat, symlink } from 'node:fs/promises';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+import { createFontCache } from '../scripts/build-fonts.mjs';
+import { createHandler } from '../js/server.js';
+import { clearCache } from '../scripts/clear-cache.js';
+import { listenOnFetchSafePort } from './helpers/http.mjs';
 import { compressFont, decompressFont, subsetFont, readCmap, unicodeRanges } from '../scripts/font-tools.mjs';
 
 const root = new URL('../', import.meta.url);
@@ -115,16 +121,17 @@ test('仓库内 WASM 和加载器符合固定来源的 SHA-256', async () => {
     }
 });
 
-test('随仓库分发的首屏字体与 CSS 字符范围及缓存哈希一致', async () => {
-    const css = await readFile(new URL('assets/fonts/diary-kai-core.css', root), 'utf8');
+test('生成的首屏缓存与 CSS 字符范围及缓存哈希一致', async () => {
+    await createFontCache(fileURLToPath(root)).build();
+    const css = await readFile(new URL('.cache/fonts/diary-kai-core.css', root), 'utf8');
     const ranges = [...css.matchAll(/unicode-range: ([^;]+);/g)].map(match => match[1]);
     for (const [index, name] of names.filter(name => name.startsWith('LXGW')).entries()) {
-        const font = await readFile(new URL(`assets/fonts/${name}-core.woff2`, root));
+        const font = await readFile(new URL(`.cache/fonts/${name}-core.woff2`, root));
         const codepoints = readCmap(await decompressFont(font));
         assert.equal(ranges[index], unicodeRanges(codepoints));
         const hash = createHash('sha256').update(font).digest('hex').slice(0, 12);
         assert.ok(css.includes(`./${name}-core.woff2?v=${hash}`));
-        const full = new Set(readCmap(await decompressFont(await readFile(new URL(`assets/fonts/${name}.woff2`, root)))));
+        const full = new Set(readCmap(await decompressFont(await readFile(new URL(`.cache/fonts/${name}.woff2`, root)))));
         assert.ok(codepoints.every(codepoint => full.has(codepoint)));
         assert.ok(full.size > codepoints.length, '保留完整字体供未覆盖字符回退');
     }
@@ -133,7 +140,7 @@ test('随仓库分发的首屏字体与 CSS 字符范围及缓存哈希一致', 
 test('所有完整 WOFF2 保留 TTF 的字符、排版、度量、hinting 和全部字形轮廓', async () => {
     for (const name of names) {
         const original = await readFile(new URL(`assets/fonts/${name}.ttf`, root));
-        const decoded = await decompressFont(await readFile(new URL(`assets/fonts/${name}.woff2`, root)));
+        const decoded = await decompressFont(await readFile(new URL(`.cache/fonts/${name}.woff2`, root)));
         assert.deepEqual(readCmap(decoded), readCmap(original), name);
         const before = tables(original);
         const after = tables(decoded);
@@ -204,24 +211,24 @@ syncBuiltinESMExports();
     };
     const full = run();
     assert.equal(full.status, 0, full.stderr);
-    const fullFonts = await Promise.all(names.map(name => readFile(join(directory, 'assets/fonts', `${name}.woff2`))));
+    const fullFonts = await Promise.all(names.map(name => readFile(join(directory, '.cache/fonts', `${name}.woff2`))));
     assert.deepEqual(readCmap(await decompressFont(fullFonts[1])), readCmap(fixture));
-    const corePath = join(directory, 'assets/fonts/LXGWWenKaiMono-Regular-core.woff2');
+    const corePath = join(directory, '.cache/fonts/LXGWWenKaiMono-Regular-core.woff2');
     const firstCore = await readFile(corePath);
     const firstMap = readCmap(await decompressFont(firstCore));
     assert.ok(firstMap.includes(0x20003));
     assert.ok(!firstMap.includes('龘'.codePointAt(0)));
     assert.ok(!firstMap.includes('魑'.codePointAt(0)));
-    const css = await readFile(join(directory, 'assets/fonts/diary-kai-core.css'), 'utf8');
+    const css = await readFile(join(directory, '.cache/fonts/diary-kai-core.css'), 'utf8');
     const ranges = [...css.matchAll(/unicode-range: ([^;]+);/g)].map(match => match[1]);
     assert.deepEqual(ranges, [unicodeRanges(firstMap), unicodeRanges(firstMap)]);
     for (const [index, weight] of [[0, 400], [1, 700]]) {
         const name = names[index + 1];
-        const hash = createHash('sha256').update(await readFile(join(directory, 'assets/fonts', `${name}-core.woff2`))).digest('hex').slice(0, 12);
+        const hash = createHash('sha256').update(await readFile(join(directory, '.cache/fonts', `${name}-core.woff2`))).digest('hex').slice(0, 12);
         assert.ok(css.indexOf(`./${name}.woff2`) < css.indexOf(`./${name}-core.woff2?v=${hash}`));
         assert.match(css, new RegExp(`font-weight: ${weight}`));
     }
-    assert.equal((css.match(/font-display: block/g) || []).length, 4);
+    assert.equal((css.match(/font-display: block/g) || []).length, 7);
     await writeFile(join(directory, 'data/entry.md'), '旅行龘');
     assert.equal(run('--core').status, 0);
     const core = await readFile(corePath);
@@ -229,17 +236,128 @@ syncBuiltinESMExports();
     assert.ok(readCmap(await decompressFont(core)).includes('龘'.codePointAt(0)));
     assert.equal(run('--core').status, 0);
     assert.deepEqual(await readFile(corePath), core, '相同输入应生成相同字体');
-    for (const [index, name] of names.entries()) assert.deepEqual(await readFile(join(directory, 'assets/fonts', `${name}.woff2`)), fullFonts[index]);
+    for (const [index, name] of names.entries()) assert.deepEqual(await readFile(join(directory, '.cache/fonts', `${name}.woff2`)), fullFonts[index]);
     const subset = run('--subset');
     assert.equal(subset.status, 0, subset.stderr);
-    const subsetMap = readCmap(await decompressFont(await readFile(join(directory, 'assets/fonts/LXGWWenKaiMono-Regular.woff2'))));
+    const subsetMap = readCmap(await decompressFont(await readFile(join(directory, '.cache/fonts/LXGWWenKaiMono-Regular.woff2'))));
     assert.ok(!subsetMap.includes('魑'.codePointAt(0)));
     assert.ok(subsetMap.includes('龘'.codePointAt(0)), '完整子集模式收集目录文字');
     for (const digit of '0123456789') assert.ok(subsetMap.includes(digit.codePointAt(0)));
+    const restored = await createFontCache(directory).get('LXGWWenKaiMono-Regular.woff2');
+    assert.deepEqual(readCmap(await decompressFont(restored)), readCmap(fixture), '运行请求恢复完整字库以覆盖子集外字符');
     for (const args of [['--unknown'], ['--core', '--subset']]) {
         const result = run(...args);
         assert.notEqual(result.status, 0);
         assert.match(result.stderr, /未知参数|不能同时/);
     }
     await assert.rejects(stat(join(directory, 'node_modules')), { code: 'ENOENT' });
+    await writeFile(join(directory, 'retry.mjs'), `
+import assert from 'node:assert/strict';
+import { readFile, rename } from 'node:fs/promises';
+import { compressFont, subsetFont } from './scripts/font-tools.mjs';
+const source = await readFile(new URL('./assets/fonts/LXGWWenKaiMono-Regular.ttf', import.meta.url));
+for (const [file, run] of [
+    ['woff2-compress.wasm', () => compressFont(source)],
+    ['harfbuzz-subset.wasm', () => subsetFont(source, '旅行', 'U+0030-0039')]
+]) {
+    const original = new URL('./assets/wasm/' + file, import.meta.url);
+    const moved = new URL('./assets/wasm/' + file + '.missing', import.meta.url);
+    await rename(original, moved);
+    await assert.rejects(run());
+    await rename(moved, original);
+    assert.ok((await run()).length > 0);
+}
+`);
+    const retry = spawnSync(process.execPath, [join(directory, 'retry.mjs')], { encoding: 'utf8', timeout: 30000 });
+    assert.equal(retry.status, 0, retry.stderr);
+});
+
+test('HTTP 字体缓存冷启动、并发、失效、清理、跨实例复用及生成失败回退', async t => {
+    const directory = await mkdtemp(join(tmpdir(), 'travel-diary-font-http-'));
+    const servers = [];
+    t.after(async () => {
+        for (const server of servers) {
+            server.closeAllConnections();
+            await new Promise(resolve => server.close(resolve));
+        }
+        await rm(directory, { recursive: true, force: true });
+    });
+    await mkdir(join(directory, 'assets/fonts'), { recursive: true });
+    await mkdir(join(directory, 'data'));
+    const source = await readFile(new URL('assets/fonts/LXGWWenKaiMono-Regular.ttf', root));
+    const fixture = await subsetFont(source, '旅行龘魑', 'U+0000-00FF');
+    for (const name of names) await writeFile(join(directory, 'assets/fonts', `${name}.ttf`), fixture);
+    await writeFile(join(directory, 'index.html'), '旅行');
+    const start = async () => {
+        const server = createServer(createHandler(directory));
+        servers.push(server);
+        return listenOnFetchSafePort(server);
+    };
+    const url = await start();
+    const fontPath = '/.cache/fonts/LXGWWenKaiMono-Regular.woff2';
+    const cssPath = '/.cache/fonts/diary-kai-core.css';
+    const fonts = await Promise.all(Array.from({ length: 6 }, () => fetch(url + fontPath)));
+    const full = Buffer.from(await fonts[0].arrayBuffer());
+    assert.equal(fonts[0].headers.get('content-type'), 'font/woff2');
+    for (const response of fonts.slice(1)) assert.deepEqual(Buffer.from(await response.arrayBuffer()), full);
+    assert.deepEqual(readCmap(await decompressFont(full)), readCmap(fixture));
+    const etag = fonts[0].headers.get('etag');
+    assert.equal((await fetch(url + fontPath, { headers: { 'If-None-Match': etag } })).status, 304);
+    const head = await fetch(url + fontPath, { method: 'HEAD' });
+    assert.equal(head.status, 200);
+    assert.equal(head.headers.get('content-length'), String(full.length));
+    assert.equal((await head.arrayBuffer()).byteLength, 0);
+    const fontFile = join(directory, fontPath);
+    const modified = (await stat(fontFile)).mtimeMs;
+    const secondUrl = await start();
+    assert.equal((await fetch(secondUrl + fontPath)).status, 200);
+    assert.equal((await stat(fontFile)).mtimeMs, modified, '服务重启复用有效磁盘缓存');
+    const cssResponse = await fetch(url + cssPath);
+    const css = await cssResponse.text();
+    assert.match(css, /unicode-range:/);
+    assert.match(css, /format\("woff2"\), url\("\.\.\/\.\.\/assets\/fonts\/LXGWWenKaiMono-Regular.ttf"\) format\("truetype"\)/);
+    assert.equal(await readFile(join(directory, cssPath), 'utf8'), css);
+    const coreFile = join(directory, '.cache/fonts/LXGWWenKaiMono-Regular-core.woff2');
+    assert.ok(!readCmap(await decompressFont(await readFile(coreFile))).includes('龘'.codePointAt(0)));
+    await writeFile(join(directory, 'data/entry.md'), '旅行龘');
+    const updatedCss = await (await fetch(url + cssPath)).text();
+    assert.notEqual(updatedCss, css);
+    assert.ok(readCmap(await decompressFont(await readFile(coreFile))).includes('龘'.codePointAt(0)));
+    for (const metadata of ['{', 'null', '[]']) {
+        await writeFile(`${fontFile}.json`, metadata);
+        await writeFile(fontFile, 'broken');
+        assert.deepEqual(Buffer.from(await (await fetch(url + fontPath)).arrayBuffer()), full);
+    }
+    await writeFile(fontFile, Buffer.alloc(full.length));
+    assert.deepEqual(Buffer.from(await (await fetch(url + fontPath)).arrayBuffer()), full);
+    // 源文件改变后旧完整字体立即失效。
+    const changedSource = await subsetFont(source, '旅行龘', 'U+0000-00FF');
+    await writeFile(join(directory, 'assets/fonts/LXGWWenKaiMono-Regular.ttf'), changedSource);
+    const changed = await fetch(url + fontPath);
+    assert.notEqual(changed.headers.get('etag'), etag);
+    assert.deepEqual(readCmap(await decompressFont(Buffer.from(await changed.arrayBuffer()))), readCmap(changedSource));
+    for (const path of [`${fontPath}.json`, '/.cache/fonts/unknown.woff2', '/.cache/fonts/nested/file.woff2']) {
+        assert.equal((await fetch(url + path)).status, 404);
+    }
+    assert.equal((await fetch(url + '/.cache/secret.txt')).status, 403);
+    assert.equal((await fetch(url + fontPath, { method: 'PUT' })).status, 405);
+    await clearCache(directory);
+    assert.equal((await fetch(url + fontPath)).status, 200, '清理后请求重新补齐字体');
+    await rm(join(directory, 'assets/fonts/LXGWWenKaiMono-Regular.ttf'));
+    const unavailable = await fetch(url + fontPath);
+    assert.equal(unavailable.status, 503, '先尝试生成，源文件缺失时返回失败以启用 CSS 回退');
+    assert.equal(unavailable.headers.get('cache-control'), 'no-store');
+    const fallbackCss = await (await fetch(url + cssPath)).text();
+    assert.match(fallbackCss, /LXGWWenKaiMono-Regular.ttf/);
+    assert.equal((fallbackCss.match(/unicode-range:/g) || []).length, 1, '失败字重保留完整字库及 TTF 回退');
+    await writeFile(join(directory, 'assets/fonts/LXGWWenKaiMono-Regular.ttf'), fixture);
+    assert.equal((await fetch(url + fontPath)).status, 200, '恢复源文件后允许再次生成');
+    await clearCache(directory);
+    await mkdir(join(directory, '.cache'));
+    await symlink(join(directory, 'data'), join(directory, '.cache/fonts'), process.platform === 'win32' ? 'junction' : 'dir');
+    assert.equal((await fetch(url + fontPath)).status, 403);
+    const memoryCss = await fetch(url + cssPath);
+    assert.equal(memoryCss.status, 200, '缓存目录不可写时仍返回完整字体回退样式');
+    assert.match(await memoryCss.text(), /format\("truetype"\)/);
+    assert.equal((await fetch(url + '/assets/fonts/SourceCodePro-Regular.ttf')).headers.get('content-type'), 'font/ttf');
 });

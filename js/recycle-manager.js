@@ -655,7 +655,7 @@ export function createRecycleManager(onRestored, { onClose, isActive = () => tru
         dialog.querySelector('[data-recycle-list]').replaceChildren();
         dialog.showModal();
         await request();
-    }, { title: '验证访问密码', description: '输入此网站的 6 位数字访问密码，查看和恢复回收站内容。', staticMessage: '静态页面不提供回收站，请使用本机服务。', onCancel: onClose });
+    }, { title: '验证访问密码', description: '输入此网站的 6 位数字访问密码，查看和恢复回收站内容。', onCancel: onClose });
     const open = () => { if (!dialog.open) return authorizeOpen(); };
     open.suspend = suspend;
     return open;

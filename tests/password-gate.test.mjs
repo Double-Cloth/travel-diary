@@ -261,7 +261,7 @@ test('点击先确认风险，取消及重复点击不探测服务，确认后�
     assert.equal(requests.length, 2);
 });
 
-test('首次设密与静态只读处理都在危险确认之后', async t => {
+test('首次设密与无效服务处理都在危险确认之后', async t => {
     const nodes = installDialogEnvironment(t);
     for (const setupRequired of [true, false]) {
         const events = [];
@@ -275,12 +275,11 @@ test('首次设密与静态只读处理都在危险确认之后', async t => {
             };
         };
         const open = createPasswordGate(() => assert.fail('尚未输入密码，不应执行操作'), {
-            beforePrompt: () => { events.push('confirm'); return true; },
-            onStatic: () => { events.push('static'); }
+            beforePrompt: () => { events.push('confirm'); return true; }
         });
         const dialog = nodes.at(-1);
         await open();
-        assert.deepEqual(events, setupRequired ? ['confirm', 'probe'] : ['confirm', 'probe', 'static']);
+        assert.deepEqual(events, ['confirm', 'probe']);
         assert.equal(dialog.open, setupRequired);
         if (setupRequired) {
             assert.equal(dialog.querySelector('[data-password-note]').textContent, '请输入新的 6 位数字密码。');

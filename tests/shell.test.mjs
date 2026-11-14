@@ -311,21 +311,20 @@ test('自定义下拉框初始方向和打开后的箭头都随弹出方向变�
     assert.doesNotMatch(journalCss, /\.index-filter-section:last-child\s*\{\s*padding-bottom:/);
 });
 
-test('静态页面免密码打开只读编辑器，动态环境必须先通过服务端口令验证', () => {
+test('编辑器必须先通过 Node 服务口令验证，无效响应不能放行', () => {
     assert.match(appJs, /import \{ createPasswordChangeDialog, createPasswordGate \} from '\.\/record-password\.js\?v=[^']+';/);
     assert.match(appJs, /const requestCreateAuthorization = createPasswordGate\([\s\S]*?capability => openCreateEditor\(null, capability, true\)/);
-    assert.match(appJs, /onStatic: \(\) => openCreateEditor\(null, \{ readonly: true \}, true\)/);
-    assert.match(appJs, /onStatic: record => openUpdateEditor\(record, \{ readonly: true \}, true\)/);
+    assert.doesNotMatch(appJs, /onStatic:/);
     assert.match(appJs, /openRecordEditor = requestCreateAuthorization;/);
     assert.match(recordPasswordJs, /await probeWriterService\(\)/);
-    assert.match(recordPasswordJs, /error\?\.code === 'STATIC_READONLY'/);
+    assert.doesNotMatch(recordPasswordJs, /STATIC_READONLY/);
     assert.match(recordPasswordJs, /mode = setupRequired \? 'setup-first' : 'login'/);
     assert.match(recordPasswordJs, /title: '再次输入密码'/);
     assert.match(recordPasswordJs, /await initializeWriterPassword\(password\)/);
     assert.match(recordPasswordJs, /npm run auth:set 重新创建密码配置/);
     assert.match(recordPasswordJs, /showFeedback\(feedback\.message, feedback\)/);
     assert.doesNotMatch(recordPasswordJs, /WRITER_UNREACHABLE[\s\S]*?onStatic/);
-    assert.match(writerCapabilityJs, /result\?\.service === 'travel-diary-static-v1' && result\.readonly === true/);
+    assert.doesNotMatch(writerCapabilityJs, /travel-diary-static-v1/);
     assert.match(writerCapabilityJs, /'WRITER_UNREACHABLE'/);
     assert.match(writerCapabilityJs, /'WRITER_INVALID_RESPONSE'/);
     assert.match(recordPasswordJs, /await options\.verifyPassword\(password, pendingContext\)/);
@@ -384,7 +383,6 @@ test('清空编辑器使用站内确认弹窗并清除全部草稿内容', () =>
 test('运行时提示全部使用站内反馈弹窗而不是浏览器 alert', () => {
     assert.match(appJs, /import \{ confirmFeedback, showFeedback \} from '\.\/feedback-dialog\.js\?v=[^']+';/);
     assert.match(appJs, /\.catch\(error => showFeedback\(error\.message\)\)/);
-    assert.match(dataTransferJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据导入。'/);
     assert.doesNotMatch(dataTransferJs, /onStatic: \(\) => setStatus/);
     assert.match(recordPasswordJs, /import \{ showFeedback \} from '\.\/feedback-dialog\.js\?v=[^']+';/);
     assert.match(recordPasswordJs, /void showFeedback\(error\?\.message \|\| copy\.actionError/);
@@ -394,13 +392,12 @@ test('运行时提示全部使用站内反馈弹窗而不是浏览器 alert', ()
     assert.doesNotMatch(recordPasswordJs, /window\.alert\s*\(/);
 });
 
-test('日记详情在动态站点验证修改与删除，静态站点只允许只读编辑草稿', () => {
+test('日记详情通过 Node 服务验证修改与删除', () => {
     assert.match(appJs, /data-action="edit-record"/);
     assert.match(appJs, /data-action="delete-record"/);
     assert.match(appJs, /const requestEditAuthorization = createPasswordGate/);
     assert.match(appJs, /const requestDeleteAuthorization = createPasswordGate/);
     assert.match(appJs, /openDeleteRecord = requestDeleteAuthorization;/);
-    assert.match(appJs, /staticMessage: '当前站点为静态只读页面，不支持删除记录。'/);
     assert.match(appJs, /createRecordDeleteDialog\(\)/);
     assert.match(appJs, /beforePrompt: record => recordDeleteDialog\.confirm\(record\)/);
     assert.match(appJs, /deleteTravelRecord\(record, capability\)/);
@@ -432,13 +429,11 @@ test('Markdown 源码高亮层与输入层使用相同字形和滚动槽', () =>
     assert.doesNotMatch(journalCss, /\.record-editor-source-layer \.md-(?:marker|fence|heading)[^{]*\{[^}]*font-weight:\s*700/);
 });
 
-test('全部数据和记录备份导出仅通过认证 API，静态页面禁止导出', () => {
+test('全部数据和记录备份导出仅通过认证 API', () => {
     assert.match(appJs, /<button[^>]*type="button"[^>]*data-action="export-all-data"/);
     assert.match(appJs, /const requestDataExportAuthorization = createPasswordGate/);
     assert.match(appJs, /dataTransfer\.exportAll\(`travel-diary-data-\$\{getTodayDate\(\)\}\.zip`, capability\)/);
     assert.match(appJs, /data-action="export-all-data"[^}]+event\.preventDefault\(\);[^}]+openDataExport\(\)/s);
-    assert.match(appJs, /staticMessage: '当前站点为静态只读页面，不提供全部数据备份导出。'/);
-    assert.match(recordTransferJs, /staticMessage: '当前站点为静态只读页面，不提供部分记录或行程备份导出。'/);
     assert.doesNotMatch(dataTransferJs + recordTransferJs, /static-backup|downloadStaticBackup|staticExport/);
     assert.doesNotMatch(appJs, /catch \{\s*return dataTransfer\.exportAll/);
     assert.match(dataTransferJs, /api\/travel-data/);
@@ -651,11 +646,11 @@ test('移动端夹层遮罩不使用全屏模糊', () => {
     assert.doesNotMatch(journalCss, /\.journal-shell\.mobile-context-panel-open::before\s*{[^}]*pointer-events: auto;/);
 });
 
-test('旅行档案仅使用项目本地字体族', () => {
-    assert.match(journalCss, /--font-serif:\s*"Diary Kai";/);
-    assert.match(journalCss, /--font-code:\s*"Archive Code",\s*"Diary Kai";/);
+test('旅行档案优先使用本地字体并提供系统回退', () => {
+    assert.match(journalCss, /--font-serif:\s*"Diary Kai", "KaiTi", "STKaiti", serif;/);
+    assert.match(journalCss, /--font-code:\s*"Archive Code",\s*"Diary Kai", monospace;/);
     assert.match(journalCss, /\.journal-label\s*{[\s\S]*font-family:\s*var\(--font-serif\);/);
-    assert.doesNotMatch(journalCss, /STKaiti|KaiTi|Courier New|Roboto|Google Sans|Segoe UI|Arial|JetBrains Mono|ui-monospace|SFMono-Regular|Menlo|Consolas/);
+    assert.doesNotMatch(journalCss, /Courier New|Roboto|Google Sans|Segoe UI|Arial|JetBrains Mono|ui-monospace|SFMono-Regular|Menlo|Consolas/);
 });
 
 test('章节书签保留语义导航并贴合书页上沿', () => {

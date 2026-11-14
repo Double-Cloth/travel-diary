@@ -35,7 +35,6 @@ test('浏览器入口没有远程资源', async () => {
 test('样式引用的字体、图片和纹理全部存在于本地', async () => {
     const cssDirectory = resolve(projectRoot, 'css');
     const cssFiles = (await readdir(cssDirectory)).filter(fileName => fileName.endsWith('.css')).map(fileName => resolve(cssDirectory, fileName));
-    cssFiles.push(resolve(projectRoot, 'assets/fonts/diary-kai-core.css'));
     let localAssetCount = 0;
 
     for (const cssFile of cssFiles) {
@@ -48,6 +47,7 @@ test('样式引用的字体、图片和纹理全部存在于本地', async () =>
 
         for (const resourcePath of resourcePaths) {
             assert.doesNotMatch(resourcePath, /^(?:https?:)?\/\//i);
+            if (resourcePath.startsWith('../.cache/fonts/')) continue;
             await assertLocalFile(
                 resolve(dirname(cssPath), stripQueryAndHash(resourcePath)),
                 `${cssFile}: ${resourcePath}`
@@ -59,15 +59,17 @@ test('样式引用的字体、图片和纹理全部存在于本地', async () =>
     assert.ok(localAssetCount > 0);
 });
 
-test('完整 WOFF2 字体随项目分发且不会被忽略', async () => {
+test('TTF 源文件随项目分发，生成字体统一使用缓存', async () => {
     const fontFiles = [
-        'LXGWWenKaiMono-Regular.woff2',
-        'LXGWWenKaiMono-Medium.woff2',
-        'SourceCodePro-Regular.woff2',
-        'SourceCodePro-Bold.woff2'
+        'LXGWWenKaiMono-Regular.ttf',
+        'LXGWWenKaiMono-Medium.ttf',
+        'SourceCodePro-Regular.ttf',
+        'SourceCodePro-Bold.ttf'
     ];
 
-    assert.doesNotMatch(gitignore, /assets\/fonts\/\*\.woff2/);
+    assert.match(gitignore, /\.cache\//);
+    const assets = await readdir(resolve(projectRoot, 'assets/fonts'));
+    assert.ok(assets.every(name => !/\.(woff2|css)$/.test(name)));
 
     for (const fontFile of fontFiles) {
         await assertLocalFile(resolve(projectRoot, 'assets', 'fonts', fontFile), fontFile);

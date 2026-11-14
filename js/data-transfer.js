@@ -72,7 +72,7 @@ export function createDataTransfer(onImported, getRecords = () => [], recordTran
 
     async function getExportHref(authenticatedCapability = null) {
         const capability = authenticatedCapability || await detectWriterCapability();
-        if (capability.readonly) throw new Error('当前站点为静态只读页面，不提供备份导出。');
+        if (capability.readonly) throw new Error('服务器未提供备份导出权限。');
         if (!capability.authenticated || !capability.token) throw new Error('登录会话已失效，请重新输入访问密码。');
         return new URL('api/travel-data', window.location.href).href;
     }
@@ -148,7 +148,6 @@ export function createDataTransfer(onImported, getRecords = () => [], recordTran
         description: '请输入此网站现在使用的 6 位数字访问密码，然后选择备份。',
         verifying: '正在验证并选择备份…',
         actionError: '无法开始导入，请重试。',
-        staticMessage: '当前站点为静态只读页面，不提供全部数据导入。',
         beforePrompt: () => confirmImport()
     });
 

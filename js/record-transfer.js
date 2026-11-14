@@ -333,7 +333,6 @@ export function createRecordTransfer(onImported, getRecords, { isDeleteActive = 
         input.click();
     }, {
         title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，然后选择备份并比较记录。',
-        staticMessage: '静态页面不提供记录导入。'
     });
     function openExport(paths) {
         trigger = document.activeElement;
@@ -346,7 +345,6 @@ export function createRecordTransfer(onImported, getRecords, { isDeleteActive = 
     }
     const authorizeExport = createPasswordGate((_capability, paths) => openExport(paths), {
         title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，然后选择要导出的记录。',
-        staticMessage: '当前站点为静态只读页面，不提供部分记录或行程备份导出。'
     });
 
     const authorizeDelete = createPasswordGate(async capability => {
@@ -370,7 +368,7 @@ export function createRecordTransfer(onImported, getRecords, { isDeleteActive = 
         comparisons = new Map();
         entries = undefined;
         open('delete', current.map(record => ({ ...record, descTitle: titles.get(record.desc_md) })));
-    }, { title: '删除日记验证', description: '验证访问密码后，选择要批量删除的日记。', staticMessage: '静态页面不支持删除日记。', onCancel: onDeleteClose });
+    }, { title: '删除日记验证', description: '验证访问密码后，选择要批量删除的日记。', onCancel: onDeleteClose });
 
     function suspendDelete() {
         if (mode !== 'delete' || !dialog.open) return;

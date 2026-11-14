@@ -189,7 +189,7 @@ export function createRecordEditor(onSaved, getRecords = () => []) {
         dialog.querySelector('[data-editor-save]').disabled = true;
         const hint = dialog.querySelector('[data-editor-mode]');
         if (writerAccess?.readonly === true) {
-            hint.textContent = '当前站点为静态只读页面 · 可编辑并导出草稿，再到可写站点导入保存。';
+            hint.textContent = '服务器未提供写入权限 · 请重新验证访问密码。';
             return;
         }
         hint.textContent = '正在连接服务器写入服务…';

@@ -1,33 +1,9 @@
-@import url('../assets/fonts/diary-kai-core.css?v=2.1.144');
-
-@font-face {
-    font-family: "Archive Code";
-    src: url("../assets/fonts/SourceCodePro-Regular.woff2") format("woff2");
-    font-weight: 400;
-    font-style: normal;
-    font-display: block;
-}
-
-@font-face {
-    font-family: "Archive Code";
-    src: url("../assets/fonts/SourceCodePro-Bold.woff2") format("woff2");
-    font-weight: 700;
-    font-style: normal;
-    font-display: block;
-}
-
-@font-face {
-    font-family: "Archive Seal";
-    src: url("../assets/fonts/CormorantSC-Bold.woff2") format("woff2");
-    font-weight: 700;
-    font-style: normal;
-    font-display: block;
-}
+@import url('../.cache/fonts/diary-kai-core.css?v=2.1.144');
 
 :root {
-    --font-serif: "Diary Kai";
+    --font-serif: "Diary Kai", "KaiTi", "STKaiti", serif;
     /* 保留代码风格的拉丁字符，同时为中文提供明确的本地字体回退。 */
-    --font-code: "Archive Code", "Diary Kai";
+    --font-code: "Archive Code", "Diary Kai", monospace;
 
     --desk-950: #150b06;
     --desk-900: #22110a;

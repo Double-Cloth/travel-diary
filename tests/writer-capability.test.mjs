@@ -18,7 +18,7 @@ test('清空回收站仅接受服务明确声明的支持状态', async t => {
     assert.equal((await probeWriterService()).recycleClear, true);
 });
 
-test('写入服务探测只把明确的静态标记识别为静态页面', async t => {
+test('写入服务探测拒绝旧只读标记、未知响应及连接失败', async t => {
     const previous = { window: globalThis.window, fetch: globalThis.fetch };
     t.after(() => Object.assign(globalThis, previous));
     globalThis.window = { location: { href: 'https://diary.example/' } };
@@ -27,7 +27,7 @@ test('写入服务探测只把明确的静态标记识别为静态页面', async
         status: 200,
         json: async () => ({ service: 'travel-diary-static-v1', readonly: true })
     });
-    await assert.rejects(probeWriterService(), error => error.code === 'STATIC_READONLY');
+    await assert.rejects(probeWriterService(), error => error.code === 'WRITER_INVALID_RESPONSE');
 
     globalThis.fetch = async () => ({ status: 404, json: async () => { throw new Error('Not Found'); } });
     await assert.rejects(probeWriterService(), error => error.code === 'WRITER_INVALID_RESPONSE');

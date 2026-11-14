@@ -20,7 +20,7 @@ function sync(file) {
     const updated = source.replace(references, (_match, quote, relative) => {
         const dependency = path.resolve(path.dirname(file), relative);
         if (!dependency.startsWith(root + path.sep)) throw new Error(`资源路径超出项目目录：${relative}`);
-        sync(dependency);
+        if (!dependency.startsWith(path.join(root, '.cache') + path.sep)) sync(dependency);
         return `${quote}${relative}${canonicalModules.has(dependency) ? '' : `?v=${version}`}${quote}`;
     });
     if (source === updated) return;

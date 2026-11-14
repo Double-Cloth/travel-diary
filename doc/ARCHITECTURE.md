@@ -2,7 +2,7 @@
 
 ## 运行入口与页面
 
-前端为原生 ES modules，入口是 `index.html`、`js/app.js` 和 `css/journal.css`。浏览不依赖 Node API；可选 `js/server.js` 提供静态资源、认证、记录写入和完整备份。项目没有运行时 npm 依赖，也不需要前端构建。
+前端为原生 ES modules，入口是 `index.html`、`js/app.js` 和 `css/journal.css`。`js/server.js` 提供页面资源、字体与媒体缓存、认证、记录写入和完整备份，运行和部署统一依赖 Node.js 服务。项目没有运行时 npm 依赖，也不需要前端构建。
 
 | Hash 路由 | 页面与职责 |
 | --- | --- |
@@ -40,7 +40,7 @@
 | `record-password.js`、`writer-capability.js` | 同源能力探测、首次设密、登录与换密交互。 |
 | `record-delete-dialog.js`、`feedback-dialog.js`、`custom-select.js` | 删除确认、提示与原生选择框增强。 |
 | `profile-picture.js`、`profile-owner.js`、`profile-owner-dialog.js` | 头像处理、署名读取与资料编辑。 |
-| `data-transfer.js`、`record-transfer.js`、`record-backup.mjs`、`backup-password.js` | 完整备份与清空交互、部分记录选择界面、前后端共用的记录备份封装及上传前密码预校验。全部、部分和行程备份导出均要求动态服务认证，静态标记及网络错误不能绕过。 |
+| `data-transfer.js`、`record-transfer.js`、`record-backup.mjs`、`backup-password.js` | 完整备份与清空交互、部分记录选择界面、前后端共用的记录备份封装及上传前密码预校验。全部、部分和行程备份导出均要求动态服务认证，网络错误及异常 API 不能绕过。 |
 | `operation-progress.js` | 共用进度提示、XHR 上传进度、下载预检及浏览器原生下载交接；上传和下载预检监听断网、总时限及停滞。 |
 | `record-identity.mjs`、`record-diff.mjs`、`record-diff-view.js`、`record-inventory.js` | 固定身份、字段与文件内容比较、当前记录清单和导出传输完成后自动更新的备份基准。 |
 | `media-health.js`、`media-manager.js` | 媒体引用检查、空间统计、未引用文件移入统一回收站。 |
@@ -85,11 +85,11 @@ Markdown 使用应用支持的有限语法，输出经过 HTML 转义与链接�
 
 Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，检查源文件指纹、JPEG 格式与尺寸，并提供 ETag 校验。GET 缓存缺失时由 `media-preview-generator.js` 复用批量生成脚本和本机已有 Edge / Chrome，在后端压缩并写入缓存后直接返回 JPEG。相同路径共享任务，只运行一个后台浏览器进程，最多并行处理两项，完成一项即返回并领取后续任务，慢媒体不阻挡另一条链路。后台浏览器空闲时最多保留 30 秒供滚动、切页复用，配置的进度超时较短时保留其一半时长；批量命令完成后立即退出。超过 16 × 1024 × 1024 像素的图片使用软件画布缩小，减少完整像素在 CPU 与 GPU 间搬运，预览尺寸和 JPEG 编码质量保持原值。内部缓存接口禁用递归生成，HEAD 仅检查缓存。源文件变化后旧缓存失效，下一次 GET 重新生成。后端浏览器缺失或解码失败时重新读取缓存与当前源文件版本；仍缺失则返回 204 和 ETag，前端读取一次原文件、压缩为 JPEG 后通过同源 PUT 回传并显示缩略图。后续请求直接复用磁盘文件，回传时源文件已更新则拒绝旧结果。此流程无需新增 npm 依赖，`TRAVEL_BROWSER_PATH` 可指定已有浏览器。
 
-静态托管直接读取预生成的相同目录，GitHub Pages 在发布前调用本机 Chrome 生成缩略图。缓存命中仅请求缩略图，省去主机探测和原文件 HEAD。静态站返回 404 时才由浏览器压缩并写入 Cache Storage，通过原文件 HEAD 的 ETag、Last-Modified 和 Content-Length 验证版本，刷新后复用压缩结果。
+缓存命中仅请求缩略图。回收站预览使用浏览器 Cache Storage，归档 ID 与文件路径构成不可变缓存键，缺失时由浏览器读取原文件并压缩。
 
 ## 样式结构
 
-`journal.css` 按编号顺序加载 11 个同目录分片，后加载的规则可覆盖前者；CSS 资产统一以 `../assets/` 引用。
+`journal.css` 按编号顺序加载 11 个同目录分片，后加载的规则可覆盖前者；图像与纹理以 `../assets/` 引用，字体样式通过 `../.cache/fonts/` 交给服务按需生成。
 
 | 分片 | 范围 |
 | --- | --- |
@@ -121,7 +121,7 @@ Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，检
 | `/api/travel-profile` | 头像与署名写入。 |
 | `/api/travel-data` | 完整备份导入导出与清空；`POST ?mode=select` 准备会话内部分导出选择，`GET ?selection=...` 下载，`POST ?mode=merge` 合并记录；`POST ?mode=verify-backup` 用不超过 4 KiB 的认证配置预校验当前和备份密码。 |
 
-前端通过同源相对 URL 探测能力。静态发布物的 `api/travel-records` 提供 `travel-diary-static-v1` 标记，只有明确标记才打开免密码只读编辑器；404、超时、403 和异常响应均中止操作。动态能力 GET 在未登录或会话失效时返回 `200`、`authenticated: false`、空 `methods` 和 `AUTH_REQUIRED`，不泄露 token；正常打开密码窗口不会产生 `401` 控制台报错，实际未授权写入仍返回 `401`。前端仍接受旧服务的 `401` 探测响应。
+前端通过同源相对 URL 探测能力。仅接受 Node.js 服务的 `travel-diary-writer-v1` 能力响应，404、超时、403 和异常响应均中止操作。动态能力 GET 在未登录或会话失效时返回 `200`、`authenticated: false`、空 `methods` 和 `AUTH_REQUIRED`，不泄露 token；正常打开密码窗口不会产生 `401` 控制台报错，实际未授权写入仍返回 `401`。前端仍接受旧服务的 `401` 探测响应。
 
 写入请求同时校验 Host / Origin 策略、内存会话和 `X-Travel-Token`。local 模式只接受回环来源及本机 Host；remote 模式只接受配置的完整 HTTPS Origin 和对应 Host，不依赖 `X-Forwarded-*`。首次设密仅限 local 模式本机页面。认证配置保存随机盐与 scrypt 哈希，Cookie 为 `HttpOnly`、`SameSite=Strict`，remote 模式增加 `Secure`。详细部署限制见 [维护指南](MAINTENANCE.md#认证与部署边界)。
 
@@ -176,3 +176,5 @@ Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，检
 回收站 `POST ?mode=recycle-bin` 的 `preview` 操作在数据锁内计算实际恢复结果，复用 `compareBackup` 比较元数据、正文与附件，独立文件及整站移除也纳入差异。`record-diff-view.js` 由部分导入和回收站共同调用，统一渲染行差异和延迟加载附件，来源分别为 ZIP 字节源或已鉴权的回收文件 URL。回收站恢复预览依次展示日记信息、正文与附件，日记信息复用正文的双侧行号、增删标记及差异块样式。预览令牌绑定当前数据、回收内容及目标日记，确认恢复时锁内复核；当前文件与索引临时保留用于失败回滚，恢复成功后清理临时内容。旧调用未携带预览令牌时仍拒绝同名冲突。回收站勾选后串行自动生成各项目预览，默认收起，取消选择或更改目标后丢弃过时响应。`restore-selected` 接收所选项目及各自的预览令牌，在同一数据锁内先校验全部令牌与项目冲突，再合并附件引用，通过一次文件与索引回滚范围提交；整站或包含全量目录的版本需单独恢复，同篇完整记录与其他恢复内容、同路径不同文件版本不能混选。前端通过 `recycleSelection` 能力声明识别支持状态。`purge-selected` 通过 `recyclePurgeSelection` 声明支持，接收非空且无重复的项目标识，在数据锁内复核回收站版本、全部选择及当前日记依赖后才逐项删除，无需恢复预览令牌；未选项目保留。
 
 回收历史的日记分组默认折叠，收起后仍显示已选次数。界面直接在逻辑目录中按整篇日记勾选恢复，不再单独提供内容选择子列。恢复请求的 `parts` 使用 `diary:<正文路径>`，服务端统一展开为该篇归档信息、正文及全部归档附件，共用附件自动去重且仅更新所选日记的引用。整站回收同样支持选择部分日记合并。个人资料通过独立目录勾选，请求的 `parts` 使用 `profile` 展开为归档署名、头像及其他资料文件，可单独恢复或与日记一起恢复。未选日记与个人资料保留当前内容。旧 `record:<正文路径>`、`file:<文件路径>` 请求继续兼容。预览与提交共用范围规划，令牌绑定选择范围，同篇不同版本继续互斥。部分恢复后完整原批次保留，永久清除仍通过整个回收项目的勾选执行。`recycleParts` 与 `batchDelete` 分别声明部分恢复及批量删除能力。目录中现存日记链接到当前日记，已删除日记有归档正文时可在新标签页查看归档原文。扉页“日记与媒体整理”使用统一工具按钮提供批量删除入口。
+
+字体与媒体缩略图共用按需缓存模式。`scripts/build-fonts.mjs` 的 `createFontCache` 同时服务于命令行和 Node 字体接口，生成产物全部存入 `.cache/fonts/`。字体请求先校验并补建缓存，生成失败后由 CSS 的完整 WOFF2、TTF 与系统字体栈回退。

@@ -342,7 +342,7 @@ export function createMediaManager(onReferencesRemoved = async () => {}, { onClo
         for (const selector of ['[data-media-list]', '[data-media-count]', '[data-media-hint]']) dialog.querySelector(selector).textContent = '';
         dialog.showModal();
         await request();
-    }, { title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，整理媒体文件。', staticMessage: '静态页面不提供媒体整理，请使用本机服务。', onCancel: onClose });
+    }, { title: '验证访问密码', description: '输入此网站现在使用的 6 位数字访问密码，整理媒体文件。', onCancel: onClose });
     const open = () => { if (!dialog.open) return authorizeOpen(); };
     open.suspend = suspend;
     return open;

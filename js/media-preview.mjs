@@ -235,22 +235,16 @@ function requirePreview(isNeeded) {
     if (!isNeeded()) throw new DOMException('预览已离开可见区域', 'AbortError');
 }
 
-async function browserPreview(source, kind, url, isNeeded) {
+async function browserPreview(source, kind, isNeeded) {
     let cache;
     try { if (globalThis.caches) cache = await caches.open(CACHE_NAME); }
     catch { /* 缓存禁用时仍显示本次生成的缩略图。 */ }
-    const cacheKey = new URL(url || `.cache/media-previews/recycle/${encodeURIComponent(source)}.jpg`, document.baseURI);
+    const cacheKey = new URL(`.cache/media-previews/recycle/${encodeURIComponent(source)}.jpg`, document.baseURI);
     requirePreview(isNeeded);
-    if (url) {
-        const head = await fetch(source, { method: 'HEAD', cache: 'no-cache', signal: AbortSignal.timeout(20000) });
-        if (!head.ok) throw new Error('原文件不可用。');
-        const version = [head.headers.get('etag'), head.headers.get('last-modified'), head.headers.get('content-length')].join(':');
-        cacheKey.searchParams.set('source', version);
-    }
     // 回收站 URL 含不可变的项目 ID 与归档路径，无需读取原文件验证版本。
     const cached = await cache?.match(cacheKey.href);
     if (cached) return cached.blob();
-    // 远端预览缺失或回收站尚未缓存时，才读取原文件生成缩略图。
+    // 回收站尚未缓存时，才读取原文件生成缩略图。
     requirePreview(isNeeded);
     const blob = await createMediaPreview(source, kind);
     try { await cache?.put(cacheKey.href, new Response(blob, { headers: { 'Content-Type': 'image/jpeg' } })); }
@@ -264,14 +258,13 @@ async function getPreview(source, kind, isNeeded) {
         const target = new URL(source, document.baseURI);
         if (target.origin !== new URL(document.baseURI).origin || !target.pathname.endsWith('/api/travel-data')
             || target.searchParams.get('mode') !== 'recycle-file' || !target.searchParams.get('id') || !target.searchParams.get('path')) throw new Error('无效的媒体路径。');
-        return browserPreview(source, kind, '', isNeeded);
+        return browserPreview(source, kind, isNeeded);
     }
     requirePreview(isNeeded);
-    // 缓存命中只读取缩略图，静态站也无需逐张探测原文件或等待主机检测。
+    // 缓存命中只读取缩略图。
     const response = await fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(20000) });
     if (response.status === 200 && response.headers.get('content-type')?.startsWith('image/jpeg')) return response.blob();
     await response.body?.cancel();
-    if (response.status === 404) return browserPreview(source, kind, url, isNeeded);
     if (response.status !== 204) throw new Error('无法读取预览缓存。');
     requirePreview(isNeeded);
     const blob = await createMediaPreview(source, kind);

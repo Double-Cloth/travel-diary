@@ -105,7 +105,7 @@ test('导入已提交但页面刷新失败时明确提示成功，正常重试�
     assert.match(output.textContent, /不能超过 102400 MiB/);
 });
 
-test('静态页面拒绝全部备份导出和导入，显式只读参数也不能绕过', async t => {
+test('无效服务拒绝全部备份导出和导入，显式只读参数也不能绕过', async t => {
     const nodes = [];
     const output = { textContent: '', focus() {} };
     function node() {
@@ -144,20 +144,20 @@ test('静态页面拒绝全部备份导出和导入，显式只读参数也不�
         json: async () => ({ service: 'travel-diary-static-v1', readonly: true })
     });
     const readonly = createDataTransfer(async () => {});
-    await assert.rejects(readonly.getExportHref(), error => error.code === 'STATIC_READONLY');
-    await assert.rejects(readonly.exportAll(), error => error.code === 'STATIC_READONLY');
-    await assert.rejects(readonly.exportAll('backup.zip', { readonly: true, authenticated: true, token: 'ignored' }), /静态只读/);
-    assert.match(output.textContent, /导出失败.*静态只读/);
+    await assert.rejects(readonly.getExportHref(), error => error.code === 'WRITER_INVALID_RESPONSE');
+    await assert.rejects(readonly.exportAll(), error => error.code === 'WRITER_INVALID_RESPONSE');
+    await assert.rejects(readonly.exportAll('backup.zip', { readonly: true, authenticated: true, token: 'ignored' }), /服务器未提供备份导出权限/);
+    assert.match(output.textContent, /导出失败.*服务器未提供备份导出权限/);
     output.textContent = '';
     const readonlyConfirmation = nodes.filter(item => item.className === 'data-import-confirm entry-sheet').at(-1);
     await confirmImportRisk(readonly, readonlyConfirmation);
     const feedbackDialog = nodes.find(item => item.className === 'feedback-dialog entry-sheet');
     const readonlyPasswordDialog = nodes.filter(item => item.className === 'record-password entry-sheet').at(-1);
-    assert.ok(feedbackDialog, '静态导入失败应创建站内反馈弹窗');
+    assert.ok(feedbackDialog, '无效服务导入失败应创建站内反馈弹窗');
     assert.equal(feedbackDialog.open, true);
-    assert.equal(feedbackDialog.querySelector('[data-feedback-label]').textContent, '只读模式');
-    assert.equal(feedbackDialog.querySelector('[data-feedback-title]').textContent, '当前站点为静态页面');
-    assert.equal(feedbackDialog.querySelector('[data-feedback-message]').textContent, '当前站点为静态只读页面，不提供全部数据导入。');
+    assert.equal(feedbackDialog.querySelector('[data-feedback-label]').textContent, '访问验证');
+    assert.equal(feedbackDialog.querySelector('[data-feedback-title]').textContent, '服务暂不可用');
+    assert.equal(feedbackDialog.querySelector('[data-feedback-message]').textContent, '服务器写入服务返回了无法识别的结果，请稍后重试。');
     assert.equal(output.textContent, '');
     assert.equal(readonlyPasswordDialog.open, false);
     feedbackDialog.events.click({
@@ -165,7 +165,7 @@ test('静态页面拒绝全部备份导出和导入，显式只读参数也不�
     });
 });
 
-test('动态认证失效、网络中断与异常 API 响应不会降级为静态备份', async t => {
+test('动态认证失效、网络中断与异常 API 响应不会绕过服务认证', async t => {
     const previous = { document: globalThis.document, window: globalThis.window, fetch: globalThis.fetch };
     t.after(() => Object.assign(globalThis, previous));
     function node() {

@@ -137,7 +137,7 @@ test('上传后的缓存保存只验证缩略图版本并写入本地压缩结�
     assert.equal(calls[1].headers['If-Match'], 'source-version');
 });
 
-test('静态和动态缩略图命中时只发一个请求，不校验或下载原文件', async t => {
+test('服务端缩略图命中时只发一个请求，不校验或下载原文件', async t => {
     const previousFetch = globalThis.fetch;
     t.after(() => { globalThis.fetch = previousFetch; clearMediaPreviewCache(); });
     clearMediaPreviewCache();
@@ -154,38 +154,14 @@ test('静态和动态缩略图命中时只发一个请求，不校验或下载�
     assert.equal(calls.length, 2, '新页面仍直接读取缩略图');
 });
 
-test('静态站仅在缺失时生成一次缩略图，刷新后复用持久缓存且不重复请求预览', async t => {
-    const previous = { fetch: globalThis.fetch, document: globalThis.document, caches: globalThis.caches };
-    t.after(() => { Object.assign(globalThis, previous); clearMediaPreviewCache(); });
+test('预览接口返回 404 时提示失败，不额外读取原文件', async t => {
+    const previousFetch = globalThis.fetch;
+    t.after(() => { globalThis.fetch = previousFetch; clearMediaPreviewCache(); });
     clearMediaPreviewCache();
-    const calls = [], originals = [], cache = new Map();
-    globalThis.caches = { open: async () => ({
-        match: async key => cache.get(key)?.clone(),
-        put: async (key, response) => { cache.set(key, response.clone()); }
-    }) };
-    globalThis.document = {
-        baseURI: 'https://example.org/diary/',
-        createElement(tag) {
-            if (tag === 'canvas') return {
-                getContext: () => ({ fillRect() {}, drawImage() {} }),
-                toBlob: callback => callback(new Blob([jpeg], { type: 'image/jpeg' }))
-            };
-            return { naturalWidth: 1600, naturalHeight: 900, removeAttribute() {},
-                set src(value) { originals.push(value); queueMicrotask(() => this.onload?.()); } };
-        }
-    };
-    globalThis.fetch = async (url, options) => {
-        calls.push({ url, method: options.method || 'GET' });
-        if (options.method === 'HEAD') return new Response(null, { headers: { ETag: 'source-version' } });
-        return new Response(null, { status: 404 });
-    };
-    const source = 'data/photos/trip/static.png';
-    await getMediaPreviewBlob(source, 'image');
-    clearMediaPreviewCache();
-    await getMediaPreviewBlob(source, 'image');
-    assert.deepEqual(originals, [source]);
-    assert.equal(cache.size, 1);
-    assert.deepEqual(calls.map(call => call.method), ['GET', 'HEAD', 'GET', 'HEAD']);
+    let calls = 0;
+    globalThis.fetch = async () => { calls += 1; return new Response(null, { status: 404 }); };
+    await assert.rejects(getMediaPreviewBlob('data/photos/trip/missing.png', 'image'), /无法读取预览缓存/);
+    assert.equal(calls, 1);
 });
 
 test('缓存缺失不读取原文件，保存后跨实例复用，源变更拒绝旧预览', async t => {

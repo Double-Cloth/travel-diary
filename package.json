@@ -2,7 +2,7 @@
   "name": "travel-diary",
   "version": "2.1.144",
   "private": true,
-  "description": "Personal travel diary static site.",
+  "description": "Personal travel diary with a local Node.js service.",
   "type": "commonjs",
   "scripts": {
     "auth:set": "node scripts/set-auth-password.js",

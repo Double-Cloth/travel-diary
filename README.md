@@ -7,7 +7,7 @@ Travel Diary 是一本数字旅行日志。它把每一次出发整理成行程�
 - **像手账一样浏览**：桌面双页与手机连续纸面布局，配合封面开合、纸页翻动、地点档案和行程摘要，让浏览记录更接近翻阅一本旅行笔记。
 - **按行程与地点整理**：支持笔记和行程两种目录视图、搜索与多级筛选，并按国家、省市区归档日记、统计到访和汇总媒体。
 - **写作与媒体一体化**：Markdown 源码与预览同步编辑，图片和视频可拖放上传、排序、预览与查看，缩略图按需生成并缓存。
-- **本地优先，部署灵活**：无需安装前端依赖或连接 CDN；静态托管即可阅读，需要写入、认证、备份和媒体管理时再启动 Node.js 服务。
+- **本地优先**：通过 Node.js 服务浏览和管理手账，无需安装前端依赖或连接 CDN；字体和缩略图按需生成并缓存。
 - **为个人内容保留边界**：访问密码保护写入操作，阅读权限由部署层控制；完整备份、部分导入和回收站为个人数据提供恢复路径。
 
 ## 项目依赖
@@ -15,9 +15,9 @@ Travel Diary 是一本数字旅行日志。它把每一次出发整理成行程�
 | 依赖 | 是否必需 | 用途与说明 |
 | --- | --- | --- |
 | 现代浏览器 | 必需 | 浏览页面；需支持 ES modules、Canvas、Cache Storage 等前端能力。 |
-| Node.js 20.11 或更新版本 | 本机服务与维护命令必需 | 启动本机服务、执行测试及全部 Node.js 脚本，只使用内置模块。静态托管阅读可直接使用浏览器。 |
+| Node.js 20.11 或更新版本 | 必需 | 启动本机服务、执行测试及全部 Node.js 脚本，只使用内置模块。 |
 | npm | 可选 | 随 Node.js 提供，用于执行下方 `npm` 命令；也可直接用 `node` 运行脚本，无需 `npm install`。 |
-| 本机 Edge 或 Chrome | 可选 | 后端按需生成及 `media:previews` 批量生成图片、视频和头像缩略图；可用配置文件、`TRAVEL_BROWSER_PATH` 或批量命令的 `--browser` 指定。后端生成失败时由前端压缩并回传保存，已有缓存直接复用；静态站缺失缓存时由访客浏览器生成。 |
+| 本机 Edge 或 Chrome | 可选 | 后端按需生成及 `media:previews` 批量生成图片、视频和头像缩略图；可用配置文件、`TRAVEL_BROWSER_PATH` 或批量命令的 `--browser` 指定。后端生成失败时由前端压缩并回传保存，已有缓存直接复用。 |
 | 网络连接 | 可选 | 仅 `countries` 与 `china-locations` 更新地点目录时需要；其余命令可离线运行。 |
 
 > 项目没有运行时 npm 依赖，也没有 `package-lock.json`、`node_modules` 或前端构建步骤；字体构建工具（HarfBuzz / WOFF2 WASM）、字体、拼音及地点目录随仓库分发。媒体预览不需要 FFmpeg，部署也不需要额外构建工具。
@@ -31,7 +31,7 @@ git clone https://github.com/Double-Cloth/travel-diary.git
 cd travel-diary
 ```
 
-2. 可选：重新生成字体和媒体缩略图。
+2. 可选：提前生成字体和媒体缩略图。首次访问也会按需生成。
 
 ```bash
 npm run fonts
@@ -92,7 +92,7 @@ npm run config:check -- --port 8080 --network
 
 自动查找依次检查 Windows 的 `PROGRAMFILES`、`PROGRAMFILES(X86)`、`LOCALAPPDATA` 下的 Edge / Chrome 常见安装位置、macOS 的 `/Applications` 安装位置，以及 `PATH` 中的 Chromium 系浏览器。后端通过独立临时用户目录启动无头浏览器，复用页面的 Canvas 压缩逻辑生成缩略图，任务结束后清理临时目录。
 
-配置格式、字段名或类型错误会给出对应文件路径及错误原因。Node 静态服务禁止下载共享配置及本机覆盖配置，现有 GitHub Pages 发布流程也只复制站点资源。
+配置格式、字段名或类型错误会给出对应文件路径及错误原因。Node 服务禁止下载共享配置及本机覆盖配置。
 
 ### 启动服务
 
@@ -169,12 +169,12 @@ npm run data:sort -- --check
 npm run media:previews
 # 为指定项目生成预览，并手动指定浏览器可执行文件
 npm run media:previews -- --dir "项目目录" --browser "浏览器可执行文件路径"
-# 静态发布时跳过未提供的原文件，其他失败仍报错
+# 批量处理时跳过缺失的原文件，其他失败仍报错
 npm run media:previews -- --skip-missing
 # 查看批量预览命令的可用参数和用法
 npm run media:previews -- --help
 
-# 清理 .cache/ 中的缓存，保留回收站；缩略图可在下次浏览时自动重建
+# 清理 .cache/ 中的缓存，保留回收站；字体和缩略图在下次访问时自动重建
 npm run cache:clear
 # 清理指定项目目录下的缓存，保留规则与默认命令相同
 npm run cache:clear -- --dir "项目目录"
@@ -182,23 +182,14 @@ npm run cache:clear -- --dir "项目目录"
 npm run cache:clear -- --help
 ```
 
-### 发布媒体
-
-`data/photos/` 与 `data/videos/` 默认被 Git 忽略。静态发布需要显式添加要公开的文件：
-
-```bash
-git add -f data/photos/照片文件名.jpg data/videos/视频文件名.mp4
-git commit -m "发布旅行媒体"
-```
-
 ### 字体与地点目录
 
 ```bash
-# 生成完整 WOFF2 字体，并按界面与个人内容生成轻量字集
+# 在 .cache/fonts/ 中补齐完整 WOFF2、轻量字集与字体 CSS，有效缓存直接复用
 npm run fonts
-# 仅刷新轻量字集，适合更新文字后运行，无需重新压缩完整字体
+# 仅补齐轻量字集与字体 CSS，界面或个人文字变化后自动刷新
 npm run fonts:core
-# 将完整字体替换为当前项目文字的子集，后续新增文字可能缺字
+# 生成项目文字的完整子集缓存；运行时会恢复完整字库以覆盖新增字符
 npm run fonts:subset
 
 # 从脚本指定版本的数据源生成国家目录，需联网获取数据
@@ -207,7 +198,7 @@ npm run countries
 npm run china-locations
 ```
 
-字体构建使用仓库内 WASM，无需安装依赖或联网。
+字体构建使用仓库内 WASM，无需安装依赖或联网。`assets/fonts/` 仅保存 TTF 源文件及许可证，生成的 WOFF2、CSS 和校验元数据全部位于被 Git 忽略的 `.cache/fonts/`。服务收到字体请求时先校验缓存，缺失、损坏、源字体或轻量字集文字变化时自动生成；生成失败后浏览器依次尝试完整 WOFF2、原始 TTF 和系统字体。运行和部署统一使用 Node.js 服务。
 
 ## 文档
 

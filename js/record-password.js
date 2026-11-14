@@ -54,7 +54,6 @@ export function createPasswordGate(onVerified, options = {}) {
         description: options.description || '输入 6 位数字密码后继续。',
         verifying: options.verifying || '正在安全验证…',
         actionError: options.actionError || '操作未完成，请重试。',
-        staticMessage: options.staticMessage || '当前站点为静态只读页面，无法执行此操作。'
     };
     const dialog = document.createElement('dialog');
     dialog.className = 'record-password entry-sheet';
@@ -262,17 +261,6 @@ export function createPasswordGate(onVerified, options = {}) {
                 const feedback = authConfigurationFeedback(error);
                 if (feedback) {
                     void showFeedback(feedback.message, feedback);
-                    return;
-                }
-                if (error?.code === 'STATIC_READONLY') {
-                    if (typeof options.onStatic === 'function') {
-                        try { await options.onStatic(context); }
-                        catch (staticError) {
-                            void showFeedback(staticError?.message || copy.actionError, { label: '只读模式', title: '操作未完成' });
-                        }
-                    } else {
-                        void showFeedback(copy.staticMessage, { label: '只读模式', title: '当前站点为静态页面' });
-                    }
                     return;
                 }
                 void showFeedback(error?.message || copy.actionError, { label: '访问验证', title: '服务暂不可用' });

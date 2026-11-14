@@ -1,6 +1,6 @@
 # 本地字体构建工具
 
-本目录随 Git 分发，仅供 Node.js 字体构建与测试使用。页面仍加载 `assets/fonts/` 内的 WOFF2，不在浏览器加载这些 WASM。构建不解析 npm 包、不访问 `node_modules`、不发起网络请求，也不启动外部命令。
+本目录随 Git 分发，供 Node.js 服务按需生成字体、命令行构建与测试使用。页面加载 `.cache/fonts/` 内的 WOFF2，不在浏览器加载这些 WASM。构建不解析 npm 包、不访问 `node_modules`、不发起网络请求，也不启动外部命令。
 
 ## 固定来源
 
@@ -38,4 +38,4 @@ node --test tests/build-fonts.test.mjs
 npm test
 ```
 
-构建要求 Node.js 20+。`--core` 只刷新首屏字体及 CSS；`--subset` 将完整字体输出改为项目文字子集，新增未收录字符时仍须重新生成。默认构建保留完整字体回退。
+构建要求 Node.js 20+。`--core` 只刷新首屏字体及 CSS；`--subset` 将完整字体输出改为项目文字子集，运行时按需恢复完整字库。有效缓存自动复用，字体请求缺失时先生成，失败后使用 TTF 与系统字体回退。

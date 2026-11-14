@@ -27,7 +27,7 @@ build/
 coverage/
 .cache/
 
-# 压缩字体必须纳入版本控制，确保全新检出后也能离线启动。
+# 字体生成产物统一存放在 .cache/fonts/，assets/fonts/ 只保留源文件与许可证。
 
 # Codex / agent local artifacts
 .codex/

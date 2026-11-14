@@ -3,6 +3,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
+const { createHash } = require('node:crypto');
 const { createRecordApi, normalizeAllowedOrigins } = require('./record-store.js');
 const { readAuthConfig } = require('./auth.js');
 const { createMediaPreviewStore, MAXIMUM_PREVIEW_BYTES } = require('./media-preview-store.js');
@@ -89,7 +90,7 @@ function parseArgs(argv) {
 
 function printHelpAndExit() {
   const message = `
-Travel Diary static server
+Travel Diary server
 
 Usage:
   node js/server.js [--dir PATH] [--port PORT] [--local|--network] [--write-mode=MODE] [--allowed-origin=ORIGIN]
@@ -176,6 +177,8 @@ function guessContentType(filePath) {
       return 'font/woff';
     case '.woff2':
       return 'font/woff2';
+    case '.ttf':
+      return 'font/ttf';
     default:
       return 'application/octet-stream';
   }
@@ -306,6 +309,7 @@ function createHandler(rootDir, options = {}) {
   rootDir = fs.realpathSync(rootDir);
   const config = loadRuntimeConfig(rootDir);
   const mediaPreviews = createMediaPreviewStore(rootDir);
+  let fontCache;
   const generateMediaPreview = (options.generateMediaPreviews ?? config.mediaPreviews.enabled)
     ? createMediaPreviewGenerator(rootDir, undefined, config.mediaPreviews) : null;
   const recordApi = createRecordApi(rootDir, {
@@ -352,6 +356,29 @@ function createHandler(rootDir, options = {}) {
     }
     if (pathname === '/') {
       pathname = '/index.html';
+    }
+
+    if (pathname.startsWith('/.cache/fonts/')) {
+      try {
+        fontCache ??= import('../scripts/build-fonts.mjs').then(({ createFontCache }) => createFontCache(rootDir, { background: true }))
+          .catch(error => { fontCache = undefined; throw error; });
+        const data = await (await fontCache).get(pathname.slice('/.cache/fonts/'.length));
+        const etag = `"${createHash('sha256').update(data).digest('hex')}"`;
+        const headers = { ...STATIC_SECURITY_HEADERS, 'Content-Type': guessContentType(pathname),
+          'Cache-Control': 'private, max-age=0, must-revalidate', ETag: etag };
+        if (req.headers['if-none-match'] === etag) {
+          res.writeHead(304, headers);
+          res.end();
+        } else {
+          res.writeHead(200, { ...headers, 'Content-Length': data.length });
+          res.end(req.method === 'HEAD' ? undefined : data);
+        }
+      } catch (error) {
+        res.writeHead(error.status || 503, { ...STATIC_SECURITY_HEADERS,
+          'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+        res.end(req.method === 'HEAD' ? undefined : '字体生成失败，请使用回退字体。');
+      }
+      return;
     }
 
     if (pathname.startsWith('/.cache/media-previews/')) {

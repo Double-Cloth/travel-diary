@@ -12,6 +12,10 @@ function loadWoff2(kind) {
             module.onAbort = reason => reject(new Error(`WOFF2 WASM 初始化失败：${reason}`));
             module.onRuntimeInitialized = () => resolve(module);
             if (module.calledRun) resolve(module);
+        }).catch(error => {
+            woff2Promises.delete(kind);
+            delete require.cache[require.resolve(`../assets/wasm/woff2-${kind}.cjs`)];
+            throw error;
         }));
     }
     return woff2Promises.get(kind);
@@ -33,7 +37,7 @@ async function loadHarfbuzz() {
         .then(({ instance }) => {
             instance.exports._initialize();
             return instance.exports;
-        });
+        }).catch(error => { harfbuzzPromise = undefined; throw error; });
     return harfbuzzPromise;
 }
 
