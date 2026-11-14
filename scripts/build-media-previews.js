@@ -53,11 +53,13 @@ async function buildMediaPreviews(root, options = {}) {
         throw new Error('生成进度超时必须是 1000 到 2147483647 之间的整数毫秒数。');
     }
     const encode = value => value.split('/').map(encodeURIComponent).join('/');
-    const items = options.previews ? [...new Set(options.previews)].map(preview => {
+    const previewItems = previews => [...new Set(previews)].map(preview => {
         const source = sourceForPreview(preview);
         if (!source) throw new Error(`无效的媒体预览路径：${preview}`);
         return { source: `/${encode(source)}`, preview: encode(preview), kind: source.startsWith('data/videos/') ? 'video' : 'image' };
-    }) : collectMedia(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')));
+    });
+    const items = options.previews ? previewItems(options.previews)
+        : collectMedia(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')));
     try {
         if (!options.previews && (await fs.stat(path.join(root, 'data/profile/profile-picture.png'))).isFile()) {
             items.push({ source: '/data/profile/profile-picture.png', preview: '/.cache/media-previews/profile/profile-picture.png.jpg', kind: 'image' });
@@ -82,7 +84,8 @@ async function buildMediaPreviews(root, options = {}) {
     // 生成任务使用原始缓存接口，避免内部请求再次触发后台生成。
     const handler = createHandler(root, { generateMediaPreviews: false });
     const log = options.log || console.log;
-    let browser, timer, resolveDone, rejectDone, processed = 0;
+    const controller = new AbortController();
+    let browser, timer, resolveDone, rejectDone, processed = 0, manifestSent = false;
     const done = new Promise((resolve, reject) => { resolveDone = resolve; rejectDone = reject; });
     const heartbeat = () => {
         clearTimeout(timer);
@@ -94,7 +97,16 @@ async function buildMediaPreviews(root, options = {}) {
                 res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; img-src 'self'; media-src 'self'; connect-src 'self'; base-uri 'none'" });
                 res.end('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>生成媒体缩略图</title><script type="module" src="./batch.mjs"></script></html>');
             } else if (req.url === session + 'manifest' && req.method === 'GET') {
-                res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify(items));
+                if (manifestSent) {
+                    if (processed !== items.length) throw new Error('上一批媒体尚未生成完成。');
+                    const next = previewItems(await options.nextBatch?.(controller.signal) || []);
+                    if (controller.signal.aborted) return;
+                    items.push(...next);
+                }
+                manifestSent = true;
+                res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+                res.end(JSON.stringify(items.slice(processed).map((item, offset) => ({ ...item, index: processed + offset }))));
+                if (processed === items.length) resolveDone(result);
             } else if ([session + 'batch.mjs', session + 'preview.mjs'].includes(req.url) && req.method === 'GET') {
                 const file = req.url.endsWith('/batch.mjs') ? path.join(__dirname, 'media-preview-batch.mjs') : path.join(__dirname, '../js/media-preview.mjs');
                 res.writeHead(200, { 'Content-Type': 'text/javascript' }); res.end(await fs.readFile(file));
@@ -112,7 +124,7 @@ async function buildMediaPreviews(root, options = {}) {
                 log(`[${processed}/${items.length}] ${report.status === 'generated' ? '已生成' : report.status === 'cached' ? '缓存有效' : '失败'}：${decodeURIComponent(items[report.index].source)}${report.message ? `；${report.message}` : ''}`);
                 res.writeHead(204); res.end();
                 heartbeat();
-                if (processed === items.length) resolveDone(result);
+                options.onProgress?.(decodeURIComponent(items[report.index].preview));
             } else if (/^\/(?:data\/(?:photos|videos|profile)\/|\.cache\/media-previews\/)/.test(req.url)) {
                 await handler(req, res);
             } else { res.writeHead(404); res.end(); }
@@ -132,6 +144,7 @@ async function buildMediaPreviews(root, options = {}) {
         browser.once('exit', code => rejectDone(new Error(`浏览器提前退出（${code}）。`)));
         return await done;
     } finally {
+        controller.abort();
         clearTimeout(timer);
         process.removeListener('SIGINT', cancel);
         process.removeListener('SIGTERM', cancel);

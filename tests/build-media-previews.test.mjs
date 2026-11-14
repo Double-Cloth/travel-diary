@@ -1,8 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { runInNewContext } from 'node:vm';
 import { collectMedia, findBrowser, buildMediaPreviews } from '../scripts/build-media-previews.js';
 import { createMediaPreviewGenerator } from '../js/media-preview-generator.js';
 
@@ -73,4 +74,119 @@ test('后台生成失败后可重试，非法路径和过量排队不启动新�
     const pending = Array.from({ length: 16 }, (_, index) => generate(`/.cache/media-previews/photos/trip/${index}.png.jpg`));
     await assert.rejects(generate('/.cache/media-previews/photos/trip/overflow.png.jpg'), /繁忙/);
     await Promise.all(pending);
+});
+
+test('每项完成后立即返回，后续请求唤醒同一浏览器并保持批次上限', async () => {
+    let session, finish;
+    let calls = 0;
+    const generate = createMediaPreviewGenerator('root', async (_root, options) => {
+        calls++;
+        session = options;
+        await new Promise(resolve => { finish = resolve; });
+    });
+    const paths = Array.from({ length: 5 }, (_, index) => `/.cache/media-previews/photos/trip/${index}.png.jpg`);
+    const first = generate(paths[0]);
+    const second = generate(paths[1]);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.deepEqual(session.previews, paths.slice(0, 2));
+    session.onProgress(paths[0]);
+    await first;
+    const signal = new AbortController().signal;
+    const waiting = session.nextBatch(signal);
+    const third = generate(paths[2]);
+    assert.equal(generate(paths[2]), third, '尚未完成的同路径请求继续合并');
+    assert.deepEqual(await waiting, [paths[2]]);
+    const fourth = generate(paths[3]);
+    const fifth = generate(paths[4]);
+    assert.deepEqual(await session.nextBatch(signal), paths.slice(3));
+    assert.equal(calls, 1, '后续批次复用现有生成进程');
+    for (const path of paths.slice(1)) session.onProgress(path);
+    await Promise.all([second, third, fourth, fifth]);
+    assert.deepEqual(await session.nextBatch(signal), [], '空闲后结束会话');
+    finish();
+});
+
+test('生成会话取消会唤醒等待，未领取的任务由下一会话处理', async () => {
+    let session, fail;
+    let calls = 0;
+    const generate = createMediaPreviewGenerator('root', async (_root, options) => {
+        if (++calls > 1) return;
+        session = options;
+        await new Promise((_resolve, reject) => { fail = reject; });
+    });
+    const firstPath = '/.cache/media-previews/photos/trip/first.png.jpg';
+    const first = generate(firstPath);
+    await new Promise(resolve => setImmediate(resolve));
+    session.onProgress(firstPath);
+    await first;
+    const controller = new AbortController();
+    const waiting = session.nextBatch(controller.signal);
+    const next = generate('/.cache/media-previews/photos/trip/next.png.jpg');
+    controller.abort();
+    assert.deepEqual(await waiting, []);
+    fail(new Error('浏览器提前退出'));
+    await next;
+    assert.equal(calls, 2);
+});
+
+test('后续批次失败只拒绝未完成项，重试继续可用', async () => {
+    let session, fail;
+    let calls = 0;
+    const generate = createMediaPreviewGenerator('root', async (_root, options) => {
+        if (++calls > 1) return;
+        session = options;
+        await new Promise((_resolve, reject) => { fail = reject; });
+    });
+    const firstPath = '/.cache/media-previews/photos/trip/first.png.jpg';
+    const nextPath = '/.cache/media-previews/photos/trip/next.png.jpg';
+    const first = generate(firstPath);
+    await new Promise(resolve => setImmediate(resolve));
+    session.onProgress(firstPath);
+    await first;
+    const next = generate(nextPath);
+    assert.deepEqual(await session.nextBatch(new AbortController().signal), [nextPath]);
+    const rejected = assert.rejects(next, /浏览器提前退出/);
+    fail(new Error('浏览器提前退出'));
+    await rejected;
+    await generate(nextPath);
+    assert.equal(calls, 2);
+});
+
+test('浏览器连续领取批次，保留全局进度索引并继续处理失败后的项目', async () => {
+    const source = await readFile(new URL('../scripts/media-preview-batch.mjs', import.meta.url), 'utf8');
+    const manifests = [
+        [{ index: 0, preview: '/cached' }, { index: 1, preview: '/generated', source: '/original', kind: 'image' }],
+        [{ index: 2, preview: '/missing' }, { index: 3, preview: '/cached' }], []
+    ];
+    const reports = [], writes = [];
+    let generated = 0;
+    await runInNewContext(source.replace(/^import[^\n]+\n/, ''), {
+        AbortSignal,
+        createMediaPreview: async (source, kind) => {
+            assert.equal(source, '/original');
+            assert.equal(kind, 'image');
+            generated++;
+            return new Blob(['jpeg']);
+        },
+        fetch: async (url, options) => {
+            if (url === './manifest') return Response.json(manifests.shift());
+            if (url === './progress') {
+                reports.push(JSON.parse(options.body));
+                return new Response(null, { status: 204 });
+            }
+            if (options?.method === 'PUT') {
+                writes.push({ url, etag: options.headers['If-Match'] });
+                return new Response(null, { status: 204 });
+            }
+            assert.ok(['/cached', '/generated', '/missing'].includes(url));
+            return new Response(null, { status: url === '/cached' ? 200 : url === '/generated' ? 204 : 404, headers: { ETag: 'source-version' } });
+        }
+    });
+    assert.equal(manifests.length, 0);
+    assert.equal(generated, 1);
+    assert.deepEqual(writes, [{ url: '/generated', etag: 'source-version' }]);
+    assert.deepEqual(reports.map(({ index, status }) => ({ index, status })), [
+        { index: 0, status: 'cached' }, { index: 1, status: 'generated' },
+        { index: 2, status: 'failed' }, { index: 3, status: 'cached' }
+    ]);
 });
