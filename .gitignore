@@ -11,6 +11,7 @@ pids/
 *.pid
 
 # Runtime data
+travel-diary.config.local.json
 .secrets/
 .travel-data.lock
 .travel-data-import-*/

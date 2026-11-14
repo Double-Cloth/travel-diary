@@ -1,7 +1,7 @@
 const { sourceForPreview } = require('./media-preview-store.js');
 
 // 复用已有浏览器压缩脚本，合并并发请求并限制为一个后台生成进程。
-function createMediaPreviewGenerator(root, build = (...args) => require('../scripts/build-media-previews.js').buildMediaPreviews(...args)) {
+function createMediaPreviewGenerator(root, build = (...args) => require('../scripts/build-media-previews.js').buildMediaPreviews(...args), options = {}) {
     const pending = new Map();
     const queue = [];
     let running = false;
@@ -10,7 +10,11 @@ function createMediaPreviewGenerator(root, build = (...args) => require('../scri
         while (queue.length) {
             const batch = queue.splice(0, 2);
             try {
-                await build(root, { previews: batch.map(item => item.path), log() {} });
+                await build(root, {
+                    browser: process.env.TRAVEL_BROWSER_PATH || options.browserPath,
+                    progressTimeoutMs: options.progressTimeoutMs,
+                    previews: batch.map(item => item.path), log() {}
+                });
                 for (const item of batch) item.resolve();
             } catch (error) {
                 for (const item of batch) item.reject(error);

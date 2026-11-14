@@ -17,7 +17,7 @@ Travel Diary 是一本数字旅行日志。它把每一次出发整理成行程�
 | 现代浏览器 | 必需 | 浏览页面；需支持 ES modules、Canvas、Cache Storage 等前端能力。 |
 | Node.js 20.11 或更新版本 | 本机服务与维护命令必需 | 启动本机服务、执行测试及全部 Node.js 脚本，只使用内置模块。静态托管阅读可直接使用浏览器。 |
 | npm | 可选 | 随 Node.js 提供，用于执行下方 `npm` 命令；也可直接用 `node` 运行脚本，无需 `npm install`。 |
-| 本机 Edge 或 Chrome | 可选 | 后端按需生成及 `media:previews` 批量生成图片、视频和头像缩略图；可用 `--browser` 或 `TRAVEL_BROWSER_PATH` 指定。后端生成失败时由前端压缩并回传保存，已有缓存直接复用；静态站缺失缓存时由访客浏览器生成。 |
+| 本机 Edge 或 Chrome | 可选 | 后端按需生成及 `media:previews` 批量生成图片、视频和头像缩略图；可用配置文件、`TRAVEL_BROWSER_PATH` 或批量命令的 `--browser` 指定。后端生成失败时由前端压缩并回传保存，已有缓存直接复用；静态站缺失缓存时由访客浏览器生成。 |
 | 网络连接 | 可选 | 仅 `countries` 与 `china-locations` 更新地点目录时需要；其余命令可离线运行。 |
 
 > 项目没有运行时 npm 依赖，也没有 `package-lock.json`、`node_modules` 或前端构建步骤；字体构建工具（HarfBuzz / WOFF2 WASM）、字体、拼音及地点目录随仓库分发。媒体预览不需要 FFmpeg，部署也不需要额外构建工具。
@@ -45,6 +45,54 @@ npm start
 ```
 
 ## 命令
+
+### 本机配置
+
+项目根目录的 `travel-diary.config.json` 由 Node 服务和批量预览命令共用。支持 JSON Schema 的编辑器会根据文件中的 `$schema` 提供字段补全、中文悬浮说明和取值校验。可以仅保留需要调整的字段，其余字段使用内置默认值。指定 `--dir` 时读取目标目录下的配置，文件缺失时使用默认值。修改后重启服务或重新运行命令。
+
+本机浏览器路径、端口等个人设置建议写入同目录的 `travel-diary.config.local.json`，该文件已被 Git 忽略。无需复制完整配置，只填写要覆盖的字段。例如，将默认浏览器设置为 Edge 的安装目录，并将服务端口设为 8080。
+
+```json
+{
+  "$schema": "./travel-diary.config.schema.json",
+  "server": {
+    "port": 8080
+  },
+  "mediaPreviews": {
+    "browserPath": "C:/Program Files (x86)/Microsoft/Edge/Application"
+  }
+}
+```
+
+`browserPath` 也可填写完整可执行文件路径，例如 `C:/Program Files/Google/Chrome/Application/chrome.exe`。Windows 路径可以使用 `/`，使用反斜杠时须在 JSON 中写成 `\\`。配置文件中的相对路径以配置文件所在的项目目录为基准；`--browser` 和 `TRAVEL_BROWSER_PATH` 中的相对路径沿用进程工作目录。
+
+| 配置项 | 默认值 | 作用 |
+| --- | --- | --- |
+| `server.port` | `9000` | 起始监听端口，范围为 1～65535。 |
+| `server.local` | `true` | `true` 绑定 `127.0.0.1`，`false` 绑定 `0.0.0.0` 以允许局域网访问。 |
+| `server.maxPortRetries` | `100` | 最多尝试的端口数量，包含起始端口；设为 `1` 时端口占用即报错。 |
+| `server.writeMode` | `"local"` | 写入模式，支持 `local`、`remote`。 |
+| `server.allowedOrigins` | `[]` | `remote` 模式允许的完整 HTTPS Origin 数组，沿用现有认证及来源校验。 |
+| `mediaPreviews.enabled` | `true` | 缓存缺失时是否启动后端浏览器按需生成。关闭后由前端生成并回传，批量预览命令仍可手动运行。 |
+| `mediaPreviews.browserPath` | `""` | Edge / Chrome 可执行文件或所在目录。空字符串启用自动查找。 |
+| `mediaPreviews.progressTimeoutMs` | `70000` | 浏览器连续未报告生成进度的最长等待时间，单位为毫秒，最小为 1000。 |
+
+服务参数按“命令行参数 → 本机覆盖配置 → 共享配置 → 内置默认值”的顺序取值。配置按字段合并，数组整体替换，`false`、空数组和空字符串都会生效。命令行 `--allowed-origin` 会替换配置文件中的整个来源数组。浏览器路径按“批量命令 `--browser` → 环境变量 `TRAVEL_BROWSER_PATH` → 本机覆盖配置 → 共享配置 → 自动查找”的顺序选择。显式路径无效时会使该次后端生成失败。
+
+修改后可运行检查命令，查看读取的文件、最终生效配置和找到的浏览器路径。
+
+```bash
+npm run config:check
+npm run config:check -- --dir "项目目录"
+# 同时查看临时启动参数的覆盖结果
+npm run config:check -- --port 8080 --network
+```
+
+检查命令读取配置并查找浏览器。配置错误或显式浏览器路径无效时返回退出码 `1`；自动查找未发现浏览器时给出页面回传提示，检查仍通过。服务启动时仍会检查端口是否可用及 remote 模式所需的认证配置。
+
+自动查找依次检查 Windows 的 `PROGRAMFILES`、`PROGRAMFILES(X86)`、`LOCALAPPDATA` 下的 Edge / Chrome 常见安装位置、macOS 的 `/Applications` 安装位置，以及 `PATH` 中的 Chromium 系浏览器。后端通过独立临时用户目录启动无头浏览器，复用页面的 Canvas 压缩逻辑生成缩略图，任务结束后清理临时目录。
+
+配置格式、字段名或类型错误会给出对应文件路径及错误原因。Node 静态服务禁止下载共享配置及本机覆盖配置，现有 GitHub Pages 发布流程也只复制站点资源。
 
 ### 启动服务
 

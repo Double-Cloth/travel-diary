@@ -7,13 +7,11 @@ const { createRecordApi, normalizeAllowedOrigins } = require('./record-store.js'
 const { readAuthConfig } = require('./auth.js');
 const { createMediaPreviewStore, MAXIMUM_PREVIEW_BYTES } = require('./media-preview-store.js');
 const { createMediaPreviewGenerator } = require('./media-preview-generator.js');
+const { CONFIG_FILENAME, LOCAL_CONFIG_FILENAME, loadRuntimeConfig } = require('./runtime-config.js');
 
 const CONFIG = {
   defaultPort: 9000,
-  maxPortRetries: 100,
-  defaultDir: '.',
-  defaultLocal: true,
-  defaultWriteMode: 'local'
+  defaultDir: '.'
 };
 
 const STATIC_SECURITY_HEADERS = Object.freeze({
@@ -27,13 +25,7 @@ const STATIC_SECURITY_HEADERS = Object.freeze({
 });
 
 function parseArgs(argv) {
-  const args = {
-    dir: CONFIG.defaultDir,
-    port: CONFIG.defaultPort,
-    local: CONFIG.defaultLocal,
-    writeMode: CONFIG.defaultWriteMode,
-    allowedOrigins: []
-  };
+  const args = {};
 
   for (let index = 0; index < argv.length; index += 1) {
     const current = argv[index];
@@ -58,10 +50,10 @@ function parseArgs(argv) {
     } else if (current.startsWith('--write-mode=')) {
       args.writeMode = current.slice('--write-mode='.length);
     } else if (current === '--allowed-origin' && index + 1 < argv.length) {
-      args.allowedOrigins.push(argv[index + 1]);
+      (args.allowedOrigins ||= []).push(argv[index + 1]);
       index += 1;
     } else if (current.startsWith('--allowed-origin=')) {
-      args.allowedOrigins.push(current.slice('--allowed-origin='.length));
+      (args.allowedOrigins ||= []).push(current.slice('--allowed-origin='.length));
     } else if (current === '--help' || current === '-h') {
       printHelpAndExit();
     } else {
@@ -69,18 +61,24 @@ function parseArgs(argv) {
     }
   }
 
-  if (!Number.isInteger(args.port) || args.port <= 0 || args.port > 65535) {
-    throw new Error('端口必须是 1 到 65535 之间的整数。');
-  }
+  args.dir ??= CONFIG.defaultDir;
   if (!args.dir.trim() || args.dir.startsWith('--')) {
     throw new Error('请指定有效的目录路径。');
+  }
+  const defaults = loadRuntimeConfig(path.resolve(args.dir)).server;
+  args.port ??= defaults.port;
+  args.local ??= defaults.local;
+  args.writeMode ??= defaults.writeMode;
+  args.allowedOrigins ??= defaults.allowedOrigins;
+  if (!Number.isInteger(args.port) || args.port <= 0 || args.port > 65535) {
+    throw new Error('端口必须是 1 到 65535 之间的整数。');
   }
   if (!['local', 'remote'].includes(args.writeMode)) {
     throw new Error('写入模式必须是 local 或 remote。');
   }
   args.allowedOrigins = normalizeAllowedOrigins(args.allowedOrigins);
   if (args.writeMode === 'remote' && !args.allowedOrigins.length) {
-    throw new Error('remote write mode 必须通过 --allowed-origin 指定至少一个 HTTPS 站点来源。');
+    throw new Error('remote write mode 必须通过 --allowed-origin 或 server.allowedOrigins 指定至少一个 HTTPS 站点来源。');
   }
   if (args.writeMode === 'local' && args.allowedOrigins.length) {
     throw new Error('--allowed-origin 仅能与 --write-mode=remote 同时使用。');
@@ -97,6 +95,8 @@ Usage:
   node js/server.js [--dir PATH] [--port PORT] [--local|--network] [--write-mode=MODE] [--allowed-origin=ORIGIN]
 
 Options:
+  ${CONFIG_FILENAME}  从服务目录读取默认配置
+  ${LOCAL_CONFIG_FILENAME}  本机覆盖配置，命令行参数优先
   --dir PATH    Directory to serve (default: ${CONFIG.defaultDir})
   --port PORT   Starting port (default: ${CONFIG.defaultPort})
   --local       Bind to 127.0.0.1 only (default)
@@ -220,6 +220,7 @@ function isWithinRoot(rootDir, targetPath) {
 function isPrivateStaticPath(relativePath) {
   const parts = relativePath.replace(/\\/g, '/').split('/').filter(Boolean);
   return parts.some(part => part.startsWith('.') || /\.(?:zip|bak|tmp)$/i.test(part))
+    || parts.some(part => [CONFIG_FILENAME, LOCAL_CONFIG_FILENAME].includes(part.toLowerCase()))
     || ['dist', 'build', 'output', 'tmp', 'temp', 'node_modules', '_site', 'coverage'].includes(parts[0]?.toLowerCase());
 }
 
@@ -303,11 +304,13 @@ async function ensureDataStructure(rootDir) {
 
 function createHandler(rootDir, options = {}) {
   rootDir = fs.realpathSync(rootDir);
+  const config = loadRuntimeConfig(rootDir);
   const mediaPreviews = createMediaPreviewStore(rootDir);
-  const generateMediaPreview = options.generateMediaPreviews === false ? null : createMediaPreviewGenerator(rootDir);
+  const generateMediaPreview = (options.generateMediaPreviews ?? config.mediaPreviews.enabled)
+    ? createMediaPreviewGenerator(rootDir, undefined, config.mediaPreviews) : null;
   const recordApi = createRecordApi(rootDir, {
-    writeMode: options.writeMode || CONFIG.defaultWriteMode,
-    allowedOrigins: options.allowedOrigins || []
+    writeMode: options.writeMode ?? config.server.writeMode,
+    allowedOrigins: options.allowedOrigins ?? config.server.allowedOrigins
   });
   return async (req, res) => {
     if (['/api/travel-auth', '/api/travel-auth/setup', '/api/travel-records', '/api/travel-data', '/api/travel-profile'].includes(req.url.split('?')[0])) {
@@ -489,8 +492,10 @@ function createHandler(rootDir, options = {}) {
 }
 
 async function listenWithRetries(rootDir, port, bindAll, options = {}) {
+  const config = loadRuntimeConfig(rootDir);
+  const maxPortRetries = options.maxPortRetries ?? config.server.maxPortRetries;
   const structure = await ensureDataStructure(rootDir);
-  if (options.writeMode === 'remote') {
+  if ((options.writeMode ?? config.server.writeMode) === 'remote') {
     await readAuthConfig(rootDir, { requireProduction: true });
   }
   const host = bindAll ? '0.0.0.0' : '127.0.0.1';
@@ -507,7 +512,7 @@ async function listenWithRetries(rootDir, port, bindAll, options = {}) {
       server.on('error', (error) => {
         if (error.code === 'EADDRINUSE') {
           currentPort += 1;
-          if (currentPort > 65535 || currentPort >= port + CONFIG.maxPortRetries) {
+          if (currentPort > 65535 || currentPort >= port + maxPortRetries) {
             reject(new Error(`Unable to find a free port between ${port} and ${currentPort}.`));
             return;
           }
@@ -544,6 +549,8 @@ async function main() {
   console.log('='.repeat(60));
   console.log('Server started');
   console.log(`Root: ${rootDir}`);
+  const configFiles = [CONFIG_FILENAME, LOCAL_CONFIG_FILENAME].filter(name => fs.existsSync(path.join(rootDir, name)));
+  console.log(`配置文件：${configFiles.length ? configFiles.map(name => path.join(rootDir, name)).join(' → ') : '内置默认值'}`);
   console.log(`Bind: ${args.local ? '127.0.0.1 (--local)' : '0.0.0.0 (--network)'}`);
   console.log(`Write mode: ${args.writeMode}`);
   if (args.writeMode === 'remote') console.log(`Allowed origins: ${args.allowedOrigins.join(', ')}`);

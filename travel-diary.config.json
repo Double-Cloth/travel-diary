@@ -1,0 +1,15 @@
+{
+  "$schema": "./travel-diary.config.schema.json",
+  "server": {
+    "port": 9000,
+    "local": true,
+    "maxPortRetries": 100,
+    "writeMode": "local",
+    "allowedOrigins": []
+  },
+  "mediaPreviews": {
+    "enabled": true,
+    "browserPath": "",
+    "progressTimeoutMs": 70000
+  }
+}

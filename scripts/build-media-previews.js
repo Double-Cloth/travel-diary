@@ -6,6 +6,7 @@ const { spawn } = require('node:child_process');
 const { randomBytes } = require('node:crypto');
 const { createHandler } = require('../js/server.js');
 const { sourceForPreview } = require('../js/media-preview-store.js');
+const { CONFIG_FILENAME, LOCAL_CONFIG_FILENAME, loadRuntimeConfig } = require('../js/runtime-config.js');
 
 function collectMedia(records) {
     if (!Array.isArray(records)) throw new Error('旅行索引必须是数组。');
@@ -27,7 +28,11 @@ function collectMedia(records) {
 }
 
 async function findBrowser(explicit) {
-    const candidates = explicit ? [explicit] : [
+    const executableNames = [
+        'msedge.exe', 'chrome.exe', 'google-chrome', 'chromium', 'chromium-browser', 'microsoft-edge',
+        'Google Chrome', 'Microsoft Edge', 'Contents/MacOS/Google Chrome', 'Contents/MacOS/Microsoft Edge'
+    ];
+    const candidates = explicit ? [explicit, ...executableNames.map(file => path.join(explicit, file))] : [
         ...[process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA]
             .filter(Boolean).flatMap(base => ['Microsoft/Edge/Application/msedge.exe', 'Google/Chrome/Application/chrome.exe'].map(file => path.join(base, file))),
         '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
@@ -37,11 +42,16 @@ async function findBrowser(explicit) {
     for (const candidate of candidates) {
         try { if ((await fs.stat(candidate)).isFile()) return candidate; } catch { /* 继续查找本机已有浏览器。 */ }
     }
-    throw new Error('未找到 Edge 或 Chrome。请通过 --browser 指定已有浏览器可执行文件路径。');
+    throw new Error(`未找到 Edge 或 Chrome${explicit ? `（指定路径：${explicit}）` : ''}。请通过 --browser、TRAVEL_BROWSER_PATH 或 ${CONFIG_FILENAME} 的 mediaPreviews.browserPath 指定已有浏览器可执行文件或所在目录。`);
 }
 
 async function buildMediaPreviews(root, options = {}) {
     root = await fs.realpath(root);
+    const config = loadRuntimeConfig(root).mediaPreviews;
+    const progressTimeoutMs = options.progressTimeoutMs ?? config.progressTimeoutMs;
+    if (!Number.isInteger(progressTimeoutMs) || progressTimeoutMs < 1000 || progressTimeoutMs > 2147483647) {
+        throw new Error('生成进度超时必须是 1000 到 2147483647 之间的整数毫秒数。');
+    }
     const encode = value => value.split('/').map(encodeURIComponent).join('/');
     const items = options.previews ? [...new Set(options.previews)].map(preview => {
         const source = sourceForPreview(preview);
@@ -65,7 +75,8 @@ async function buildMediaPreviews(root, options = {}) {
     }
     const result = { generated: 0, cached: 0, failed: 0 };
     if (!items.length) return result;
-    const browserPath = await findBrowser(options.browser || process.env.TRAVEL_BROWSER_PATH);
+    const selectedBrowser = options.browser || process.env.TRAVEL_BROWSER_PATH || config.browserPath;
+    const browserPath = await findBrowser(selectedBrowser);
     const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-preview-browser-'));
     const session = `/__media-preview-${randomBytes(16).toString('hex')}/`;
     // 生成任务使用原始缓存接口，避免内部请求再次触发后台生成。
@@ -75,7 +86,7 @@ async function buildMediaPreviews(root, options = {}) {
     const done = new Promise((resolve, reject) => { resolveDone = resolve; rejectDone = reject; });
     const heartbeat = () => {
         clearTimeout(timer);
-        timer = setTimeout(() => rejectDone(new Error('浏览器超过 70 秒没有报告进度，已停止生成。')), 70000);
+        timer = setTimeout(() => rejectDone(new Error(`浏览器超过 ${progressTimeoutMs / 1000} 秒没有报告进度，已停止生成。`)), progressTimeoutMs);
     };
     const server = http.createServer(async (req, res) => {
         try {
@@ -139,7 +150,7 @@ async function buildMediaPreviews(root, options = {}) {
 async function main() {
     const args = process.argv.slice(2);
     if (args.length === 1 && ['--help', '-h'].includes(args[0])) {
-        console.log('用法：npm run media:previews -- [--dir 项目目录] [--browser 浏览器路径] [--skip-missing]\n使用已有 Edge / Chrome 批量生成图片、视频和头像缩略图；有效缓存自动跳过。--skip-missing 仅跳过未随项目提供的原文件，解码或写入失败仍报错。');
+        console.log(`用法：npm run media:previews -- [--dir 项目目录] [--browser 浏览器路径或目录] [--skip-missing]\n依次读取项目目录下的 ${CONFIG_FILENAME} 和 ${LOCAL_CONFIG_FILENAME}，本机配置优先。浏览器优先级为 --browser、TRAVEL_BROWSER_PATH、mediaPreviews.browserPath、自动查找。\n使用已有 Edge / Chrome 批量生成图片、视频和头像缩略图；有效缓存自动跳过。--skip-missing 仅跳过未随项目提供的原文件，解码或写入失败仍报错。`);
         return;
     }
     const options = {};

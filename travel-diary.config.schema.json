@@ -1,0 +1,77 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Travel Diary 运行配置",
+  "description": "所有业务字段均可省略。本机专用配置可写入 travel-diary.config.local.json，按字段覆盖共享配置。修改后重启服务。",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "编辑器配置提示，保持为 ./travel-diary.config.schema.json 即可。"
+    },
+    "server": {
+      "type": "object",
+      "description": "服务监听和写入权限。命令行参数优先。",
+      "additionalProperties": false,
+      "properties": {
+        "port": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 9000,
+          "description": "起始监听端口。端口占用时按 maxPortRetries 尝试后续端口，以终端输出为准。"
+        },
+        "local": {
+          "type": "boolean",
+          "default": true,
+          "description": "true 仅监听本机 127.0.0.1。false 监听 0.0.0.0，允许局域网浏览。写入权限由 writeMode 控制。"
+        },
+        "maxPortRetries": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 65535,
+          "default": 100,
+          "description": "最多尝试的端口数量，包含起始端口。设为 1 时端口占用即报错。"
+        },
+        "writeMode": {
+          "type": "string",
+          "enum": ["local", "remote"],
+          "default": "local",
+          "description": "local 仅允许本机认证与写入。remote 允许白名单 HTTPS 来源认证与写入，需配置 allowedOrigins 并预先设置密码。"
+        },
+        "allowedOrigins": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^https://" },
+          "default": [],
+          "examples": [["https://diary.example.com"]],
+          "description": "remote 模式允许的完整 HTTPS Origin。local 模式保持空数组。本机覆盖文件和命令行会整体替换此数组。"
+        }
+      }
+    },
+    "mediaPreviews": {
+      "type": "object",
+      "description": "后端调用已有 Edge / Chrome 生成缩略图的配置。",
+      "additionalProperties": false,
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "缓存缺失时启用后端按需生成。关闭后由页面生成并回传。批量命令仍可手动运行。"
+        },
+        "browserPath": {
+          "type": "string",
+          "default": "",
+          "examples": ["C:/Program Files/Google/Chrome/Application", "C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe", "./tools/chrome"],
+          "description": "浏览器可执行文件或安装目录。留空自动查找。Windows 推荐使用 /。相对路径以配置文件所在目录为基准。环境变量 TRAVEL_BROWSER_PATH 和批量命令 --browser 可覆盖此值。"
+        },
+        "progressTimeoutMs": {
+          "type": "integer",
+          "minimum": 1000,
+          "maximum": 2147483647,
+          "default": 70000,
+          "description": "连续未报告生成进度的最长等待毫秒数，默认 70000 即 70 秒。处理较大的视频时可适当调高。"
+        }
+      }
+    }
+  }
+}

@@ -8,6 +8,7 @@
     "auth:set": "node scripts/set-auth-password.js",
     "assets:version": "node scripts/sync-asset-versions.js",
     "cache:clear": "node scripts/clear-cache.js",
+    "config:check": "node scripts/check-runtime-config.js",
     "china-locations": "node scripts/update-china-locations.mjs",
     "countries": "node scripts/update-countries.mjs",
     "data:archive": "node scripts/build-data-backup.js",

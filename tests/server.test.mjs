@@ -148,12 +148,13 @@ test('视频使用正确 MIME 并支持单段 Range 请求与进度拖动', asyn
 });
 
 test('端口参数不能越界且被占用时自动尝试后续端口', async () => {
+    const parse = args => parseArgs(['--dir', root, ...args]);
     for (const port of ['0', '-1', '65536', '1.5', 'NaN', 'Infinity']) {
-        assert.throws(() => parseArgs([`--port=${port}`]), /端口/);
+        assert.throws(() => parse([`--port=${port}`]), /端口/);
     }
-    assert.equal(parseArgs(['--port', '65535']).port, 65535);
+    assert.equal(parse(['--port', '65535']).port, 65535);
     for (const args of [['--port'], ['--dir'], ['--dir='], ['--dir', '--network'], ['--write-mode'], ['--write-mode='], ['--write-mode=public'], ['--unknown']]) {
-        assert.throws(() => parseArgs(args));
+        assert.throws(() => parse(args));
     }
     const occupied = await listenWithRetries(root, 30_000, false);
     const result = await listenWithRetries(root, occupied.port, false);
@@ -163,14 +164,15 @@ test('端口参数不能越界且被占用时自动尝试后续端口', async ()
 });
 
 test('监听范围与写入模式独立，默认及单独 network 均保持 local 写入', () => {
-    assert.deepEqual(parseArgs([]), { dir: '.', port: 9000, local: true, writeMode: 'local', allowedOrigins: [] });
-    assert.equal(parseArgs(['--network']).writeMode, 'local');
-    assert.deepEqual(parseArgs(['--local', '--write-mode=remote', '--allowed-origin=https://diary.example']), {
-        dir: '.', port: 9000, local: true, writeMode: 'remote', allowedOrigins: ['https://diary.example']
+    const parse = args => parseArgs(['--dir', root, ...args]);
+    assert.deepEqual(parse([]), { dir: root, port: 9000, local: true, writeMode: 'local', allowedOrigins: [] });
+    assert.equal(parse(['--network']).writeMode, 'local');
+    assert.deepEqual(parse(['--local', '--write-mode=remote', '--allowed-origin=https://diary.example']), {
+        dir: root, port: 9000, local: true, writeMode: 'remote', allowedOrigins: ['https://diary.example']
     });
-    assert.throws(() => parseArgs(['--write-mode', 'remote']), /allowed-origin/);
-    assert.throws(() => parseArgs(['--write-mode=remote', '--allowed-origin=http://diary.example']), /HTTPS Origin/);
-    assert.throws(() => parseArgs(['--allowed-origin=https://diary.example']), /remote/);
+    assert.throws(() => parse(['--write-mode', 'remote']), /allowed-origin/);
+    assert.throws(() => parse(['--write-mode=remote', '--allowed-origin=http://diary.example']), /HTTPS Origin/);
+    assert.throws(() => parse(['--allowed-origin=https://diary.example']), /remote/);
 });
 
 test('CLI help 说明监听与写入配置，并包含显式远程写入示例', () => {
