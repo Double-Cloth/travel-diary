@@ -135,7 +135,7 @@ export function createFontCache(root, { background = false } = {}) {
             const metadata = JSON.parse(await readFile(await safePath(root, `${output}.json`), 'utf8'));
             const data = await readFile(await safePath(root, output));
             if (metadata?.signature === signature && metadata.hash === hash(data)) {
-                return { job, data, ranges: metadata.ranges };
+                return { job, data, ranges: metadata.ranges, cached: true };
             }
         } catch (error) {
             if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error;
@@ -148,7 +148,7 @@ export function createFontCache(root, { background = false } = {}) {
         const metadataPath = await safePath(root, `${output}.json`, true);
         await atomicWrite(destination, data);
         await atomicWrite(metadataPath, JSON.stringify({ signature, hash: hash(data), ranges }));
-        return { job, data, ranges };
+        return { job, data, ranges, cached: false };
     }
 
     async function ensure(name, subsetMode = false) {
@@ -165,10 +165,15 @@ export function createFontCache(root, { background = false } = {}) {
         finally { if (pending.get(name) === entry) pending.delete(name); }
     }
 
-    async function styles(strict = false) {
+    async function styles(strict = false, report) {
         const cores = [];
         for (const job of fontJobs.filter(job => job.family === 'Diary Kai')) {
-            try { cores.push(await ensure(`${job.name}-core.woff2`)); }
+            const name = `${job.name}-core.woff2`;
+            try {
+                const result = await ensure(name);
+                cores.push(result);
+                report?.(name, result.cached);
+            }
             catch (error) { if (strict) throw error; }
         }
         const data = fontStyles(cores);
@@ -176,7 +181,9 @@ export function createFontCache(root, { background = false } = {}) {
             const destination = await safePath(root, '.cache/fonts/diary-kai-core.css', true);
             // 内容相同则复用文件，避免无意义地改变缓存时间。
             const existing = await readFile(destination).catch(error => { if (error.code !== 'ENOENT') throw error; });
-            if (!existing?.equals(data)) await atomicWrite(destination, data);
+            const cached = existing?.equals(data) === true;
+            if (!cached) await atomicWrite(destination, data);
+            report?.('diary-kai-core.css', cached);
         } catch (error) { if (strict) throw error; }
         return data;
     }
@@ -186,11 +193,22 @@ export function createFontCache(root, { background = false } = {}) {
             if (name === 'diary-kai-core.css') return styles();
             return (await ensure(name)).data;
         },
-        async build({ coreOnly = false, subsetMode = false } = {}) {
+        async build({ coreOnly = false, subsetMode = false, log } = {}) {
+            const total = (coreOnly ? 0 : fontJobs.length) + fontJobs.filter(job => job.family === 'Diary Kai').length + 1;
+            let completed = 0;
+            const report = (name, cached) => {
+                completed += 1;
+                log?.(`[${completed}/${total}] ${cached ? '缓存有效' : '已生成'}：.cache/fonts/${name}`);
+            };
+            log?.(`开始处理字体缓存，共 ${total} 项。`);
             if (!coreOnly) {
-                for (const job of fontJobs) await ensure(`${job.name}.woff2`, subsetMode);
+                for (const job of fontJobs) {
+                    const name = `${job.name}.woff2`;
+                    const result = await ensure(name, subsetMode);
+                    report(name, result.cached);
+                }
             }
-            await styles(true);
+            await styles(true, report);
         }
     };
 }
@@ -201,7 +219,7 @@ async function main() {
     if (unknown.length) throw new Error(`未知参数：${unknown.join(', ')}。可用参数为 --subset 或 --core。`);
     if (args.includes('--subset') && args.includes('--core')) throw new Error('--subset 与 --core 不能同时使用。');
     const cache = createFontCache(await realpath(projectRoot));
-    await cache.build({ coreOnly: args.includes('--core'), subsetMode: args.includes('--subset') });
+    await cache.build({ coreOnly: args.includes('--core'), subsetMode: args.includes('--subset'), log: console.log });
     console.log('字体缓存已生成：.cache/fonts/');
 }
 

@@ -211,6 +211,13 @@ syncBuiltinESMExports();
     };
     const full = run();
     assert.equal(full.status, 0, full.stderr);
+    const outputs = [...names.map(name => `${name}.woff2`),
+        'LXGWWenKaiMono-Regular-core.woff2', 'LXGWWenKaiMono-Medium-core.woff2', 'diary-kai-core.css'];
+    assert.deepEqual(full.stdout.trim().split(/\r?\n/), [
+        '开始处理字体缓存，共 8 项。',
+        ...outputs.map((name, index) => `[${index + 1}/8] 已生成：.cache/fonts/${name}`),
+        '字体缓存已生成：.cache/fonts/'
+    ]);
     const fullFonts = await Promise.all(names.map(name => readFile(join(directory, '.cache/fonts', `${name}.woff2`))));
     assert.deepEqual(readCmap(await decompressFont(fullFonts[1])), readCmap(fixture));
     const corePath = join(directory, '.cache/fonts/LXGWWenKaiMono-Regular-core.woff2');
@@ -230,15 +237,32 @@ syncBuiltinESMExports();
     }
     assert.equal((css.match(/font-display: block/g) || []).length, 7);
     await writeFile(join(directory, 'data/entry.md'), '旅行龘');
-    assert.equal(run('--core').status, 0);
+    const refreshedCore = run('--core');
+    assert.equal(refreshedCore.status, 0, refreshedCore.stderr);
+    assert.deepEqual(refreshedCore.stdout.trim().split(/\r?\n/), [
+        '开始处理字体缓存，共 3 项。',
+        ...outputs.slice(-3).map((name, index) => `[${index + 1}/3] 已生成：.cache/fonts/${name}`),
+        '字体缓存已生成：.cache/fonts/'
+    ]);
     const core = await readFile(corePath);
     assert.notDeepEqual(core, firstCore);
     assert.ok(readCmap(await decompressFont(core)).includes('龘'.codePointAt(0)));
-    assert.equal(run('--core').status, 0);
+    const cachedCore = run('--core');
+    assert.equal(cachedCore.status, 0, cachedCore.stderr);
+    assert.deepEqual(cachedCore.stdout.trim().split(/\r?\n/), [
+        '开始处理字体缓存，共 3 项。',
+        ...outputs.slice(-3).map((name, index) => `[${index + 1}/3] 缓存有效：.cache/fonts/${name}`),
+        '字体缓存已生成：.cache/fonts/'
+    ]);
     assert.deepEqual(await readFile(corePath), core, '相同输入应生成相同字体');
     for (const [index, name] of names.entries()) assert.deepEqual(await readFile(join(directory, '.cache/fonts', `${name}.woff2`)), fullFonts[index]);
     const subset = run('--subset');
     assert.equal(subset.status, 0, subset.stderr);
+    assert.deepEqual(subset.stdout.trim().split(/\r?\n/), [
+        '开始处理字体缓存，共 8 项。',
+        ...outputs.map((name, index) => `[${index + 1}/8] ${index < names.length ? '已生成' : '缓存有效'}：.cache/fonts/${name}`),
+        '字体缓存已生成：.cache/fonts/'
+    ]);
     const subsetMap = readCmap(await decompressFont(await readFile(join(directory, '.cache/fonts/LXGWWenKaiMono-Regular.woff2'))));
     assert.ok(!subsetMap.includes('魑'.codePointAt(0)));
     assert.ok(subsetMap.includes('龘'.codePointAt(0)), '完整子集模式收集目录文字');
@@ -249,6 +273,7 @@ syncBuiltinESMExports();
         const result = run(...args);
         assert.notEqual(result.status, 0);
         assert.match(result.stderr, /未知参数|不能同时/);
+        assert.equal(result.stdout, '');
     }
     await assert.rejects(stat(join(directory, 'node_modules')), { code: 'ENOENT' });
     await writeFile(join(directory, 'retry.mjs'), `

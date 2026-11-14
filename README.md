@@ -190,6 +190,8 @@ npm run countries
 npm run china-locations
 ```
 
+字体命令启动时显示任务总数，每完成一个字体或 CSS 文件便输出当前进度、文件路径及「已生成」或「缓存有效」状态。
+
 字体构建、缓存与文件存放约定见 [资产管理规范](doc/ASSET_MANAGEMENT.md#字体)。
 
 ## 文档
