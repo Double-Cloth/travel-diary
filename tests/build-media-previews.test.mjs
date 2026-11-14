@@ -76,7 +76,7 @@ test('后台生成失败后可重试，非法路径和过量排队不启动新�
     await Promise.all(pending);
 });
 
-test('每项完成后立即返回，后续请求唤醒同一浏览器并保持批次上限', async () => {
+test('每项完成后立即返回，后续请求唤醒同一浏览器并保持批次上限', async t => {
     let session, finish;
     let calls = 0;
     const generate = createMediaPreviewGenerator('root', async (_root, options) => {
@@ -92,17 +92,26 @@ test('每项完成后立即返回，后续请求唤醒同一浏览器并保持�
     session.onProgress(paths[0]);
     await first;
     const signal = new AbortController().signal;
+    t.mock.timers.enable({ apis: ['setTimeout'] });
     const waiting = session.nextBatch(signal);
+    let expired = false;
+    void waiting.then(() => { expired = true; });
+    t.mock.timers.tick(2000);
+    await new Promise(resolve => setImmediate(resolve));
+    assert.equal(expired, false, '停顿两秒后滚动仍可复用原浏览器');
     const third = generate(paths[2]);
     assert.equal(generate(paths[2]), third, '尚未完成的同路径请求继续合并');
     assert.deepEqual(await waiting, [paths[2]]);
     const fourth = generate(paths[3]);
     const fifth = generate(paths[4]);
-    assert.deepEqual(await session.nextBatch(signal), paths.slice(3));
+    assert.deepEqual(await session.nextBatch(signal, 1), paths.slice(3, 4));
+    assert.deepEqual(await session.nextBatch(signal, 1), paths.slice(4));
     assert.equal(calls, 1, '后续批次复用现有生成进程');
     for (const path of paths.slice(1)) session.onProgress(path);
     await Promise.all([second, third, fourth, fifth]);
-    assert.deepEqual(await session.nextBatch(signal), [], '空闲后结束会话');
+    const idle = session.nextBatch(signal);
+    t.mock.timers.tick(30000);
+    assert.deepEqual(await idle, [], '空闲后结束会话');
     finish();
 });
 
@@ -152,26 +161,43 @@ test('后续批次失败只拒绝未完成项，重试继续可用', async () =>
     assert.equal(calls, 2);
 });
 
-test('浏览器连续领取批次，保留全局进度索引并继续处理失败后的项目', async () => {
+test('浏览器最多并行两项，慢媒体不阻挡后续项目，失败后继续处理', async () => {
     const source = await readFile(new URL('../scripts/media-preview-batch.mjs', import.meta.url), 'utf8');
     const manifests = [
-        [{ index: 0, preview: '/cached' }, { index: 1, preview: '/generated', source: '/original', kind: 'image' }],
-        [{ index: 2, preview: '/missing' }, { index: 3, preview: '/cached' }], []
+        [{ index: 0, preview: '/generated', source: '/original', kind: 'image' }, { index: 1, preview: '/cached' }],
+        [{ index: 2, preview: '/missing' }], [{ index: 3, preview: '/cached' }], []
     ];
     const reports = [], writes = [];
     let generated = 0;
+    let release;
+    let completed = false;
+    const slow = new Promise(resolve => { release = resolve; });
     await runInNewContext(source.replace(/^import[^\n]+\n/, ''), {
         AbortSignal,
         createMediaPreview: async (source, kind) => {
             assert.equal(source, '/original');
             assert.equal(kind, 'image');
             generated++;
+            await slow;
             return new Blob(['jpeg']);
         },
         fetch: async (url, options) => {
-            if (url === './manifest') return Response.json(manifests.shift());
+            if (url.startsWith('./manifest?limit=')) {
+                assert.equal(url, manifests.length === 4 ? './manifest?limit=2' : './manifest?limit=1');
+                return Response.json(manifests.shift());
+            }
             if (url === './progress') {
-                reports.push(JSON.parse(options.body));
+                const report = JSON.parse(options.body);
+                reports.push(report);
+                if (report.index === 3) {
+                    assert.ok(!reports.some(item => item.index === 0), '慢媒体仍在处理中，后续三项已经完成');
+                    release();
+                }
+                return new Response(null, { status: 204 });
+            }
+            if (url === './complete') {
+                assert.equal(reports.length, 4, '全部任务均报告后才结束会话');
+                completed = true;
                 return new Response(null, { status: 204 });
             }
             if (options?.method === 'PUT') {
@@ -184,9 +210,10 @@ test('浏览器连续领取批次，保留全局进度索引并继续处理失�
     });
     assert.equal(manifests.length, 0);
     assert.equal(generated, 1);
+    assert.equal(completed, true);
     assert.deepEqual(writes, [{ url: '/generated', etag: 'source-version' }]);
     assert.deepEqual(reports.map(({ index, status }) => ({ index, status })), [
-        { index: 0, status: 'cached' }, { index: 1, status: 'generated' },
-        { index: 2, status: 'failed' }, { index: 3, status: 'cached' }
+        { index: 1, status: 'cached' }, { index: 2, status: 'failed' },
+        { index: 3, status: 'cached' }, { index: 0, status: 'generated' }
     ]);
 });

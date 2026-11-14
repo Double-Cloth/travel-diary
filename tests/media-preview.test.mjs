@@ -7,7 +7,7 @@ import { tmpdir } from 'node:os';
 import { createMediaPreviewStore, sourceForPreview, isPreviewJpeg } from '../js/media-preview-store.js';
 import { createHandler } from '../js/server.js';
 import previewBuilder from '../scripts/build-media-previews.js';
-import { getMediaPreviewUrl, getMediaPreviewBlob, saveMediaPreview, clearMediaPreviewCache } from '../js/media-preview.mjs';
+import { getMediaPreviewUrl, getMediaPreviewBlob, saveMediaPreview, clearMediaPreviewCache, createMediaPreview } from '../js/media-preview.mjs';
 import { listenOnFetchSafePort } from './helpers/http.mjs';
 
 async function fixture(t) {
@@ -25,6 +25,48 @@ async function fixture(t) {
 // 最小尺寸头用于验证服务端的格式与尺寸边界，真实解码另由浏览器验证。
 const jpeg = Buffer.from([0xff, 0xd8, 0xff, 0xc0, 0, 11, 8, 0, 1, 0, 1, 1, 1, 0x11, 0, 0xff, 0xd9]);
 const previewPath = '/.cache/media-previews/photos/trip/image.png.jpg';
+
+test('大图使用软件画布缩小，普通图片和视频沿用原路径，保持预览尺寸与 JPEG 质量', async t => {
+    const previous = globalThis.document;
+    t.after(() => { globalThis.document = previous; });
+    let width, height, currentCanvas, contextOptions, encoding;
+    globalThis.document = {
+        createElement(tag) {
+            if (tag === 'canvas') {
+                currentCanvas = {
+                    getContext(_type, options) {
+                        contextOptions = options;
+                        return { fillRect() {}, drawImage() {} };
+                    },
+                    toBlob(callback, type, quality) {
+                        encoding = { type, quality };
+                        callback(new Blob([jpeg], { type }));
+                    }
+                };
+                return currentCanvas;
+            }
+            return {
+                get naturalWidth() { return width; }, get naturalHeight() { return height; },
+                get videoWidth() { return width; }, get videoHeight() { return height; },
+                set src(_value) { queueMicrotask(() => this.onload?.()); },
+                removeAttribute() {}, pause() {}, load() {}
+            };
+        }
+    };
+    for (const [kind, originalWidth, originalHeight, software] of [
+        ['image', 8000, 6000, true], ['image', 1600, 900, false],
+        ['image', 320, 200, false], ['image', 6000, 8000, true], ['video', 8000, 6000, false]
+    ]) {
+        width = originalWidth;
+        height = originalHeight;
+        await createMediaPreview('data/media', kind);
+        const scale = Math.min(1, 640 / width, 640 / height);
+        assert.equal(currentCanvas.width, Math.round(width * scale));
+        assert.equal(currentCanvas.height, Math.round(height * scale));
+        assert.deepEqual(contextOptions, { alpha: false, willReadFrequently: software });
+        assert.deepEqual(encoding, { type: 'image/jpeg', quality: 0.78 });
+    }
+});
 
 test('预览放到 .cache，保留扩展名与 URL 编码并拒绝路径穿越', () => {
     assert.equal(getMediaPreviewUrl('data/photos/trip/a%20b.png'), '.cache/media-previews/photos/trip/a%20b.png.jpg');

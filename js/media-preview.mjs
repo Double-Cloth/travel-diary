@@ -204,7 +204,8 @@ export async function createMediaPreview(source, kind, { width: limitWidth = 640
         const canvas = document.createElement('canvas');
         canvas.width = fit === 'cover' ? limitWidth : Math.max(1, Math.round(width * scale));
         canvas.height = fit === 'cover' ? limitHeight : Math.max(1, Math.round(height * scale));
-        const context = canvas.getContext('2d', { alpha: false });
+        // 大图在 CPU 画布直接缩小，减少上传完整像素到 GPU 后再读回编码的开销。
+        const context = canvas.getContext('2d', { alpha: false, willReadFrequently: !video && width * height > 16 * 1024 * 1024 });
         if (!context) throw new Error('无法创建媒体预览。');
         context.fillStyle = '#f3e4bd';
         context.fillRect(0, 0, canvas.width, canvas.height);

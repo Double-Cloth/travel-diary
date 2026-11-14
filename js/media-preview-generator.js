@@ -10,8 +10,8 @@ function createMediaPreviewGenerator(root, build = (...args) => require('../scri
     async function run() {
         while (queue.length) {
             const batch = new Map();
-            const takeBatch = () => {
-                const items = queue.splice(0, 2);
+            const takeBatch = (limit = 2) => {
+                const items = queue.splice(0, limit);
                 for (const item of items) batch.set(item.path, item);
                 return items.map(item => item.path);
             };
@@ -27,8 +27,8 @@ function createMediaPreviewGenerator(root, build = (...args) => require('../scri
                         batch.delete(path);
                         pending.delete(path);
                     },
-                    async nextBatch(signal) {
-                        // 短暂保留空闲浏览器，接续客户端释放并发槽后发来的请求。
+                    async nextBatch(signal, limit = 2) {
+                        // 保留空闲浏览器，滚动或切页后的请求可继续使用同一进程。
                         if (!queue.length && !signal.aborted) await new Promise(resolve => {
                             const finish = () => {
                                 clearTimeout(timer);
@@ -36,11 +36,11 @@ function createMediaPreviewGenerator(root, build = (...args) => require('../scri
                                 wake = undefined;
                                 resolve();
                             };
-                            const timer = setTimeout(finish, 500);
+                            const timer = setTimeout(finish, Math.min(30000, (options.progressTimeoutMs ?? 70000) / 2));
                             wake = finish;
                             signal.addEventListener('abort', finish, { once: true });
                         });
-                        return signal.aborted ? [] : takeBatch();
+                        return signal.aborted ? [] : takeBatch(limit);
                     }
                 });
                 for (const item of batch.values()) item.resolve();

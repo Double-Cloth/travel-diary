@@ -85,7 +85,8 @@ async function buildMediaPreviews(root, options = {}) {
     const handler = createHandler(root, { generateMediaPreviews: false });
     const log = options.log || console.log;
     const controller = new AbortController();
-    let browser, timer, resolveDone, rejectDone, processed = 0, manifestSent = false;
+    let browser, timer, resolveDone, rejectDone, dispatched = 0;
+    const completed = new Set();
     const done = new Promise((resolve, reject) => { resolveDone = resolve; rejectDone = reject; });
     const heartbeat = () => {
         clearTimeout(timer);
@@ -96,17 +97,23 @@ async function buildMediaPreviews(root, options = {}) {
             if (req.url === session && req.method === 'GET') {
                 res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Content-Security-Policy': "default-src 'self'; script-src 'self'; img-src 'self'; media-src 'self'; connect-src 'self'; base-uri 'none'" });
                 res.end('<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>生成媒体缩略图</title><script type="module" src="./batch.mjs"></script></html>');
-            } else if (req.url === session + 'manifest' && req.method === 'GET') {
-                if (manifestSent) {
-                    if (processed !== items.length) throw new Error('上一批媒体尚未生成完成。');
-                    const next = previewItems(await options.nextBatch?.(controller.signal) || []);
+            } else if (req.url.startsWith(session + 'manifest?') && req.method === 'GET') {
+                const limit = Number(new URL(req.url, 'http://localhost').searchParams.get('limit'));
+                if (!Number.isInteger(limit) || limit < 1 || limit > 2
+                    || dispatched - completed.size + limit > 2) throw new Error('生成并发数无效。');
+                if (dispatched === items.length) {
+                    const next = previewItems(await options.nextBatch?.(controller.signal, limit) || []);
                     if (controller.signal.aborted) return;
                     items.push(...next);
                 }
-                manifestSent = true;
+                const manifest = items.slice(dispatched, dispatched + limit).map((item, offset) => ({ ...item, index: dispatched + offset }));
+                dispatched += manifest.length;
                 res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-                res.end(JSON.stringify(items.slice(processed).map((item, offset) => ({ ...item, index: processed + offset }))));
-                if (processed === items.length) resolveDone(result);
+                res.end(JSON.stringify(manifest));
+            } else if (req.url === session + 'complete' && req.method === 'POST') {
+                if (completed.size !== items.length) throw new Error('仍有媒体尚未生成完成。');
+                res.writeHead(204); res.end();
+                resolveDone(result);
             } else if ([session + 'batch.mjs', session + 'preview.mjs'].includes(req.url) && req.method === 'GET') {
                 const file = req.url.endsWith('/batch.mjs') ? path.join(__dirname, 'media-preview-batch.mjs') : path.join(__dirname, '../js/media-preview.mjs');
                 res.writeHead(200, { 'Content-Type': 'text/javascript' }); res.end(await fs.readFile(file));
@@ -118,10 +125,11 @@ async function buildMediaPreviews(root, options = {}) {
                 }
                 if (req.url.endsWith('/error')) throw new Error(body);
                 const report = JSON.parse(body);
-                if (report.index !== processed || !Object.hasOwn(result, report.status)) throw new Error('生成进度无效。');
+                if (!Number.isInteger(report.index) || report.index < 0 || report.index >= dispatched
+                    || completed.has(report.index) || !Object.hasOwn(result, report.status)) throw new Error('生成进度无效。');
                 result[report.status] += 1;
-                processed += 1;
-                log(`[${processed}/${items.length}] ${report.status === 'generated' ? '已生成' : report.status === 'cached' ? '缓存有效' : '失败'}：${decodeURIComponent(items[report.index].source)}${report.message ? `；${report.message}` : ''}`);
+                completed.add(report.index);
+                log(`[${completed.size}/${items.length}] ${report.status === 'generated' ? '已生成' : report.status === 'cached' ? '缓存有效' : '失败'}：${decodeURIComponent(items[report.index].source)}${report.message ? `；${report.message}` : ''}`);
                 res.writeHead(204); res.end();
                 heartbeat();
                 options.onProgress?.(decodeURIComponent(items[report.index].preview));
