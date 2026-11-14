@@ -825,6 +825,7 @@ test('日记页最多预览三行媒体且提供全集媒体页', () => {
     assert.match(appJs, /function getPhotoSleeveColumnCount\(sleeve\)/);
     assert.match(appJs, /const visibleLimit = columnCount \* previewRows;/);
     assert.match(appJs, /button\.hidden = index >= visibleLimit;/);
+    assert.match(journalCss, /\.photo-sleeve-button\[hidden\]\s*\{\s*display: none;\s*\}/);
     assert.match(appJs, /photo-sleeve-preview/);
     assert.match(appJs, /data-action="view-all-photos"/);
     assert.match(appJs, /查看全部媒体/);

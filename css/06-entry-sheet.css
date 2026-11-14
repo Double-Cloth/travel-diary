@@ -148,6 +148,8 @@
     transition: transform 0.18s ease, box-shadow 0.18s ease, filter 0.18s ease;
 }
 
+.photo-sleeve-button[hidden] { display: none; }
+
 .photo-sleeve-button:nth-child(even) {
     transform: rotate(0.9deg);
 }
