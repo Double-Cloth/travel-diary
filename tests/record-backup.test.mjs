@@ -235,6 +235,37 @@ test('API 选择绑定当前会话，导入复用会话且仍需令牌，合并�
     assert.equal((await (await fetch(`${base}/api/travel-records`, { headers })).json()).authenticated, true);
 });
 
+test('下载预检返回前释放数据锁，浏览器紧接着下载时不会遇到冲突', async t => {
+    const root = await fixture(t);
+    const server = http.createServer(createHandler(root));
+    const base = await listenOnFetchSafePort(server);
+    t.after(async () => { server.closeAllConnections(); await new Promise(resolve => server.close(resolve)); });
+    const { cookie, token } = await login(base);
+    const unlink = fs.unlink;
+    t.mock.method(fs, 'unlink', async file => {
+        if (file === path.join(root, '.travel-data.lock')) await new Promise(resolve => setTimeout(resolve, 50));
+        return unlink(file);
+    });
+    const headers = { Cookie: cookie, Origin: base, 'X-Travel-Token': token };
+    const select = await fetch(`${base}/api/travel-data?mode=select`, {
+        method: 'POST', headers: { ...headers, 'Content-Type': 'application/json' }, body: JSON.stringify({ paths: [first.desc_md] })
+    });
+    const { selection } = await select.json();
+    for (const query of ['', `?selection=${selection}`]) {
+        const head = await fetch(`${base}/api/travel-data${query}`, { method: 'HEAD', headers });
+        assert.equal(head.status, 200);
+        const download = await fetch(`${base}/api/travel-data${query}`, { headers });
+        assert.equal(download.status, 200);
+        await readZipSource(new Uint8Array(await download.arrayBuffer()));
+        // 响应传完后仍需等待比较基准写入及异步解锁。
+        for (let attempt = 0; attempt < 100; attempt++) {
+            if (!await fs.stat(path.join(root, '.travel-data.lock')).then(() => true, () => false)) break;
+            await new Promise(resolve => setTimeout(resolve, 10));
+        }
+        await assert.rejects(fs.stat(path.join(root, '.travel-data.lock')), { code: 'ENOENT' });
+    }
+});
+
 test('密码预校验要求会话及令牌，不修改数据，正式导入仍独立验证备份密码', async t => {
     const root = await fixture(t);
     const server = http.createServer(createHandler(root));

@@ -281,8 +281,10 @@ export function createRecordTransfer(onImported, getRecords, { isDeleteActive = 
             const capability = context.mode === 'import' ? await requireService() : await probeWriterService();
             if (!capability.recordManagement) throw new Error('请重启服务器以使用记录差异对比和增量备份。');
             let response;
+            const url = new URL('api/travel-data?mode=inventory', window.location.href);
+            if (context.mode === 'export') url.searchParams.set('scope', 'changes');
             for (let attempt = 0; attempt < 3; attempt += 1) {
-                response = await fetch(new URL('api/travel-data?mode=inventory', window.location.href), { credentials: 'same-origin', cache: 'no-store', signal: progress.signal });
+                response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', signal: progress.signal });
                 if (response.status !== 409 || attempt === 2) break;
                 // 导出刚结束时，等待服务端完成备份状态写入并释放数据锁。
                 await new Promise(resolve => setTimeout(resolve, 100));
@@ -317,7 +319,7 @@ export function createRecordTransfer(onImported, getRecords, { isDeleteActive = 
                 selected.clear();
                 for (const record of result.records) {
                     const id = recordIdentity(record);
-                    if (result.backup.records[id] !== result.fingerprints[id]) selected.add(record.desc_md);
+                    if (!result.backup.records[id] || result.backup.records[id] !== result.fingerprints[id]) selected.add(record.desc_md);
                 }
                 render();
                 dialog.querySelector('[data-record-transfer-note]').textContent = `已选择 ${selected.size} 条新增或有变化的记录（含正文、信息和媒体内容）。`

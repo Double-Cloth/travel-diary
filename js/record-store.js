@@ -1267,14 +1267,22 @@ function createRecordApi(root, options = {}) {
                 }
                 if (req.method === 'GET' && ['inventory', 'media-health', 'recycle-bin'].includes(mode)) {
                     const release = await acquireDataLock(root);
+                    const controller = new AbortController();
+                    const onClose = () => controller.abort(new Error('记录检查连接已关闭。'));
+                    res.once('close', onClose);
+                    if (res.destroyed) onClose();
+                    let result;
                     try {
-                        if (mode === 'recycle-bin') send(200, await require('./recycle-bin.js').readRecycleBin(root));
-                        else if (mode === 'media-health') send(200, await require('./media-health.js').scanMedia(root));
+                        if (mode === 'recycle-bin') result = await require('./recycle-bin.js').readRecycleBin(root);
+                        else if (mode === 'media-health') result = await require('./media-health.js').scanMedia(root);
                         else {
                             const { inventory, readBackupState } = require('./record-inventory.js');
-                            send(200, { ...await inventory(root), backup: await readBackupState(root) });
+                            const backup = await readBackupState(root);
+                            const backedUp = requestUrl.searchParams.get('scope') === 'changes' ? backup.records : undefined;
+                            result = { ...await inventory(root, { backedUp, signal: controller.signal }), backup };
                         }
-                    } finally { await release(); }
+                    } finally { res.removeListener('close', onClose); await release(); }
+                    send(200, result);
                     return;
                 }
                 if (req.method === 'POST' && ['media-health', 'backup-complete', 'recycle-bin'].includes(mode)) {
@@ -1318,8 +1326,15 @@ function createRecordApi(root, options = {}) {
                     res.once('close', onClose);
                     if (res.destroyed) onClose();
                     let archive;
+                    let releaseArchive;
                     try {
                         archive = await exportDataArchive(root, paths, { signal: controller.signal });
+                        releaseArchive = archive.release;
+                        if (req.method === 'HEAD') {
+                            // 预检返回后浏览器会立即发起 GET，先完成解锁再返回响应。
+                            await releaseArchive();
+                            releaseArchive = undefined;
+                        }
                         session.backupReceipts ||= new Map();
                         const requestedReceipt = requestUrl.searchParams.get('backupReceipt');
                         const receipt = session.backupReceipts.has(requestedReceipt) ? requestedReceipt : randomBytes(16).toString('hex');
@@ -1343,9 +1358,9 @@ function createRecordApi(root, options = {}) {
                             finally { res.removeListener('timeout', onTimeout); res.setTimeout(0); }
                             receiptState.complete = true;
                             // 仍持有导出数据锁，按此次快照更新状态；中断下载不会执行到这里。
-                            await require('./record-inventory.js').rememberBackup(root, archive.snapshot);
+                            await require('./record-inventory.js').rememberBackup(root, archive.snapshot, archive);
                         }
-                    } finally { res.removeListener('close', onClose); await archive?.release(); }
+                    } finally { res.removeListener('close', onClose); await releaseArchive?.(); }
                     return;
                 }
                 const passwordCheck = requestUrl.searchParams.get('mode') === 'verify-backup';

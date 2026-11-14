@@ -162,7 +162,7 @@ async function exportDataArchive(root, selectedPaths = null, { signal } = {}) {
         } });
         signal?.throwIfAborted();
         handedOff = true;
-        return { stream, size, release, snapshot };
+        return { stream, size, release, snapshot, entries, signatures };
     } finally {
         if (!handedOff) await release();
     }

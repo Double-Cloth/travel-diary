@@ -15,6 +15,7 @@ data/
 ├── fonts/                 # 自动生成的 WOFF2、字体 CSS 及校验元数据
 ├── media-previews/        # 自动生成的压缩图片与视频封面
 ├── media-index.json       # 媒体重复检测指纹
+├── record-signatures.json # 正文和媒体的文件版本及内容签名缓存
 ├── backup-state.json      # 最近导出的记录比较基准
 └── recycle-bin/           # 可恢复的日记、媒体及整站快照，清理缓存时保留
 .secrets/

@@ -90,6 +90,88 @@ test('差异预览区分相同、新增、正文及媒体变化，输出字段�
     assert.deepEqual((await describeRecords([reversed], currentEntries)).fingerprints, (await describeRecords([records[0]], currentEntries)).fingerprints);
 });
 
+test('文件签名缓存复用未变化内容，同大小改写、缺失及恢复都会更新指纹', async t => {
+    const root = await fixture(t);
+    const nativeFs = require('node:fs');
+    const createReadStream = nativeFs.createReadStream;
+    const reads = [];
+    t.mock.method(nativeFs, 'createReadStream', function (file, options) {
+        reads.push(path.relative(root, file).replaceAll('\\', '/'));
+        return createReadStream.call(this, file, options);
+    });
+    const initial = await inventory(root);
+    assert.equal(reads.length, 3, '共享附件只读取一次');
+    reads.length = 0;
+    assert.deepEqual(await inventory(root), initial);
+    assert.deepEqual(reads, [], '重复检查只核对文件版本');
+
+    const media = path.join(root, 'data/photos/trip/shared.png');
+    const stat = await fs.stat(media);
+    await fs.writeFile(media, 'change');
+    await fs.utimes(media, stat.atime, stat.mtime);
+    const changed = await inventory(root);
+    assert.deepEqual(reads, ['data/photos/trip/shared.png'], '同大小并恢复修改时间的改写仍会失效');
+    for (const item of changed.records) assert.notEqual(changed.fingerprints[item.record_id], initial.fingerprints[item.record_id]);
+    reads.length = 0;
+    await fs.unlink(media);
+    const missing = await inventory(root);
+    assert.equal(missing.signatures['data/photos/trip/shared.png'], 'missing');
+    await fs.writeFile(media, 'shared');
+    assert.deepEqual((await inventory(root)).fingerprints, initial.fingerprints);
+    assert.deepEqual(reads, ['data/photos/trip/shared.png']);
+
+    await fs.writeFile(path.join(root, '.cache/record-signatures.json'), '{');
+    reads.length = 0;
+    assert.deepEqual((await inventory(root)).fingerprints, initial.fingerprints);
+    assert.equal(reads.length, 3, '损坏的可重建缓存重新读取内容');
+});
+
+test('导出复用打包签名填充缓存，增量检查跳过未备份记录并检测元数据变化', async t => {
+    const root = await fixture(t);
+    const { rememberBackup } = require('../js/record-inventory.js');
+    const exported = await exportDataArchive(root, [first.desc_md]);
+    try {
+        for await (const chunk of exported.stream) {}
+        await rememberBackup(root, exported.snapshot, exported);
+    } finally { await exported.release(); }
+    const nativeFs = require('node:fs');
+    const createReadStream = nativeFs.createReadStream;
+    const reads = [];
+    t.mock.method(nativeFs, 'createReadStream', function (file, options) {
+        reads.push(file);
+        return createReadStream.call(this, file, options);
+    });
+    const backup = await readBackupState(root);
+    const checked = await inventory(root, { backedUp: backup.records });
+    assert.equal(checked.records.length, 2);
+    assert.deepEqual(checked.fingerprints, exported.snapshot);
+    assert.deepEqual(reads, [], '刚导出后检查无需重新读取媒体和正文');
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify([{ ...first, trip_id: 'changed' }, second]));
+    assert.notDeepEqual((await inventory(root, { backedUp: backup.records })).fingerprints, exported.snapshot);
+    assert.deepEqual(reads, [], '元数据修改只重算记录指纹');
+    const fresh = await inventory(root, { backedUp: {} });
+    assert.equal(fresh.records.length, 2);
+    assert.deepEqual(fresh.fingerprints, {});
+    assert.deepEqual(reads, [], '首次备份直接选择全部记录');
+});
+
+test('文件检查期间发生改写时拒绝缓存和返回旧指纹，取消后可以重试', async t => {
+    const root = await fixture(t);
+    const nativeFs = require('node:fs');
+    const createReadStream = nativeFs.createReadStream;
+    const mocked = t.mock.method(nativeFs, 'createReadStream', function (file, options) {
+        const stream = createReadStream.call(this, file, options);
+        if (file.endsWith('shared.png')) stream.once('end', () => require('node:fs').writeFileSync(file, 'change'));
+        return stream;
+    });
+    try { await assert.rejects(inventory(root), /检查期间发生变化/); }
+    finally { mocked.mock.restore(); }
+    const controller = new AbortController();
+    controller.abort(new Error('已取消检查'));
+    await assert.rejects(inventory(root, { signal: controller.signal }), /已取消检查/);
+    assert.ok((await inventory(root)).fingerprints[recordIdentity(first)]);
+});
+
 test('备份传输期间取消会停止媒体读取，不生成快照且可释放锁重试', async t => {
     const root = await fixture(t);
     const large = await fs.open(path.join(root, 'data/photos/trip/shared.png'), 'w');

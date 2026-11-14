@@ -5,9 +5,14 @@ const { randomBytes } = require('node:crypto');
 const { Transform, Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 
+function fileVersion(stat) {
+    return [stat.dev, stat.ino, stat.size, stat.mtimeNs, stat.ctimeNs, stat.birthtimeNs].join(':');
+}
+
 async function fileSource(file) {
     const { ByteSource, ZIP_CHUNK_BYTES, updateCrc } = await import('./zip-stream.mjs');
-    const size = (await fsp.stat(file)).size;
+    const stat = await fsp.stat(file, { bigint: true });
+    const size = Number(stat.size);
     const source = new ByteSource(size, async (offset, length) => {
         const handle = await fsp.open(file, 'r');
         try {
@@ -21,6 +26,7 @@ async function fileSource(file) {
             return bytes;
         } finally { await handle.close(); }
     });
+    source.fileVersion = fileVersion(stat);
     source.slice = (offset, length) => {
         const part = ByteSource.prototype.slice.call(source, offset, length);
         part.chunks = () => chunks(part, offset);
@@ -80,4 +86,4 @@ async function receiveArchive(root, request, maximumBytes, { idleTimeout = 2 * 6
     }
 }
 
-module.exports = { fileSource, writeSource, receiveArchive };
+module.exports = { fileVersion, fileSource, writeSource, receiveArchive };
