@@ -585,6 +585,59 @@ async function verifySavedMedia(root, record, contents, options) {
     }
 }
 
+async function resolvePlacePaths(root, prepared, input, records, existing) {
+    const { defaultMarkdownPath } = await import('./record-input.mjs');
+    const { normalizeTravelLocation } = await import('./location.mjs');
+    const { record, uploads } = prepared;
+    const placeKey = item => normalizeTravelLocation(item).locationKey.normalize('NFKC').toLowerCase();
+    const location = placeKey(record);
+    const samePlace = item => placeKey(item) === location;
+    const suffix = createHash('sha256').update(location).digest('hex').slice(0, 12);
+    const defaultPath = defaultMarkdownPath(record.date, record.locality);
+    const fields = [];
+    const requestedPath = (input.desc_md || '').trim();
+    if (!requestedPath || requestedPath === defaultPath) fields.push(['desc_md', '.md']);
+    if (uploads.some(item => item.kind === 'image')) fields.push(['photo_folder', '']);
+    if (uploads.some(item => item.kind === 'video')) fields.push(['video_folder', '']);
+    for (const [field, extension] of fields) {
+        const original = record[field];
+        const stem = extension ? original.slice(0, -extension.length) : original;
+        const alternate = `${stem}-${suffix}`;
+        const escapedAlternate = alternate.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const numberedPath = new RegExp(`^${escapedAlternate}-(?:[2-9]|[1-9][0-9]+)${extension.replace('.', '\\.')}$`);
+        const isGeneratedPath = value => typeof value === 'string' && (value === original
+            || value === `${alternate}${extension}`
+            || numberedPath.test(value));
+        // 重试沿用已保存的实际路径，避免后续新增的同音地点改变分配结果。
+        if (existing && samePlace(existing) && isGeneratedPath(existing[field])) {
+            record[field] = existing[field];
+            continue;
+        }
+        if (!extension) {
+            const owner = records.find(item => samePlace(item) && isGeneratedPath(item[field]));
+            if (owner) {
+                record[field] = owner[field];
+                continue;
+            }
+        }
+        const occupied = records.some(item => item[field]?.toLowerCase() === original.toLowerCase() && !samePlace(item));
+        if (!occupied) continue;
+        let sequence = 1;
+        let candidate;
+        let unavailable;
+        do {
+            candidate = `${alternate}${sequence === 1 ? '' : `-${sequence}`}${extension}`;
+            unavailable = records.some(item => item[field]?.toLowerCase() === candidate.toLowerCase());
+            if (!unavailable) {
+                try { await fs.lstat(path.join(root, candidate)); unavailable = true; }
+                catch (error) { if (error.code !== 'ENOENT') throw error; }
+            }
+            sequence += 1;
+        } while (unavailable);
+        record[field] = candidate;
+    }
+}
+
 async function saveRecord(root, payload, authorize, confirmation) {
     const { prepareRecord } = await import('./record-input.mjs');
     const catalog = JSON.parse(await fs.readFile(path.join(root, 'assets/catalogs/countries.json'), 'utf8'));
@@ -609,9 +662,12 @@ async function saveRecord(root, payload, authorize, confirmation) {
         const previous = await fs.readFile(indexFile, 'utf8');
         const records = JSON.parse(previous);
         if (!Array.isArray(records)) throw failure(409, '旅行索引不是数组，请先修复 data/travel_data.json。');
-        const existing = records.find(item => item.desc_md === record.desc_md);
         const { recordIdentity } = await import('./record-identity.mjs');
-        record.record_id = existing ? recordIdentity(existing) : `r-${createHash('sha256').update(`${payload.requestId}\0${record.desc_md}`).digest('hex').slice(0, 32)}`;
+        const requestedId = `r-${createHash('sha256').update(`${payload.requestId}\0${record.desc_md}`).digest('hex').slice(0, 32)}`;
+        const saved = records.find(item => item.record_id === requestedId);
+        await resolvePlacePaths(root, prepared, payload.input, records, saved);
+        const existing = saved || records.find(item => item.desc_md === record.desc_md);
+        record.record_id = existing ? recordIdentity(existing) : requestedId;
         if (records.some(item => item !== existing && recordIdentity(item) === record.record_id)) throw failure(409, '记录固定标识已存在，请重新创建草稿。');
         const { canonical } = await import('./record-diff.mjs');
         if (existing && canonical({ ...existing, record_id: recordIdentity(existing) }) !== canonical(record)) {
@@ -708,6 +764,7 @@ async function updateRecord(root, payload, authorize, confirmation) {
         if (matches.length !== 1) throw failure(409, matches.length ? '记录标识不唯一，无法安全修改。' : '原旅行记录已不存在，请刷新页面后重试。');
 
         const { item: existing, index } = matches[0];
+        await resolvePlacePaths(root, prepared, payload.draft.input, records.filter((item, itemIndex) => itemIndex !== index), existing);
         const conflicting = records.some((item, itemIndex) => itemIndex !== index && item?.desc_md === record.desc_md);
         if (conflicting) throw failure(409, '目标正文路径已被另一条旅行记录使用。');
         const recordFields = new Set([

@@ -4,6 +4,7 @@ import http from 'node:http';
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
 import { createHandler } from '../js/server.js';
 import { DRAFT_FORMAT, prepareRecord, readDraft, recordMetadataSnapshot } from '../js/record-input.mjs';
 import { createDraftBlob } from '../js/draft-archive.mjs';
@@ -572,6 +573,107 @@ test('并发保存发生冲突时可重试，最终不丢失任何一条记录',
     }
     const records = await readIndex();
     for (const value of values) assert.equal(records.filter(record => record.desc_md === prepareRecord(value, countries).record.desc_md).length, 1);
+});
+
+test('同日同音地名分别保存正文与同名媒体，ZIP 重试沿用实际路径和固定标识', async () => {
+    const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a5uoAAAAASUVORK5CYII=', 'base64');
+    const video = Buffer.from('\0\0\0\x18ftypisom\0\0\0\0isommp42', 'binary');
+    const first = { ...draft('a', { date: '2042-01-01', locality: '苏州市' }), uploads: [
+        { id: 'a'.repeat(32), name: 'same.png', data: png.toString('base64') },
+        { id: 'b'.repeat(32), name: 'same.mp4', data: video.toString('base64') }
+    ] };
+    const second = { ...draft('b', { date: first.input.date, admin_area: '安徽省', locality: '宿州市' }), uploads: first.uploads.map(upload => ({
+        ...upload, data: Buffer.concat([Buffer.from(upload.data, 'base64'), Buffer.from('second')]).toString('base64')
+    })), mediaOrder: { sequence: ['video', 'photo'] } };
+    const originalRecord = (await (await post(first)).json()).record;
+    const sendZip = value => sendRecord(`${base}/api/travel-records`, {
+        method: 'POST', headers: { 'Content-Type': 'application/zip', 'X-Travel-Token': token, Cookie: cookie, Origin: base },
+        body: value
+    });
+    const response = await sendZip(await createDraftBlob(second));
+    assert.equal(response.status, 201);
+    const saved = (await response.json()).record;
+    assert.match(saved.desc_md, /2042-01-01-suzhou-[a-f0-9]{12}\.md$/);
+    assert.notEqual(saved.record_id, originalRecord.record_id);
+    for (const field of ['photo_folder', 'video_folder']) assert.notEqual(saved[field], originalRecord[field]);
+    assert.deepEqual(saved.media_order, ['video:same.mp4', 'photo:same.png']);
+    const count = (await readIndex()).length;
+    const retry = await sendZip(await createDraftBlob(second));
+    assert.equal(retry.status, 200);
+    assert.deepEqual((await retry.json()).record, saved);
+    assert.equal((await readIndex()).length, count);
+    assert.equal((await post({ ...second, input: { ...second.input, body: '已修改' } })).status, 409);
+    for (const [value, record] of [[first, originalRecord], [second, saved]]) {
+        for (const [index, field] of ['photo_folder', 'video_folder'].entries()) {
+            assert.deepEqual(await fs.readFile(path.join(root, record[field], value.uploads[index].name)), Buffer.from(value.uploads[index].data, 'base64'));
+        }
+    }
+    const next = { ...second, requestId: 'c'.repeat(32), input: { ...second.input, date: '2042-01-02' } };
+    const nextResponse = await post(next);
+    assert.equal(nextResponse.status, 201);
+    const nextRecord = (await nextResponse.json()).record;
+    assert.equal(nextRecord.photo_folder, saved.photo_folder);
+    assert.equal(nextRecord.video_folder, saved.video_folder);
+});
+
+test('同名目的地按国家和行政区区分，旧版省市字段也参与路径冲突检查', async () => {
+    const first = draft('d', { date: '2042-02-01', locality: '朝阳区', admin_area: '北京市' });
+    const originalRecord = (await (await post(first)).json()).record;
+    const records = await readIndex();
+    const legacy = records.find(item => item.desc_md === originalRecord.desc_md);
+    legacy.province = legacy.admin_area;
+    legacy.city = legacy.locality;
+    delete legacy.admin_area;
+    delete legacy.locality;
+    await fs.writeFile(path.join(root, 'data/travel_data.json'), JSON.stringify(records));
+    for (const [id, input] of [['e', { admin_area: '辽宁省' }], ['f', { country_code: 'SG' }]]) {
+        const response = await post(draft(id, { ...first.input, ...input }));
+        assert.equal(response.status, 201);
+        assert.notEqual((await response.json()).record.desc_md, originalRecord.desc_md);
+    }
+    const manual = draft('f', { ...first.input, locality: '宿州市', desc_md: originalRecord.desc_md });
+    assert.equal((await post(manual)).status, 409);
+});
+
+test('同音地名避开已占用的后缀路径，序号达到两位时重试仍幂等', async () => {
+    const date = '2042-03-01';
+    assert.equal((await post(draft('a', { date, locality: '苏州市' }))).status, 201);
+    const value = draft('b', { date, locality: '宿州市', admin_area: '安徽省' });
+    const suffix = createHash('sha256').update('cn|安徽省|宿州市').digest('hex').slice(0, 12);
+    const stem = `data/travel-diary/2042/${date}-suzhou-${suffix}`;
+    const occupied = Array.from({ length: 9 }, (_, index) => `${stem}${index ? `-${index + 1}` : ''}.md`);
+    for (const file of occupied) await fs.writeFile(path.join(root, file), '# 已有文件\n');
+    const response = await post(value);
+    assert.equal(response.status, 201);
+    const record = (await response.json()).record;
+    assert.equal(record.desc_md, `${stem}-10.md`);
+    const retry = await post(value);
+    assert.equal(retry.status, 200);
+    assert.deepEqual((await retry.json()).record, record);
+    for (const file of occupied) assert.equal(await fs.readFile(path.join(root, file), 'utf8'), '# 已有文件\n');
+});
+
+test('修改为同音目的地会分配独立路径，索引提交失败回滚后可重试', async () => {
+    const date = '2042-04-01';
+    assert.equal((await post(draft('a', { date, locality: '苏州市' }))).status, 201);
+    const value = draft('b', { date, locality: '无锡市' });
+    const existing = (await (await post(value)).json()).record;
+    const edited = { ...value, input: { ...value.input, locality: '宿州市', admin_area: '安徽省' } };
+    const previous = await readIndex();
+    const rename = fs.rename;
+    fs.rename = async (from, to) => {
+        if (to === path.join(root, 'data/travel_data.json')) throw new Error('模拟索引提交失败');
+        return rename(from, to);
+    };
+    try { assert.equal((await put(existing.desc_md, edited)).status, 500); }
+    finally { fs.rename = rename; }
+    assert.deepEqual(await readIndex(), previous);
+    const response = await put(existing.desc_md, edited);
+    assert.equal(response.status, 200);
+    const updated = (await response.json()).record;
+    assert.match(updated.desc_md, /suzhou-[a-f0-9]{12}\.md$/);
+    assert.equal(updated.record_id, existing.record_id);
+    await assert.rejects(fs.stat(path.join(root, existing.desc_md)), { code: 'ENOENT' });
 });
 
 test('索引替换失败会回滚新日记、释放锁并保留索引原文', async () => {
