@@ -6,6 +6,7 @@ import { mkdtemp, mkdir, writeFile, readFile, rm, symlink, access } from 'node:f
 import { tmpdir } from 'node:os';
 import { createMediaPreviewStore, sourceForPreview, isPreviewJpeg } from '../js/media-preview-store.js';
 import { createHandler } from '../js/server.js';
+import previewBuilder from '../scripts/build-media-previews.js';
 import { getMediaPreviewUrl, getMediaPreviewBlob, saveMediaPreview, clearMediaPreviewCache } from '../js/media-preview.mjs';
 import { listenOnFetchSafePort } from './helpers/http.mjs';
 
@@ -69,6 +70,10 @@ test('缓存缺失只生成一次并保存，重复列表共享生成任务，�
     calls.length = 0;
     await getMediaPreviewBlob('data/photos/trip/image.png', 'image');
     assert.deepEqual(calls, [], '已读取的缩略图直接复用内存，不再验证或请求');
+    assert.equal(originals.length, 1);
+    clearMediaPreviewCache();
+    await getMediaPreviewBlob('data/photos/trip/image.png', 'image');
+    assert.deepEqual(calls, [{ url: previewPath.slice(1), method: 'GET' }], '刷新后直接读取已保存的服务器缩略图');
     assert.equal(originals.length, 1);
     globalThis.fetch = async () => new Response('<html>错误页</html>', { headers: { 'Content-Type': 'text/html' } });
     clearMediaPreviewCache();
@@ -227,4 +232,62 @@ test('HTTP 自动缓存接口只接受同源小型预览，支持 ETag、HEAD �
     const video = await fetch(base + '/data/videos/trip/video.mp4', { headers: { Range: 'bytes=3-5' } });
     assert.equal(video.status, 206);
     assert.equal(await video.text(), '345');
+});
+
+test('后端浏览器缺失时回退前端压缩，保存后跨服务实例直接复用磁盘缩略图', async t => {
+    const root = await fixture(t);
+    const previousBrowser = process.env.TRAVEL_BROWSER_PATH;
+    process.env.TRAVEL_BROWSER_PATH = path.join(root, 'missing-browser.exe');
+    t.after(() => {
+        if (previousBrowser === undefined) delete process.env.TRAVEL_BROWSER_PATH;
+        else process.env.TRAVEL_BROWSER_PATH = previousBrowser;
+    });
+    const server = http.createServer(createHandler(root));
+    const base = await listenOnFetchSafePort(server);
+    t.after(() => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }));
+    const missing = await fetch(base + previewPath);
+    assert.equal(missing.status, 204);
+    assert.equal(missing.headers.get('cache-control'), 'no-store');
+    assert.ok(missing.headers.get('etag'));
+    assert.equal((await fetch(base + '/data/photos/trip/image.png')).status, 200);
+    const saved = await fetch(base + previewPath, {
+        method: 'PUT', headers: { Origin: base, 'Content-Type': 'image/jpeg', 'If-Match': missing.headers.get('etag') }, body: jpeg
+    });
+    assert.equal(saved.status, 204);
+    assert.deepEqual(await readFile(path.join(root, previewPath)), jpeg);
+    const nextServer = http.createServer(createHandler(root));
+    const nextBase = await listenOnFetchSafePort(nextServer);
+    t.after(() => new Promise(resolve => { nextServer.closeAllConnections(); nextServer.close(resolve); }));
+    const cached = await fetch(nextBase + previewPath);
+    assert.equal(cached.status, 200);
+    assert.deepEqual(Buffer.from(await cached.arrayBuffer()), jpeg);
+});
+
+test('后端解码失败后重读当前版本，允许回传预览并拒绝过时结果', async t => {
+    const root = await fixture(t);
+    const store = createMediaPreviewStore(root);
+    const original = await store.get(previewPath);
+    let calls = 0;
+    t.mock.method(previewBuilder, 'buildMediaPreviews', async () => {
+        await writeFile(path.join(root, 'data/photos/trip/image.png'), `updated-${++calls}`);
+        if (calls === 1) throw new Error('浏览器无法解码此媒体。');
+        return { generated: 0, cached: 0, failed: 1 };
+    });
+    const server = http.createServer(createHandler(root));
+    const base = await listenOnFetchSafePort(server);
+    t.after(() => new Promise(resolve => { server.closeAllConnections(); server.close(resolve); }));
+    for (let index = 0; index < 2; index++) {
+        const missing = await fetch(base + previewPath);
+        assert.equal(missing.status, 204);
+        const etag = missing.headers.get('etag');
+        assert.equal(etag, (await store.get(previewPath)).etag);
+        assert.notEqual(etag, original.etag);
+        const headers = { Origin: base, 'Content-Type': 'image/jpeg', 'If-Match': original.etag };
+        assert.equal((await fetch(base + previewPath, { method: 'PUT', headers, body: jpeg })).status, 409);
+        headers['If-Match'] = etag;
+        assert.equal((await fetch(base + previewPath, { method: 'PUT', headers, body: jpeg })).status, 204);
+        assert.equal((await fetch(base + previewPath)).status, 200);
+        assert.equal(calls, index + 1, '有效缓存命中后不调用后端生成');
+        await writeFile(path.join(root, 'data/photos/trip/image.png'), `invalidate-${index}`);
+    }
 });

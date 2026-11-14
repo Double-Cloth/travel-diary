@@ -377,11 +377,11 @@ function createHandler(rootDir, options = {}) {
         if (!image && req.method === 'GET' && generateMediaPreview) {
           try {
             await generateMediaPreview(pathname);
-            ({ image, etag } = await mediaPreviews.get(pathname));
-            if (!image) throw new Error('无法生成媒体预览。');
-          } catch (error) {
-            throw Object.assign(new Error('无法在后端生成媒体预览。', { cause: error }), { status: 503 });
+          } catch {
+            // 后端浏览器不可用或解码失败时，交由前端生成并通过 PUT 保存。
           }
+          // 生成期间原文件或缓存可能变化，重新读取以返回当前版本与可用预览。
+          ({ image, etag } = await mediaPreviews.get(pathname));
         }
         const headers = { ...STATIC_SECURITY_HEADERS, 'Content-Type': 'image/jpeg',
           'Cache-Control': 'private, max-age=0, must-revalidate', ETag: etag };
