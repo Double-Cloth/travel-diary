@@ -11,6 +11,7 @@ import { clearCache } from '../scripts/clear-cache.js';
 import { createHandler } from '../js/server.js';
 import fileStream from '../js/file-stream.js';
 import { createZipBlob } from '../js/zip-stream.mjs';
+import { createDraftBlob } from '../js/draft-archive.mjs';
 import { compareBackup, describeRecords, changedTextBlocks } from '../js/record-diff.mjs';
 import { DRAFT_FORMAT } from '../js/record-input.mjs';
 import { installAuth, login } from './helpers/auth.mjs';
@@ -95,6 +96,7 @@ test('保存时移除真实媒体先留存回收站，恢复不会覆盖冲突�
     const { base, headers } = await api(t, root);
     const response = await fetch(`${base}/api/travel-records`, { method: 'PUT', headers, body: JSON.stringify({ originalDescMd: note.desc_md, draft: { format: DRAFT_FORMAT, requestId: 'b'.repeat(32), uploads: [], input: { ...note, admin_area: '', admin_area_type: '', locality_type: '', trip_id: '', title: '标题', body: '原正文', photos: ['shared.png'], video_folder: '', videos: [] } } }) });
     assert.equal(response.status, 200, await response.text());
+    assert.deepEqual((await readRecycleBin(root)).items.map(item => item.title), ['编辑日记时移除的媒体']);
     const item = (await readRecycleBin(root)).items.find(item => item.title === '编辑日记时移除的媒体');
     assert.deepEqual(item.files.map(file => file.path), ['data/photos/trip/unique.png']);
     await write(root, item.files[0].path, 'newer');
@@ -105,6 +107,102 @@ test('保存时移除真实媒体先留存回收站，恢复不会覆盖冲突�
     assert.equal(await fs.readFile(path.join(root, item.files[0].path), 'utf8'), 'unique');
     const restored = JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'))).find(record => record.desc_md === note.desc_md);
     assert.deepEqual(restored.photos, ['shared.png', 'unique.png']);
+});
+
+test('JSON 与 ZIP 保存未修改正文时忽略编辑器格式差异，保留原文件且重复保存不回收', async t => {
+    const variants = [
+        '# 标题\n\n原正文',
+        '# 标题\r\n\r\n原正文\r\n',
+        '# 标题\r\r原正文\r',
+        '# 标题  \n\n\n  原正文 \n\n',
+        '# 标题\r\n\r\n'
+    ];
+    for (const zip of [false, true]) {
+        for (const markdown of variants) {
+            await t.test(`${zip ? 'ZIP' : 'JSON'} ${JSON.stringify(markdown)}`, async t => {
+                const root = await fixture(t);
+                await write(root, note.desc_md, markdown);
+                const { base, headers } = await api(t, root);
+                const draft = { format: DRAFT_FORMAT, requestId: 'd'.repeat(32), uploads: [], input: {
+                    ...note, admin_area: '', admin_area_type: '', locality_type: '', trip_id: '',
+                    title: '标题', body: markdown.includes('原正文') ? '原正文' : '', video_folder: '', videos: []
+                } };
+                let record = note;
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    const context = { originalDescMd: note.desc_md, expected: { record, markdown } };
+                    const response = await fetch(`${base}/api/travel-records`, {
+                        method: 'PUT', headers: { ...headers, 'Content-Type': zip ? 'application/zip' : 'application/json' },
+                        body: zip ? await createDraftBlob(draft, context) : JSON.stringify({ ...context, draft })
+                    });
+                    assert.equal(response.status, 200);
+                    const result = await response.json();
+                    record = result.record;
+                    if (attempt) assert.equal(result.alreadySaved, true);
+                    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), markdown);
+                    assert.deepEqual((await readRecycleBin(root)).items, []);
+                }
+            });
+        }
+    }
+});
+
+test('仅修改日记元数据时保留原正文格式，移动路径时原样搬迁并留存旧路径', async t => {
+    const root = await fixture(t);
+    const markdown = '# 标题\r\n\r\n原正文\r\n\r\n';
+    await write(root, note.desc_md, markdown);
+    const { base, headers } = await api(t, root);
+    const draft = { format: DRAFT_FORMAT, requestId: 'e'.repeat(32), uploads: [], input: {
+        ...note, admin_area: '', admin_area_type: '', locality_type: '', trip_id: 'updated',
+        title: '标题', body: '原正文', video_folder: '', videos: []
+    } };
+    const save = (original, currentDraft) => fetch(`${base}/api/travel-records`, {
+        method: 'PUT', headers, body: JSON.stringify({ originalDescMd: original.desc_md,
+            expected: { record: original, markdown }, draft: currentDraft })
+    });
+    const response = await save(note, draft);
+    assert.equal(response.status, 200);
+    const { record } = await response.json();
+    assert.equal(record.trip_id, 'updated');
+    assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), markdown);
+    assert.deepEqual((await readRecycleBin(root)).items, []);
+
+    const target = 'data/travel-diary/2026/2026-11-03-renamed.md';
+    const moved = await save(record, { ...draft, input: { ...draft.input, desc_md: target } });
+    assert.equal(moved.status, 200);
+    assert.equal(await fs.readFile(path.join(root, target), 'utf8'), markdown);
+    await assert.rejects(fs.stat(path.join(root, note.desc_md)), { code: 'ENOENT' });
+    const report = await readRecycleBin(root);
+    assert.equal(report.items.length, 1);
+    assert.equal(await fs.readFile(path.join(root, '.cache/recycle-bin', report.items[0].id, note.desc_md), 'utf8'), markdown);
+});
+
+test('正文文字、标题及内部 Markdown 空白变化仍保存并回收原始正文', async t => {
+    const markdown = '# 标题\r\n\r\n第一行。  \r\n第二行。\r\n\r\n    缩进正文\r\n';
+    const body = '第一行。  \n第二行。\n\n    缩进正文';
+    for (const change of [
+        { title: '新标题', body },
+        { title: '标题', body: body.replace('第二行', '更新第二行') },
+        { title: '标题', body: body.replace('。  \n', '。\n') },
+        { title: '标题', body: body.replace('\n\n', '\n') },
+        { title: '标题', body: body.replace('    缩进', '缩进') }
+    ]) {
+        await t.test(JSON.stringify(change), async t => {
+            const root = await fixture(t);
+            await write(root, note.desc_md, markdown);
+            const { base, headers } = await api(t, root);
+            const draft = { format: DRAFT_FORMAT, requestId: 'f'.repeat(32), uploads: [], input: {
+                ...note, admin_area: '', admin_area_type: '', locality_type: '', trip_id: '',
+                ...change, video_folder: '', videos: []
+            } };
+            const response = await fetch(`${base}/api/travel-records`, { method: 'PUT', headers,
+                body: JSON.stringify({ originalDescMd: note.desc_md, expected: { record: note, markdown }, draft }) });
+            assert.equal(response.status, 200);
+            assert.equal(await fs.readFile(path.join(root, note.desc_md), 'utf8'), `# ${change.title}\n\n${change.body}\n`);
+            const report = await readRecycleBin(root);
+            assert.equal(report.items.length, 1);
+            assert.equal(await fs.readFile(path.join(root, '.cache/recycle-bin', report.items[0].id, note.desc_md), 'utf8'), markdown);
+        });
+    }
 });
 
 test('媒体恢复只合并附件引用，保留后续修改，重复引用不增加', async t => {

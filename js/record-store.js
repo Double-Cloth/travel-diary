@@ -731,7 +731,7 @@ async function updateRecord(root, payload, authorize, confirmation) {
         throw failure(400, '真实媒体文件同步选项必须是布尔值。');
     }
     const syncMediaFiles = payload.syncMediaFiles !== false;
-    const { prepareRecord, recordMetadataSnapshot } = await import('./record-input.mjs');
+    const { buildMarkdown, prepareRecord, recordMetadataSnapshot } = await import('./record-input.mjs');
     const catalog = JSON.parse(await fs.readFile(path.join(root, 'assets/catalogs/countries.json'), 'utf8'));
     let prepared;
     try {
@@ -773,12 +773,20 @@ async function updateRecord(root, payload, authorize, confirmation) {
         ]);
         const preserved = Object.fromEntries(Object.entries(existing).filter(([key]) => !recordFields.has(key)));
         const { recordIdentity } = await import('./record-identity.mjs');
+        const { canonical } = await import('./record-diff.mjs');
         const updatedRecord = { ...preserved, ...record, record_id: recordIdentity(existing) };
         oldDiaryFile = await resolveMarkdownFile(root, payload.originalDescMd);
         newDiaryFile = await resolveMarkdownFile(root, record.desc_md, true);
         await checkedFile(oldDiaryFile);
         const oldMarkdown = await fs.readFile(oldDiaryFile, 'utf8');
-        if (JSON.stringify(existing) === JSON.stringify(updatedRecord) && oldMarkdown === markdown && !uploads.length) {
+        // 按编辑器的标题、正文规则比较，格式差异不触发回收或改写原文件。
+        const normalizedMarkdown = oldMarkdown.replace(/\r\n?/g, '\n');
+        const heading = normalizedMarkdown.match(/^# ([^\n]*)(?:\n|$)/);
+        const comparableMarkdown = heading
+            ? buildMarkdown({ title: heading[1], body: normalizedMarkdown.slice(heading[0].length) })
+            : normalizedMarkdown;
+        const markdownChanged = comparableMarkdown !== markdown;
+        if (canonical(existing) === canonical(updatedRecord) && !markdownChanged && !uploads.length) {
             if (syncMediaFiles) {
                 unusedMediaStage = await stageUnusedMedia(root, records, existing);
                 await unusedMediaStage.commit();
@@ -791,7 +799,7 @@ async function updateRecord(root, payload, authorize, confirmation) {
         }
 
         await rejectDuplicateUploads(root, prepared, records, existing, confirmation);
-        if (oldMarkdown !== markdown || oldDiaryFile !== newDiaryFile) editRecycleId = await captureRecycle(root, { kind: 'version', title: '编辑前的日记正文', displayRecords: [existing], files: [{ path: existing.desc_md }] });
+        if (markdownChanged || oldDiaryFile !== newDiaryFile) editRecycleId = await captureRecycle(root, { kind: 'version', title: '编辑前的日记正文', displayRecords: [existing], files: [{ path: existing.desc_md }] });
         mediaStage = await stageRecordMedia(root, record, uploads, sourcePhotos, sourceVideos, {
             photo_folder: existing.photo_folder, video_folder: existing.video_folder
         }, syncMediaFiles);
@@ -800,7 +808,7 @@ async function updateRecord(root, payload, authorize, confirmation) {
         // 先暂存待删除或已搬迁的文件，索引提交失败时恢复原文件。
         if (syncMediaFiles) unusedMediaStage = await stageUnusedMedia(root, nextRecords, existing);
         if (newDiaryFile === oldDiaryFile) {
-            if (oldMarkdown !== markdown) {
+            if (markdownChanged) {
                 temporaryMarkdown = path.join(path.dirname(newDiaryFile), `.travel-edit-${randomBytes(16).toString('hex')}.tmp`);
                 const backupPath = path.join(path.dirname(oldDiaryFile), `.travel-edit-${randomBytes(16).toString('hex')}.bak`);
                 await writeSynced(temporaryMarkdown, markdown);
@@ -812,7 +820,7 @@ async function updateRecord(root, payload, authorize, confirmation) {
             }
         } else {
             try {
-                await writeSynced(newDiaryFile, markdown);
+                await writeSynced(newDiaryFile, markdownChanged ? markdown : oldMarkdown);
                 createdMarkdown = newDiaryFile;
             } catch (error) {
                 if (error.code === 'EEXIST') throw failure(409, '目标日记文件已存在，未覆盖。请调整正文路径后重试。');
