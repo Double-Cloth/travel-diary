@@ -42,9 +42,14 @@ async function findBrowser(explicit) {
 
 async function buildMediaPreviews(root, options = {}) {
     root = await fs.realpath(root);
-    const items = collectMedia(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')));
+    const encode = value => value.split('/').map(encodeURIComponent).join('/');
+    const items = options.previews ? [...new Set(options.previews)].map(preview => {
+        const source = sourceForPreview(preview);
+        if (!source) throw new Error(`无效的媒体预览路径：${preview}`);
+        return { source: `/${encode(source)}`, preview: encode(preview), kind: source.startsWith('data/videos/') ? 'video' : 'image' };
+    }) : collectMedia(JSON.parse(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8')));
     try {
-        if ((await fs.stat(path.join(root, 'data/profile/profile-picture.png'))).isFile()) {
+        if (!options.previews && (await fs.stat(path.join(root, 'data/profile/profile-picture.png'))).isFile()) {
             items.push({ source: '/data/profile/profile-picture.png', preview: '/.cache/media-previews/profile/profile-picture.png.jpg', kind: 'image' });
         }
     } catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -63,7 +68,8 @@ async function buildMediaPreviews(root, options = {}) {
     const browserPath = await findBrowser(options.browser || process.env.TRAVEL_BROWSER_PATH);
     const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-preview-browser-'));
     const session = `/__media-preview-${randomBytes(16).toString('hex')}/`;
-    const handler = createHandler(root);
+    // 生成任务使用原始缓存接口，避免内部请求再次触发后台生成。
+    const handler = createHandler(root, { generateMediaPreviews: false });
     const log = options.log || console.log;
     let browser, timer, resolveDone, rejectDone, processed = 0;
     const done = new Promise((resolve, reject) => { resolveDone = resolve; rejectDone = reject; });

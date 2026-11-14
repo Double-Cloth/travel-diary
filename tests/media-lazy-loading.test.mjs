@@ -22,14 +22,14 @@ test('重新挂载缩略图复用 Blob URL，清空缓存后重新读取，同�
     await preview.loadMediaPreview(first, source, 'image');
     await preview.loadMediaPreview(second, source, 'image');
     assert.equal(first.src, second.src);
-    assert.equal(calls.length, 2, '仅主机探测和首次缩略图读取');
+    assert.equal(calls.length, 1, '仅首次缩略图读取');
     first.src = 'unchanged';
     await preview.loadMediaPreview(first, source, 'image');
     assert.equal(first.src, 'unchanged');
     preview.clearMediaPreviewCache();
     await preview.loadMediaPreview(first, source, 'image');
     assert.notEqual(first.src, second.src);
-    assert.equal(calls.length, 3);
+    assert.equal(calls.length, 2);
 });
 
 test('排队期间离开视口的预览不发请求，另一个可见使用者仍可共享同一路径', async t => {

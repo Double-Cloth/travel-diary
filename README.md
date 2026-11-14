@@ -17,7 +17,7 @@ Travel Diary 是一本数字旅行日志。它把每一次出发整理成行程�
 | 现代浏览器 | 必需 | 浏览页面；需支持 ES modules、Canvas、Cache Storage 等前端能力。 |
 | Node.js 20.11 或更新版本 | 本机服务与维护命令必需 | 启动本机服务、执行测试及全部 Node.js 脚本，只使用内置模块。静态托管阅读可直接使用浏览器。 |
 | npm | 可选 | 随 Node.js 提供，用于执行下方 `npm` 命令；也可直接用 `node` 运行脚本，无需 `npm install`。 |
-| 本机 Edge 或 Chrome | 可选 | `media:previews` 批量生成图片、视频和头像缩略图；可用 `--browser` 或 `TRAVEL_BROWSER_PATH` 指定。未预生成时由浏览器按需生成。 |
+| 本机 Edge 或 Chrome | 可选 | 后端按需生成及 `media:previews` 批量生成图片、视频和头像缩略图；可用 `--browser` 或 `TRAVEL_BROWSER_PATH` 指定。已有缓存无需浏览器，静态站缺失缓存时由访客浏览器生成。 |
 | 网络连接 | 可选 | 仅 `countries` 与 `china-locations` 更新地点目录时需要；其余命令可离线运行。 |
 
 > 项目没有运行时 npm 依赖，也没有 `package-lock.json`、`node_modules` 或前端构建步骤；字体构建工具（HarfBuzz / WOFF2 WASM）、字体、拼音及地点目录随仓库分发。媒体预览不需要 FFmpeg，部署也不需要额外构建工具。

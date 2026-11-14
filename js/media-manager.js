@@ -1,8 +1,8 @@
-import { escapeHtml, getMediaFileUrl, formatFileSize } from './utils.js?v=2.1.140';
-import { createPasswordGate } from './record-password.js?v=2.1.140';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.140';
-import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.140';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.140';
+import { escapeHtml, getMediaFileUrl, formatFileSize } from './utils.js?v=2.1.141';
+import { createPasswordGate } from './record-password.js?v=2.1.141';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.141';
+import { createMediaFileLink, showMediaFilePreviewError } from './media-file-link.js?v=2.1.141';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.141';
 
 function mediaGroupKey(file) {
     if (!file.records.length) return 'unused';

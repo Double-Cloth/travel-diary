@@ -6,6 +6,7 @@ const os = require('os');
 const { createRecordApi, normalizeAllowedOrigins } = require('./record-store.js');
 const { readAuthConfig } = require('./auth.js');
 const { createMediaPreviewStore, MAXIMUM_PREVIEW_BYTES } = require('./media-preview-store.js');
+const { createMediaPreviewGenerator } = require('./media-preview-generator.js');
 
 const CONFIG = {
   defaultPort: 9000,
@@ -303,6 +304,7 @@ async function ensureDataStructure(rootDir) {
 function createHandler(rootDir, options = {}) {
   rootDir = fs.realpathSync(rootDir);
   const mediaPreviews = createMediaPreviewStore(rootDir);
+  const generateMediaPreview = options.generateMediaPreviews === false ? null : createMediaPreviewGenerator(rootDir);
   const recordApi = createRecordApi(rootDir, {
     writeMode: options.writeMode || CONFIG.defaultWriteMode,
     allowedOrigins: options.allowedOrigins || []
@@ -371,7 +373,16 @@ function createHandler(rootDir, options = {}) {
           res.end();
           return;
         }
-        const { image, etag } = await mediaPreviews.get(pathname);
+        let { image, etag } = await mediaPreviews.get(pathname);
+        if (!image && req.method === 'GET' && generateMediaPreview) {
+          try {
+            await generateMediaPreview(pathname);
+            ({ image, etag } = await mediaPreviews.get(pathname));
+            if (!image) throw new Error('无法生成媒体预览。');
+          } catch (error) {
+            throw Object.assign(new Error('无法在后端生成媒体预览。', { cause: error }), { status: 503 });
+          }
+        }
         const headers = { ...STATIC_SECURITY_HEADERS, 'Content-Type': 'image/jpeg',
           'Cache-Control': 'private, max-age=0, must-revalidate', ETag: etag };
         if (!image) {

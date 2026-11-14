@@ -19,7 +19,6 @@ let previewBytes = 0;
 let cacheGeneration = 0;
 const queue = [];
 let active = 0;
-let staticHost;
 const CACHE_NAME = 'travel-media-previews-canvas-v1';
 
 function releasePreviewUrl(blob) {
@@ -225,13 +224,6 @@ export async function createMediaPreview(source, kind, { width: limitWidth = 640
     }
 }
 
-async function isStaticHost() {
-    staticHost ??= fetch('index.html', { method: 'HEAD', cache: 'no-store', signal: AbortSignal.timeout(20000) })
-        .then(response => response.headers.get('X-Travel-Media-Cache') !== 'disk-v1')
-        .catch(() => false);
-    return staticHost;
-}
-
 async function putPreview(url, blob, etag) {
     const saved = await fetch(url, { method: 'PUT', headers: { 'Content-Type': 'image/jpeg', 'If-Match': etag }, body: blob, signal: AbortSignal.timeout(20000) });
     if (saved.status === 409) throw Object.assign(new Error('原文件已更新，请刷新重试。'), { status: 409 });
@@ -257,17 +249,9 @@ async function browserPreview(source, kind, url, isNeeded) {
     // 回收站 URL 含不可变的项目 ID 与归档路径，无需读取原文件验证版本。
     const cached = await cache?.match(cacheKey.href);
     if (cached) return cached.blob();
+    // 远端预览缺失或回收站尚未缓存时，才读取原文件生成缩略图。
     requirePreview(isNeeded);
-    let blob;
-    if (url) {
-        const response = await fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(20000) });
-        if (response.status === 200 && response.headers.get('content-type')?.startsWith('image/jpeg')) blob = await response.blob();
-        else await response.body?.cancel();
-    }
-    if (!blob) {
-        requirePreview(isNeeded);
-        blob = await createMediaPreview(source, kind);
-    }
+    const blob = await createMediaPreview(source, kind);
     try { await cache?.put(cacheKey.href, new Response(blob, { headers: { 'Content-Type': 'image/jpeg' } })); }
     catch { /* 浏览器配额不足时不阻断阅读。 */ }
     return blob;
@@ -281,12 +265,12 @@ async function getPreview(source, kind, isNeeded) {
             || target.searchParams.get('mode') !== 'recycle-file' || !target.searchParams.get('id') || !target.searchParams.get('path')) throw new Error('无效的媒体路径。');
         return browserPreview(source, kind, '', isNeeded);
     }
-    const staticPreview = await isStaticHost();
     requirePreview(isNeeded);
-    if (staticPreview) return browserPreview(source, kind, url, isNeeded);
+    // 缓存命中只读取缩略图，静态站也无需逐张探测原文件或等待主机检测。
     const response = await fetch(url, { cache: 'no-cache', signal: AbortSignal.timeout(20000) });
     if (response.status === 200 && response.headers.get('content-type')?.startsWith('image/jpeg')) return response.blob();
     await response.body?.cancel();
+    if (response.status === 404) return browserPreview(source, kind, url, isNeeded);
     if (response.status !== 204) throw new Error('无法读取预览缓存。');
     requirePreview(isNeeded);
     const blob = await createMediaPreview(source, kind);

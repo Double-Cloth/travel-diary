@@ -82,7 +82,9 @@ Markdown 使用应用支持的有限语法，输出经过 HTML 转义与链接�
 
 `media-preview.mjs` 共用图片、视频的解码、等比缩放、居中裁切和 JPEG 压缩逻辑。编辑器为本地待上传附件生成 320×200 预览，保存成功后按最终附件顺序写入服务器缓存；头像上传同样补齐缩略图。缓存写入失败不影响已保存的原文件，可运行 `npm run media:previews` 补齐已有媒体和头像。批量生成在本机浏览器中读取原文件，普通访客无需重复下载。
 
-Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，检查源文件指纹、JPEG 格式与尺寸，并提供 ETag 校验；源文件变化后旧缓存失效。静态托管优先读取预生成的相同目录，GitHub Pages 在发布前调用本机 Chrome 生成缩略图。静态站缺失时由浏览器压缩并写入 Cache Storage，通过原文件 HEAD 的 ETag、Last-Modified 和 Content-Length 验证版本。动态服务缺失时生成并同源 PUT 到服务器缓存，源文件变化时拒绝旧预览；缓存不可写时仍显示本次压缩结果。
+Node 服务通过 `media-preview-store.js` 读写 `.cache/media-previews/`，检查源文件指纹、JPEG 格式与尺寸，并提供 ETag 校验。GET 缓存缺失时由 `media-preview-generator.js` 复用批量生成脚本和本机已有 Edge / Chrome，在后端压缩并写入缓存后直接返回 JPEG。相同路径共享任务，每批最多两项且只运行一个后台浏览器进程；内部缓存接口禁用递归生成，HEAD 仅检查缓存。源文件变化后旧缓存失效，下一次 GET 重新生成；生成失败返回 503，列表保留可点击占位。此流程无需新增 npm 依赖，`TRAVEL_BROWSER_PATH` 可指定已有浏览器。
+
+静态托管直接读取预生成的相同目录，GitHub Pages 在发布前调用本机 Chrome 生成缩略图。缓存命中仅请求缩略图，省去主机探测和原文件 HEAD。静态站返回 404 时才由浏览器压缩并写入 Cache Storage，通过原文件 HEAD 的 ETag、Last-Modified 和 Content-Length 验证版本，刷新后复用压缩结果。
 
 ## 样式结构
 
