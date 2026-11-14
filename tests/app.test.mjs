@@ -539,7 +539,7 @@ test('日记返回入口按来源命名，缺失日记与管理页面来源保�
         ['#archive?q=云南', '返回日记归档'], ['#place?country=CN&area=云南省&locality=昆明市', '返回地点档案'],
         ['#trip?id=trip-1', '返回行程详情'], ['#preface', '返回扉页'],
         ['#preface?panel=recycle', '返回回收站'], ['#preface?panel=media', '返回媒体整理'],
-        ['#preface?panel=delete', '返回删除日记'], ['#cover', '返回封面']
+        ['#preface?panel=delete', '返回删除日记'], ['#preface?panel=export', '返回导出日记'], ['#cover', '返回封面']
     ]) {
         for (const missing of [false, true]) {
             const { left } = app.renderTestEntry(record, { index: 0, total: 1 }, { returnHash, missing });
@@ -554,6 +554,8 @@ test('日记返回入口按来源命名，缺失日记与管理页面来源保�
         assert.match(result.left, /href="#preface\?panel=media">返回媒体整理<\/a>/);
         const deletion = app.renderTestEntry(record, { index: 0, total: 1 }, { returnHash: '#ledger', from: 'delete', missing });
         assert.match(deletion.left, /href="#preface\?panel=delete">返回删除日记<\/a>/);
+        const exporting = app.renderTestEntry(record, { index: 0, total: 1 }, { returnHash: '#ledger', from: 'export', missing });
+        assert.match(exporting.left, /href="#preface\?panel=export">返回导出日记<\/a>/);
     }
 });
 
@@ -1646,7 +1648,7 @@ test('手机柔性纸页始终固定左侧装订边，分段曲面连续并能�
 });
 
 test('管理页面位置和日记来源在路由规范化后保留，普通页面不携带额外来源', () => {
-    for (const hash of ['#preface?panel=recycle', '#entry?id=note&from=recycle', '#preface?panel=media', '#entry?id=note&from=media', '#preface?panel=delete', '#entry?id=note&from=delete']) {
+    for (const hash of ['#preface?panel=recycle', '#entry?id=note&from=recycle', '#preface?panel=media', '#entry?id=note&from=media', '#preface?panel=delete', '#entry?id=note&from=delete', '#preface?panel=export', '#entry?id=note&from=export']) {
         assert.equal(app.serializeRoute(app.parseRoute(hash)), hash);
     }
     assert.equal(app.serializeRoute(app.parseRoute('#preface?panel=unknown')), '#preface');
@@ -1719,7 +1721,7 @@ test('扉页弹窗路由沿用现有纸页，数据刷新或跨页返回仍重�
     const scenario = app.stubReadingRoutes();
     t.after(() => { scenario.restore(); Object.assign(globalThis, previous); });
     scenario.render(app.parseRoute('#preface'), { initial: true });
-    for (const panel of ['delete', 'media', 'recycle']) {
+    for (const panel of ['delete', 'media', 'recycle', 'export']) {
         scenario.render(app.parseRoute('#preface?panel=' + panel));
         scenario.render(app.parseRoute('#preface'));
     }

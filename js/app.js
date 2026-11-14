@@ -205,6 +205,11 @@ async function initApp() {
             if (activeRoute?.name === 'preface' && activeRoute.params.panel === 'delete') {
                 navigateTo('#preface', { replace: true, animate: false });
             }
+        },
+        onExportClose: () => {
+            if (activeRoute?.name === 'preface' && activeRoute.params.panel === 'export') {
+                navigateTo('#preface', { replace: true, animate: false });
+            }
         }
     });
     openMediaManager = createMediaManager(async () => {
@@ -484,7 +489,7 @@ function parseRoute(hash = window.location.hash) {
         case 'cover':
             return { name: 'cover', params: {}, valid: true };
         case 'preface':
-            return { name: 'preface', params: ['recycle', 'media', 'delete'].includes(params.get('panel')) ? { panel: params.get('panel') } : {}, valid: true };
+            return { name: 'preface', params: ['recycle', 'media', 'delete', 'export'].includes(params.get('panel')) ? { panel: params.get('panel') } : {}, valid: true };
         case 'ledger':
             return {
                 name: 'ledger',
@@ -528,7 +533,7 @@ function parseRoute(hash = window.location.hash) {
                 name: 'entry',
                 params: {
                     id: params.get('id') || '',
-                    ...(['recycle', 'media', 'delete'].includes(params.get('from')) ? { from: params.get('from') } : {})
+                    ...(['recycle', 'media', 'delete', 'export'].includes(params.get('from')) ? { from: params.get('from') } : {})
                 },
                 valid: true
             };
@@ -562,7 +567,7 @@ function serializeRoute(route) {
         case 'cover':
             return '#cover';
         case 'preface':
-            return ['recycle', 'media', 'delete'].includes(route.params?.panel) ? `#preface?panel=${route.params.panel}` : '#preface';
+            return ['recycle', 'media', 'delete', 'export'].includes(route.params?.panel) ? `#preface?panel=${route.params.panel}` : '#preface';
         case 'ledger':
             {
                 const ledgerParams = normalizeLedgerParams(route.params);
@@ -592,7 +597,7 @@ function serializeRoute(route) {
             return `#trip${params.toString() ? `?${params}` : ''}`;
         case 'entry':
             if (route.params.id) params.set('id', route.params.id);
-            if (['recycle', 'media', 'delete'].includes(route.params.from)) params.set('from', route.params.from);
+            if (['recycle', 'media', 'delete', 'export'].includes(route.params.from)) params.set('from', route.params.from);
             return `#entry${params.toString() ? `?${params}` : ''}`;
         case 'photos':
             if (route.params.id) params.set('id', route.params.id);
@@ -627,13 +632,16 @@ function syncRouteFromHash(options = {}) {
     const recycleActive = parsed.name === 'preface' && parsed.params.panel === 'recycle';
     const mediaActive = parsed.name === 'preface' && parsed.params.panel === 'media';
     const deleteActive = parsed.name === 'preface' && parsed.params.panel === 'delete';
+    const exportActive = parsed.name === 'preface' && parsed.params.panel === 'export';
     if (!recycleActive) openRecycleManager?.suspend();
     if (!mediaActive) openMediaManager?.suspend();
     if (!deleteActive) dataTransfer?.suspendRecordDelete();
+    if (!exportActive) dataTransfer?.suspendRecordExport();
     renderRoute(parsed, options);
     if (recycleActive) void openRecycleManager?.();
     if (mediaActive) void openMediaManager?.();
     if (deleteActive) void dataTransfer?.chooseRecordDelete();
+    if (exportActive) void dataTransfer?.chooseRecordExport();
 }
 
 function navigateTo(route, options = {}) {
@@ -1918,12 +1926,12 @@ function renderTrip(params = {}) {
 }
 
 function renderEntryRoute(params = {}) {
-    if (['recycle', 'media', 'delete'].includes(params.from)) lastReadingHash = `#preface?panel=${params.from}`;
+    if (['recycle', 'media', 'delete', 'export'].includes(params.from)) lastReadingHash = `#preface?panel=${params.from}`;
     const record = travelModel.recordsById.get(params.id);
     const returnHash = lastReadingHash || '#ledger';
     const returnRoute = parseRoute(returnHash);
     const returnLabel = returnRoute.name === 'preface' && returnRoute.params.panel
-        ? { recycle: '返回回收站', media: '返回媒体整理', delete: '返回删除日记' }[returnRoute.params.panel]
+        ? { recycle: '返回回收站', media: '返回媒体整理', delete: '返回删除日记', export: '返回导出日记' }[returnRoute.params.panel]
         : ({ cover: '返回封面', preface: '返回扉页', ledger: '返回日记目录', archive: '返回日记归档',
             place: '返回地点档案', trip: '返回行程详情', photos: '返回日记附件' }[returnRoute.name] || '返回日记目录');
 
@@ -4257,7 +4265,7 @@ function handleDocumentClick(event) {
     }
     if (event.target.closest('[data-action="export-records"]')) {
         event.preventDefault();
-        dataTransfer.chooseRecordExport();
+        navigateTo('#preface?panel=export', { animate: false });
         return;
     }
     if (event.target.closest('[data-action="delete-records"]')) {

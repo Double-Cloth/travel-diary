@@ -349,6 +349,7 @@ export function createDataTransfer(onImported, getRecords = () => [], recordTran
 
     return { chooseImport, clearAll, exportAll, getExportHref,
         chooseRecordDelete: () => partialTransfer().chooseDelete(),
+        suspendRecordExport: () => recordTransfer?.suspendExport(),
         suspendRecordDelete: () => recordTransfer?.suspendDelete(),
         chooseRecordExport: paths => partialTransfer().chooseExport(paths), chooseRecordImport: () => partialTransfer().chooseImport() };
 }
