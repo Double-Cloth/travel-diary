@@ -64,14 +64,15 @@ npm start
 
 | 配置项 | 默认值 | 作用 |
 | --- | --- | --- |
+| `$schema` | `"./travel-diary.config.schema.json"` | 为编辑器提供配置补全与校验。 |
 | `server.port` | `9000` | 起始监听端口，范围为 1～65535。 |
 | `server.local` | `true` | `true` 绑定 `127.0.0.1`，`false` 绑定 `0.0.0.0` 以允许局域网访问。 |
-| `server.maxPortRetries` | `100` | 最多尝试的端口数量，包含起始端口；设为 `1` 时端口占用即报错。 |
-| `server.writeMode` | `"local"` | 写入模式，支持 `local`、`remote`。 |
-| `server.allowedOrigins` | `[]` | `remote` 模式允许的完整 HTTPS Origin 数组，沿用现有认证及来源校验。 |
+| `server.maxPortRetries` | `100` | 最多尝试的端口数量，范围为 1～65535，包含起始端口。设为 `1` 时端口占用即报错。 |
+| `server.writeMode` | `"local"` | `local` 仅允许本机认证与写入。`remote` 允许白名单 HTTPS 来源认证与写入，需配置 `allowedOrigins` 并预先在本机设置密码。 |
+| `server.allowedOrigins` | `[]` | `remote` 模式必填的完整 HTTPS Origin 数组，例如 `["https://diary.example.com"]`。`local` 模式保持空数组。 |
 | `mediaPreviews.enabled` | `true` | 缓存缺失时是否启动后端浏览器按需生成。关闭后由前端生成并回传，批量预览命令仍可手动运行。 |
 | `mediaPreviews.browserPath` | `""` | Edge / Chrome 可执行文件或所在目录。空字符串启用自动查找。 |
-| `mediaPreviews.progressTimeoutMs` | `70000` | 浏览器连续未报告生成进度的最长等待时间，单位为毫秒，最小为 1000。 |
+| `mediaPreviews.progressTimeoutMs` | `70000` | 浏览器连续未报告生成进度的最长等待时间，单位为毫秒，范围为 1000～2147483647。默认 70 秒。 |
 
 保存后检查生效配置，再重启服务或重新运行批量预览命令。使用 `--dir` 时，编辑对应项目目录下的配置文件。
 
