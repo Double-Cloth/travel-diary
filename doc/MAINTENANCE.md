@@ -22,16 +22,7 @@
 
 `browserPath` 也可填写完整可执行文件路径，例如 `C:/Program Files/Google/Chrome/Application/chrome.exe`。Windows 路径可以使用 `/`，使用反斜杠时须在 JSON 中写成 `\\`。配置文件中的相对路径以配置文件所在的项目目录为基准；`--browser` 和 `TRAVEL_BROWSER_PATH` 中的相对路径沿用进程工作目录。
 
-| 配置项 | 默认值 | 作用 |
-| --- | --- | --- |
-| `server.port` | `9000` | 起始监听端口，范围为 1～65535。 |
-| `server.local` | `true` | `true` 绑定 `127.0.0.1`，`false` 绑定 `0.0.0.0` 以允许局域网访问。 |
-| `server.maxPortRetries` | `100` | 最多尝试的端口数量，包含起始端口；设为 `1` 时端口占用即报错。 |
-| `server.writeMode` | `"local"` | 写入模式，支持 `local`、`remote`。 |
-| `server.allowedOrigins` | `[]` | `remote` 模式允许的完整 HTTPS Origin 数组，沿用现有认证及来源校验。 |
-| `mediaPreviews.enabled` | `true` | 缓存缺失时是否启动后端浏览器按需生成。关闭后由前端生成并回传，批量预览命令仍可手动运行。 |
-| `mediaPreviews.browserPath` | `""` | Edge / Chrome 可执行文件或所在目录。空字符串启用自动查找。 |
-| `mediaPreviews.progressTimeoutMs` | `70000` | 浏览器连续未报告生成进度的最长等待时间，单位为毫秒，最小为 1000。 |
+配置项、默认值与作用见 [README 的本机配置](../README.md#本机配置)。
 
 服务参数按“命令行参数 → 本机覆盖配置 → 共享配置 → 内置默认值”的顺序取值。配置按字段合并，数组整体替换，`false`、空数组和空字符串都会生效。命令行 `--allowed-origin` 会替换配置文件中的整个来源数组。浏览器路径按“批量命令 `--browser` → 环境变量 `TRAVEL_BROWSER_PATH` → 本机覆盖配置 → 共享配置 → 自动查找”的顺序选择。显式路径无效时会使该次后端生成失败。
 
