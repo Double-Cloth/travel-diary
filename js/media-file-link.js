@@ -1,5 +1,5 @@
-import { getMediaFileUrl } from './utils.js?v=2.1.142';
-import { getMediaPreviewUrl, observeMediaPreview, observeMediaVisibility } from './media-preview.mjs?v=2.1.142';
+import { getMediaFileUrl } from './utils.js?v=2.1.143';
+import { getMediaPreviewUrl, observeMediaPreview, observeMediaVisibility } from './media-preview.mjs?v=2.1.143';
 
 export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbnailSrc = getMediaPreviewUrl(src), loadThumbnail, blob, name, kind, index = 0, detail = '' }) {
     const link = document.createElement(src ? 'a' : 'span');
@@ -27,6 +27,7 @@ export function createMediaFileLink({ path, src = getMediaFileUrl(path), thumbna
         media.fetchPriority = 'low';
         media.width = 84;
         media.height = 64;
+        media.addEventListener('load', () => media.classList.add('is-media-ready'), { once: true });
         media.addEventListener('error', () => {
             showMediaFilePreviewError(link);
         }, { once: true });

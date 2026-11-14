@@ -1,30 +1,30 @@
-import { orderMedia } from './media-order.mjs?v=2.1.142';
-import { createRecycleManager } from './recycle-manager.js?v=2.1.142';
-import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.142';
-import { createRecordEditor } from './record-editor.js?v=2.1.142';
-import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.142';
-import { createDataTransfer } from './data-transfer.js?v=2.1.142';
-import { createMediaManager } from './media-manager.js?v=2.1.142';
-import { detectWriterCapability } from './writer-capability.js?v=2.1.142';
-import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.142';
-import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.142';
-import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.142';
-import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.142';
-import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.142';
-import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.142';
-import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.142';
-import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.142';
-import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.142';
-import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.142';
-import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.142';
-import { enhanceCustomSelects } from './custom-select.js?v=2.1.142';
-import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.142';
+import { orderMedia } from './media-order.mjs?v=2.1.143';
+import { createRecycleManager } from './recycle-manager.js?v=2.1.143';
+import { loadTravelData, loadTravelRecords } from './data.js?v=2.1.143';
+import { createRecordEditor } from './record-editor.js?v=2.1.143';
+import { createPasswordChangeDialog, createPasswordGate } from './record-password.js?v=2.1.143';
+import { createDataTransfer } from './data-transfer.js?v=2.1.143';
+import { createMediaManager } from './media-manager.js?v=2.1.143';
+import { detectWriterCapability } from './writer-capability.js?v=2.1.143';
+import { createRecordDeleteDialog } from './record-delete-dialog.js?v=2.1.143';
+import { confirmFeedback, showFeedback } from './feedback-dialog.js?v=2.1.143';
+import { prepareProfilePicture, uploadProfilePicture } from './profile-picture.js?v=2.1.143';
+import { DEFAULT_OWNER_NAME, loadOwnerName, saveOwnerName } from './profile-owner.js?v=2.1.143';
+import { createOwnerNameDialog } from './profile-owner-dialog.js?v=2.1.143';
+import { createOperationProgress, downloadWithProgress, saveBlobDownload } from './operation-progress.js?v=2.1.143';
+import { buildRecordSetSnapshot, deriveOverviewAnalytics } from './analytics.mjs?v=2.1.143';
+import { buildFallbackTitle, escapeHtml, getMediaFileUrl } from './utils.js?v=2.1.143';
+import { createMediaPreview, getMediaPreviewUrl, loadMediaPreview, releaseMediaPreview, saveMediaPreview, clearMediaPreviewCache, observeMediaVisibility, isMediaPreviewVisible } from './media-preview.mjs?v=2.1.143';
+import { loadOriginalImage, clearOriginalImageCache } from './media-original.mjs?v=2.1.143';
+import { mountVirtualPhotoSleeve } from './photo-sleeve-virtual.mjs?v=2.1.143';
+import { enhanceCustomSelects } from './custom-select.js?v=2.1.143';
+import { buildItineraryGroups, countDistinctVisits, getVisitKey } from './visits.mjs?v=2.1.143';
 import {
     formatLocationText,
     getAdminAreaFilterLabel,
     getCountryLocationLabels,
     isDomesticLocation
-} from './location.mjs?v=2.1.142';
+} from './location.mjs?v=2.1.143';
 import {
     constrainPhotoViewerTranslate,
     getInitialPhotoScale as calculateInitialPhotoScale,
@@ -33,7 +33,7 @@ import {
     getPhotoViewerBounds as calculatePhotoViewerBounds,
     getPhotoViewerRenderMetrics,
     getPhotoViewerZoomTranslate
-} from './photo-viewer-transform.mjs?v=2.1.142';
+} from './photo-viewer-transform.mjs?v=2.1.143';
 
 const DEFAULT_LEDGER_SORT = 'desc';
 const LEDGER_VIEW_STORAGE_KEY = 'travel-diary-ledger-view';
@@ -2898,6 +2898,7 @@ function handleMediaLoadError(event) {
     const sleeveButton = media.closest?.('.photo-sleeve-button');
     if (sleeveButton) {
         const message = `预览不可用：${sleeveButton.dataset.mediaName}，点击查看原文件。`;
+        sleeveButton.classList.remove('is-media-ready');
         sleeveButton.classList.add('is-media-error');
         sleeveButton.setAttribute('aria-label', message);
         sleeveButton.title = message;
@@ -5345,6 +5346,7 @@ function renderPhotoSleeveHeading(item, index) {
 function renderPhotoSleeveItem(item, index) {
     return `<button class="photo-sleeve-button${item.kind === 'video' ? ' photo-sleeve-video' : ''}" type="button" data-action="open-media-viewer" data-media-index="${index}" data-media-kind="${item.kind}" data-media-name="${escapeHtml(item.name)}" data-media-src="${escapeHtml(item.src)}" data-media-alt="${escapeHtml(item.alt)}" aria-label="打开${item.kind === 'video' ? '视频' : '图片'} ${escapeHtml(item.name)}">
         <img data-src="${escapeHtml(getMediaPreviewUrl(item.src))}" alt="${escapeHtml(item.alt)}" loading="lazy" decoding="async" fetchpriority="low">
+        <span class="photo-sleeve-loading" aria-hidden="true">加载中…</span>
         ${item.kind === 'video' ? '<span class="photo-sleeve-play" aria-hidden="true">▶</span><span class="photo-sleeve-kind">视频</span>' : ''}
         <span class="photo-sleeve-media-error" role="status" hidden><span class="sr-only">预览不可用：${escapeHtml(item.name)}，点击查看原文件。</span></span>
         <span class="photo-sleeve-index">${escapeHtml(String(index + 1).padStart(2, '0'))}</span>
@@ -5371,6 +5373,9 @@ function loadPhotoSleeveMedia(image, retry = true) {
         image.loading = 'eager';
         const ready = loadMediaPreview(image, button.dataset.mediaSrc, button.dataset.mediaKind, () => isMediaPreviewVisible(image))
             .then(() => image.decode?.())
+            .then(() => {
+                if (image.isConnected && image.naturalWidth > 0) button.classList.add('is-media-ready');
+            })
             .catch(async error => {
                 if (error.name === 'AbortError' || !retry || !image.isConnected) throw error;
                 await new Promise(resolve => setTimeout(resolve, 250));
