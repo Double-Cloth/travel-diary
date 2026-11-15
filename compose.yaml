@@ -11,7 +11,7 @@ services:
       TRAVEL_WRITE_MODE: ${TRAVEL_WRITE_MODE:-local}
       SITE_DOMAIN: ${SITE_DOMAIN:?请在 .env 中设置 SITE_DOMAIN}
       SITE_SCHEME: ${SITE_SCHEME:-https}
-      TRAVEL_MEDIA_PREVIEWS_ENABLED: "false"
+      TRAVEL_MEDIA_PREVIEWS_ENABLED: ${TRAVEL_MEDIA_PREVIEWS_ENABLED:-true}
     volumes:
       - runtime:/var/lib/travel-diary
     expose:

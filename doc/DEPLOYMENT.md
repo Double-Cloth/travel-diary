@@ -54,6 +54,7 @@ docker compose up -d --no-build --wait
 | --- | --- | --- |
 | `SITE_DOMAIN` | 需修改示例 | 小写完整域名，省略协议、端口及路径。 |
 | `TRAVEL_WRITE_MODE` | `local` | 远程只读浏览，改为 `remote` 后允许白名单站点认证与写入。 |
+| `TRAVEL_MEDIA_PREVIEWS_ENABLED` | `true` | 后端按需自动生成媒体缩略图，设为 `false` 可关闭。 |
 | `TRAVEL_IMAGE` | `ghcr.io/double-cloth/travel-diary:latest` | 仓库示例默认跟踪稳定版，Release 部署包固定对应 Tag。也可填写 `ghcr.io/double-cloth/travel-diary@sha256:...` 固定摘要。 |
 | `TRAVEL_OFFLINE` | `0` | 设为 `1` 自动启用离线覆盖配置，禁止拉取及构建；安装器自动设置。 |
 | `SITE_SCHEME` | `https` | 入口协议，HTTP 仅支持只读浏览。 |
@@ -241,7 +242,14 @@ Caddy 将全部业务路径转发给 Node.js，保留 Host 和 Origin。代理�
 
 导入过程中同时保留当前内容、上传 ZIP 和新解包内容。导入 60 GiB 未压缩备份时，除现有数据外至少预留约 120 GiB 及文件系统余量。运维恢复还会创建恢复前备份并保留旧目录，规划时需计入这些副本。
 
-默认轻量镜像关闭后端浏览器预览生成。缺失预览由现有前端 Canvas 路径生成并回传缓存。已有缓存可持续复用。若需要后端预生成，可在原生环境安装已有 Chrome/Chromium，配置 `TRAVEL_BROWSER_PATH` 后执行批量预览命令，再迁移 `.cache/`。字体通过随镜像提供的 WASM 自动生成。
+镜像内置 Chromium，默认开启后端按需生成图片、视频和头像缩略图，字体通过内置 WASM 按需自动生成。两类缓存保存在运行卷的 `.cache/` 中，已有有效缓存自动复用。后端生成失败时，前端继续通过 Canvas 生成并回传缓存。容器中的 Chromium 使用 `--no-sandbox` 适配 `no-new-privileges` 与容器权限限制，使用 `--disable-dev-shm-usage` 避免依赖默认大小的共享内存。进程沿用非 root 用户及 Compose 的容器隔离设置。
+
+导入后需要提前生成缓存时，在部署目录执行以下命令。更多命令及离线用法见 [Docker 中执行 npm 命令](../README.md#docker-中执行-npm-命令)。
+
+```bash
+docker compose exec -w /var/lib/travel-diary app npm run media:previews
+docker compose exec -w /var/lib/travel-diary app npm run fonts
+```
 
 | 现象 | 排查 |
 | --- | --- |

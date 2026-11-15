@@ -19,6 +19,7 @@ scripts/**
 !scripts/build-data-backup.js
 !scripts/font-tools.mjs
 !scripts/build-media-previews.js
+!scripts/media-preview-batch.mjs
 !scripts/check-runtime-config.js
 !scripts/clear-cache.js
 !scripts/deployment-backup.js

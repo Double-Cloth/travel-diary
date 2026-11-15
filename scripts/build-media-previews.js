@@ -81,8 +81,8 @@ async function buildMediaPreviews(root, options = {}) {
     const browserPath = await findBrowser(selectedBrowser);
     const profile = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-preview-browser-'));
     const session = `/__media-preview-${randomBytes(16).toString('hex')}/`;
-    // 生成任务使用原始缓存接口，避免内部请求再次触发后台生成。
-    const handler = createHandler(root, { generateMediaPreviews: false });
+    // 回环生成服务使用本地模式和原始缓存接口，独立于站点的远程写入配置。
+    const handler = createHandler(root, { writeMode: 'local', allowedOrigins: [], generateMediaPreviews: false });
     const log = options.log || console.log;
     const controller = new AbortController();
     let browser, timer, resolveDone, rejectDone, dispatched = 0;

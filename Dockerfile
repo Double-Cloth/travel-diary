@@ -4,7 +4,15 @@ LABEL org.opencontainers.image.source="https://github.com/Double-Cloth/travel-di
       org.opencontainers.image.description="Travel Diary" \
       org.opencontainers.image.licenses="MIT"
 
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    TRAVEL_BROWSER_PATH=/usr/bin/chromium \
+    CHROMIUM_FLAGS="--no-sandbox --disable-dev-shm-usage"
+# Chromium 复用容器隔离，适配非 root、no-new-privileges 和默认共享内存大小。
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends chromium \
+    && rm -rf /var/lib/apt/lists/*
+# Debian 启动器会重置环境中的 CHROMIUM_FLAGS，参数通过其配置目录读取。
+RUN printf 'export CHROMIUM_FLAGS="%s"\n' "$CHROMIUM_FLAGS" > /etc/chromium.d/travel-diary
 WORKDIR /opt/travel-diary
 COPY --chown=node:node LICENSE package.json index.html travel-diary.config.json travel-diary.config.schema.json ./
 COPY --chown=node:node js/ ./js/

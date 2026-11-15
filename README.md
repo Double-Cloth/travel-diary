@@ -14,9 +14,17 @@ Travel Diary 是一本数字旅行日志。它把每一次出发整理成行程�
 
 - [项目依赖](#项目依赖)
 - [Linux 服务器部署](#linux-服务器部署)
+  - [在线首次部署](#在线首次部署)
+  - [离线首次部署](#离线首次部署)
 - [部署脚本使用](#部署脚本使用)
+  - [命令速查](#命令速查)
+  - [备份与恢复](#备份与恢复)
+  - [升级与回滚](#升级与回滚)
+- [Docker 中执行 npm 命令](#docker-中执行-npm-命令)
 - [Node.js 本机运行与命令](#nodejs-本机运行与命令)
+  - [npm 脚本速查](#npm-脚本速查)
 - [发布与部署工具](#发布与部署工具)
+- [项目目录结构](#项目目录结构)
 - [文档](#文档)
 
 ## 项目依赖
@@ -27,7 +35,7 @@ Travel Diary 是一本数字旅行日志。它把每一次出发整理成行程�
 | Node.js（受支持的 LTS 版本） | 本机运行必需 | 启动本机服务、执行测试及全部 Node.js 脚本，只使用内置模块。Docker 部署由镜像提供 Node.js。 |
 | Docker Engine 与 Docker Compose 插件 | 服务器部署必需 | 支持 AMD64 / ARM64，可在线拉取镜像或使用完整离线部署包。所需 Compose 能力见部署指南。 |
 | npm | 可选 | 随 Node.js 提供，用于执行下方 `npm` 命令；也可直接用 `node` 运行脚本，无需 `npm install`。 |
-| 本机 Edge 或 Chrome | 可选 | 后端按需生成及 `media:previews` 批量生成图片、视频和头像缩略图；可用配置文件、`TRAVEL_BROWSER_PATH` 或批量命令的 `--browser` 指定。后端生成失败时由前端压缩并回传保存，已有缓存直接复用。 |
+| Edge、Chrome 或 Chromium | 本机生成缩略图时需要 | 后端按需生成及 `media:previews` 批量生成图片、视频和头像缩略图。可用配置文件、`TRAVEL_BROWSER_PATH` 或批量命令的 `--browser` 指定。Docker 镜像内置 Chromium。后端生成失败时由前端压缩并回传保存，已有缓存直接复用。 |
 | 网络连接 | 按部署方式 | 在线部署需要下载镜像并申请证书；离线部署提前取得安装包即可。运行时无需外部服务，更新地点目录时需要联网。 |
 
 > 项目没有运行时 npm 依赖，也没有 `package-lock.json`、`node_modules` 或前端构建步骤；字体构建工具（HarfBuzz / WOFF2 WASM）、字体、拼音及地点目录随仓库分发。媒体预览不需要 FFmpeg，部署也不需要额外构建工具。
@@ -35,6 +43,8 @@ Travel Diary 是一本数字旅行日志。它把每一次出发整理成行程�
 ## Linux 服务器部署
 
 服务器部署使用 Docker Compose 与 Caddy，支持 AMD64 / ARM64。应用以非 root 用户运行，数据、认证和回收站保存在持久卷中。在线部署包提供配置和管理脚本，完整离线包额外包含应用与 Caddy 镜像。
+
+Docker 默认开启**后端自动生成缩略图**，字体也在首次请求时通过内置 WASM 自动生成。两类缓存分别保存在运行卷的 `.cache/media-previews/` 和 `.cache/fonts/`，重启后继续复用。需要提前生成时，按下方 [Docker 中执行 npm 命令](#docker-中执行-npm-命令) 操作。
 
 ### 在线首次部署
 
@@ -181,6 +191,41 @@ bash scripts/deploy.sh doctor
 ```
 
 镜像回滚保留当前数据。涉及数据格式变化时，按 Release 兼容性说明选择配套旧镜像并恢复升级前备份。管理脚本与配置文件的更新步骤见 [在线升级](doc/DEPLOYMENT.md#升级) 和 [离线升级和回滚](doc/OFFLINE_DEPLOYMENT.md#离线升级和回滚)。
+
+## Docker 中执行 npm 命令
+
+在部署目录执行以下命令，`app` 服务需已启动。使用 `-w /var/lib/travel-diary` 进入持久卷中的运行目录，脚本会读取实际日记并将生成缓存写入同一运行卷。`exec` 的工作目录选项见 [Docker Compose 文档](https://docs.docker.com/reference/cli/docker/compose/exec/)。
+
+```bash
+# 批量生成图片、视频和头像缩略图，有效缓存自动跳过
+docker compose exec -w /var/lib/travel-diary app npm run media:previews
+# 提前生成完整 WOFF2、轻量字集与字体 CSS
+docker compose exec -w /var/lib/travel-diary app npm run fonts
+# 仅生成轻量字集，或生成项目文字的完整字体子集
+docker compose exec -w /var/lib/travel-diary app npm run fonts:core
+docker compose exec -w /var/lib/travel-diary app npm run fonts:subset
+# 向 npm 脚本传入参数
+docker compose exec -w /var/lib/travel-diary app npm run media:previews -- --help
+```
+
+镜像默认工作目录为 `/opt/travel-diary`，启动时将程序与脚本同步到 `/var/lib/travel-diary`。容器内运维命令统一使用上面的 `-w`，以便操作持久化数据和缓存。缩略图与字体默认按需自动生成，批量生成可用于导入后的缓存预热。服务器 `.env` 中的 `TRAVEL_MEDIA_PREVIEWS_ENABLED=false` 可关闭后端自动缩略图生成，修改后执行 `bash scripts/deploy.sh up`。
+
+部署配置与健康状态通过 `bash scripts/deploy.sh doctor` 检查，该入口会补齐容器启动时根据域名计算的远程写入来源。
+
+在非交互脚本中添加 `-T`，交互设密则保留默认终端。
+
+```bash
+docker compose exec -T -w /var/lib/travel-diary app npm run media:previews
+docker compose exec -w /var/lib/travel-diary app npm run auth:set
+```
+
+离线部署在 `docker compose` 后加 `-f compose.yaml -f compose.offline.yaml`，例如以下命令。
+
+```bash
+docker compose -f compose.yaml -f compose.offline.yaml exec -w /var/lib/travel-diary app npm run media:previews
+```
+
+镜像提供服务运行、认证、数据归档与排序、配置检查、缓存清理、字体和媒体预览脚本。地点目录更新、资源版本同步、测试及发布打包命令在源码仓库执行。部署数据的完整备份与恢复使用 [部署脚本](#备份与恢复)。
 
 ## Node.js 本机运行与命令
 
@@ -438,6 +483,32 @@ node scripts/deployment-backup.js restore "/path/to/travel-diary" "/secure/trave
 | `scripts/font-tools.mjs` | 由字体构建逻辑导入，封装 HarfBuzz / WOFF2 WASM。 |
 | `scripts/media-preview-batch.mjs` | 由 `npm run media:previews` 启动的浏览器页面加载，执行媒体压缩及进度回传。 |
 | `deploy/entrypoint.sh` | 由 Docker 容器启动时自动执行，同步运行目录、设置服务参数并启动 Node.js。 |
+
+## 项目目录结构
+
+```text
+travel-diary/
+├── index.html                 # 页面入口
+├── js/                        # 前端、Node.js 服务与共用模块
+├── css/                       # 页面样式
+├── assets/                    # 公共图片、字体源文件、地点目录与 WASM
+├── data/                      # 个人资料、Markdown 日记、图片与视频
+├── scripts/                   # npm 脚本、部署管理、发布打包与验证工具
+├── deploy/                    # 容器入口、Caddy 模板与证书目录
+├── doc/                       # 架构、维护、部署与资源管理文档
+├── tests/                     # 测试、辅助工具与虚拟数据
+├── .github/workflows/         # 持续集成与 Release 工作流
+├── .cache/                    # 自动生成的字体、媒体缓存与回收站
+├── .secrets/                  # 本机访问密码配置
+├── dist/                      # 部署包输出
+├── Dockerfile                 # 应用镜像，包含 Node.js 与 Chromium
+├── compose*.yaml              # 在线、源码构建与离线部署配置
+├── install.sh                 # 完整离线包安装入口
+├── package.json               # npm 命令入口
+└── travel-diary.config*.json   # 共享配置、配置结构与本机覆盖配置
+```
+
+`.cache/`、`.secrets/` 和 `dist/` 按运行或打包需要生成，均已加入 Git 忽略规则。`data/` 保存个人内容，`assets/` 保存通用资源，`scripts/` 与 `deploy/` 分别承载命令工具和部署配置。Docker 中的运行代码、个人数据、认证和缓存统一位于 `/var/lib/travel-diary`，部署包中的 `scripts/` 只包含服务器管理工具，日常 npm 命令在应用容器内执行。
 
 ## 文档
 

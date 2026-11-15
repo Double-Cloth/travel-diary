@@ -84,6 +84,8 @@ try {
         for(const name of ['deploy.sh','test-deployment.mjs','sync-asset-versions.js','update-countries.mjs']) {
             assert.equal(fs.existsSync('/opt/travel-diary/scripts/'+name),false,name);
         }
+        fs.accessSync('/opt/travel-diary/scripts/media-preview-batch.mjs');
+        fs.accessSync(process.env.TRAVEL_BROWSER_PATH,fs.constants.X_OK);
         assert.deepEqual(fs.readdirSync('/var/lib/travel-diary'),[]);
     `]);
     console.log('镜像用户及私有内容隔离通过');
@@ -99,12 +101,17 @@ try {
     await dc(['up', '-d', '--no-build', '--wait', '--wait-timeout', '120']);
     const config = JSON.parse((await dc(['config', '--format', 'json'])).output);
     assert.equal(config.services.app.ports, undefined);
+    assert.equal(config.services.app.environment.TRAVEL_MEDIA_PREVIEWS_ENABLED, 'true');
     assert.ok(!config.services.caddy.ports?.length);
     await api(`
         assert.equal((await fetch(url+'/readyz',{headers})).status,200);
         for(const file of ['/', '/js/app.js','/assets/catalogs/countries.json','/.cache/fonts/diary-kai-core.css']) {
             const response=await fetch(url+file,{headers}); assert.equal(response.status,200,file); await response.arrayBuffer();
         }
+        const preview=await fetch(url+'/.cache/media-previews/profile/profile-picture.png.jpg',{headers});
+        assert.equal(preview.status,200,'后端默认自动生成头像缩略图');
+        assert.equal(preview.headers.get('content-type'),'image/jpeg');
+        assert.ok((await preview.arrayBuffer()).byteLength>0);
         for(const file of ['/.secrets/auth.json','/travel-diary.config.json','/.env','/.cache/recycle-bin/item.json']) {
             assert.equal((await fetch(url+file,{headers})).status,403,file);
         }
@@ -123,10 +130,21 @@ try {
         const png=await fs.readFile(root+'/data/profile/profile-picture.png');
         const profile=await fetch(url+'/api/travel-profile',{method:'PUT',headers:authenticated,body:JSON.stringify({data:png.toString('base64')})});
         assert.equal(profile.status,200,await profile.clone().text());
+        for(const suffix of ['', '.json']) {
+            await fs.rm(root+'/.cache/media-previews/profile/profile-picture.png.jpg'+suffix,{force:true});
+        }
         await fs.mkdir(root+'/.cache/recycle-bin/synthetic',{recursive:true});
         await fs.writeFile(root+'/.cache/recycle-bin/synthetic/fixture.txt','virtual recycle data');
         console.log('代理、字体、认证、编辑和媒体上传通过');
     `);
+    const previewCommand = ['exec', '-T', '-w', '/var/lib/travel-diary', 'app', 'npm', 'run', 'media:previews'];
+    const generated = await dc(previewCommand);
+    assert.match(generated.output, /新生成 1 项，缓存有效 0 项，失败 0 项/);
+    const cached = await dc(previewCommand);
+    assert.match(cached.output, /新生成 0 项，缓存有效 1 项，失败 0 项/);
+    const fonts = await dc(['exec', '-T', '-w', '/var/lib/travel-diary', 'app', 'npm', 'run', 'fonts']);
+    assert.match(fonts.output, /字体缓存已生成/);
+    console.log('后端自动缩略图、容器 npm 批量生成及缓存复用通过');
     await dc(['restart', 'app']);
     await dc(['up', '-d', '--wait', '--wait-timeout', '120']);
     await dc(['up', '-d', '--no-build', '--force-recreate', '--wait', '--wait-timeout', '120', 'app']);
@@ -134,6 +152,8 @@ try {
         assert.equal(JSON.parse(await fs.readFile(root+'/data/travel_data.json')).length,1);
         assert.equal(await fs.readFile(root+'/.cache/recycle-bin/synthetic/fixture.txt','utf8'),'virtual recycle data');
         assert.deepEqual(JSON.parse(await fs.readFile(root+'/.secrets/auth.json')),${JSON.stringify(AUTH_CONFIG)});
+        assert.equal((await fetch(url+'/.cache/media-previews/profile/profile-picture.png.jpg',{headers})).status,200);
+        assert.ok((await fs.stat(root+'/.cache/fonts/LXGWWenKaiMono-Regular.woff2')).size>0);
     `);
     console.log('SIGTERM、重启和重新创建后的数据持久化通过');
     await dc(['stop', 'app']);
