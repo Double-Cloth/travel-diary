@@ -152,7 +152,7 @@ case "$command" in
         fi
         # 先下载，拉取失败时当前服务继续运行。回退使用本机保留的镜像。
         if [[ "$command" == update ]]; then acquire_image; fi
-        target_image=$(dc config --format json | run_app node -e '
+        target_image=$(dc config --format json | TRAVEL_IMAGE="$old_image" run_app node -e '
             let input=""; process.stdin.on("data",b=>input+=b);
             process.stdin.on("end",()=>console.log(JSON.parse(input).services.app.image));
         ')

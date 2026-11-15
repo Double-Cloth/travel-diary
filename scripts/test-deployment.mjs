@@ -174,7 +174,7 @@ try {
         const failedDockerfile = path.join(temporary, 'Dockerfile.failed');
         await fs.writeFile(failedDockerfile, `FROM ${image}\nENTRYPOINT ["node", "-e", "process.exit(42)"]\n`);
         await fs.writeFile(override, originalOverride.replace('  caddy:',
-            `    build:\n      dockerfile: ${JSON.stringify(failedDockerfile)}\n  caddy:`));
+            `    build:\n      context: ${JSON.stringify(temporary)}\n      dockerfile: Dockerfile.failed\n  caddy:`));
         const failed = await execute(['scripts/deploy.sh', 'update'], '', { program: 'bash', allowFailure: true });
         const failedTags = failed.output.match(/travel-diary:rollback-\d{8}T\d{6}Z-\d+/g) || [];
         for (const tag of failedTags) rollbackTags.add(tag);
