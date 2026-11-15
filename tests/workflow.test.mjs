@@ -6,7 +6,7 @@ const workflow = await readFile(new URL('../.github/workflows/test.yml', import.
 
 test('CI 验证字体缓存构建并运行 Node 测试', () => {
     assert.match(workflow, /on:\s*\n\s+push:/);
-    assert.match(workflow, /actions\/setup-node@v[0-9]+/);
+    assert.match(workflow, /actions\/setup-node@(?:v[0-9]+|[a-f0-9]{40})\b/);
     assert.match(workflow, /npm test/);
     assert.match(workflow, /npm run fonts/);
     assert.doesNotMatch(workflow, /setup-python|pip install|fonttools|npm install|npm ci|deploy-pages|upload-pages|pages: write/);

@@ -162,12 +162,11 @@ case "$command" in
         # 使用升级前程序备份，保证备份读取器与当前数据格式匹配。
         TRAVEL_IMAGE="$rollback_tag" backup_stopped
         echo "镜像回退标签 $rollback_tag"
-        if config_check && wait_ready && save_image "$target_image"; then
-            printf '%s\n' "$rollback_tag" > "$previous_image_file"
+        if config_check && wait_ready && save_image "$target_image" && printf '%s\n' "$rollback_tag" > "$previous_image_file"; then
             echo "更新完成，原镜像 $rollback_tag，升级前备份 $latest_backup"
         else
             echo '更新失败，正在恢复原镜像。数据变更可使用升级前备份恢复。' >&2
-            save_image "$rollback_tag"
+            save_image "$rollback_tag" || echo "配置保存失败，请将 $config_file 的 TRAVEL_IMAGE 手动设为 $rollback_tag。" >&2
             TRAVEL_IMAGE="$rollback_tag" dc up -d --no-build --pull never --force-recreate --wait --wait-timeout 180
             exit 1
         fi
