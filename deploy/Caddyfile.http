@@ -1,0 +1,3 @@
+http://{$SITE_DOMAIN} {
+    import proxy.conf
+}

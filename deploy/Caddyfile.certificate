@@ -1,0 +1,8 @@
+{
+    auto_https disable_certs
+    ocsp_stapling off
+}
+{$SITE_DOMAIN} {
+    tls /etc/caddy/certs/site.crt /etc/caddy/certs/site.key
+    import proxy.conf
+}

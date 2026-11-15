@@ -44,8 +44,17 @@ jobs:
         with:
           node-version: 24
       - name: Check deployment shell syntax
-        run: bash -n scripts/deploy.sh && sh -n deploy/entrypoint.sh
+        run: |
+          for file in scripts/deploy.sh scripts/offline-images.sh install.sh; do bash -n "$file"; done
+          sh -n deploy/entrypoint.sh
       - name: Build isolated image
         run: docker build -t travel-diary:verification .
       - name: Verify containers with synthetic data
         run: npm run test:deployment
+      - name: Prepare offline bundle before disconnecting
+        run: |
+          docker pull caddy:2-alpine
+          docker build -f tests/fixtures/Dockerfile.offline -t travel-diary:offline-test-tools .
+          node scripts/package-deployment.mjs --offline --local --tag verification --image travel-diary:verification
+      - name: Verify installation and upgrades without internet
+        run: node scripts/test-offline-deployment.mjs dist/travel-diary-offline-linux-*-verification.tar.gz

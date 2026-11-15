@@ -71,8 +71,8 @@ HTML 和数据路径相对项目根目录；`css/` 下图像与纹理引用使�
 
 | 文件 | 来源与作用 |
 | --- | --- |
-| `assets/catalogs/countries.json` | ISO alpha-2 范围的 249 项，名称来自固定 Unicode CLDR 48.2.1，含中英文名称、别名和行政区标签。 |
-| `assets/catalogs/china-locations.json` | 固定 `cn-division 2026.0.1`，提供大陆 31 个省级行政区及地级、区县候选，用于中国目的地省份反查。 |
+| `assets/catalogs/countries.json` | ISO alpha-2 国家目录，名称来自固定的 Unicode CLDR 数据，含中英文名称、别名和行政区标签。 |
+| `assets/catalogs/china-locations.json` | 固定的 `cn-division` 数据，提供大陆省级行政区及地级、区县候选，用于中国目的地省份反查。 |
 
 生成文件保存来源信息；以各上游项目的授权说明为准。更新脚本仅在维护时联网，单次请求 30 秒超时，普通启动不会拉取上游。复用项目保留完整目录，不按个人旅行范围裁剪，也不在运行时代码另建一份国家表。
 

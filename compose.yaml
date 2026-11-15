@@ -10,6 +10,7 @@ services:
       TRAVEL_MAX_PORT_RETRIES: "1"
       TRAVEL_WRITE_MODE: ${TRAVEL_WRITE_MODE:-local}
       SITE_DOMAIN: ${SITE_DOMAIN:?请在 .env 中设置 SITE_DOMAIN}
+      SITE_SCHEME: ${SITE_SCHEME:-https}
       TRAVEL_MEDIA_PREVIEWS_ENABLED: "false"
     volumes:
       - runtime:/var/lib/travel-diary
@@ -31,7 +32,7 @@ services:
         max-size: "10m"
         max-file: "3"
   caddy:
-    image: caddy:2-alpine
+    image: ${CADDY_IMAGE:-caddy:2-alpine}
     restart: unless-stopped
     depends_on:
       app:
@@ -43,7 +44,9 @@ services:
       - "443:443"
       - "443:443/udp"
     volumes:
-      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${CADDY_CONFIG:-./deploy/Caddyfile}:/etc/caddy/Caddyfile:ro
+      - ./deploy/proxy.conf:/etc/caddy/proxy.conf:ro
+      - ./deploy/certs:/etc/caddy/certs:ro
       - caddy_data:/data
       - caddy_config:/config
     logging:

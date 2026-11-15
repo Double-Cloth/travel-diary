@@ -196,7 +196,7 @@ try {
         const serverDirectory = path.join(temporary, 'server files');
         await fs.mkdir(path.join(serverDirectory, 'scripts'), { recursive: true });
         await fs.mkdir(path.join(serverDirectory, 'deploy'));
-        for (const file of ['compose.yaml', '.env.example', 'scripts/deploy.sh', 'deploy/Caddyfile']) {
+        for (const file of ['compose.yaml', '.env.example', 'scripts/deploy.sh', 'scripts/offline-images.sh', 'deploy/Caddyfile', 'deploy/proxy.conf']) {
             await fs.copyFile(file, path.join(serverDirectory, file));
         }
         environment.COMPOSE_FILE = [path.join(serverDirectory, 'compose.yaml'), override].join(path.delimiter);

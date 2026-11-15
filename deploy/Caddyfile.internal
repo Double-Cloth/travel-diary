@@ -1,0 +1,7 @@
+{
+    skip_install_trust
+}
+{$SITE_DOMAIN} {
+    tls internal
+    import proxy.conf
+}

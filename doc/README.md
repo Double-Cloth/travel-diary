@@ -15,6 +15,7 @@ Travel Diary 是个人旅行手账：以行程、地点和 Markdown 日记组织
 | [资产管理规范](ASSET_MANAGEMENT.md) | `doc/ASSET_MANAGEMENT.md` | 图片、字体、纹理、地点目录与资源维护 |
 | [维护与部署指南](MAINTENANCE.md) | `doc/MAINTENANCE.md` | 运行环境、认证、部署、备份恢复与故障处理 |
 | [Linux 服务器部署](DEPLOYMENT.md) | `doc/DEPLOYMENT.md` | Docker Compose、Caddy、初始化、迁移、运维备份、恢复及升级 |
+| [离线部署](OFFLINE_DEPLOYMENT.md) | `doc/OFFLINE_DEPLOYMENT.md` | 架构选择、离线镜像、HTTP、已有证书、内部 CA、断网安装与升级 |
 | [本地字体构建工具](../assets/wasm/README.md) | `assets/wasm/README.md` | WASM 来源、许可证、更新与验证 |
 
-个人内容放在 `data/`，通用资源放在 `assets/`，认证配置放在 `.secrets/`。日记和媒体通过服务读取；访问密码控制写入，不能限制日记阅读。离线使用需要本机服务器和完整本地资源，线上页面没有 Service Worker 离线缓存。
+个人内容放在 `data/`，通用资源放在 `assets/`，认证配置放在 `.secrets/`。日记和媒体通过服务读取；访问密码控制写入，不能限制日记阅读。离线使用需要可访问的本机或内网服务器和完整资源；服务器可断开互联网，浏览器仍需连接服务器。页面没有 Service Worker 离线缓存。

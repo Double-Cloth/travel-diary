@@ -1,0 +1,4 @@
+# 仅用于测试：预先安装工具，演练阶段以 --network none 运行独立 Docker Engine。
+FROM docker:28-dind
+RUN apk add --no-cache bash nodejs util-linux coreutils openssl
+ENV DOCKER_TLS_CERTDIR="" DOCKER_BUILDKIT=0

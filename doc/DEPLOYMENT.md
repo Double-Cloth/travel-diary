@@ -2,16 +2,18 @@
 
 ## 支持环境
 
-标准方案使用 Docker Engine、Docker Compose 2.24.4 或更新版本、Bash、`flock`、`awk`、`curl`、`tar`、`sha256sum` 和 Caddy。服务器直接拉取公共镜像 `ghcr.io/double-cloth/travel-diary`，支持 AMD64 与 ARM64，由 Docker 自动选择架构。部署文件来自 Release 附件，服务器无需安装 Node.js、npm、Git 或克隆源代码。镜像使用官方 `node:24-bookworm-slim`，应用进程为 UID/GID 1000。Caddy 使用 `caddy:2-alpine`。
+标准方案使用 Docker Engine、Docker Compose 插件（支持 `--wait`、`--pull never`、`config --format json` 和 `pull_policy`）、Bash、`flock`、`awk`、`curl`、`tar`、`sha256sum` 和 Caddy。服务器直接拉取公共镜像 `ghcr.io/double-cloth/travel-diary`，支持 AMD64 与 ARM64，由 Docker 自动选择架构。部署文件来自 Release 附件，服务器无需安装 Node.js、npm、Git 或克隆源代码。镜像基于官方 Node.js 运行环境，应用进程为 UID/GID 1000。代理使用官方 Caddy 镜像。具体镜像由仓库配置和发布包固定。
 
 部署前准备域名及 DNS，将 A/AAAA 指向服务器可达的公网入口。开放 TCP 80/443，HTTP/3 可额外开放 UDP 443。服务器应能访问镜像仓库和证书机构。确认磁盘足够容纳现有数据、备份和恢复暂存。
 
 没有公网 IP 的内网设备需要端口映射、可达的隧道入口或 VPN。私网设备可以使用原生 Node.js 本地模式或 VPN 内访问。已有反向代理时，可以只启动 `app`，让代理通过 Docker 内部网络连接 `app:9000`，或在同机原生运行 Node.js 并绑定 `127.0.0.1`。已有代理负责 TLS，并原样传递外部 Host 和 Origin。根据实际入口配置域名和 HTTPS 来源，确认全部路径都交给 Node.js。
 
+离线服务器使用包含完整镜像的架构专用附件，无需访问镜像仓库或公网证书机构，详见 [离线部署指南](OFFLINE_DEPLOYMENT.md)。在线部署仍按以下步骤操作。
+
 ## 首次部署
 
 ```bash
-version=v2.1.144
+version='目标 Release Tag'
 mkdir -p /srv/travel-diary
 cd /srv/travel-diary
 curl -fLO "https://github.com/Double-Cloth/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz"
@@ -53,6 +55,10 @@ docker compose up -d --no-build --wait
 | `SITE_DOMAIN` | 需修改示例 | 小写完整域名，省略协议、端口及路径。 |
 | `TRAVEL_WRITE_MODE` | `local` | 远程只读浏览，改为 `remote` 后允许白名单站点认证与写入。 |
 | `TRAVEL_IMAGE` | `ghcr.io/double-cloth/travel-diary:latest` | 仓库示例默认跟踪稳定版，Release 部署包固定对应 Tag。也可填写 `ghcr.io/double-cloth/travel-diary@sha256:...` 固定摘要。 |
+| `TRAVEL_OFFLINE` | `0` | 设为 `1` 自动启用离线覆盖配置，禁止拉取及构建；安装器自动设置。 |
+| `SITE_SCHEME` | `https` | 入口协议，HTTP 仅支持只读浏览。 |
+| `CADDY_IMAGE` | 官方 Caddy 镜像 | 离线包固定架构专用本地标签。 |
+| `CADDY_CONFIG` | `./deploy/Caddyfile` | 在线自动 HTTPS；离线模板及证书设置见离线指南。 |
 | `BACKUP_DIR` | `./backups` | 专用宿主机备份目录，建议设为项目外绝对路径。 |
 
 Compose 仅发布 Caddy 端口。应用固定监听内部 `0.0.0.0:9000`，端口被占用时直接报错。容器入口根据 `SITE_DOMAIN` 自动设置唯一来源 `https://<域名>`，local 模式使用空来源数组。应用会在监听前核对 remote 所需的密码配置。应用内的 Host、Origin、会话、令牌与路径校验继续执行。
@@ -109,8 +115,9 @@ bash scripts/deploy.sh restore travel-diary-migration
 
 ```bash
 bash scripts/deploy.sh backup
-# 使用终端输出的备份目录名
-bash scripts/deploy.sh verify travel-diary-20261115T020000Z-12345
+# 填写终端输出的备份目录名
+backup_name='实际备份目录名'
+bash scripts/deploy.sh verify "$backup_name"
 ```
 
 管理命令先停止应用，完成备份后恢复原先运行状态。备份失败时保持停机并保留产物供诊断，查看错误、磁盘和权限后再手动启动。Caddy 在停机窗口可能返回 502。备份目录使用独占创建，已有同名目录会报错。
@@ -136,7 +143,8 @@ bash scripts/deploy.sh verify travel-diary-20261115T020000Z-12345
 ## 恢复与回退
 
 ```bash
-bash scripts/deploy.sh restore travel-diary-20261115T020000Z-12345
+backup_name='实际备份目录名'
+bash scripts/deploy.sh restore "$backup_name"
 ```
 
 先输入完整备份名称，再输入 `RESTORE`。工具校验备份、停止应用、备份当前状态，然后在运行卷独立暂存目录中调用现有导入器检查索引、正文、媒体路径与认证配置。全部内容准备好后才替换数据、认证和缓存目录。恢复会采用备份中的访问密码，完成后重新登录。
@@ -150,7 +158,8 @@ bash scripts/deploy.sh restore travel-diary-20261115T020000Z-12345
 ```bash
 bash scripts/deploy.sh status
 # 目标 Tag 以 Releases 页面实际发布的版本为准
-bash scripts/deploy.sh update v2.1.144
+version='目标 Release Tag'
+bash scripts/deploy.sh update "$version"
 # 也可传完整镜像引用或摘要
 # bash scripts/deploy.sh update ghcr.io/double-cloth/travel-diary@sha256:...
 ```
@@ -164,7 +173,8 @@ bash scripts/deploy.sh update v2.1.144
 ```bash
 bash scripts/deploy.sh rollback
 # 也可重新拉取某个历史 Release
-bash scripts/deploy.sh update v2.1.144
+version='历史 Release Tag'
+bash scripts/deploy.sh update "$version"
 ```
 
 `rollback` 使用本机保留的上一镜像，执行当前状态备份、配置检查和健康检查，再同步 `.env`。回滚本身也记录切换前镜像，可再次切换。保留 `.env.previous-image` 指向的本地标签，清理镜像前核对回滚需求。更新部署管理文件时，先校验并解压新 Release 部署包到原目录，保留 `.env`、`.env.previous-image`、备份与相同 Compose 项目名，再执行 `update`。
@@ -189,32 +199,33 @@ bash scripts/deploy.sh update
 
 ## Release 与 GHCR 发布
 
-维护者先提交并推送全部修改到 GitHub。确认 `package.json` 版本，例如 `2.1.144`，创建同名版本 Tag，可带 `v` 前缀。将发布说明写入本地文件，说明功能变化和数据格式兼容性，再执行以下命令。
+维护者先提交并推送全部修改到 GitHub，确认 `package.json` 版本，创建同名 Release Tag，可带 `v` 前缀。将发布说明写入本地文件，说明功能变化和数据格式兼容性，再执行以下命令。
 
 ```bash
-gh release create v2.1.144 --target main --title v2.1.144 --notes-file release-notes.md
+version="v$(node -p "require('./package.json').version")"
+gh release create "$version" --target main --title "$version" --notes-file release-notes.md
 gh run list --workflow release.yml
 gh run watch <运行编号> --exit-status
 ```
 
 `.github/workflows/release.yml` 监听 `release.published`，草稿正式发布和预发布均会触发。它复用现有测试工作流，在原生 AMD64、ARM64 runner 上执行字体准备、全部 Node.js 测试、镜像构建和虚拟数据容器演练。任一测试失败，发布作业不会运行。发布作业用 `GITHUB_TOKEN` 及 `packages: write` 登录 GHCR，构建两个平台并在构建成功后推送完整版本清单。构建失败可能留下无版本标签的中间层，版本标签只指向完整的多架构清单。
 
-镜像标签与 Release Tag 完全一致，例如 `v2.1.144`。正式稳定版本通过清单检查后同时更新 `latest`，预发布保持独立版本标签。Release 附加 `travel-diary-deploy-<Tag>.tar.gz` 及 SHA-256 校验文件，包内 `.env.example` 固定该 Tag，`IMAGE.txt` 记录本次镜像摘要。工作流发布所需权限为 `contents: write` 和 `packages: write`，无需添加长期凭据。
+镜像标签与 Release Tag 完全一致。正式稳定版本通过清单检查后同时更新 `latest`，预发布保持独立版本标签。Release 附加 `travel-diary-deploy-<Tag>.tar.gz` 及 SHA-256 校验文件，包内 `.env.example` 固定该 Tag，`IMAGE.txt` 记录本次镜像摘要。此外发布 `travel-diary-offline-linux-amd64-<Tag>.tar.gz`、`travel-diary-offline-linux-arm64-<Tag>.tar.gz` 及各自校验文件，包含对应平台应用与 Caddy 的完整镜像。两个原生 runner 从本次发布摘要导出镜像，并在无外网的独立 Docker Engine 中验证实际附件后上传。包内清单记录镜像 ID 和架构，避免目标机器重新解析可变标签。工作流发布所需权限为 `contents: write` 和 `packages: write`，无需添加长期凭据。
 
 ### 首次公开包设置
 
 GitHub 首次创建 GHCR 包时默认设为 Private，公开仓库的包也需要单独设置可见性。首次成功发布后，维护者打开包设置，将 Visibility 改为 Public，并确认仓库 `Double-Cloth/travel-diary` 有 Actions 写入权限。该操作只需执行一次。随后在未登录 GHCR 的环境验证拉取与平台清单。
 
 ```bash
-docker pull ghcr.io/double-cloth/travel-diary:v2.1.144
-docker buildx imagetools inspect ghcr.io/double-cloth/travel-diary:v2.1.144
+docker pull "ghcr.io/double-cloth/travel-diary:$version"
+docker buildx imagetools inspect "ghcr.io/double-cloth/travel-diary:$version"
 ```
 
 清单应包含 `linux/amd64` 和 `linux/arm64`。工作流还会生成证明清单，可能显示额外的 `unknown/unknown` 条目。包设置和认证行为见 [GitHub GHCR 文档](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)。
 
 ### 发布失败与重试
 
-通过 `gh run view <运行编号> --log-failed` 定位失败。临时网络或 runner 故障可使用 `gh run rerun <运行编号> --failed` 重试。若需修改代码，应修复、更新版本并创建新 Release，确保 Tag 对应代码与包版本一致。发布完整版本后保持该 Tag 指向的代码固定。部署包上传失败可以重跑发布作业，附件会更新为该次完整构建的结果。发布完成以 Actions 成功、附件齐全、双架构清单及匿名拉取均通过为准。
+通过 `gh run view <运行编号> --log-failed` 定位失败。临时网络或 runner 故障可使用 `gh run rerun <运行编号> --failed` 重试。若需修改代码，应修复、更新版本并创建新 Release，确保 Tag 对应代码与包版本一致。发布完整版本后保持该 Tag 指向的代码固定。在线附件上传失败可以重跑发布作业；离线导出、测试或上传失败可重跑对应架构的离线作业。离线作业使用发布作业输出的镜像摘要，保持与本次发布一致。附件会更新为该次完整构建的结果。发布完成以 Actions 成功、附件齐全、双架构清单及匿名拉取均通过为准。
 
 ## 健康状态与停止
 
@@ -261,6 +272,6 @@ SITE_DOMAIN=diary.example.com docker compose config --quiet
 git diff --check
 ```
 
-容器测试使用唯一 Compose 项目、虚拟密码及日记、本地 HTTP Caddy 入口和含空格的临时备份路径，覆盖镜像隔离、非 root 权限、未设密拒绝 remote、Host/Origin、认证、编辑、头像上传、字体、SIGTERM、重建持久化和备份恢复。在 Linux 上还通过 Bash 管理入口演练双确认恢复、升级及升级失败后的镜像回退，需要 util-linux 中的 `script` 命令提供测试终端。测试结束仅清理自身创建的测试卷与镜像标签。公网 HTTPS 签发与实际公网写入需在真实域名部署后验证。
+容器测试使用唯一 Compose 项目、虚拟密码及日记、本地 HTTP Caddy 入口和含空格的临时备份路径，覆盖镜像隔离、非 root 权限、未设密拒绝 remote、Host/Origin、认证、编辑、头像上传、字体、SIGTERM、重建持久化和备份恢复。在 Linux 上还通过 Bash 管理入口演练双确认恢复、升级及升级失败后的镜像回退，需要 util-linux 中的 `script` 命令提供测试终端。测试结束仅清理自身创建的测试卷与镜像标签。公网 HTTPS 签发与实际公网写入需在真实域名部署后验证。另有双架构断网安装、真实 HTTPS 编辑和升级测试，验证方式见 [离线部署指南](OFFLINE_DEPLOYMENT.md#断网演练)。
 
 镜像标签及代理配置依据 [Node 官方镜像](https://hub.docker.com/_/node)、[Caddy reverse_proxy](https://caddyserver.com/docs/caddyfile/directives/reverse_proxy) 和 [自动 HTTPS 文档](https://caddyserver.com/docs/automatic-https)。

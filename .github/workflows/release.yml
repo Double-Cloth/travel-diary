@@ -25,6 +25,8 @@ jobs:
     permissions:
       contents: write
       packages: write
+    outputs:
+      digest: ${{ steps.image.outputs.digest }}
     steps:
       - name: Checkout Release source
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
@@ -89,18 +91,53 @@ jobs:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
           DIGEST: ${{ steps.image.outputs.digest }}
         run: |
-          mkdir -p /tmp/travel-diary-deploy/{scripts,deploy,doc}
-          cp compose.yaml /tmp/travel-diary-deploy/
-          cp scripts/deploy.sh /tmp/travel-diary-deploy/scripts/
-          cp deploy/Caddyfile /tmp/travel-diary-deploy/deploy/
-          cp doc/DEPLOYMENT.md /tmp/travel-diary-deploy/doc/
-          sed "s|^TRAVEL_IMAGE=.*|TRAVEL_IMAGE=$IMAGE:$RELEASE_TAG|" .env.example > /tmp/travel-diary-deploy/.env.example
-          printf '%s@%s\n' "$IMAGE" "$DIGEST" > /tmp/travel-diary-deploy/IMAGE.txt
-          archive="travel-diary-deploy-$RELEASE_TAG.tar.gz"
-          tar -czf "$archive" -C /tmp/travel-diary-deploy .
-          sha256sum "$archive" > "$archive.sha256"
+          node scripts/package-deployment.mjs --tag "$RELEASE_TAG" --image "$IMAGE:$RELEASE_TAG" --source "$IMAGE@$DIGEST"
       - name: Attach deployment files to Release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_TAG: ${{ github.event.release.tag_name }}
-        run: gh release upload "$RELEASE_TAG" "travel-diary-deploy-$RELEASE_TAG.tar.gz" "travel-diary-deploy-$RELEASE_TAG.tar.gz.sha256" --clobber
+        run: gh release upload "$RELEASE_TAG" dist/travel-diary-deploy-*.tar.gz dist/travel-diary-deploy-*.sha256 --clobber
+
+  offline:
+    needs: publish
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: amd64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - name: Checkout Release source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - name: Log in to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Export complete native-platform offline bundle
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          DIGEST: ${{ needs.publish.outputs.digest }}
+        run: node scripts/package-deployment.mjs --offline --tag "$RELEASE_TAG" --image "$IMAGE:$RELEASE_TAG" --source "$IMAGE@$DIGEST"
+      - name: Verify exact Release bundle without internet
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          ARCH: ${{ matrix.arch }}
+        run: |
+          docker build -f tests/fixtures/Dockerfile.offline -t travel-diary:offline-test-tools .
+          node scripts/test-offline-deployment.mjs "dist/travel-diary-offline-linux-$ARCH-$RELEASE_TAG.tar.gz"
+      - name: Attach verified offline bundle to Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" dist/travel-diary-offline-*.tar.gz dist/travel-diary-offline-*.sha256 --clobber

@@ -30,6 +30,8 @@ backups/
 .travel-restore-*/
 .travel-deployment.lock
 *.previous-image
+deploy/certs/*
+!deploy/certs/.gitkeep
 
 # 字体生成产物统一存放在 .cache/fonts/，assets/fonts/ 只保留源文件与许可证。
 

@@ -19,6 +19,11 @@ if [ -n "${SITE_DOMAIN:-}" ]; then
         if (origin.host !== domain || origin.origin !== "https://" + domain || origin.port || origin.username || origin.password) {
             throw new Error("SITE_DOMAIN 必须是域名，不包含协议、端口或路径。");
         }
+        const scheme = process.env.SITE_SCHEME || "https";
+        if (!["http", "https"].includes(scheme)) throw new Error("SITE_SCHEME 必须是 http 或 https。");
+        if (scheme === "http" && process.env.TRAVEL_WRITE_MODE === "remote") {
+            throw new Error("HTTP 仅支持只读浏览；远程编辑请配置已有证书或内部 CA 的 HTTPS。");
+        }
         console.log(JSON.stringify(process.env.TRAVEL_WRITE_MODE === "remote" ? [origin.origin] : []));
     ')
     export TRAVEL_ALLOWED_ORIGINS

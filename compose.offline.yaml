@@ -1,0 +1,16 @@
+# 由 deploy.sh 的离线模式自动叠加，所有服务仅使用已导入镜像。
+services:
+  app:
+    pull_policy: never
+  caddy:
+    pull_policy: never
+    networks:
+      - default
+      - ingress
+  maintenance:
+    pull_policy: never
+networks:
+  default:
+    internal: true
+  # 入口使用独立网桥发布端口，应用和维护容器继续保持内部隔离。
+  ingress: {}
