@@ -9,7 +9,7 @@ Travel Diary 是个人旅行手账：以行程、地点和 Markdown 日记组织
 | 文档 | 位置 | 内容 |
 | --- | --- | --- |
 | [项目文档](README.md)（本页） | `doc/README.md` | 文档总索引与阅读导航 |
-| [根目录说明](../README.md) | `README.md` | 项目概览、全部依赖、启动与维护命令 |
+| [根目录说明](../README.md) | `README.md` | 项目概览、依赖、Linux 部署流程、部署脚本速查、全部 npm 命令及发布工具 |
 | [内容维护指南](CONTENT_GUIDE.md) | `doc/CONTENT_GUIDE.md` | 日记、行程、媒体、草稿与数据管理 |
 | [架构说明](ARCHITECTURE.md) | `doc/ARCHITECTURE.md` | 页面路由、模块职责、数据流与扩展约定 |
 | [资产管理规范](ASSET_MANAGEMENT.md) | `doc/ASSET_MANAGEMENT.md` | 图片、字体、纹理、地点目录与资源维护 |
