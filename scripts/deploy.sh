@@ -4,28 +4,31 @@ umask 077
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
 
 config_file=${TRAVEL_ENV_FILE:-.env}
+previous_image_file="${config_file}.previous-image"
 dc() { docker compose --env-file "$config_file" "$@"; }
 fail() { echo "$*" >&2; exit 1; }
 help() {
     cat <<'EOF'
 用法 bash scripts/deploy.sh 命令 [参数]
-  init [域名]          创建 .env、构建镜像、初始化空数据并交互设置密码
+  init [域名]          创建 .env、拉取镜像、初始化空数据并交互设置密码
   up / down           启动 / 停止服务，保留所有卷
   status / logs       查看状态 / 跟踪最近日志
   backup              短暂停写，生成并校验宿主机备份
   verify 备份名称      校验完整备份
   restore 备份名称     两次确认、停机、备份当前状态后恢复
-  update              备份、构建当前检出的代码、验证配置并更新
+  update [版本或镜像]   拉取镜像、备份、验证配置并更新，成功后保存版本
+  rollback            备份当前状态，切换到上次更新前保留的镜像
   doctor              检查配置、DNS、持久卷写权限、健康状态和 HTTPS
   --help              显示帮助
-备份目录通过 .env 的 BACKUP_DIR 设置。代码版本由操作者提前 git fetch/checkout。
+备份目录通过 .env 的 BACKUP_DIR 设置。默认从 GHCR 拉取镜像。
+源码构建需叠加 compose.build.yaml 并显式设置 TRAVEL_BUILD=1。
 EOF
 }
 
 command=${1:---help}
 case "$command" in --help|-h|help) help; exit 0 ;; esac
 case "$command" in
-    init|up|down|backup|restore|update)
+    init|up|down|backup|restore|update|rollback)
         exec 9>.travel-deployment.lock
         flock -n 9 || fail '另一项部署维护正在进行，请稍后重试。'
         ;;
@@ -43,9 +46,28 @@ fi
 [[ -f "$config_file" ]] || fail '缺少环境配置文件，请先执行 init 或复制 .env.example。'
 dc config --quiet
 
-run_app() { dc run --rm --no-deps -T app "$@"; }
+run_app() { dc run --rm --no-deps --pull never -T app "$@"; }
 config_check() { run_app node /opt/travel-diary/scripts/check-runtime-config.js --dir /var/lib/travel-diary; }
-wait_ready() { dc up -d --wait --wait-timeout 180; }
+wait_ready() { dc up -d --no-build --pull never --wait --wait-timeout 180; }
+
+acquire_image() {
+    if [[ "${TRAVEL_BUILD:-0}" == 1 ]]; then dc build app; else dc pull app; fi
+}
+
+# 仅替换镜像变量，保留域名、写入模式和备份路径，并原子保存。
+save_image() {
+    local temporary
+    temporary=$(mktemp "${config_file}.tmp.XXXXXX")
+    if awk -v image="$1" '
+        /^[[:space:]]*(export[[:space:]]+)?TRAVEL_IMAGE[[:space:]]*=/ { if (!found++) print "TRAVEL_IMAGE=" image; next }
+        { print }
+        END { if (!found) print "TRAVEL_IMAGE=" image }
+    ' "$config_file" > "$temporary" && mv -- "$temporary" "$config_file"; then
+        return 0
+    fi
+    rm -f -- "$temporary"
+    return 1
+}
 
 # 不执行 .env 内容，由 Compose 解析变量并通过固定容器路径绑定专用备份目录。
 prepare_backups() {
@@ -70,7 +92,8 @@ app_running() { [[ -n "$(dc ps --status running -q app)" ]]; }
 
 case "$command" in
     init)
-        dc build app
+        acquire_image
+        dc pull caddy
         run_app node -e 'require("node:dns").promises.lookup(process.env.SITE_DOMAIN).then(v=>console.log("域名解析",v.address)).catch(e=>{console.error(e.message);process.exit(1)})'
         run_app node -e 'require("/opt/travel-diary/js/server.js").ensureDataStructure("/var/lib/travel-diary").catch(e=>{console.error(e.message);process.exit(1)})'
         if run_app node -e 'process.exit(require("node:fs").existsSync("/var/lib/travel-diary/.secrets/auth.json")?0:1)'; then
@@ -111,19 +134,41 @@ case "$command" in
         config_check
         wait_ready
         ;;
-    update)
+    update|rollback)
         old_image=$(docker inspect --format '{{.Image}}' "$(dc ps -a -q app)")
+        if [[ "$command" == rollback ]]; then
+            [[ -f "$previous_image_file" ]] || fail '缺少上次更新前的镜像记录。可用 update 指定历史 Release 版本。'
+            target_image=$(cat -- "$previous_image_file")
+            [[ "$target_image" =~ ^travel-diary:rollback-[a-zA-Z0-9-]+$ ]] || fail '回退镜像记录无效。'
+            docker image inspect "$target_image" >/dev/null
+            export TRAVEL_IMAGE="$target_image"
+        elif [[ -n "${2:-}" ]]; then
+            target_image=$2
+            if [[ "$target_image" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([-._a-zA-Z0-9]*)$ ]]; then
+                target_image="ghcr.io/double-cloth/travel-diary:$target_image"
+            fi
+            [[ "$target_image" =~ ^[a-zA-Z0-9][a-zA-Z0-9./:@_-]*$ ]] || fail '镜像名称无效。'
+            export TRAVEL_IMAGE="$target_image"
+        fi
+        # 先下载，拉取失败时当前服务继续运行。回退使用本机保留的镜像。
+        if [[ "$command" == update ]]; then acquire_image; fi
+        target_image=$(dc config --format json | run_app node -e '
+            let input=""; process.stdin.on("data",b=>input+=b);
+            process.stdin.on("end",()=>console.log(JSON.parse(input).services.app.image));
+        ')
         rollback_tag="travel-diary:rollback-$(date -u +%Y%m%dT%H%M%SZ)-${RANDOM}"
         docker tag "$old_image" "$rollback_tag"
         dc stop app
-        backup_stopped
-        echo "镜像回退命令 TRAVEL_IMAGE=$rollback_tag docker compose up -d --no-build --force-recreate"
-        # 构建操作者当前检出的版本，构建或健康检查失败则恢复原镜像。
-        if dc build app && config_check && wait_ready; then
+        # 使用升级前程序备份，保证备份读取器与当前数据格式匹配。
+        TRAVEL_IMAGE="$rollback_tag" backup_stopped
+        echo "镜像回退标签 $rollback_tag"
+        if config_check && wait_ready && save_image "$target_image"; then
+            printf '%s\n' "$rollback_tag" > "$previous_image_file"
             echo "更新完成，原镜像 $rollback_tag，升级前备份 $latest_backup"
         else
             echo '更新失败，正在恢复原镜像。数据变更可使用升级前备份恢复。' >&2
-            TRAVEL_IMAGE="$rollback_tag" dc up -d --no-build --force-recreate --wait --wait-timeout 180
+            save_image "$rollback_tag"
+            TRAVEL_IMAGE="$rollback_tag" dc up -d --no-build --pull never --force-recreate --wait --wait-timeout 180
             exit 1
         fi
         ;;

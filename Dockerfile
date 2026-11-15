@@ -1,5 +1,9 @@
 FROM node:24-bookworm-slim
 
+LABEL org.opencontainers.image.source="https://github.com/Double-Cloth/travel-diary" \
+      org.opencontainers.image.description="Travel Diary" \
+      org.opencontainers.image.licenses="MIT"
+
 ENV NODE_ENV=production
 WORKDIR /opt/travel-diary
 COPY --chown=node:node LICENSE package.json index.html travel-diary.config.json travel-diary.config.schema.json ./

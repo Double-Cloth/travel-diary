@@ -15,7 +15,8 @@ Travel Diary 是一本数字旅行日志。它把每一次出发整理成行程�
 | 依赖 | 是否必需 | 用途与说明 |
 | --- | --- | --- |
 | 现代浏览器 | 必需 | 浏览页面；需支持 ES modules、Canvas、Cache Storage 等前端能力。 |
-| Node.js 20.11 或更新版本 | 必需 | 启动本机服务、执行测试及全部 Node.js 脚本，只使用内置模块。 |
+| Node.js 20.11 或更新版本 | 本机运行必需 | 启动本机服务、执行测试及全部 Node.js 脚本，只使用内置模块。Docker 部署由镜像提供 Node.js。 |
+| Docker Engine 与 Compose 2.24.4 或更新版本 | 服务器部署必需 | 直接拉取 GHCR 的 AMD64 / ARM64 镜像，服务器只需部署文件。 |
 | npm | 可选 | 随 Node.js 提供，用于执行下方 `npm` 命令；也可直接用 `node` 运行脚本，无需 `npm install`。 |
 | 本机 Edge 或 Chrome | 可选 | 后端按需生成及 `media:previews` 批量生成图片、视频和头像缩略图；可用配置文件、`TRAVEL_BROWSER_PATH` 或批量命令的 `--browser` 指定。后端生成失败时由前端压缩并回传保存，已有缓存直接复用。 |
 | 网络连接 | 可选 | 仅 `countries` 与 `china-locations` 更新地点目录时需要；其余命令可离线运行。 |
@@ -48,16 +49,37 @@ npm start
 
 ### Linux 服务器部署
 
-提供 Docker Compose 与 Caddy 自动 HTTPS 部署，应用以非 root 用户运行，数据、认证和回收站保存在持久卷中。
+提供 Docker Compose 与 Caddy 自动 HTTPS 部署。GHCR 公共镜像 `ghcr.io/double-cloth/travel-diary` 支持 `linux/amd64` 和 `linux/arm64`。服务器安装 Docker Compose、Bash、`flock`、`curl` 和 `tar` 后，从 Release 下载部署包即可运行。应用以非 root 用户运行，数据、认证和回收站保存在持久卷中。
 
 ```bash
+version=v2.1.144
+mkdir -p travel-diary && cd travel-diary
+curl -fLO "https://github.com/Double-Cloth/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz"
+curl -fLO "https://github.com/Double-Cloth/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz.sha256"
+sha256sum -c "travel-diary-deploy-$version.tar.gz.sha256"
+tar -xzf "travel-diary-deploy-$version.tar.gz"
 bash scripts/deploy.sh init diary.example.com
 # 如需远程编辑，将 .env 中 TRAVEL_WRITE_MODE 改为 remote
 bash scripts/deploy.sh up
 bash scripts/deploy.sh doctor
+# 以后升级时选择目标 Release Tag
+bash scripts/deploy.sh update v2.1.144
+# 回到上次更新前的镜像
+bash scripts/deploy.sh rollback
 ```
 
-先将域名解析到服务器并开放 TCP 80/443。初始化会交互设置密码，默认提供远程只读浏览。完整步骤、迁移、备份、恢复及升级见 [服务器部署指南](doc/DEPLOYMENT.md)。
+先将域名解析到服务器并开放 TCP 80/443。初始化会交互设置密码，默认提供远程只读浏览。部署包固定对应 Release 镜像版本。更新前自动备份，回滚保留当前持久化数据。发生数据格式变更时，需按发布说明配合升级前备份恢复。完整步骤、迁移、备份、恢复及升级见 [服务器部署指南](doc/DEPLOYMENT.md)。
+
+### Release 与镜像发布
+
+维护者使用 `gh release create v2.1.144 --target main --title v2.1.144 --notes-file release-notes.md` 或 GitHub 页面发布 Release。Tag 应与 `package.json` 的版本一致，可带 `v` 前缀。Release 的 `published` 事件触发 Actions，在 AMD64 和 ARM64 上运行现有自动化测试与容器演练，全部通过后构建并发布多架构镜像及部署包。镜像标签完整保留 Release Tag，稳定版本同时更新 `latest`，预发布版本只发布自身标签。GHCR 登录使用短期 `GITHUB_TOKEN`。
+
+```bash
+docker pull ghcr.io/double-cloth/travel-diary:v2.1.144
+docker buildx imagetools inspect ghcr.io/double-cloth/travel-diary:v2.1.144
+```
+
+首次发布后需在 GitHub 包设置中将镜像可见性设为 Public，随后即可匿名拉取。发布状态、首次包设置和失败重试见部署指南。
 
 ### 本机配置
 

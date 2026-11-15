@@ -11,7 +11,10 @@ const project = `travel-smoke-${process.pid}-${Date.now()}`;
 const sourceImage = process.env.TRAVEL_TEST_IMAGE || 'travel-diary:verification';
 const image = `travel-diary:smoke-${process.pid}-${Date.now()}`;
 const rollbackTags = new Set();
+const registryName = `${project}-registry`;
 const override = path.join(temporary, 'compose.smoke.yaml');
+const configFile = path.join(temporary, '.env');
+await fs.copyFile('.env.example', configFile);
 const backupDirectory = path.join(temporary, 'backups').replaceAll('\\', '/');
 await fs.mkdir(path.join(temporary, 'backups'));
 await fs.writeFile(override, `services:
@@ -26,10 +29,10 @@ await fs.writeFile(override, `services:
     volumes:
       - ${JSON.stringify(`${backupDirectory}:/backups`)}
 `);
-const compose = ['compose', '-p', project, '--env-file', '.env.example', '-f', 'compose.yaml', '-f', override];
+const compose = ['compose', '-p', project, '--env-file', configFile, '-f', 'compose.yaml', '-f', 'compose.build.yaml', '-f', override];
 const environment = { ...process.env, SITE_DOMAIN: 'diary.test', TRAVEL_IMAGE: image,
-    COMPOSE_PROJECT_NAME: project, COMPOSE_FILE: `${path.resolve('compose.yaml')}${path.delimiter}${override}`,
-    TRAVEL_ENV_FILE: path.resolve('.env.example') };
+    COMPOSE_PROJECT_NAME: project, COMPOSE_FILE: [path.resolve('compose.yaml'), path.resolve('compose.build.yaml'), override].join(path.delimiter),
+    TRAVEL_ENV_FILE: configFile, TRAVEL_BUILD: '1' };
 
 function execute(args, input = '', { allowFailure = false, program = 'docker' } = {}) {
     return new Promise((resolve, reject) => {
@@ -75,8 +78,11 @@ try {
     await execute(['run', '--rm', '--entrypoint', 'node', image, '-e', `
         const fs=require('node:fs'),assert=require('node:assert/strict');
         assert.notEqual(process.getuid(),0);
-        for(const name of ['data','.secrets','.cache','.env','travel-diary.config.local.json','backups','.git','tmp']) {
+        for(const name of ['data','.secrets','.cache','.env','travel-diary.config.local.json','backups','.git','tmp','tests','doc','.github','README.md']) {
             assert.equal(fs.existsSync('/opt/travel-diary/'+name),false,name);
+        }
+        for(const name of ['deploy.sh','test-deployment.mjs','sync-asset-versions.js','update-countries.mjs']) {
+            assert.equal(fs.existsSync('/opt/travel-diary/scripts/'+name),false,name);
         }
         assert.deepEqual(fs.readdirSync('/var/lib/travel-diary'),[]);
     `]);
@@ -156,6 +162,14 @@ try {
         console.log('Bash 管理入口的备份、校验和双确认恢复通过');
         const updated = await execute(['scripts/deploy.sh', 'update'], '', { program: 'bash' });
         for (const tag of updated.output.match(/travel-diary:rollback-\d{8}T\d{6}Z-\d+/g) || []) rollbackTags.add(tag);
+        assert.match(await fs.readFile(configFile, 'utf8'), new RegExp(`TRAVEL_IMAGE=${image}`));
+        const rolledBack = await execute(['scripts/deploy.sh', 'rollback'], '', { program: 'bash' });
+        for (const tag of rolledBack.output.match(/travel-diary:rollback-\d{8}T\d{6}Z-\d+/g) || []) rollbackTags.add(tag);
+        await api(`
+            assert.equal(JSON.parse(await fs.readFile(root+'/data/travel_data.json')).length,1);
+            assert.equal(await fs.readFile(root+'/.cache/recycle-bin/synthetic/fixture.txt','utf8'),'virtual recycle data');
+            assert.deepEqual(JSON.parse(await fs.readFile(root+'/.secrets/auth.json')),${JSON.stringify(AUTH_CONFIG)});
+        `);
         const originalOverride = await fs.readFile(override, 'utf8');
         const failedDockerfile = path.join(temporary, 'Dockerfile.failed');
         await fs.writeFile(failedDockerfile, `FROM ${image}\nENTRYPOINT ["node", "-e", "process.exit(42)"]\n`);
@@ -170,7 +184,40 @@ try {
         await execute(['tag', failedTags[0], image]);
         await fs.writeFile(override, originalOverride);
         await api(`assert.equal((await fetch(url+'/readyz',{headers})).status,200);`);
-        console.log('Bash 更新及失败后的自动镜像回退通过');
+        console.log('Bash 更新、上一版本回滚及失败后的自动镜像回退通过');
+
+        // 使用独立本地仓库与仅含部署文件的目录，覆盖服务器拉取路径。
+        await execute(['run', '-d', '--name', registryName, '-p', '127.0.0.1::5000', 'registry:2']);
+        const port = (await execute(['port', registryName, '5000/tcp'])).output.trim().split(':').at(-1);
+        const publishedImage = `localhost:${port}/travel-diary:verified`;
+        rollbackTags.add(publishedImage);
+        await execute(['tag', image, publishedImage]);
+        await execute(['push', publishedImage]);
+        const serverDirectory = path.join(temporary, 'server files');
+        await fs.mkdir(path.join(serverDirectory, 'scripts'), { recursive: true });
+        await fs.mkdir(path.join(serverDirectory, 'deploy'));
+        for (const file of ['compose.yaml', '.env.example', 'scripts/deploy.sh', 'deploy/Caddyfile']) {
+            await fs.copyFile(file, path.join(serverDirectory, file));
+        }
+        environment.COMPOSE_FILE = [path.join(serverDirectory, 'compose.yaml'), override].join(path.delimiter);
+        environment.TRAVEL_BUILD = '0';
+        const serverScript = path.join(serverDirectory, 'scripts/deploy.sh');
+        const pulled = await execute([serverScript, 'update', publishedImage], '', { program: 'bash' });
+        for (const tag of pulled.output.match(/travel-diary:rollback-\d{8}T\d{6}Z-\d+/g) || []) rollbackTags.add(tag);
+        assert.ok((await fs.readFile(configFile, 'utf8')).includes(`TRAVEL_IMAGE=${publishedImage}`));
+        const container = (await dc(['ps', '-q', 'app'])).output.trim();
+        assert.equal((await execute(['inspect', '--format', '{{.Config.Image}}', container])).output.trim(), publishedImage);
+        const missing = await execute([serverScript, 'update', `localhost:${port}/travel-diary:missing`], '', { program: 'bash', allowFailure: true });
+        assert.notEqual(missing.code, 0);
+        assert.equal((await dc(['ps', '-q', 'app'])).output.trim(), container);
+        const previous = await execute([serverScript, 'rollback'], '', { program: 'bash' });
+        for (const tag of previous.output.match(/travel-diary:rollback-\d{8}T\d{6}Z-\d+/g) || []) rollbackTags.add(tag);
+        await api(`
+            assert.equal(JSON.parse(await fs.readFile(root+'/data/travel_data.json')).length,1);
+            assert.equal(await fs.readFile(root+'/.cache/recycle-bin/synthetic/fixture.txt','utf8'),'virtual recycle data');
+            assert.deepEqual(JSON.parse(await fs.readFile(root+'/.secrets/auth.json')),${JSON.stringify(AUTH_CONFIG)});
+        `);
+        console.log('无源码目录的镜像拉取更新、下载失败保持服务及离线回滚通过');
     }
     console.log('容器烟雾测试完成。公网 HTTPS 证书签发需部署到实际域名后验证。');
 } catch (error) {
@@ -186,6 +233,7 @@ try {
     }
     // 此处只删除本脚本创建、名称唯一的虚拟测试卷。
     await dc(['down', '--volumes', '--remove-orphans'], '', { allowFailure: true });
+    await execute(['rm', '-f', registryName], '', { allowFailure: true });
     for (const tag of rollbackTags) await execute(['image', 'rm', tag], '', { allowFailure: true });
     await execute(['image', 'rm', image], '', { allowFailure: true });
     await fs.rm(temporary, { recursive: true, force: true });

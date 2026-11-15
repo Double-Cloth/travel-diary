@@ -2,7 +2,7 @@
 
 ## 支持环境
 
-标准方案使用 Docker Engine、Docker Compose 2.24.4 或更新版本、Bash、`flock` 和 Caddy。镜像使用官方 `node:24-bookworm-slim`，应用进程为 UID/GID 1000。运行时无需 npm 安装或前端构建。Caddy 使用 `caddy:2-alpine`，实际镜像摘要可通过 `docker image inspect` 审计。需要可重复发布时，可将基础镜像固定到经过验证的摘要，并为应用构建独立版本标签。
+标准方案使用 Docker Engine、Docker Compose 2.24.4 或更新版本、Bash、`flock`、`awk`、`curl`、`tar`、`sha256sum` 和 Caddy。服务器直接拉取公共镜像 `ghcr.io/double-cloth/travel-diary`，支持 AMD64 与 ARM64，由 Docker 自动选择架构。部署文件来自 Release 附件，服务器无需安装 Node.js、npm、Git 或克隆源代码。镜像使用官方 `node:24-bookworm-slim`，应用进程为 UID/GID 1000。Caddy 使用 `caddy:2-alpine`。
 
 部署前准备域名及 DNS，将 A/AAAA 指向服务器可达的公网入口。开放 TCP 80/443，HTTP/3 可额外开放 UDP 443。服务器应能访问镜像仓库和证书机构。确认磁盘足够容纳现有数据、备份和恢复暂存。
 
@@ -11,12 +11,17 @@
 ## 首次部署
 
 ```bash
-git clone https://github.com/Double-Cloth/travel-diary.git
-cd travel-diary
+version=v2.1.144
+mkdir -p /srv/travel-diary
+cd /srv/travel-diary
+curl -fLO "https://github.com/Double-Cloth/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz"
+curl -fLO "https://github.com/Double-Cloth/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz.sha256"
+sha256sum -c "travel-diary-deploy-$version.tar.gz.sha256"
+tar -xzf "travel-diary-deploy-$version.tar.gz"
 bash scripts/deploy.sh init diary.example.com
 ```
 
-将示例域名替换为自己的域名。`init` 仅在 `.env` 不存在时创建它，构建镜像、初始化空站点，并在交互终端中输入两次六位数字密码。输入过程只显示星号。已有数据和认证配置会保留。再次运行 `init` 会复用配置和密码。
+选择已有 Release Tag 并将示例域名替换为自己的域名，部署账户需有目录写入权限及 Docker 使用权限。部署包仅含 `compose.yaml`、`.env.example`、管理脚本、Caddyfile、部署说明和镜像摘要 `IMAGE.txt`。`init` 仅在 `.env` 不存在时创建它，拉取对应版本镜像和 Caddy、初始化空站点，并在交互终端中输入两次六位数字密码。输入过程只显示星号。已有数据和认证配置会保留。再次运行 `init` 会复用配置和密码。
 
 初始 `.env` 使用 `TRAVEL_WRITE_MODE=local`，远程浏览可用。需要远程编辑时，先完成设密，再将该值改为 `remote`。
 
@@ -33,10 +38,10 @@ bash scripts/deploy.sh doctor
 ```bash
 cp .env.example .env
 # 编辑 .env 中的 SITE_DOMAIN，初次保持 local
-docker compose build app
+docker compose pull app caddy
 docker compose run --rm --no-deps app node /opt/travel-diary/scripts/set-auth-password.js --dir /var/lib/travel-diary
 # 如需编辑，此时将 .env 的 TRAVEL_WRITE_MODE 改为 remote
-docker compose up -d --build --wait
+docker compose up -d --no-build --wait
 ```
 
 密码由交互命令直接写入卷中的 `.secrets/auth.json`。明文密码应仅通过交互终端输入。更换密码优先使用网页「访问安全」，强制重置可重复运行上面的设密命令。
@@ -47,7 +52,7 @@ docker compose up -d --build --wait
 | --- | --- | --- |
 | `SITE_DOMAIN` | 需修改示例 | 小写完整域名，省略协议、端口及路径。 |
 | `TRAVEL_WRITE_MODE` | `local` | 远程只读浏览，改为 `remote` 后允许白名单站点认证与写入。 |
-| `TRAVEL_IMAGE` | `travel-diary:local` | 应用镜像标签，可用于版本固定和回退。 |
+| `TRAVEL_IMAGE` | `ghcr.io/double-cloth/travel-diary:latest` | 仓库示例默认跟踪稳定版，Release 部署包固定对应 Tag。也可填写 `ghcr.io/double-cloth/travel-diary@sha256:...` 固定摘要。 |
 | `BACKUP_DIR` | `./backups` | 专用宿主机备份目录，建议设为项目外绝对路径。 |
 
 Compose 仅发布 Caddy 端口。应用固定监听内部 `0.0.0.0:9000`，端口被占用时直接报错。容器入口根据 `SITE_DOMAIN` 自动设置唯一来源 `https://<域名>`，local 模式使用空来源数组。应用会在监听前核对 remote 所需的密码配置。应用内的 Host、Origin、会话、令牌与路径校验继续执行。
@@ -144,20 +149,72 @@ bash scripts/deploy.sh restore travel-diary-20261115T020000Z-12345
 
 ```bash
 bash scripts/deploy.sh status
-git fetch
-# 选择已审核版本，可使用 git checkout <版本标签或提交>
+# 目标 Tag 以 Releases 页面实际发布的版本为准
+bash scripts/deploy.sh update v2.1.144
+# 也可传完整镜像引用或摘要
+# bash scripts/deploy.sh update ghcr.io/double-cloth/travel-diary@sha256:...
+```
+
+`update` 先拉取目标镜像，下载失败时当前服务继续运行。随后为当前镜像创建 `travel-diary:rollback-<时间>` 标签、停止应用，使用升级前程序备份数据、认证和回收站，再检查新配置并等待新服务就绪。成功后将目标镜像原子写入 `.env`，把上一镜像标签保存到 `.env.previous-image`，并输出升级前备份名称。省略版本参数时使用当前 `.env` 的 `TRAVEL_IMAGE`，适用于已手动改为固定版本或 `latest` 的配置。
+
+配置检查、启动或配置保存失败时，工具会自动重新创建旧镜像服务并将 `.env` 设回旧镜像。备份失败时保持停机以便排查。更新前先等待大型导入、导出和写入完成。更新操作保留运行卷和 Caddy 证书卷。
+
+回滚到上次更新前的镜像。
+
+```bash
+bash scripts/deploy.sh rollback
+# 也可重新拉取某个历史 Release
+bash scripts/deploy.sh update v2.1.144
+```
+
+`rollback` 使用本机保留的上一镜像，执行当前状态备份、配置检查和健康检查，再同步 `.env`。回滚本身也记录切换前镜像，可再次切换。保留 `.env.previous-image` 指向的本地标签，清理镜像前核对回滚需求。更新部署管理文件时，先校验并解压新 Release 部署包到原目录，保留 `.env`、`.env.previous-image`、备份与相同 Compose 项目名，再执行 `update`。
+
+镜像回滚保留当前数据。若新版改变索引、认证或回收站格式，旧程序可能无法读取新版数据，健康检查也无法覆盖所有业务格式差异。先查看 Release 的兼容性说明。此时应停止服务，选用能读取升级前备份的旧镜像，并恢复配套的升级前备份。可在 `.env` 设置旧版本后执行 `bash scripts/deploy.sh restore <升级前备份名称>`，恢复完成后由工具启动旧服务。备份之后新增或修改的内容会被替换，恢复前先保留当前状态备份。自动镜像回退失败时保持停机，按此流程恢复。
+
+### 从源码构建
+
+开发者在已有源码的机器上可显式启用构建覆盖文件。
+
+```bash
+export COMPOSE_FILE=compose.yaml:compose.build.yaml
+export TRAVEL_BUILD=1
+export TRAVEL_IMAGE=travel-diary:local
+bash scripts/deploy.sh init diary.example.com
+bash scripts/deploy.sh up
+# 检出目标代码后重新构建并更新
 bash scripts/deploy.sh update
 ```
 
-`update` 为当前镜像创建 `travel-diary:rollback-<时间>` 标签，停止应用、备份当前状态，构建当前检出的代码，检查配置，再等待更新后的服务就绪。构建、配置检查或启动失败时自动重新创建旧镜像服务，并输出回退标签与备份名称。代码版本由操作者选择。
+运行 `rollback` 后应退出这些临时环境变量，后续使用 `.env` 已保存的镜像。日常服务器部署仅使用 `compose.yaml`。
 
-需要手工回退时执行终端输出的命令，例如以下命令。
+## Release 与 GHCR 发布
+
+维护者先提交并推送全部修改到 GitHub。确认 `package.json` 版本，例如 `2.1.144`，创建同名版本 Tag，可带 `v` 前缀。将发布说明写入本地文件，说明功能变化和数据格式兼容性，再执行以下命令。
 
 ```bash
-TRAVEL_IMAGE=travel-diary:rollback-20261115T020000Z-12345 docker compose up -d --no-build --force-recreate --wait
+gh release create v2.1.144 --target main --title v2.1.144 --notes-file release-notes.md
+gh run list --workflow release.yml
+gh run watch <运行编号> --exit-status
 ```
 
-决定继续使用该版本时，将 `.env` 的 `TRAVEL_IMAGE` 同步修改。应用镜像回退保留当前数据，数据回退应另行使用升级前备份恢复。更新前先等待大型导入、导出和写入完成。
+`.github/workflows/release.yml` 监听 `release.published`，草稿正式发布和预发布均会触发。它复用现有测试工作流，在原生 AMD64、ARM64 runner 上执行字体准备、全部 Node.js 测试、镜像构建和虚拟数据容器演练。任一测试失败，发布作业不会运行。发布作业用 `GITHUB_TOKEN` 及 `packages: write` 登录 GHCR，构建两个平台并在构建成功后推送完整版本清单。构建失败可能留下无版本标签的中间层，版本标签只指向完整的多架构清单。
+
+镜像标签与 Release Tag 完全一致，例如 `v2.1.144`。正式稳定版本通过清单检查后同时更新 `latest`，预发布保持独立版本标签。Release 附加 `travel-diary-deploy-<Tag>.tar.gz` 及 SHA-256 校验文件，包内 `.env.example` 固定该 Tag，`IMAGE.txt` 记录本次镜像摘要。工作流发布所需权限为 `contents: write` 和 `packages: write`，无需添加长期凭据。
+
+### 首次公开包设置
+
+GitHub 首次创建 GHCR 包时默认设为 Private，公开仓库的包也需要单独设置可见性。首次成功发布后，维护者打开包设置，将 Visibility 改为 Public，并确认仓库 `Double-Cloth/travel-diary` 有 Actions 写入权限。该操作只需执行一次。随后在未登录 GHCR 的环境验证拉取与平台清单。
+
+```bash
+docker pull ghcr.io/double-cloth/travel-diary:v2.1.144
+docker buildx imagetools inspect ghcr.io/double-cloth/travel-diary:v2.1.144
+```
+
+清单应包含 `linux/amd64` 和 `linux/arm64`。工作流还会生成证明清单，可能显示额外的 `unknown/unknown` 条目。包设置和认证行为见 [GitHub GHCR 文档](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)。
+
+### 发布失败与重试
+
+通过 `gh run view <运行编号> --log-failed` 定位失败。临时网络或 runner 故障可使用 `gh run rerun <运行编号> --failed` 重试。若需修改代码，应修复、更新版本并创建新 Release，确保 Tag 对应代码与包版本一致。发布完整版本后保持该 Tag 指向的代码固定。部署包上传失败可以重跑发布作业，附件会更新为该次完整构建的结果。发布完成以 Actions 成功、附件齐全、双架构清单及匿名拉取均通过为准。
 
 ## 健康状态与停止
 

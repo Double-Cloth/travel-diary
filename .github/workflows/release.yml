@@ -1,0 +1,106 @@
+name: Release Docker image
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+# 发布串行执行，完整版本清单生成后才更新 latest。
+concurrency:
+  group: ghcr-release
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/double-cloth/travel-diary
+
+jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
+  publish:
+    needs: test
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+      packages: write
+    steps:
+      - name: Checkout Release source
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+      - name: Validate Release version
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          node - <<'NODE'
+          const { version } = require('./package.json');
+          const tag = process.env.RELEASE_TAG;
+          if (!/^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$/.test(tag) || ![version, `v${version}`].includes(tag)) {
+            throw new Error('Release Tag 必须与 package.json 版本一致，可带 v 前缀。');
+          }
+          NODE
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4
+        with:
+          platforms: arm64
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4
+      - name: Log in to GHCR
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build and publish complete multi-platform image
+        id: image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ env.IMAGE }}:${{ github.event.release.tag_name }}
+          labels: |
+            org.opencontainers.image.version=${{ github.event.release.tag_name }}
+            org.opencontainers.image.revision=${{ github.sha }}
+      - name: Verify both architectures and update stable alias
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          PRERELEASE: ${{ github.event.release.prerelease }}
+          DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          docker buildx imagetools inspect --raw "$IMAGE@$DIGEST" > /tmp/manifest.json
+          node - <<'NODE'
+          const manifest = require('/tmp/manifest.json');
+          for (const architecture of ['amd64', 'arm64']) {
+            if (!manifest.manifests.some(m => m.platform.os === 'linux' && m.platform.architecture === architecture)) {
+              throw new Error(`缺少 linux/${architecture}`);
+            }
+          }
+          NODE
+          if [ "$PRERELEASE" = false ]; then
+            docker buildx imagetools create --tag "$IMAGE:latest" "$IMAGE@$DIGEST"
+          fi
+          printf '%s\n' "镜像 $IMAGE:$RELEASE_TAG" "摘要 $DIGEST" >> "$GITHUB_STEP_SUMMARY"
+      - name: Package server deployment files
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          DIGEST: ${{ steps.image.outputs.digest }}
+        run: |
+          mkdir -p /tmp/travel-diary-deploy/{scripts,deploy,doc}
+          cp compose.yaml /tmp/travel-diary-deploy/
+          cp scripts/deploy.sh /tmp/travel-diary-deploy/scripts/
+          cp deploy/Caddyfile /tmp/travel-diary-deploy/deploy/
+          cp doc/DEPLOYMENT.md /tmp/travel-diary-deploy/doc/
+          sed "s|^TRAVEL_IMAGE=.*|TRAVEL_IMAGE=$IMAGE:$RELEASE_TAG|" .env.example > /tmp/travel-diary-deploy/.env.example
+          printf '%s@%s\n' "$IMAGE" "$DIGEST" > /tmp/travel-diary-deploy/IMAGE.txt
+          archive="travel-diary-deploy-$RELEASE_TAG.tar.gz"
+          tar -czf "$archive" -C /tmp/travel-diary-deploy .
+          sha256sum "$archive" > "$archive.sha256"
+      - name: Attach deployment files to Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: gh release upload "$RELEASE_TAG" "travel-diary-deploy-$RELEASE_TAG.tar.gz" "travel-diary-deploy-$RELEASE_TAG.tar.gz.sha256" --clobber

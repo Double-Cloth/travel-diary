@@ -1,0 +1,4 @@
+# 源码开发时显式叠加，服务器部署只需要 compose.yaml。
+services:
+  app:
+    build: .

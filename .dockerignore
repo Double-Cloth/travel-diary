@@ -14,8 +14,21 @@
 !assets/
 !assets/**
 !scripts/
-!scripts/**
-scripts/test-deployment.mjs
-scripts/deploy.sh
+scripts/**
+!scripts/build-fonts.mjs
+!scripts/build-data-backup.js
+!scripts/font-tools.mjs
+!scripts/build-media-previews.js
+!scripts/check-runtime-config.js
+!scripts/clear-cache.js
+!scripts/deployment-backup.js
+!scripts/set-auth-password.js
+!scripts/sort-travel-data.js
 !deploy/
+deploy/**
 !deploy/entrypoint.sh
+# 允许目录中的个人配置与凭据同样排除。
+**/.env*
+**/*.local.json
+**/*.key
+**/*.pem
