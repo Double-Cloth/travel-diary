@@ -1,37 +1,24 @@
-@import url('../.cache/fonts/diary-kai-core.css?v=2.1.144');
+@import url('../.cache/fonts/diary-kai-core.css?v=2.1.145');
 
 :root {
     --font-serif: "Diary Kai", "KaiTi", "STKaiti", serif;
     /* 保留代码风格的拉丁字符，同时为中文提供明确的本地字体回退。 */
     --font-code: "Archive Code", "Diary Kai", monospace;
 
-    --desk-950: #150b06;
-    --desk-900: #22110a;
-    --desk-800: #3a2114;
-    --desk-700: #5a3824;
-    --tray-950: #140d08;
     --tray-900: #1e1510;
-    --tray-800: #2d2018;
     --ink: #241a12;
     --ink-soft: #5d4a37;
     --ink-muted: #846d52;
     --paper-50: #fbf0d6;
     --paper-100: #f2dfb7;
     --paper-200: #dec28a;
-    --paper-300: #c8a86d;
-    --kraft-100: #d6bd88;
-    --kraft-200: #b99158;
-    --kraft-300: #8c623c;
-    --brass-50: #fff1bd;
     --brass-100: #e5c57b;
     --brass-200: #b78a45;
     --brass-300: #7b5228;
     --stamp: #8f3527;
-    --pin: #9b4937;
     --green: #38452b;
     --line: rgba(85, 57, 32, 0.18);
     --hairline: rgba(75, 48, 25, 0.24);
-    --paper-shadow: 0 14px 22px rgba(22, 12, 6, 0.16);
     --deep-shadow: 0 28px 52px rgba(9, 4, 2, 0.48);
     --soft-shadow: 0 10px 22px rgba(30, 18, 10, 0.2);
     --ring: 0 0 0 3px rgba(229, 197, 123, 0.34);

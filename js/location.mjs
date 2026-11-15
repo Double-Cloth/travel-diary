@@ -80,7 +80,7 @@ export function normalizeTravelLocation(record = {}) {
     };
 }
 
-export function normalizeCountryCode(value, country = '') {
+function normalizeCountryCode(value, country = '') {
     const explicitCode = cleanText(value).toUpperCase();
     if (/^[A-Z]{2}$/.test(explicitCode)) {
         return explicitCode;
@@ -126,7 +126,7 @@ export function formatLocationText(location = {}, options = {}) {
     return parts.filter(Boolean).join(separator) || '未知地点';
 }
 
-export function createLocationKey(...parts) {
+function createLocationKey(...parts) {
     return parts
         .map(cleanText)
         .filter(Boolean)

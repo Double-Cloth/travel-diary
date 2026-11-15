@@ -43,7 +43,7 @@ function monitorTransfer(options, interruptionMessage, url) {
     } };
 }
 
-export function formatProgressBytes(bytes) {
+function formatProgressBytes(bytes) {
     if (bytes < 1024) return `${Math.max(0, Math.round(bytes))} B`;
     const units = ['KiB', 'MiB', 'GiB'];
     let value = bytes / 1024;

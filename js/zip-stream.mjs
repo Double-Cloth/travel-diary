@@ -1,6 +1,6 @@
 // 使用固定大小分块与随机读取，避免将大型媒体或整个 ZIP 放入内存。
 export const ZIP_CHUNK_BYTES = 1024 * 1024;
-export const MAXIMUM_ZIP_TEXT_BYTES = 16 * 1024 * 1024;
+const MAXIMUM_ZIP_TEXT_BYTES = 16 * 1024 * 1024;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder('utf-8', { fatal: true });
 const table = new Uint32Array(8 * 256);

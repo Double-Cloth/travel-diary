@@ -6,8 +6,7 @@ import path from 'node:path';
 import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
-const { createAuthConfig, readAuthConfig, replaceAuthConfig, validateAuthConfig, validatePassword, verifyBackupAccess, verifyPassword } = require('../js/auth.js');
-const { writeAuthConfig } = require('../scripts/set-auth-password.js');
+const { createAuthConfig, readAuthConfig, replaceAuthConfig, validateAuthConfig, validatePassword, verifyBackupAccess, verifyPassword, writeAuthConfig } = require('../js/auth.js');
 
 test('六位数字密码使用带随机盐的 scrypt 哈希且不保存明文', async () => {
     const password = '483920';

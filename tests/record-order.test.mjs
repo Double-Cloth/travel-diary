@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { sortRecords, serializeRecords } from '../js/record-order.js';
 import { ensureDataStructure } from '../js/server.js';
-import { sortTravelData } from '../scripts/sort-travel-data.js';
+import { sortTravelData } from '../js/sort-travel-data.js';
 import { acquireDataLock } from '../js/data-archive.js';
 
 test('手工维护检查不改文件，自动排序保留同日、字段及附件顺序，重复执行不改格式', async t => {

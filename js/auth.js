@@ -280,7 +280,6 @@ async function verifyBackupAccess(config, password, authenticatedConfig) {
 module.exports = {
     AUTH_RELATIVE_PATH,
     PASSWORD_LENGTH,
-    SCRYPT_OPTIONS,
     createAuthConfig,
     initializeAuthConfig,
     readAuthConfig,

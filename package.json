@@ -1,6 +1,6 @@
 {
   "name": "travel-diary",
-  "version": "2.1.144",
+  "version": "2.1.145",
   "private": true,
   "description": "Personal travel diary with a local Node.js service.",
   "type": "commonjs",

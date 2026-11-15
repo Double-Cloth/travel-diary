@@ -1,11 +1,11 @@
-import { DRAFT_FORMAT, readDraft } from './record-input.mjs?v=2.1.144';
-import { mediaBytes, readUploads } from './photo-uploads.mjs?v=2.1.144';
-import { pinyinSlug } from './slug.mjs?v=2.1.144';
-import { MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.144';
+import { DRAFT_FORMAT, readDraft } from './record-input.mjs?v=2.1.145';
+import { mediaBytes, readUploads } from './photo-uploads.mjs?v=2.1.145';
+import { pinyinSlug } from './slug.mjs?v=2.1.145';
+import { MAXIMUM_RECORD_ARCHIVE_BYTES } from './file-limits.mjs?v=2.1.145';
 
 import { ByteSource, createZipBlob, readZipSource, readSourceText } from './zip-stream.mjs';
 
-export const DRAFT_ARCHIVE_FORMAT = 'travel-diary-draft-archive-v2';
+const DRAFT_ARCHIVE_FORMAT = 'travel-diary-draft-archive-v2';
 const decoder = new TextDecoder('utf-8', { fatal: true });
 
 function draftEntries(value, editContext = {}) {
