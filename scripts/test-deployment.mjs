@@ -6,15 +6,16 @@ import { spawn } from 'node:child_process';
 import { AUTH_CONFIG, AUTH_PASSWORD } from '../tests/helpers/auth.mjs';
 
 // 仅创建唯一命名的测试项目和虚拟数据，清理范围限于本脚本创建的资源。
-const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-compose-test-'));
+const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'travel compose test-'));
 const project = `travel-smoke-${process.pid}-${Date.now()}`;
-const image = process.env.TRAVEL_TEST_IMAGE || 'travel-diary:verification';
+const sourceImage = process.env.TRAVEL_TEST_IMAGE || 'travel-diary:verification';
+const image = `travel-diary:smoke-${process.pid}-${Date.now()}`;
+const rollbackTags = new Set();
 const override = path.join(temporary, 'compose.smoke.yaml');
 const backupDirectory = path.join(temporary, 'backups').replaceAll('\\', '/');
 await fs.mkdir(path.join(temporary, 'backups'));
 await fs.writeFile(override, `services:
   app:
-    image: ${image}
     environment:
       TRAVEL_WRITE_MODE: remote
   caddy:
@@ -22,7 +23,6 @@ await fs.writeFile(override, `services:
       SITE_DOMAIN: http://diary.test
     ports: !reset []
   maintenance:
-    image: ${image}
     volumes:
       - ${JSON.stringify(`${backupDirectory}:/backups`)}
 `);
@@ -40,7 +40,7 @@ function execute(args, input = '', { allowFailure = false, program = 'docker' } 
         child.stderr.on('data', bytes => { errors += bytes; });
         child.on('error', reject);
         child.on('close', code => {
-            if (code && !allowFailure) reject(new Error(`Docker 退出码 ${code}\n${errors}\n${output}`));
+            if (code && !allowFailure) reject(new Error(`${program} 退出码 ${code}\n${errors}\n${output}`));
             else resolve({ code, output, errors });
         });
         child.stdin.end(input);
@@ -69,6 +69,7 @@ const api = async code => dc(['exec', '-T', 'app', 'node', '-'], `
 `);
 
 try {
+    await execute(['tag', sourceImage, image]);
     await dc(['config', '--quiet']);
     // 镜像静态检查在入口运行前执行，检查镜像默认用户及内容隔离。
     await execute(['run', '--rm', '--entrypoint', 'node', image, '-e', `
@@ -153,6 +154,23 @@ try {
         await execute(['-q', '-e', '-c', 'bash scripts/deploy.sh restore travel-diary-original', '/dev/null'],
             'travel-diary-original\nRESTORE\n', { program: 'script' });
         console.log('Bash 管理入口的备份、校验和双确认恢复通过');
+        const updated = await execute(['scripts/deploy.sh', 'update'], '', { program: 'bash' });
+        for (const tag of updated.output.match(/travel-diary:rollback-\d{8}T\d{6}Z-\d+/g) || []) rollbackTags.add(tag);
+        const originalOverride = await fs.readFile(override, 'utf8');
+        const failedDockerfile = path.join(temporary, 'Dockerfile.failed');
+        await fs.writeFile(failedDockerfile, `FROM ${image}\nENTRYPOINT ["node", "-e", "process.exit(42)"]\n`);
+        await fs.writeFile(override, originalOverride.replace('  caddy:',
+            `    build:\n      dockerfile: ${JSON.stringify(failedDockerfile)}\n  caddy:`));
+        const failed = await execute(['scripts/deploy.sh', 'update'], '', { program: 'bash', allowFailure: true });
+        const failedTags = failed.output.match(/travel-diary:rollback-\d{8}T\d{6}Z-\d+/g) || [];
+        for (const tag of failedTags) rollbackTags.add(tag);
+        assert.equal(failed.code, 1);
+        assert.match(failed.errors, /更新失败/);
+        assert.ok(failedTags.length);
+        await execute(['tag', failedTags[0], image]);
+        await fs.writeFile(override, originalOverride);
+        await api(`assert.equal((await fetch(url+'/readyz',{headers})).status,200);`);
+        console.log('Bash 更新及失败后的自动镜像回退通过');
     }
     console.log('容器烟雾测试完成。公网 HTTPS 证书签发需部署到实际域名后验证。');
 } catch (error) {
@@ -168,5 +186,7 @@ try {
     }
     // 此处只删除本脚本创建、名称唯一的虚拟测试卷。
     await dc(['down', '--volumes', '--remove-orphans'], '', { allowFailure: true });
+    for (const tag of rollbackTags) await execute(['image', 'rm', tag], '', { allowFailure: true });
+    await execute(['image', 'rm', image], '', { allowFailure: true });
     await fs.rm(temporary, { recursive: true, force: true });
 }

@@ -46,6 +46,19 @@ npm start
 
 ## 命令
 
+### Linux 服务器部署
+
+提供 Docker Compose 与 Caddy 自动 HTTPS 部署，应用以非 root 用户运行，数据、认证和回收站保存在持久卷中。
+
+```bash
+bash scripts/deploy.sh init diary.example.com
+# 如需远程编辑，将 .env 中 TRAVEL_WRITE_MODE 改为 remote
+bash scripts/deploy.sh up
+bash scripts/deploy.sh doctor
+```
+
+先将域名解析到服务器并开放 TCP 80/443。初始化会交互设置密码，默认提供远程只读浏览。完整步骤、迁移、备份、恢复及升级见 [服务器部署指南](doc/DEPLOYMENT.md)。
+
 ### 本机配置
 
 编辑根目录的 `travel-diary.config.json` 调整服务和媒体预览配置。个人设置写入同目录的 `travel-diary.config.local.json`（已被 Git 忽略），只填写需要覆盖的字段。例如，将端口改为 8080，并指定本机浏览器。

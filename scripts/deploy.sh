@@ -113,7 +113,7 @@ case "$command" in
         ;;
     update)
         old_image=$(docker inspect --format '{{.Image}}' "$(dc ps -a -q app)")
-        rollback_tag="travel-diary:rollback-$(date -u +%Y%m%dT%H%M%SZ)"
+        rollback_tag="travel-diary:rollback-$(date -u +%Y%m%dT%H%M%SZ)-${RANDOM}"
         docker tag "$old_image" "$rollback_tag"
         dc stop app
         backup_stopped

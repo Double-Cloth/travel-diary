@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import os from 'node:os';
+import { createHash } from 'node:crypto';
+import { createZip } from './helpers/zip-archive.mjs';
 import { backupBundle, restoreBundle, verifyBundle } from '../scripts/deployment-backup.js';
 import { loadRuntimeConfig } from '../js/runtime-config.js';
 import { ensureDataStructure, listenWithRetries, stopServer, parseArgs } from '../js/server.js';
@@ -121,4 +123,37 @@ test('损坏备份、链接和路径穿越在恢复当前数据前拒绝', async
     assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]\n');
     await fs.symlink(path.join(root, 'data'), path.join(base, 'alias'), process.platform === 'win32' ? 'junction' : 'dir');
     await assert.rejects(backupBundle(root, path.join(base, 'alias/backup')), /运行目录之外/);
+    const malicious = path.join(base, 'malicious');
+    await backupBundle(root, malicious);
+    const zip = Buffer.from(createZip([{ name: '.cache/recycle-bin/xx/xx/outside.txt', data: '越界数据' }]));
+    for (let offset = zip.indexOf('/xx/xx/'); offset !== -1; offset = zip.indexOf('/xx/xx/', offset + 7)) {
+        zip.write('/../../', offset);
+    }
+    await fs.writeFile(path.join(malicious, 'recycle-bin.zip'), zip);
+    const manifest = JSON.parse(await fs.readFile(path.join(malicious, 'manifest.json')));
+    manifest.files['recycle-bin.zip'] = { bytes: zip.length, sha256: createHash('sha256').update(zip).digest('hex') };
+    await fs.writeFile(path.join(malicious, 'manifest.json'), JSON.stringify(manifest));
+    await assert.rejects(restoreBundle(root, malicious, { confirm: true, backupDirectory: path.join(base, 'before-malicious') }), /路径/);
+    assert.equal(await fs.readFile(path.join(root, 'data/travel_data.json'), 'utf8'), '[]\n');
+});
+
+test('恢复安装中途失败时回退已经替换的数据目录', async t => {
+    const { root, base } = await fixture(t);
+    await fs.writeFile(path.join(root, 'data/profile/owner-name.txt'), '旧归档');
+    const directory = path.join(base, 'backup');
+    await backupBundle(root, directory);
+    await fs.writeFile(path.join(root, 'data/profile/owner-name.txt'), '当前数据');
+    const rename = fs.rename;
+    fs.rename = async (source, destination) => {
+        if (source.includes('.travel-restore-stage-') && destination === path.join(root, '.secrets')) {
+            throw Object.assign(new Error('模拟认证目录安装失败'), { code: 'EACCES' });
+        }
+        return rename(source, destination);
+    };
+    try {
+        await assert.rejects(restoreBundle(root, directory, { confirm: true, backupDirectory: path.join(base, 'before-failure') }), /模拟认证目录安装失败/);
+    } finally { fs.rename = rename; }
+    assert.equal(await fs.readFile(path.join(root, 'data/profile/owner-name.txt'), 'utf8'), '当前数据');
+    assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, '.secrets/auth.json'))), AUTH_CONFIG);
+    assert.equal((await fs.readdir(root)).includes('.travel-data.lock'), false);
 });

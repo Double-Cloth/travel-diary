@@ -49,6 +49,8 @@ HTML 和数据路径相对项目根目录；`css/` 下图像与纹理引用使�
 
 `.secrets/` 属于本机运行数据，整个目录由 Git 忽略。授权的完整备份包含认证哈希，通过认证 API 下载。个人媒体默认被 Git 忽略，迁移服务时使用完整备份或复制个人数据目录。
 
+容器镜像通过构建白名单仅包含程序与公共 `assets/`，个人 `data/`、`.secrets/` 和 `.cache/` 保存在运行卷。网页及原有命令行数据 ZIP 包含数据与认证，服务器运维备份额外保存独立的回收站 ZIP 与完整性清单。迁移和恢复时一起保留这三个文件，具体步骤见 [服务器部署指南](DEPLOYMENT.md)。
+
 ## 字体
 
 当前使用 LXGW WenKai Mono 常规 / Medium 和 Source Code Pro 常规 / Bold，扉页印章使用 Cormorant SC Bold。`assets/fonts/` 保留 TTF 源文件与许可证，生成的完整 WOFF2、两种字重的 `*-core.woff2`、`diary-kai-core.css` 和校验元数据统一保存在 `.cache/fonts/`，由 Git 忽略且不进入备份。
