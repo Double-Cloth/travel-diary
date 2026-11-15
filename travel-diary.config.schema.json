@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Travel Diary 运行配置",
-  "description": "所有业务字段均可省略。本机专用配置可写入 travel-diary.config.local.json，按字段覆盖共享配置。修改后重启服务。",
+  "description": "所有业务字段均可省略。本机专用配置可写入 travel-diary.config.local.json，按字段覆盖共享配置。优先级为 CLI、环境变量、本机 JSON、共享 JSON、内置默认值。修改后重启服务。",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -11,7 +11,7 @@
     },
     "server": {
       "type": "object",
-      "description": "服务监听和写入权限。命令行参数优先。",
+      "description": "服务监听和写入权限。支持 TRAVEL_LOCAL、TRAVEL_PORT、TRAVEL_MAX_PORT_RETRIES、TRAVEL_WRITE_MODE、TRAVEL_ALLOWED_ORIGINS 环境变量，命令行参数优先。",
       "additionalProperties": false,
       "properties": {
         "port": {
@@ -50,7 +50,7 @@
     },
     "mediaPreviews": {
       "type": "object",
-      "description": "后端调用已有 Edge / Chrome 生成缩略图的配置。",
+      "description": "后端调用已有 Edge / Chrome 生成缩略图的配置。TRAVEL_MEDIA_PREVIEWS_ENABLED 可覆盖 enabled，TRAVEL_BROWSER_PATH 可覆盖浏览器路径。",
       "additionalProperties": false,
       "properties": {
         "enabled": {

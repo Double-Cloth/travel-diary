@@ -1,0 +1,68 @@
+services:
+  app:
+    image: ${TRAVEL_IMAGE:-travel-diary:local}
+    build: .
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 130s
+    environment:
+      TRAVEL_LOCAL: "false"
+      TRAVEL_PORT: "9000"
+      TRAVEL_MAX_PORT_RETRIES: "1"
+      TRAVEL_WRITE_MODE: ${TRAVEL_WRITE_MODE:-local}
+      SITE_DOMAIN: ${SITE_DOMAIN:?请在 .env 中设置 SITE_DOMAIN}
+      TRAVEL_MEDIA_PREVIEWS_ENABLED: "false"
+    volumes:
+      - runtime:/var/lib/travel-diary
+    expose:
+      - "9000"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:9000/readyz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 30s
+      retries: 3
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      SITE_DOMAIN: ${SITE_DOMAIN:?请在 .env 中设置 SITE_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+  maintenance:
+    extends:
+      service: app
+    profiles: [maintenance]
+    restart: "no"
+    healthcheck:
+      disable: true
+    volumes:
+      - runtime:/var/lib/travel-diary
+      - ${BACKUP_DIR:-./backups}:/backups
+volumes:
+  runtime:
+  caddy_data:
+  caddy_config:

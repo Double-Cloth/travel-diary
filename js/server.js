@@ -229,7 +229,7 @@ function isPrivateStaticPath(relativePath) {
 
 async function ensureDataStructure(rootDir) {
   const resolvedRoot = await fs.promises.realpath(rootDir);
-  const directories = ['.secrets', 'data', 'data/travel-diary', 'data/photos', 'data/videos', 'data/profile'];
+  const directories = ['.secrets', '.cache', 'data', 'data/travel-diary', 'data/photos', 'data/videos', 'data/profile'];
   let secretsCreated = false;
 
   for (const relativePath of directories) {
@@ -317,6 +317,25 @@ function createHandler(rootDir, options = {}) {
     allowedOrigins: options.allowedOrigins ?? config.server.allowedOrigins
   });
   return async (req, res) => {
+    const probe = req.url.split('?')[0];
+    if (probe === '/healthz' || probe === '/readyz') {
+      let status = 200;
+      if (!['GET', 'HEAD'].includes(req.method)) status = 405;
+      else if (probe === '/readyz') {
+        try {
+          if (options.lifecycle?.stopping) throw new Error('正在停止');
+          await fs.promises.access(path.join(rootDir, 'data', 'travel_data.json'), fs.constants.R_OK);
+          await fs.promises.access(rootDir, fs.constants.W_OK);
+          for (const directory of ['data', '.secrets', '.cache']) {
+            await fs.promises.access(path.join(rootDir, directory), fs.constants.R_OK | fs.constants.W_OK);
+          }
+        } catch { status = 503; }
+      }
+      res.writeHead(status, { ...STATIC_SECURITY_HEADERS, 'Content-Type': 'text/plain; charset=utf-8',
+        'Cache-Control': 'no-store', ...(status === 405 ? { Allow: 'GET, HEAD' } : {}) });
+      res.end(req.method === 'HEAD' ? undefined : status === 200 ? 'ok\n' : 'unavailable\n');
+      return;
+    }
     if (['/api/travel-auth', '/api/travel-auth/setup', '/api/travel-records', '/api/travel-data', '/api/travel-profile'].includes(req.url.split('?')[0])) {
       await recordApi(req, res);
       return;
@@ -530,7 +549,22 @@ async function listenWithRetries(rootDir, port, bindAll, options = {}) {
 
   return new Promise((resolve, reject) => {
     const tryListen = () => {
-      const server = http.createServer(createHandler(rootDir, options));
+      const lifecycle = { stopping: false, pending: new Set() };
+      const handler = createHandler(rootDir, { ...options, lifecycle });
+      const server = http.createServer((req, res) => {
+        if (lifecycle.stopping) {
+          res.writeHead(503, { Connection: 'close', 'Cache-Control': 'no-store' });
+          res.end('unavailable\n');
+          return;
+        }
+        const task = handler(req, res).catch(error => {
+          console.error(`请求失败：${error.message}`);
+          if (!res.headersSent) res.writeHead(500);
+          res.end();
+        }).finally(() => lifecycle.pending.delete(task));
+        lifecycle.pending.add(task);
+      });
+      server.lifecycle = lifecycle;
       server.requestTimeout = 8 * 60 * 60 * 1000;
       server.headersTimeout = 15_000;
       server.keepAliveTimeout = 5_000;
@@ -556,6 +590,23 @@ async function listenWithRetries(rootDir, port, bindAll, options = {}) {
 
     tryListen();
   });
+}
+
+function stopServer(server, timeoutMs = 120_000) {
+  if (server.stopTask) return server.stopTask;
+  server.lifecycle.stopping = true;
+  server.stopTask = new Promise((resolve, reject) => {
+    const timer = setTimeout(() => {
+      reject(new Error('停止等待已达上限，活动写入可能尚未完成。请保留持久卷中的锁和暂存目录，按维护文档恢复。'));
+    }, timeoutMs);
+    const closed = new Promise((done, fail) => server.close(error => error ? fail(error) : done()));
+    // 响应连接关闭后仍须等待异步校验、提交及回滚结束。
+    Promise.all([closed, Promise.allSettled([...server.lifecycle.pending])]).then(() => {
+      clearTimeout(timer);
+      resolve();
+    }, error => { clearTimeout(timer); reject(error); });
+  });
+  return server.stopTask;
 }
 
 async function main() {
@@ -601,13 +652,21 @@ async function main() {
   console.log('Tip: refresh the page after file changes. Press Ctrl+C to stop.');
   console.log('='.repeat(60));
 
-  process.on('SIGINT', () => {
-    console.log('\nStopping server...');
-    server.close(() => {
-      console.log('Server closed.');
+  let stopping = false;
+  const shutdown = async signal => {
+    if (stopping) return;
+    stopping = true;
+    console.log(`\n收到 ${signal}，等待活动请求完成，最长 120 秒。`);
+    try {
+      await stopServer(server);
+      console.log('服务已停止。');
       process.exit(0);
-    });
-  });
+    } catch (error) {
+      console.error(error.message);
+      process.exit(1);
+    }
+  };
+  for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => { void shutdown(signal); });
 }
 
 if (require.main === module) {
@@ -617,4 +676,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { createHandler, ensureDataStructure, parseArgs, safeJoin, listenWithRetries, parseByteRange };
+module.exports = { createHandler, ensureDataStructure, parseArgs, safeJoin, listenWithRetries, parseByteRange, stopServer };

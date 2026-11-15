@@ -1,0 +1,21 @@
+# 仅允许程序与公共资产进入构建上下文。
+**
+!Dockerfile
+!.dockerignore
+!package.json
+!LICENSE
+!index.html
+!travel-diary.config.json
+!travel-diary.config.schema.json
+!js/
+!js/**
+!css/
+!css/**
+!assets/
+!assets/**
+!scripts/
+!scripts/**
+scripts/test-deployment.mjs
+scripts/deploy.sh
+!deploy/
+!deploy/entrypoint.sh

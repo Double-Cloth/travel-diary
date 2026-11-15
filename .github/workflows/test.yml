@@ -17,10 +17,26 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
 
       - name: Prepare font cache
         run: npm run fonts
 
       - name: Run tests
         run: npm test
+
+  container:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check deployment shell syntax
+        run: bash -n scripts/deploy.sh && sh -n deploy/entrypoint.sh
+      - name: Build isolated image
+        run: docker build -t travel-diary:verification .
+      - name: Verify containers with synthetic data
+        run: npm run test:deployment

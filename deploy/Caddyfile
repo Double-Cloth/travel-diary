@@ -1,0 +1,12 @@
+{$SITE_DOMAIN} {
+    # Host 和 Origin 沿用外部请求。所有业务路径由 Node.js 处理。
+    reverse_proxy app:9000 {
+        flush_interval -1
+        transport http {
+            dial_timeout 10s
+            response_header_timeout 8h
+            read_timeout 8h
+            write_timeout 8h
+        }
+    }
+}

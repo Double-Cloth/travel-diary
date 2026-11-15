@@ -40,7 +40,7 @@ function readConfigFile(file) {
     return saved;
 }
 
-function loadRuntimeConfig(root) {
+function loadRuntimeConfig(root, environment = process.env) {
     const config = {};
     for (const section of Object.keys(DEFAULT_CONFIG)) {
         config[section] = { ...DEFAULT_CONFIG[section] };
@@ -55,6 +55,28 @@ function loadRuntimeConfig(root) {
             validateConfig(config);
         } catch (error) {
             throw new Error(`配置文件 ${file} 无效：${error.message}`);
+        }
+    }
+    const environmentFields = [
+        ['TRAVEL_LOCAL', 'server', 'local', 'boolean'],
+        ['TRAVEL_PORT', 'server', 'port', 'integer'],
+        ['TRAVEL_MAX_PORT_RETRIES', 'server', 'maxPortRetries', 'integer'],
+        ['TRAVEL_WRITE_MODE', 'server', 'writeMode', 'string'],
+        ['TRAVEL_ALLOWED_ORIGINS', 'server', 'allowedOrigins', 'json'],
+        ['TRAVEL_MEDIA_PREVIEWS_ENABLED', 'mediaPreviews', 'enabled', 'boolean']
+    ];
+    for (const [name, section, field, type] of environmentFields) {
+        if (environment[name] === undefined) continue;
+        const value = environment[name];
+        try {
+            if (type === 'boolean' && !['true', 'false'].includes(value)) throw new Error('必须是 true 或 false。');
+            if (type === 'integer' && !/^\d+$/.test(value)) throw new Error('必须是十进制整数。');
+            config[section][field] = type === 'boolean' ? value === 'true'
+                : type === 'integer' ? Number(value) : type === 'json' ? JSON.parse(value) : value;
+            validateConfig(config);
+            if (field === 'allowedOrigins') require('./record-store.js').normalizeAllowedOrigins(config.server.allowedOrigins);
+        } catch (error) {
+            throw new Error(`环境变量 ${name} 无效：${error.message}`);
         }
     }
     const { server, mediaPreviews } = config;

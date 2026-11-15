@@ -40,7 +40,11 @@ function readSecret(prompt) {
 }
 
 async function main() {
-    const root = path.resolve(__dirname, '..');
+    const argv = process.argv.slice(2);
+    if (argv.length && (argv.length !== 2 || argv[0] !== '--dir' || !argv[1])) {
+        throw new Error('用法 npm run auth:set -- [--dir 项目目录]');
+    }
+    const root = path.resolve(argv[1] || path.join(__dirname, '..'));
     process.stdout.write(`请设置 ${PASSWORD_LENGTH} 位数字访问密码。输入过程不会回显数字。\n`);
     const password = await readSecret('新访问密码：');
     const confirmation = await readSecret('再次输入：');
