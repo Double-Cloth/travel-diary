@@ -808,6 +808,10 @@ test('日记媒体支持沉浸式查看，图片与视频共用基础变换操�
     assert.match(journalCss, /\.photo-viewer-image\s*{/);
 });
 
+test('相册媒体允许缩小，避免加载前的替代文本撑大虚拟行测量高度', () => {
+    assert.match(journalCss, /\.photo-sleeve-button img,\s*\.photo-sleeve-button video\s*\{[^}]*min-width: 0;[^}]*min-height: 0;/);
+});
+
 test('日记页最多预览三行媒体且提供全集媒体页', () => {
     assert.match(appJs, /const ENTRY_PHOTO_PREVIEW_ROWS = 3;/);
     assert.doesNotMatch(appJs, /ENTRY_PHOTO_PREVIEW_LIMIT|limit: ENTRY_PHOTO_PREVIEW_LIMIT/);
