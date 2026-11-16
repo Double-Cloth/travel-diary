@@ -20,13 +20,25 @@ help() {
   rollback            备份当前状态，切换到上次更新前保留的镜像
   --offline 命令       禁止拉取或构建；也可在 .env 设置 TRAVEL_OFFLINE=1
   --offline update --bundle 目录  校验并导入新离线包，备份后升级应用
-  doctor              检查配置、DNS、持久卷写权限、健康状态和 HTTPS
+  doctor              按部署模式检查配置、网络、持久卷及公开入口
   --help              显示帮助
 备份目录通过 .env 的 BACKUP_DIR 设置。默认从 GHCR 拉取镜像。
 源码构建需叠加 compose.build.yaml 并显式设置 TRAVEL_BUILD=1。
+Portal 在 .env 设置 TRAVEL_DEPLOYMENT_MODE=portal，自动叠加 compose.portal.yaml。
 EOF
 }
 
+# 这里只读取枚举值，不执行配置内容。其余配置继续由 Compose 解析。
+read_setting() {
+    if [[ -f "$config_file" ]]; then
+        awk -F= -v key="$1" '$1 ~ "^[[:space:]]*(export[[:space:]]+)?" key "[[:space:]]*$" {gsub(/[[:space:]"\047]/,"",$2); value=$2} END {print value}' "$config_file"
+    fi
+}
+deployment_mode=${TRAVEL_DEPLOYMENT_MODE:-$(read_setting TRAVEL_DEPLOYMENT_MODE)}
+deployment_mode=${deployment_mode:-standalone}
+[[ "$deployment_mode" == standalone || "$deployment_mode" == portal ]] || fail 'TRAVEL_DEPLOYMENT_MODE 必须为 standalone 或 portal。'
+services=(app caddy)
+if [[ "$deployment_mode" == portal ]]; then services=(app); fi
 offline=${TRAVEL_OFFLINE:-}
 if [[ "${1:-}" == --offline ]]; then offline=1; shift; fi
 command=${1:---help}
@@ -39,6 +51,9 @@ offline=${offline:-0}
 if [[ "$offline" == 1 ]]; then
     [[ "${TRAVEL_BUILD:-0}" != 1 ]] || fail '离线模式禁止构建镜像，请先导入离线包。'
     export COMPOSE_FILE="${COMPOSE_FILE:-compose.yaml}:compose.offline.yaml"
+fi
+if [[ "$deployment_mode" == portal ]]; then
+    export COMPOSE_FILE="${COMPOSE_FILE:-compose.yaml}:compose.portal.yaml"
 fi
 # shellcheck source=offline-images.sh
 source scripts/offline-images.sh
@@ -78,6 +93,12 @@ if [[ "$command" == init && ! -e "$config_file" ]]; then
     fi
     sed "s/diary.example.com/$domain/" .env.example > "$config_file"
     chmod 600 "$config_file"
+    set_config TRAVEL_DEPLOYMENT_MODE "$deployment_mode"
+    if [[ "$deployment_mode" == portal ]]; then
+        for key in TRAVEL_BASE_PATH TRAVEL_PUBLIC_ORIGIN TRAVEL_PORTAL_NETWORK TRAVEL_PORTAL_ALIAS; do
+            if [[ -n "${!key:-}" ]]; then set_config "$key" "${!key}"; fi
+        done
+    fi
     if [[ "$offline" == 1 ]]; then
         set_config TRAVEL_OFFLINE 1
         set_config TRAVEL_IMAGE "$bundle_image"
@@ -88,10 +109,15 @@ if [[ "$command" == init && ! -e "$config_file" ]]; then
 fi
 [[ -f "$config_file" ]] || fail '缺少环境配置文件，请先执行 init 或复制 .env.example。'
 dc config --quiet
+# 固定 Compose 已经解析出的项目名，沿用已有目录名或显式项目名，避免后续移动目录换卷。
+project_name=$(dc config --environment | sed -n 's/^COMPOSE_PROJECT_NAME=//p')
+[[ "$project_name" =~ ^[a-z0-9][a-z0-9_-]*$ ]] || fail '无法确定稳定的 Compose 项目名。'
+if [[ "$command" == init ]]; then set_config COMPOSE_PROJECT_NAME "$project_name"; fi
+export COMPOSE_PROJECT_NAME="$project_name"
 
 run_app() { dc run --rm --no-deps --pull never -T app "$@"; }
 config_check() {
-    if [[ "$offline" == 1 ]]; then
+    if [[ "$offline" == 1 && "$deployment_mode" == standalone ]]; then
         dc config --format json | run_app node -e '
             let input=""; process.stdin.on("data", b=>input+=b);
             process.stdin.on("end", ()=>{
@@ -100,14 +126,19 @@ config_check() {
             });
         ' || return 1
     fi
-    run_app node /opt/travel-diary/scripts/check-runtime-config.js --dir /var/lib/travel-diary
+    run_app node /opt/travel-diary/scripts/check-runtime-config.js --dir /var/lib/travel-diary || return 1
+    if [[ "$deployment_mode" == portal ]]; then
+        local network
+        network=$(dc config --format json | run_app node -e 'let data="";process.stdin.on("data",b=>data+=b);process.stdin.on("end",()=>console.log(JSON.parse(data).networks.portal.name))') || return 1
+        docker network inspect "$network" >/dev/null || fail "共享网络 $network 不存在，请先创建并接入共享网关。"
+    fi
 }
-wait_ready() { dc up -d --no-build --pull never --wait --wait-timeout 180; }
+wait_ready() { dc up -d --no-build --pull never --wait --wait-timeout 180 "${services[@]}"; }
 
 acquire_image() {
     if [[ "$offline" == 1 ]]; then
         local image
-        while IFS= read -r image; do docker image inspect "$image" >/dev/null || fail "缺少本地镜像 $image，请导入离线包。"; done < <(dc config --images)
+        while IFS= read -r image; do docker image inspect "$image" >/dev/null || fail "缺少本地镜像 $image，请导入离线包。"; done < <(dc config --images "${services[@]}")
     elif [[ "${TRAVEL_BUILD:-0}" == 1 ]]; then dc build app; else dc pull app; fi
 }
 
@@ -150,11 +181,13 @@ app_running() { [[ -n "$(dc ps --status running -q app)" ]]; }
 case "$command" in
     init)
         acquire_image
-        if [[ "$offline" != 1 ]]; then
+        if [[ "$offline" != 1 && "$deployment_mode" == standalone ]]; then
             dc pull caddy
             run_app node -e 'require("node:dns").promises.lookup(process.env.SITE_DOMAIN).then(v=>console.log("域名解析",v.address)).catch(e=>{console.error(e.message);process.exit(1)})'
         fi
-        dc run --rm --no-deps --pull never -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+        if [[ "$deployment_mode" == standalone ]]; then
+            dc run --rm --no-deps --pull never -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
+        fi
         run_app node -e 'require("/opt/travel-diary/js/server.js").ensureDataStructure("/var/lib/travel-diary").catch(e=>{console.error(e.message);process.exit(1)})'
         if run_app node -e 'process.exit(require("node:fs").existsSync("/var/lib/travel-diary/.secrets/auth.json")?0:1)'; then
             echo '已存在认证配置，继续保留。'
@@ -165,7 +198,12 @@ case "$command" in
         echo '初始化完成。需要远程编辑时将 .env 中 TRAVEL_WRITE_MODE 改为 remote，再执行 up。'
         ;;
     up) if [[ "$offline" == 1 ]]; then acquire_image; fi; config_check; wait_ready ;;
-    down) dc down ;;
+    down)
+        if [[ "$deployment_mode" == portal ]]; then
+            dc stop app
+            dc rm -f app
+        else dc down; fi
+        ;;
     status) dc ps ;;
     logs) dc logs --tail 100 -f ;;
     backup)
@@ -231,7 +269,7 @@ case "$command" in
         else
             echo '更新失败，正在恢复原镜像。数据变更可使用升级前备份恢复。' >&2
             save_image "$rollback_tag" || echo "配置保存失败，请将 $config_file 的 TRAVEL_IMAGE 手动设为 $rollback_tag。" >&2
-            TRAVEL_IMAGE="$rollback_tag" dc up -d --no-build --pull never --force-recreate --wait --wait-timeout 180
+            TRAVEL_IMAGE="$rollback_tag" dc up -d --no-build --pull never --force-recreate --wait --wait-timeout 180 "${services[@]}"
             exit 1
         fi
         ;;
@@ -254,7 +292,27 @@ case "$command" in
         '
         dc ps
         dc exec -T app node -e 'fetch("http://127.0.0.1:9000/readyz").then(r=>{if(!r.ok)process.exit(1);console.log("readyz 正常")}).catch(()=>process.exit(1))'
-        if [[ "$offline" == 1 ]]; then
+        if [[ "$deployment_mode" == portal ]]; then
+            dc config --format json | run_app node -e '
+                let data="";process.stdin.on("data",b=>data+=b);process.stdin.on("end",async()=>{
+                    const config=JSON.parse(data), network=config.networks.portal.name;
+                    const alias=config.services.app.networks.portal.aliases[0];
+                    console.log("共享网络",network,"应用 DNS",alias);
+                    const response=await fetch("http://"+alias+":9000/readyz");
+                    if(!response.ok) throw new Error("共享网络内应用不可达");
+                    console.log("共享网络内应用可达");
+                });
+            '
+            run_app node -e '
+                const {server}=require("/opt/travel-diary/js/runtime-config.js").loadRuntimeConfig("/var/lib/travel-diary");
+                const origin=server.publicOrigin || (process.env.SITE_SCHEME || "https")+"://"+process.env.SITE_DOMAIN;
+                const address=origin+(server.basePath==="/"?"":server.basePath)+"/readyz";
+                fetch(address,{redirect:"manual",signal:AbortSignal.timeout(15000)}).then(async r=>{
+                    if(r.status!==200 || await r.text()!=="ok\n") throw new Error("入口返回 "+r.status+"，请检查前缀剥离、Host、隧道及网关路由");
+                    console.log("公开子路径正常",address);
+                }).catch(e=>{console.error("公开入口不可达",address,e.message,"请检查 SakuraFrp、TLS 端口、DNS 和共享 Caddy");process.exitCode=1});
+            '
+        elif [[ "$offline" == 1 ]]; then
             dc exec -T caddy wget -q -O - http://app:9000/readyz
             dc exec -T caddy caddy validate --config /etc/caddy/Caddyfile --adapter caddyfile
             echo '离线代理及后端检查通过；请从客户端核对入口访问、域名解析和证书信任。'

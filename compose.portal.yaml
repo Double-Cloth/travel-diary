@@ -1,0 +1,17 @@
+# 与 compose.yaml 叠加。共享网关独立部署，本项目只管理应用及维护工具。
+services:
+  app:
+    networks:
+      default: {}
+      portal:
+        aliases:
+          - ${TRAVEL_PORTAL_ALIAS:-travel-diary}
+  caddy:
+    profiles: [standalone]
+  maintenance:
+    networks:
+      default: {}
+networks:
+  portal:
+    external: true
+    name: ${TRAVEL_PORTAL_NETWORK:-portal}

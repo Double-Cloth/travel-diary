@@ -1,0 +1,31 @@
+# 由独立共享网关挂载，SakuraFrp 将外部 HTTPS 转发至此 HTTP 端口。
+# 环境变量须与应用一致，TRAVEL_BASE_PATH 在此处使用无末尾斜杠的非根路径。
+{
+    admin off
+    auto_https off
+}
+:80 {
+    @diary_root path {$TRAVEL_BASE_PATH:/diary}
+    handle @diary_root {
+        route {
+            rewrite * {$TRAVEL_BASE_PATH:/diary}/
+            redir {uri} 308
+        }
+    }
+
+    handle_path {$TRAVEL_BASE_PATH:/diary}/* {
+        reverse_proxy {$TRAVEL_PORTAL_ALIAS:travel-diary}:9000 {
+            header_up Host {hostport}
+            transport http {
+                dial_timeout 10s
+                response_header_timeout 300s
+            }
+        }
+    }
+
+    # 在此添加 /blog/* 等独立应用的互斥 handle/handle_path。
+    handle {
+        root * /srv/portal
+        file_server
+    }
+}
