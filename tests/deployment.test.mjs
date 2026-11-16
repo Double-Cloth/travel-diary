@@ -27,7 +27,7 @@ test('环境变量覆盖 JSON，CLI 覆盖环境，配置检查与启动使用�
         TRAVEL_WRITE_MODE: 'remote', TRAVEL_ALLOWED_ORIGINS: '["https://diary.example"]', TRAVEL_MEDIA_PREVIEWS_ENABLED: 'false' };
     const config = loadRuntimeConfig(root, environment);
     assert.deepEqual(config.server, { port: 9020, local: false, maxPortRetries: 1,
-        writeMode: 'remote', allowedOrigins: ['https://diary.example'] });
+        writeMode: 'remote', allowedOrigins: ['https://diary.example'], basePath: '/', publicOrigin: '' });
     assert.equal(config.mediaPreviews.enabled, false);
     const previous = { ...process.env };
     Object.assign(process.env, environment);

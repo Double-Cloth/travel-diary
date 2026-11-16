@@ -9,6 +9,7 @@ const { readAuthConfig } = require('./auth.js');
 const { createMediaPreviewStore, MAXIMUM_PREVIEW_BYTES } = require('./media-preview-store.js');
 const { createMediaPreviewGenerator } = require('./media-preview-generator.js');
 const { CONFIG_FILENAME, LOCAL_CONFIG_FILENAME, loadRuntimeConfig } = require('./runtime-config.js');
+const { normalizeBasePath } = require('./deployment-config.js');
 
 const CONFIG = {
   defaultPort: 9000,
@@ -70,7 +71,7 @@ function parseArgs(argv) {
   args.port ??= defaults.port;
   args.local ??= defaults.local;
   args.writeMode ??= defaults.writeMode;
-  args.allowedOrigins ??= defaults.allowedOrigins;
+  args.allowedOrigins ??= defaults.publicOrigin && args.writeMode === 'remote' ? [defaults.publicOrigin] : defaults.allowedOrigins;
   if (!Number.isInteger(args.port) || args.port <= 0 || args.port > 65535) {
     throw new Error('端口必须是 1 到 65535 之间的整数。');
   }
@@ -308,13 +309,17 @@ async function ensureDataStructure(rootDir) {
 function createHandler(rootDir, options = {}) {
   rootDir = fs.realpathSync(rootDir);
   const config = loadRuntimeConfig(rootDir);
+  const basePath = normalizeBasePath(options.basePath ?? config.server.basePath);
+  const writeMode = options.writeMode ?? config.server.writeMode;
   const mediaPreviews = createMediaPreviewStore(rootDir);
   let fontCache;
   const generateMediaPreview = (options.generateMediaPreviews ?? config.mediaPreviews.enabled)
     ? createMediaPreviewGenerator(rootDir, undefined, config.mediaPreviews) : null;
   const recordApi = createRecordApi(rootDir, {
-    writeMode: options.writeMode ?? config.server.writeMode,
-    allowedOrigins: options.allowedOrigins ?? config.server.allowedOrigins
+    writeMode,
+    allowedOrigins: options.allowedOrigins ?? (config.server.publicOrigin && writeMode === 'remote'
+      ? [config.server.publicOrigin] : config.server.allowedOrigins),
+    basePath
   });
   return async (req, res) => {
     const probe = req.url.split('?')[0];
@@ -475,7 +480,7 @@ function createHandler(rootDir, options = {}) {
       let stats = await fs.promises.stat(targetPath);
       if (stats.isDirectory()) {
         if (!pathname.endsWith('/')) {
-          res.writeHead(301, { Location: `${requestUrl.pathname}/${requestUrl.search}` });
+          res.writeHead(301, { Location: `${basePath === '/' ? '' : basePath}${requestUrl.pathname}/${requestUrl.search}` });
           res.end();
           return;
         }

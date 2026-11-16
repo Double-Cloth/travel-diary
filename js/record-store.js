@@ -1,4 +1,5 @@
 const { serializeRecords } = require('./record-order.js');
+const { normalizeBasePath } = require('./deployment-config.js');
 const { Readable } = require('node:stream');
 const { pipeline } = require('node:stream/promises');
 const { createHash } = require('node:crypto');
@@ -922,6 +923,8 @@ async function deleteRecord(root, payload, authorize) {
 }
 
 function createRecordApi(root, options = {}) {
+    const basePath = normalizeBasePath(options.basePath ?? '/');
+    const cookiePath = `${basePath === '/' ? '' : basePath}/api`;
     const writeMode = options.writeMode || 'local';
     if (!['local', 'remote'].includes(writeMode)) throw new Error(`不支持的写入模式：${writeMode}`);
     const allowedOrigins = normalizeAllowedOrigins(options.allowedOrigins || []);
@@ -977,7 +980,7 @@ function createRecordApi(root, options = {}) {
     }
 
     function sessionCookie(id, secure, maxAge) {
-        return `travel_session=${id}; Path=/api; HttpOnly; SameSite=Strict${maxAge === undefined ? '' : `; Max-Age=${maxAge}`}; Priority=High${secure ? '; Secure' : ''}`;
+        return `travel_session=${id}; Path=${cookiePath}; HttpOnly; SameSite=Strict${maxAge === undefined ? '' : `; Max-Age=${maxAge}`}; Priority=High${secure ? '; Secure' : ''}`;
     }
 
     function storeSession(id, session) {

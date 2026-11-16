@@ -31,7 +31,7 @@ test('配置缺失或仅提供部分字段时使用默认值，各次读取互�
     const root = await fixture(t);
     const config = loadRuntimeConfig(root);
     assert.deepEqual(config, {
-        server: { port: 9000, local: true, maxPortRetries: 100, writeMode: 'local', allowedOrigins: [] },
+        server: { port: 9000, local: true, maxPortRetries: 100, writeMode: 'local', allowedOrigins: [], basePath: '/', publicOrigin: '' },
         mediaPreviews: { enabled: true, browserPath: '', progressTimeoutMs: 70000 }
     });
     config.server.allowedOrigins.push('https://diary.example');
@@ -80,7 +80,7 @@ test('本机配置按字段覆盖共享配置，数组整体替换且各层错�
     }));
     const config = loadRuntimeConfig(root);
     assert.deepEqual(config.server, {
-        port: 8081, local: false, maxPortRetries: 100, writeMode: 'remote', allowedOrigins: ['https://local.example']
+        port: 8081, local: false, maxPortRetries: 100, writeMode: 'remote', allowedOrigins: ['https://local.example'], basePath: '/', publicOrigin: ''
     });
     assert.deepEqual(config.mediaPreviews, { enabled: false, browserPath: path.join(root, 'browser'), progressTimeoutMs: 30000 });
     assert.equal(parseArgs(['--dir', root, '--port', '8082']).port, 8082);

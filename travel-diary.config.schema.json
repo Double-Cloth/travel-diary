@@ -11,9 +11,21 @@
     },
     "server": {
       "type": "object",
-      "description": "服务监听和写入权限。支持 TRAVEL_LOCAL、TRAVEL_PORT、TRAVEL_MAX_PORT_RETRIES、TRAVEL_WRITE_MODE、TRAVEL_ALLOWED_ORIGINS 环境变量，命令行参数优先。",
+      "description": "服务监听和写入权限。支持 TRAVEL_LOCAL、TRAVEL_PORT、TRAVEL_MAX_PORT_RETRIES、TRAVEL_WRITE_MODE、TRAVEL_ALLOWED_ORIGINS、TRAVEL_BASE_PATH、TRAVEL_PUBLIC_ORIGIN 环境变量，命令行参数优先。",
       "additionalProperties": false,
       "properties": {
+        "basePath": {
+          "type": "string",
+          "default": "/",
+          "pattern": "^/(?:[A-Za-z0-9_-]+(?:/[A-Za-z0-9_-]+)*/?)?$",
+          "maxLength": 256,
+          "description": "公开部署路径，默认根路径。入口网关须先剥离此前缀。影响目录重定向与 Cookie Path，末尾斜杠自动去除。"
+        },
+        "publicOrigin": {
+          "type": "string",
+          "default": "",
+          "description": "完整 HTTPS Origin，可含端口。留空保留原来源配置。remote 模式下作为唯一允许来源，显式 CLI --allowed-origin 优先。"
+        },
         "port": {
           "type": "integer",
           "minimum": 1,

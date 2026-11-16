@@ -1,10 +1,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
+const { normalizeBasePath, normalizePublicOrigin } = require('./deployment-config.js');
 
 const CONFIG_FILENAME = 'travel-diary.config.json';
 const LOCAL_CONFIG_FILENAME = 'travel-diary.config.local.json';
 const DEFAULT_CONFIG = {
-    server: { port: 9000, local: true, maxPortRetries: 100, writeMode: 'local', allowedOrigins: [] },
+    server: { port: 9000, local: true, maxPortRetries: 100, writeMode: 'local', allowedOrigins: [], basePath: '/', publicOrigin: '' },
     mediaPreviews: { enabled: true, browserPath: '', progressTimeoutMs: 70000 }
 };
 
@@ -63,6 +64,8 @@ function loadRuntimeConfig(root, environment = process.env) {
         ['TRAVEL_MAX_PORT_RETRIES', 'server', 'maxPortRetries', 'integer'],
         ['TRAVEL_WRITE_MODE', 'server', 'writeMode', 'string'],
         ['TRAVEL_ALLOWED_ORIGINS', 'server', 'allowedOrigins', 'json'],
+        ['TRAVEL_BASE_PATH', 'server', 'basePath', 'string'],
+        ['TRAVEL_PUBLIC_ORIGIN', 'server', 'publicOrigin', 'string'],
         ['TRAVEL_MEDIA_PREVIEWS_ENABLED', 'mediaPreviews', 'enabled', 'boolean']
     ];
     for (const [name, section, field, type] of environmentFields) {
@@ -80,6 +83,9 @@ function loadRuntimeConfig(root, environment = process.env) {
         }
     }
     const { server, mediaPreviews } = config;
+    server.basePath = normalizeBasePath(server.basePath);
+    server.publicOrigin = normalizePublicOrigin(server.publicOrigin);
+    if (server.publicOrigin && server.writeMode === 'remote') server.allowedOrigins = [server.publicOrigin];
     server.allowedOrigins = [...server.allowedOrigins];
     if (mediaPreviews.browserPath.trim()) mediaPreviews.browserPath = path.resolve(root, mediaPreviews.browserPath.trim());
     else mediaPreviews.browserPath = '';
@@ -93,6 +99,8 @@ function validateConfig(config) {
     validateInteger(mediaPreviews.progressTimeoutMs, 1000, 2147483647, 'mediaPreviews.progressTimeoutMs');
     if (typeof server.local !== 'boolean') throw new Error('server.local 必须是布尔值。');
     if (!['local', 'remote'].includes(server.writeMode)) throw new Error('server.writeMode 必须是 local 或 remote。');
+    normalizeBasePath(server.basePath);
+    normalizePublicOrigin(server.publicOrigin);
     if (!Array.isArray(server.allowedOrigins) || server.allowedOrigins.some(value => typeof value !== 'string')) {
         throw new Error('server.allowedOrigins 必须是 HTTPS Origin 字符串数组。');
     }
