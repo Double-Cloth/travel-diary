@@ -1,5 +1,7 @@
 # Linux 服务器部署
 
+默认 `TRAVEL_DEPLOYMENT_MODE=standalone`，保持自带 Caddy、根路径和自动 HTTPS。通过单一隧道及共享网关部署到 `/diary/` 时，按门户指南启用可选覆盖文件，沿用原数据卷与 Compose 项目名。[门户部署、迁移与网关配置](PORTAL_DEPLOYMENT.md)
+
 ## 支持环境
 
 标准方案使用 Docker Engine、Docker Compose 插件（支持 `--wait`、`--pull never`、`config --format json` 和 `pull_policy`）、Bash、`flock`、`awk`、`curl`、`tar`、`sha256sum` 和 Caddy。服务器直接拉取公共镜像 `ghcr.io/double-cloth/travel-diary`，支持 AMD64 与 ARM64，由 Docker 自动选择架构。部署文件来自 Release 附件，服务器无需安装 Node.js、npm、Git 或克隆源代码。镜像基于官方 Node.js 运行环境，应用进程为 UID/GID 1000。代理使用官方 Caddy 镜像。具体镜像由仓库配置和发布包固定。

@@ -46,6 +46,8 @@ Travel Diary 是一本数字旅行日志。它把每一次出发整理成行程�
 
 Docker 默认开启**后端自动生成缩略图**，字体也在首次请求时通过内置 WASM 自动生成。两类缓存分别保存在运行卷的 `.cache/media-previews/` 和 `.cache/fonts/`，重启后继续复用。需要提前生成时，按下方 [Docker 中执行 npm 命令](#docker-中执行-npm-命令) 操作。
 
+共享门户可通过 `TRAVEL_DEPLOYMENT_MODE=portal`、`TRAVEL_BASE_PATH=/diary` 和 `TRAVEL_PUBLIC_ORIGIN=https://example.com:63445` 启用。管理脚本自动叠加 `compose.portal.yaml`，应用加入外部网络，自带 Caddy 保持停用。默认仍为原有 Standalone 根路径部署。首次安装、旧卷迁移、共享 Caddy 示例和回滚命令见 [门户部署指南](doc/PORTAL_DEPLOYMENT.md)。
+
 ### 在线首次部署
 
 1. 准备 Docker Engine、Docker Compose 插件、Bash、`flock`、`awk`、`sed`、`grep`、`curl`、`tar` 和 `sha256sum`。Compose 需支持 `--wait`、`--pull never`、`config --format json` 和 `pull_policy`。部署账户应有 Docker 使用权限及部署目录写入权限。

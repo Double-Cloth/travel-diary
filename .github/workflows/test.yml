@@ -58,3 +58,5 @@ jobs:
           node scripts/package-deployment.mjs --offline --local --tag verification --image travel-diary:verification
       - name: Verify installation and upgrades without internet
         run: node scripts/test-offline-deployment.mjs dist/travel-diary-offline-linux-*-verification.tar.gz
+      - name: Verify shared gateway and Portal lifecycle without internet
+        run: npm run test:portal -- dist/travel-diary-offline-linux-*-verification.tar.gz

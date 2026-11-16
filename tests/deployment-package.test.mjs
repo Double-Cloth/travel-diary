@@ -36,5 +36,5 @@ test('部署归档校验覆盖全部发布文件，固定镜像且不携带运�
     };
     await walk(extracted);
     assert.match(await fs.readFile(path.join(extracted, '.env.example'), 'utf8'), /^TRAVEL_IMAGE=example\/diary:package-test$/m);
-    for (const name of ['scripts/offline-images.sh', 'scripts/deploy.sh', 'install.sh', 'compose.offline.yaml', 'doc/OFFLINE_DEPLOYMENT.md']) assert.ok(names.has(name));
+    for (const name of ['scripts/offline-images.sh', 'scripts/deploy.sh', 'install.sh', 'compose.offline.yaml', 'compose.portal.yaml', 'deploy/Caddyfile.portal.example', 'doc/PORTAL_DEPLOYMENT.md', 'doc/OFFLINE_DEPLOYMENT.md']) assert.ok(names.has(name));
 });

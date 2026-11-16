@@ -1,5 +1,7 @@
 # 离线部署
 
+离线包同时包含 `compose.portal.yaml`、共享 Caddy 示例及门户部署文档。设置 `TRAVEL_DEPLOYMENT_MODE=portal` 后，管理脚本叠加离线与门户覆盖文件，仅管理应用，继续支持备份、恢复、离线包升级和镜像回滚。共享网关独立准备，`doctor` 会检查公开子路径并报告外部入口不可达的原因。[离线门户安装与迁移步骤](PORTAL_DEPLOYMENT.md)
+
 离线包适用于无法访问互联网的 Linux 服务器。提前安装 Docker Engine、Docker Compose 插件和常见 Linux 工具：Bash、`flock`、`awk`、`sed`、`grep`、`tar`、`sha256sum`。Compose 需支持 `--wait`、`--pull never`、`pull_policy` 和 `config --format json`。服务器无需 Node.js、npm、Git 或镜像仓库账户。安装、运行、编辑、备份和升级均不访问 Docker Hub、GHCR 或其他外部服务。
 
 ## 选择与校验安装包

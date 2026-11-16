@@ -20,6 +20,7 @@
     "start": "node js/server.js",
     "serve": "node js/server.js",
     "test": "node --test tests/*.test.mjs",
-    "test:deployment": "node scripts/test-deployment.mjs"
+    "test:deployment": "node scripts/test-deployment.mjs",
+    "test:portal": "node scripts/test-portal-deployment.mjs"
   }
 }

@@ -9,6 +9,8 @@ import { normalizeBasePath, normalizePublicOrigin } from '../js/deployment-confi
 import { createHandler, ensureDataStructure, parseArgs } from '../js/server.js';
 import { AUTH_PASSWORD, installAuth } from './helpers/auth.mjs';
 import { listenOnFetchSafePort } from './helpers/http.mjs';
+import { loadBrowserModule } from './helpers/browser-modules.mjs';
+import { getMediaPreviewUrl } from '../js/media-preview.mjs';
 
 async function fixture(t, basePath = '/') {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-portal-test-'));
@@ -55,6 +57,36 @@ test('公开路径和 Origin 严格校验，支持多级前缀及 HTTPS 端口�
         'https://user:secret@diary.example', 'https://@diary.example', 'https://diary.example?x',
         'https://diary.example#x', 'https://diary.example:65536', 'https://diary.example:0', 'https://diary.example:', '*', null]) {
         assert.throws(() => normalizePublicOrigin(invalid), /publicOrigin/);
+    }
+});
+
+test('前端数据、认证和缩略图 URL 保留部署前缀，页面查询与 Hash 路由不干扰解析', async t => {
+    const previous = { window: globalThis.window, fetch: globalThis.fetch };
+    t.after(() => Object.assign(globalThis, previous));
+    const { loadTravelData } = await loadBrowserModule(new URL('../js/data.js', import.meta.url));
+    const { probeWriterService, authenticateWriter } = await loadBrowserModule(new URL('../js/writer-capability.js', import.meta.url));
+    for (const basePath of ['/', '/diary/', '/travel/']) {
+        const href = `https://diary.example:63445${basePath}?view=book#ledger?year=2026`;
+        globalThis.window = { location: { href } };
+        const requests = [];
+        globalThis.fetch = async address => {
+            const url = new URL(address);
+            requests.push(url);
+            return { ok: true, status: 200, json: async () => url.pathname.endsWith('countries.json')
+                ? { countries: [{ code: 'CN', name_zh: '中国' }] }
+                : url.pathname.endsWith('travel_data.json') ? []
+                    : { service: 'travel-diary-writer-v1', authenticated: true, token: 'test-token' } };
+        };
+        await loadTravelData('a&b');
+        await probeWriterService();
+        await authenticateWriter(AUTH_PASSWORD);
+        assert.deepEqual(requests.map(url => url.pathname), [
+            `${basePath}data/travel_data.json`, `${basePath}assets/catalogs/countries.json`,
+            `${basePath}api/travel-records`, `${basePath}api/travel-auth`
+        ]);
+        assert.equal(new URL(getMediaPreviewUrl('data/photos/trip/a%20b.png'), href).pathname,
+            `${basePath}.cache/media-previews/photos/trip/a%20b.png.jpg`);
+        assert.equal(window.location.href, href);
     }
 });
 

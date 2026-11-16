@@ -25,9 +25,9 @@ const digest = async file => {
 };
 try {
     // 发布文件采用显式白名单，不复制个人内容、环境配置、证书或缓存。
-    const files = ['compose.yaml', 'compose.offline.yaml', 'install.sh', 'scripts/deploy.sh', 'scripts/offline-images.sh',
+    const files = ['compose.yaml', 'compose.portal.yaml', 'compose.offline.yaml', 'install.sh', 'scripts/deploy.sh', 'scripts/offline-images.sh',
         'deploy/Caddyfile', 'deploy/Caddyfile.http', 'deploy/Caddyfile.internal', 'deploy/Caddyfile.certificate',
-        'deploy/proxy.conf', 'deploy/certs/.gitkeep', 'doc/DEPLOYMENT.md', 'doc/OFFLINE_DEPLOYMENT.md'];
+        'deploy/proxy.conf', 'deploy/Caddyfile.portal.example', 'deploy/certs/.gitkeep', 'doc/DEPLOYMENT.md', 'doc/PORTAL_DEPLOYMENT.md', 'doc/OFFLINE_DEPLOYMENT.md'];
     for (const file of files) {
         await fs.mkdir(path.dirname(path.join(staging, file)), { recursive: true });
         await fs.copyFile(file, path.join(staging, file));

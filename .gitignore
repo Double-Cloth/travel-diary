@@ -60,6 +60,7 @@ output/
 # Environment
 .env
 .env.local
+.env.before-portal
 .env.*.local
 
 # OS generated files
