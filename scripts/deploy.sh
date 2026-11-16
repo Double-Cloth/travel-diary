@@ -247,7 +247,7 @@ case "$command" in
         elif [[ -n "${2:-}" ]]; then
             target_image=$2
             if [[ "$target_image" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+([-._a-zA-Z0-9]*)$ ]]; then
-                target_image="ghcr.io/double-cloth/travel-diary:$target_image"
+                target_image="ghcr.io/double-cloth-studio/travel-diary:$target_image"
             fi
             [[ "$target_image" =~ ^[a-zA-Z0-9][a-zA-Z0-9./:@_-]*$ ]] || fail '镜像名称无效。'
             export TRAVEL_IMAGE="$target_image"

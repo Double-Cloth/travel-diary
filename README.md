@@ -58,8 +58,8 @@ Docker 默认开启**后端自动生成缩略图**，字体也在首次请求时
 version='目标 Release Tag'
 mkdir -p /srv/travel-diary
 cd /srv/travel-diary
-curl -fLO "https://github.com/Double-Cloth/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz"
-curl -fLO "https://github.com/Double-Cloth/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz.sha256"
+curl -fLO "https://github.com/double-cloth-studio/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz"
+curl -fLO "https://github.com/double-cloth-studio/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz.sha256"
 sha256sum -c "travel-diary-deploy-$version.tar.gz.sha256"
 tar -xzf "travel-diary-deploy-$version.tar.gz"
 ```
@@ -236,7 +236,7 @@ docker compose -f compose.yaml -f compose.offline.yaml exec -w /var/lib/travel-d
 克隆仓库后直接启动，无需安装 npm 依赖。
 
 ```bash
-git clone https://github.com/Double-Cloth/travel-diary.git
+git clone https://github.com/double-cloth-studio/travel-diary.git
 cd travel-diary
 npm start
 ```
@@ -439,10 +439,10 @@ Actions 在 AMD64 / ARM64 上执行测试，发布 GHCR 多架构镜像、在线
 ```bash
 # 生成在线部署包，--tag 与 --image 必填
 version='目标 Release Tag'
-node scripts/package-deployment.mjs --tag "$version" --image "ghcr.io/double-cloth/travel-diary:$version"
+node scripts/package-deployment.mjs --tag "$version" --image "ghcr.io/double-cloth-studio/travel-diary:$version"
 
 # 生成当前 Docker Engine 架构对应的完整离线包，自动拉取镜像
-node scripts/package-deployment.mjs --offline --tag "$version" --image "ghcr.io/double-cloth/travel-diary:$version"
+node scripts/package-deployment.mjs --offline --tag "$version" --image "ghcr.io/double-cloth-studio/travel-diary:$version"
 ```
 
 `--source <镜像引用或摘要>` 可指定实际导出的镜像来源并写入 `IMAGE.txt`，`--caddy <镜像引用>` 指定 Caddy，默认 `caddy:2-alpine`，`--output <目录>` 修改输出位置。离线打包加 `--local` 时复用已存在的本地镜像，镜像架构须与 Docker Engine 一致。打包需要 `tar`，离线打包还需 Docker。

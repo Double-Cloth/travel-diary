@@ -4,7 +4,7 @@
 
 ## 支持环境
 
-标准方案使用 Docker Engine、Docker Compose 插件（支持 `--wait`、`--pull never`、`config --format json` 和 `pull_policy`）、Bash、`flock`、`awk`、`curl`、`tar`、`sha256sum` 和 Caddy。服务器直接拉取公共镜像 `ghcr.io/double-cloth/travel-diary`，支持 AMD64 与 ARM64，由 Docker 自动选择架构。部署文件来自 Release 附件，服务器无需安装 Node.js、npm、Git 或克隆源代码。镜像基于官方 Node.js 运行环境，应用进程为 UID/GID 1000。代理使用官方 Caddy 镜像。具体镜像由仓库配置和发布包固定。
+标准方案使用 Docker Engine、Docker Compose 插件（支持 `--wait`、`--pull never`、`config --format json` 和 `pull_policy`）、Bash、`flock`、`awk`、`curl`、`tar`、`sha256sum` 和 Caddy。服务器直接拉取公共镜像 `ghcr.io/double-cloth-studio/travel-diary`，支持 AMD64 与 ARM64，由 Docker 自动选择架构。部署文件来自 Release 附件，服务器无需安装 Node.js、npm、Git 或克隆源代码。镜像基于官方 Node.js 运行环境，应用进程为 UID/GID 1000。代理使用官方 Caddy 镜像。具体镜像由仓库配置和发布包固定。
 
 部署前准备域名及 DNS，将 A/AAAA 指向服务器可达的公网入口。开放 TCP 80/443，HTTP/3 可额外开放 UDP 443。服务器应能访问镜像仓库和证书机构。确认磁盘足够容纳现有数据、备份和恢复暂存。
 
@@ -18,8 +18,8 @@
 version='目标 Release Tag'
 mkdir -p /srv/travel-diary
 cd /srv/travel-diary
-curl -fLO "https://github.com/Double-Cloth/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz"
-curl -fLO "https://github.com/Double-Cloth/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz.sha256"
+curl -fLO "https://github.com/double-cloth-studio/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz"
+curl -fLO "https://github.com/double-cloth-studio/travel-diary/releases/download/$version/travel-diary-deploy-$version.tar.gz.sha256"
 sha256sum -c "travel-diary-deploy-$version.tar.gz.sha256"
 tar -xzf "travel-diary-deploy-$version.tar.gz"
 bash scripts/deploy.sh init diary.example.com
@@ -57,7 +57,7 @@ docker compose up -d --no-build --wait
 | `SITE_DOMAIN` | 需修改示例 | 小写完整域名，省略协议、端口及路径。 |
 | `TRAVEL_WRITE_MODE` | `local` | 远程只读浏览，改为 `remote` 后允许白名单站点认证与写入。 |
 | `TRAVEL_MEDIA_PREVIEWS_ENABLED` | `true` | 后端按需自动生成媒体缩略图，设为 `false` 可关闭。 |
-| `TRAVEL_IMAGE` | `ghcr.io/double-cloth/travel-diary:latest` | 仓库示例默认跟踪稳定版，Release 部署包固定对应 Tag。也可填写 `ghcr.io/double-cloth/travel-diary@sha256:...` 固定摘要。 |
+| `TRAVEL_IMAGE` | `ghcr.io/double-cloth-studio/travel-diary:latest` | 仓库示例默认跟踪稳定版，Release 部署包固定对应 Tag。也可填写 `ghcr.io/double-cloth-studio/travel-diary@sha256:...` 固定摘要。 |
 | `TRAVEL_OFFLINE` | `0` | 设为 `1` 自动启用离线覆盖配置，禁止拉取及构建；安装器自动设置。 |
 | `SITE_SCHEME` | `https` | 入口协议，HTTP 仅支持只读浏览。 |
 | `CADDY_IMAGE` | 官方 Caddy 镜像 | 离线包固定架构专用本地标签。 |
@@ -164,7 +164,7 @@ bash scripts/deploy.sh status
 version='目标 Release Tag'
 bash scripts/deploy.sh update "$version"
 # 也可传完整镜像引用或摘要
-# bash scripts/deploy.sh update ghcr.io/double-cloth/travel-diary@sha256:...
+# bash scripts/deploy.sh update ghcr.io/double-cloth-studio/travel-diary@sha256:...
 ```
 
 `update` 先拉取目标镜像，下载失败时当前服务继续运行。随后为当前镜像创建 `travel-diary:rollback-<时间>` 标签、停止应用，使用升级前程序备份数据、认证和回收站，再检查新配置并等待新服务就绪。成功后将目标镜像原子写入 `.env`，把上一镜像标签保存到 `.env.previous-image`，并输出升级前备份名称。省略版本参数时使用当前 `.env` 的 `TRAVEL_IMAGE`，适用于已手动改为固定版本或 `latest` 的配置。
@@ -217,11 +217,11 @@ gh run watch <运行编号> --exit-status
 
 ### 首次公开包设置
 
-GitHub 首次创建 GHCR 包时默认设为 Private，公开仓库的包也需要单独设置可见性。首次成功发布后，维护者打开包设置，将 Visibility 改为 Public，并确认仓库 `Double-Cloth/travel-diary` 有 Actions 写入权限。该操作只需执行一次。随后在未登录 GHCR 的环境验证拉取与平台清单。
+GitHub 首次创建 GHCR 包时默认设为 Private，公开仓库的包也需要单独设置可见性。首次成功发布后，维护者打开包设置，将 Visibility 改为 Public，并确认仓库 `double-cloth-studio/travel-diary` 有 Actions 写入权限。该操作只需执行一次。随后在未登录 GHCR 的环境验证拉取与平台清单。
 
 ```bash
-docker pull "ghcr.io/double-cloth/travel-diary:$version"
-docker buildx imagetools inspect "ghcr.io/double-cloth/travel-diary:$version"
+docker pull "ghcr.io/double-cloth-studio/travel-diary:$version"
+docker buildx imagetools inspect "ghcr.io/double-cloth-studio/travel-diary:$version"
 ```
 
 清单应包含 `linux/amd64` 和 `linux/arm64`。工作流还会生成证明清单，可能显示额外的 `unknown/unknown` 条目。包设置和认证行为见 [GitHub GHCR 文档](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry)。

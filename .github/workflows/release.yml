@@ -13,7 +13,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  IMAGE: ghcr.io/double-cloth/travel-diary
+  IMAGE: ghcr.io/double-cloth-studio/travel-diary
 
 jobs:
   test:

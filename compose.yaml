@@ -1,6 +1,6 @@
 services:
   app:
-    image: ${TRAVEL_IMAGE:-ghcr.io/double-cloth/travel-diary:latest}
+    image: ${TRAVEL_IMAGE:-ghcr.io/double-cloth-studio/travel-diary:latest}
     init: true
     restart: unless-stopped
     stop_grace_period: 130s

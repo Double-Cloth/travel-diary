@@ -1,6 +1,6 @@
 FROM node:24-bookworm-slim
 
-LABEL org.opencontainers.image.source="https://github.com/Double-Cloth/travel-diary" \
+LABEL org.opencontainers.image.source="https://github.com/double-cloth-studio/travel-diary" \
       org.opencontainers.image.description="Travel Diary" \
       org.opencontainers.image.licenses="MIT"
 
