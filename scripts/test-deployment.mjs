@@ -9,6 +9,7 @@ import { AUTH_CONFIG, AUTH_PASSWORD } from '../tests/helpers/auth.mjs';
 const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'travel compose test-'));
 const project = `travel-smoke-${process.pid}-${Date.now()}`;
 const sourceImage = process.env.TRAVEL_TEST_IMAGE || 'travel-diary:verification';
+const expectedRevision = process.env.TRAVEL_TEST_REVISION || '';
 const image = `travel-diary:smoke-${process.pid}-${Date.now()}`;
 const rollbackTags = new Set();
 const registryName = `${project}-registry`;
@@ -72,6 +73,13 @@ const api = async code => dc(['exec', '-T', 'app', 'node', '-'], `
 `);
 
 try {
+    if (expectedRevision) {
+        assert.match(expectedRevision, /^[a-f0-9]{40}$/);
+        const inspectedRevision = (await execute(['image', 'inspect', '--format',
+            '{{index .Config.Labels "org.opencontainers.image.revision"}}', sourceImage])).output.trim();
+        assert.equal(inspectedRevision, expectedRevision);
+        console.log(`镜像源码版本标签通过 ${inspectedRevision}`);
+    }
     await execute(['tag', sourceImage, image]);
     await dc(['config', '--quiet']);
     // 镜像静态检查在入口运行前执行，检查镜像默认用户及内容隔离。

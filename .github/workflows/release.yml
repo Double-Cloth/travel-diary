@@ -64,6 +64,8 @@ jobs:
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ env.IMAGE }}:${{ github.event.release.tag_name }}
+          build-args: |
+            VCS_REF=${{ github.sha }}
           labels: |
             org.opencontainers.image.version=${{ github.event.release.tag_name }}
             org.opencontainers.image.revision=${{ github.sha }}

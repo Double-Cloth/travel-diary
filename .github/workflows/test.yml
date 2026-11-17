@@ -48,8 +48,15 @@ jobs:
           for file in scripts/deploy.sh scripts/offline-images.sh install.sh; do bash -n "$file"; done
           sh -n deploy/entrypoint.sh
       - name: Build isolated image
-        run: docker build -t travel-diary:verification .
+        run: |
+          docker build -t travel-diary:verification-unknown .
+          test "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' travel-diary:verification-unknown)" = unknown
+          docker build --build-arg "VCS_REF=$GITHUB_SHA" -t travel-diary:verification .
+          test "$(docker image inspect --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}' travel-diary:verification)" = "$GITHUB_SHA"
+          docker image rm travel-diary:verification-unknown
       - name: Verify containers with synthetic data
+        env:
+          TRAVEL_TEST_REVISION: ${{ github.sha }}
         run: npm run test:deployment
       - name: Prepare offline bundle before disconnecting
         run: |

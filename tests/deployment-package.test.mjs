@@ -6,6 +6,14 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 
+test('源码构建支持可选的完整提交 SHA，并以 unknown 保持旧构建兼容', async () => {
+    const dockerfile = await fs.readFile('Dockerfile', 'utf8');
+    const composeBuild = await fs.readFile('compose.build.yaml', 'utf8');
+    assert.match(dockerfile, /^ARG VCS_REF=unknown$/m);
+    assert.match(dockerfile, /org\.opencontainers\.image\.revision="\$\{VCS_REF\}"/);
+    assert.match(composeBuild, /^\s+VCS_REF: \$\{VCS_REF:-unknown\}$/m);
+});
+
 test('部署归档校验覆盖全部发布文件，固定镜像且不携带运行数据和证书', async t => {
     const temporary = await fs.mkdtemp(path.join(os.tmpdir(), 'travel-package-test-'));
     t.after(() => fs.rm(temporary, { recursive: true, force: true }));

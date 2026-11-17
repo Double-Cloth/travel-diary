@@ -46,7 +46,7 @@ Travel Diary 是一本数字旅行日志。它把每一次出发整理成行程�
 
 Docker 默认开启**后端自动生成缩略图**，字体也在首次请求时通过内置 WASM 自动生成。两类缓存分别保存在运行卷的 `.cache/media-previews/` 和 `.cache/fonts/`，重启后继续复用。需要提前生成时，按下方 [Docker 中执行 npm 命令](#docker-中执行-npm-命令) 操作。
 
-共享门户可通过 `TRAVEL_DEPLOYMENT_MODE=portal`、`TRAVEL_BASE_PATH=/diary` 和 `TRAVEL_PUBLIC_ORIGIN=https://example.com:63445` 启用。管理脚本自动叠加 `compose.portal.yaml`，应用加入外部网络，自带 Caddy 保持停用。默认仍为原有 Standalone 根路径部署。首次安装、旧卷迁移、共享 Caddy 示例和回滚命令见 [门户部署指南](doc/PORTAL_DEPLOYMENT.md)。
+共享门户可通过 `TRAVEL_DEPLOYMENT_MODE=portal`、`TRAVEL_BASE_PATH=/diary` 和 `TRAVEL_PUBLIC_ORIGIN=https://example.com:63445` 启用。管理脚本自动叠加 `compose.portal.yaml`，应用加入外部网络，自带 Caddy 保持停用。默认仍为原有 Standalone 根路径部署。首次安装、旧卷迁移、共享 Caddy、PageHub 受管模式和回滚边界见 [门户部署指南](doc/PORTAL_DEPLOYMENT.md)。
 
 ### 在线首次部署
 
@@ -449,8 +449,9 @@ node scripts/package-deployment.mjs --offline --tag "$version" --image "ghcr.io/
 
 ```bash
 # 构建验证镜像，再运行在线部署演练
-docker build -t travel-diary:verification .
-npm run test:deployment
+revision="$(git rev-parse HEAD)"
+docker build --build-arg "VCS_REF=$revision" -t travel-diary:verification .
+TRAVEL_TEST_REVISION="$revision" npm run test:deployment
 # 等价入口
 # node scripts/test-deployment.mjs
 

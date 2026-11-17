@@ -124,6 +124,46 @@ SakuraFrp 的目标为 `127.0.0.1:8080`。如果隧道客户端位于其他容�
 
 同域不同路径共享 Origin，Cookie Path 仅控制浏览器附带 Cookie 的范围。同源其他应用仍能向日记发送请求，必须信任同源应用。登录继续要求现有密码、会话、写入令牌与 HTTPS 来源校验。改变路径或重建容器后重新登录，旧会话失效。
 
+## PageHub 受管模式
+
+PageHub 可以复用上述 Portal 能力，将公开入口固定为 `/diary/`，并将应用和共享网关同时接入 `pagehub-ingress`。Travel Diary 仍负责数据格式、认证、备份与恢复工具；PageHub 负责生成受管运行配置、构建并固定镜像、路由、启停、更新、回滚、卸载和操作审计。受管状态下 PageHub 是唯一生命周期协调者，不要同时运行 `deploy.sh update`、`rollback`、`up` 或 `down` 操作相同容器。`backup`、`verify` 和 `doctor` 只能由 PageHub 的受限 Runner 按审核后的固定动作调用，不能把远程元数据直接拼接成宿主机命令。
+
+PageHub 生成的配置应至少满足以下约束。该配置保存在受管部署目录，不是用户需要维护的第二份应用配置。
+
+```dotenv
+SITE_DOMAIN=example.com
+SITE_SCHEME=https
+COMPOSE_PROJECT_NAME=原安装使用的项目名
+TRAVEL_DEPLOYMENT_MODE=portal
+TRAVEL_BASE_PATH=/diary
+TRAVEL_PUBLIC_ORIGIN=https://example.com:63445
+TRAVEL_PORTAL_NETWORK=pagehub-ingress
+TRAVEL_PORTAL_ALIAS=travel-diary
+TRAVEL_WRITE_MODE=local
+TRAVEL_MEDIA_PREVIEWS_ENABLED=true
+TRAVEL_IMAGE=pagehub-travel-diary:git-完整提交SHA
+BACKUP_DIR=/srv/pagehub/backups/travel-diary
+```
+
+`SITE_DOMAIN` 只包含域名；`TRAVEL_PUBLIC_ORIGIN` 是不带路径的完整 Origin；应用内基路径使用无末尾斜杠的 `/diary`。共享网关将 `/diary/api/...` 一次性剥离为 `/api/...`，不得重复添加或剥离前缀。应用只暴露 Docker 内部端口 `9000`，PageHub 不启动本项目的 `caddy` service，也不把 `9000`、`80` 或 `443` 发布到宿主机。网络别名必须在 `pagehub-ingress` 中唯一。
+
+迁移已有安装时，PageHub 必须先记录并沿用原 `COMPOSE_PROJECT_NAME`、`runtime` 卷和实际镜像 ID。切换前执行并验证备份，停止原独立 Caddy，再将现有应用接入共享网络。不能以新的项目名启动空卷，也不能执行 `docker compose down -v`、`docker volume rm` 或带卷清理；删除应用登记或容器时默认保留运行卷及备份。镜像回滚只恢复程序版本，不能替代不兼容数据格式所需的授权恢复流程。
+
+### 从提交 SHA 构建和核验镜像
+
+`Dockerfile` 接受可选的 `VCS_REF`，并将值写入 `org.opencontainers.image.revision`。PageHub 应先固定目标 `main` 的完整提交 SHA，再从该 checkout 构建；构建过程不得自行执行 `git pull`，也不能用 `latest` 代替提交身份。
+
+```bash
+revision='固定的四十位完整提交 SHA'
+docker build --build-arg "VCS_REF=$revision" -t "pagehub-travel-diary:git-$revision" .
+docker image inspect --format '{{.Id}} {{index .Config.Labels "org.opencontainers.image.revision"}}' \
+  "pagehub-travel-diary:git-$revision"
+```
+
+PageHub 应校验输出的 revision 与锁定 SHA 完全一致，并持久化实际镜像 ID、冻结后的受管配置和部署时间；更新与回滚引用已验收的镜像 ID。未传 `VCS_REF` 的本地或离线构建继续可用，标签明确为 `unknown`，不能将其推测成真实提交。
+
+当前仓库不提供 PageHub 专属能力清单或 `status --json`：相关 Schema 尚未在两个项目间固定，PageHub 也可以直接从受信任适配器与 Docker API 读取这些信息。在协议确定前不维护第二套可能冲突的配置或状态源。现有 `deploy.sh status` 的人类可读输出和全部原命令、参数、退出码保持不变。
+
 ## 从 Standalone 迁移
 
 以下操作在原部署目录执行。迁移前先更新到本次兼容版本并完成原入口验证。
@@ -200,8 +240,9 @@ bash scripts/deploy.sh doctor
 
 ```bash
 npm test
-docker build -t travel-diary:portal-verification .
-TRAVEL_TEST_IMAGE=travel-diary:portal-verification npm run test:deployment
+revision="$(git rev-parse HEAD)"
+docker build --build-arg "VCS_REF=$revision" -t travel-diary:portal-verification .
+TRAVEL_TEST_IMAGE=travel-diary:portal-verification TRAVEL_TEST_REVISION="$revision" npm run test:deployment
 docker build -f tests/fixtures/Dockerfile.offline -t travel-diary:offline-test-tools .
 node scripts/package-deployment.mjs --offline --local --tag portal-current --image travel-diary:portal-verification
 node scripts/test-offline-deployment.mjs dist/travel-diary-offline-linux-amd64-portal-current.tar.gz
@@ -210,7 +251,7 @@ npm run test:portal -- dist/travel-diary-offline-linux-amd64-portal-current.tar.
 
 ARM64 将包名中的 `amd64` 换为 `arm64`。Portal 演练在 `--network none` 的独立 Docker Engine 中运行共享网关、静态主页、其他应用与日记四个容器，使用临时项目、虚拟密码和独立卷。公网 HTTPS 终止后的请求通过 HTTP 转发，明确保留带端口 Host 和 HTTPS Origin。`doctor` 的公开 URL 在此隔离环境预期失败，并检查诊断中包含正确子路径。Standalone 离线演练使用内部 CA 与已有证书校验真实 HTTPS。
 
-2026-11-16 的本机 Node 基线为 700 项通过，改造后为 708 项通过。已执行的 AMD64 Standalone 容器及断网 HTTPS 演练通过。新增媒体用例曾使用无法被 Chromium 解码的 PNG，已换为可解码夹具。HTTP 测试工具曾在 DELETE 中缺少 `Content-Length`，已补齐请求长度。这两项属于测试工具问题，修正后图片预览、删除、回收站恢复与 ZIP 导入导出均通过。
+2026-11-16 的本机 Node 基线为 700 项通过，Portal 改造后为 708 项；本次 PageHub 版本元数据回归测试加入后为 709 项通过。已执行的 AMD64 Standalone 容器及断网 HTTPS 演练通过。新增媒体用例曾使用无法被 Chromium 解码的 PNG，已换为可解码夹具。HTTP 测试工具曾在 DELETE 中缺少 `Content-Length`，已补齐请求长度。这两项属于测试工具问题，修正后图片预览、删除、回收站恢复与 ZIP 导入导出均通过。
 
 AMD64 Portal 完整演练已通过，覆盖旧卷迁移、认证、媒体、资料、回收站、备份恢复、在线与离线升级回滚、失败自动回退、停止重启和配置错误拒绝。全过程确认共享网关与其他应用容器标识保持一致且入口可用。在线管理分支采用本地 FROM 镜像构建，Portal 的公网镜像仓库拉取及真实 Release 发布尚未执行。
 

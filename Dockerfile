@@ -1,9 +1,5 @@
 FROM node:24-bookworm-slim
 
-LABEL org.opencontainers.image.source="https://github.com/double-cloth-studio/travel-diary" \
-      org.opencontainers.image.description="Travel Diary" \
-      org.opencontainers.image.licenses="MIT"
-
 ENV NODE_ENV=production \
     TRAVEL_BROWSER_PATH=/usr/bin/chromium \
     CHROMIUM_FLAGS="--no-sandbox --disable-dev-shm-usage"
@@ -22,6 +18,11 @@ COPY --chown=node:node scripts/ ./scripts/
 COPY --chown=node:node deploy/entrypoint.sh /usr/local/bin/travel-diary-entrypoint
 RUN mkdir -p /var/lib/travel-diary && chown node:node /var/lib/travel-diary \
     && chmod 755 /usr/local/bin/travel-diary-entrypoint
+ARG VCS_REF=unknown
+LABEL org.opencontainers.image.source="https://github.com/double-cloth-studio/travel-diary" \
+      org.opencontainers.image.description="Travel Diary" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.revision="${VCS_REF}"
 USER node
 EXPOSE 9000
 STOPSIGNAL SIGTERM
